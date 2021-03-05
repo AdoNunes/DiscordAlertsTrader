@@ -1,0 +1,42 @@
+{
+
+  "orderStrategyType": "OCO",
+  "childOrderStrategies": [
+    {
+      "orderType": "LIMIT",
+      "session": "NORMAL",
+      "price": 45.97,
+      "duration": "DAY",
+      "orderStrategyType": "SINGLE",
+      "orderLegCollection": [
+        {
+          "instruction": "SELL",
+          "quantity": 2,
+          "instrument": {
+            "symbol": "MSFT",
+            "assetType": "EQUITY"
+          }
+        }
+      ]
+    },
+    {
+
+      "orderType": "STOP_LIMIT",
+      "session": "NORMAL",
+      "price": 37.0,
+      "stopPrice": 35.0,
+      "duration": "DAY",
+      "orderStrategyType": "SINGLE",
+      "orderLegCollection": [
+        {
+          "instruction": "SELL",
+          "quantity": 2,
+          "instrument": {
+            "symbol": "MSFT",
+            "assetType": "EQUITY"
+          }
+        }
+      ]
+    }
+  ]
+}
