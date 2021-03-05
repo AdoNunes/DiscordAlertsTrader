@@ -47,22 +47,33 @@ def find_open_trade(order, trades_log):
 class portfolio():
 
     def __init__(self):
-        self.portfolio_stk_fname = data_dir + "/portfolio_stocks.csv"
-        if op.exists(self.portfolio_stk_fname):
+        self.portfolio_fname = data_dir + "/trader_portfolio.csv"
+        if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
             self.portfolio = pd.DataFrame(columns=[
                 "Date", "Symbol", "Trader", "isOpen", "Asset", "Type", "Price",
                 "Qty", "Avged", "Plan_ord", "Plan_all", "ordID", "plan_ordIds"] + [
                     "STC%d-%s"% (i, v) for v in
-                    ["Alerted", "Status", "Qty", "Price", "PnL","Date", "ordID"] 
+                    ["Alerted", "Status", "Qty", "units", "Price", "PnL","Date", "ordID"] 
                     for i in range(1,4)] )
 
-        self.alerts_log = pd.DataFrame(columns=["Date", "Symbol", "Trader",
+        self.alerts_log_fname = data_dir + "/trader_logger.csv"
+        if op.exists(self.alerts_log_fname):
+            self.portfolio = pd.read_csv(self.alerts_log_fname)
+        else:            
+            self.alerts_log = pd.DataFrame(columns=["Date", "Symbol", "Trader",
                                                 "action", "pasesed", "msg"])
         self.TDsession = get_TDsession()
         self.accountId = self.TDsession.accountId
 
+    def save_logs(self, csvs=["port", "alert"]):
+        if "port" in csvs:
+            self.portfolio.to_csv(self.portfolio_fname, index=False)
+        if "alert" in csvs:    
+            self.alerts_log.to_csv(self.alerts_log_fname, index=False)
+        
+        
     def new_stock_alert(self, order:dict, pars:str, msg):
         """ get order from ```parser_alerts``` """
 
@@ -121,7 +132,8 @@ class portfolio():
             #Log portfolio, trades_log
             log_alert['action'] = "BTO"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
-
+            self.save_logs(self)
+            
         elif order["action"] == "BTO" and order['avg'] is not None:
             # if PT in order: cancel previous and make_BTO_PT_SL_order
             # else : BTO
@@ -132,11 +144,13 @@ class portfolio():
             str_act = "Repeated BTO"
             log_alert['action'] = "BTO-Null"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+            self.save_logs(["alert"])
             
         elif order["action"] == "STC" and isOpen is None:
             str_act = "STC without BTO, maybe alredy sold"
             log_alert['action'] = "STC-Null"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+            self.save_logs(["alert"])
             #
         elif order["action"] == "STC":
             
@@ -145,41 +159,68 @@ class portfolio():
             for i in range(1,4):
                 STC = f"STC{i}"
                 if pd.isnull(position[f"STC{i}-Alerted"]):
+                    self.portfolio.loc[open_trade, f"STC{i}-Alerted"] = 1
                     if not pd.isnull(position[ f"STC{i}-Price"]):
                         print("Already sold")
-                        log_alert['action'] = "STC-Before"
+                        log_alert['action'] = "STC-DoneBefore"
                         self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
-                        self.portfolio.loc[open_trade, f"STC{i}-Alerted"] = 1
-                        pass
+                        self.save_logs(["alert"])
+                        return
                     break
             else:
                 str_STC = "How many STC already?"
                 print (str_STC)
                 log_alert['action'] = "STC-TooMany"
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
-                pass
+                self.save_logs(["alert"])
+                return
+            
+            qty_bought = position["Qty"]
+            #TODO: change qty from portfolio to getting TD account position
+            qty_sold = np.nansum([position[f"STC{i}-Qty"] for i in range(1,4)])
             
             if order['Qty'] == 1:  # Sell all
                 # TODO: close other waiting orders
-                order['Qty'] = position["Qty"]
-                new_order = make_STC_lim(**order)
-                
-                
+                order['qty'] = int(position["Qty"]) - qty_sold
+            elif order['Qty'] < 1:  #portion 
+                order['qty'] = round(qty_bought * order['Qty'])
+                assert(order['qty'] + sold <= qty_bought)
             else:
-                sold = np.nansum([position[f"STC{i}-Qty"] for i in range(1,4)] )
-                 # order['Qty']*
-                 
-            
-            
+                order['qty'] =  order['Qty']
+
+            order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
+                           make_STC_lim) 
+
+            ordered = eval(order_response['request_body'])
+
+            order_info = self.TDsession.get_orders(account=self.accountId, 
+                                              order_id=order_id)
+            order_status = order_info['status']
             # Check if STC price changed
             # if position[STC + "-Status"] in ["WORKING", "WAITING"]
             
-            if self.portfolio.loc[open_trade, STC+"-Status"] == "Filled":
-                print("Order alear")
+            sold_unts = order_info['orderLegCollection'][0]['quantity']          
             
-            trades_log, str_act = make_STC(order, trades_log, isOpen)
-            #Log portfolio, trades_log
-
+            bto_price = self.portfolio.loc[open_trade, "Price"]
+            stc_PnL = float((order["price"] - bto_price)/bto_price) *100
+            
+            #Log portfolio
+            self.portfolio.loc[open_trade, STC + "-Status"] = order_info['status']
+            self.portfolio.loc[open_trade, STC + "-Price"] = order_info['price']
+            self.portfolio.loc[open_trade, STC + "-Date"] = date
+            self.portfolio.loc[open_trade, STC + "-Qty"] = order['Qty']
+            self.portfolio.loc[open_trade, STC + "-units"] = sold_unts
+            self.portfolio.loc[open_trade, STC + "-PnL"] = stc_PnL
+            self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
+        
+            str_STC = f"{STC} {order['Symbol']} @{order_info['price']} ({order['Qty']}), {stc_PnL:.2f}%"
+                      
+            #Log trades_log
+            log_alert['action'] = "STC-partial" if order['Qty']<0 else "STC-ALL" 
+            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+            self.save_logs(self)
+            
+            print(str_STC)
 
     def confirm_and_send(self, order, pars, order_funct):
             resp, order, ord_chngd = self.notify_alert(order, pars)
@@ -221,38 +262,42 @@ class portfolio():
         ord_chngd = ord_ori != order
         
         return resp, order, ord_chngd
-    
-    def make_STC(self, order, open_trade, STCn):
+        
+        
+        
+# order = {'action': 'BTO',
+#  'Symbol': 'DPW',
+#  'price': 4.05,
+#  'avg': None,
+#  'PT1': 5.84,
+#  'PT2': 6.39,
+#  'PT3': 6.95,
+#  'SL': 4.01,
+#  'n_PTs': 3,
+#  'PTs_Qty': [.33, .33, .34],
+#  'Trader': 'ScaredShirtless#0001',
+#  'PTs': [5.84],
+#  'qty': 2}
+
+# pars = "BTO DPW @4.05 PT! 5.84 SL: 4.01"
+
+# msg = "BTO DPW @4.05"
 
 
-        
-        bto_price = self.portfolio.loc[open_trade, "Price"]
-        stc_price = float((order["price"] - bto_price)/bto_price) *100
-    
-        trades_log.loc[openTrade, STC] = order["price"]
-        trades_log.loc[openTrade, STC + "-Date"] = order["date"]
-        trades_log.loc[openTrade, STC + "-Qty"] = order['Qty']
-        trades_log.loc[openTrade, STC + "-PnL"] = stc_price
-    
-        str_STC = f"{STC} {order['Symbol']}  ({order['Qty']}), {stc_price:.2f}%"
-    
-        Qty_sold = trades_log.loc[openTrade,[f"STC{i}-Qty" for i in range(1,4)]].sum()
-        if order['Qty'] == 1 or Qty_sold > .98:
-            trades_log.loc[openTrade, "Open"] = 0
-            str_STC = str_STC + " Closed"
-        
-        
-        
-order = {'action': 'BTO',
- 'Symbol': 'DPW',
- 'price': 4.05,
- 'avg': None,
- 'PT1': 5.84,
- 'PT2': 6.39,
- 'PT3': 6.95,
- 'SL': 4.01,
- 'n_PTs': 3,
- 'PTs_Qty': [.33, .33, .34],
- 'Trader': 'ScaredShirtless#0001',
- 'PTs': [5.84],
- 'qty': 2}
+   
+# order = {'action': 'STC',
+#  'Symbol': 'DPW',
+#  'price': 5.84,
+#  'qty': 2}
+
+# pars = "STC DPW @ 5.84"
+
+
+# order = {'action': 'STC',
+#  'Symbol': 'CURLF',
+#  'price': 24.05,
+#  'Trader': 'ScaredShirtless#0001',
+#  'PTs': [5.84],
+#  'Qty': 1}
+
+# pars = "STC CURLF @  24.0"

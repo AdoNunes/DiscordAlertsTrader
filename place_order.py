@@ -119,6 +119,7 @@ def make_BTO_lim_order(Symbol:str, qty:int, price:float, **kwarg):
     return new_order
 
 
+
 def make_BTO_PT_SL_order(Symbol:str, qty:int, price:float, PTs:list=None,
                          PTs_Qty:list=None, SL:float=None, SL_stop:float=None, **kwarg):
 
@@ -176,16 +177,35 @@ def make_PT_SL_order(Symbol:str, qty:int,  PT:float, SL:float, SL_stop:float=Non
     return new_order
 
 
-def make_lim_option(optionID:str, qty:int, BTO:float):
+def make_STC_lim(Symbol:str, qty:int, price:float, **kwarg):
+    
     new_order=Order()
     new_order.order_strategy_type("SINGLE")
     new_order.order_type("LIMIT")
     new_order.order_session('NORMAL')
     new_order.order_duration('GOOD_TILL_CANCEL')
-    new_order.order_price(BTO)
+    new_order.order_price(price)
+
+    order_leg = OrderLeg()
+    order_leg.order_leg_instruction(instruction="SELL")
+    order_leg.order_leg_quantity(quantity=qty)
+    order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
+    new_order.add_order_leg(order_leg=order_leg)
+    
+    return new_order
+
+
+def make_lim_option(optionID:str, qty:int, price:float):
+    new_order=Order()
+    new_order.order_strategy_type("SINGLE")
+    new_order.order_type("LIMIT")
+    new_order.order_session('NORMAL')
+    new_order.order_duration('GOOD_TILL_CANCEL')
+    new_order.order_price(price)
 
     order_leg = OrderLeg()
     order_leg.order_leg_instruction(instruction="BUY_TO_OPEN")
+    order_leg.quantityType 
     order_leg.order_leg_quantity(quantity=qty)
     order_leg.order_leg_asset(asset_type='OPTION', symbol=optionID)
     new_order.add_order_leg(order_leg=order_leg)
