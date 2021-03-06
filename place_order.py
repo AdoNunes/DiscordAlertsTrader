@@ -48,9 +48,9 @@ def get_TDsession(account_n=0, accountId=None):
 
 
 
-TDSession = get_TDsession()
+# TDSession = get_TDsession()
 
-acc_inf = TDSession.get_accounts(TDSession.accountId, ['orders','positions'])
+# acc_inf = TDSession.get_accounts(TDSession.accountId, ['orders','positions'])
 
 
 def get_positions_orders(TDSession):
@@ -233,6 +233,8 @@ def send_order(new_order, TDSession):
                                        order=new_order)
     order_id = order_response["order_id"]
     return order_response, order_id
+
+
 
 #
 #msft_quotes = TDSession.get_quotes(instruments=['MSFT'])

@@ -151,9 +151,8 @@ class portfolio():
             log_alert['action'] = "STC-Null"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(["alert"])
-            #
-        elif order["action"] == "STC":
             
+        elif order["action"] == "STC":
             position = self.portfolio.iloc[open_trade]
             # check if position already alerted and closed
             for i in range(1,4):
@@ -184,10 +183,12 @@ class portfolio():
                 order['qty'] = int(position["Qty"]) - qty_sold
             elif order['Qty'] < 1:  #portion 
                 order['qty'] = round(qty_bought * order['Qty'])
-                assert(order['qty'] + sold <= qty_bought)
+                
             else:
                 order['qty'] =  order['Qty']
-
+            
+            assert(order['qty'] + qty_sold <= qty_bought)
+            
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
                            make_STC_lim) 
 
@@ -221,6 +222,18 @@ class portfolio():
             self.save_logs(self)
             
             print(str_STC)
+
+
+    def order_to_pars(self, order):
+        pars_str = f"{order['action']} {order{'Symbol'}} @order{'price'}"
+        for i in range(1, 4):
+            pt = f"PT{i}"
+            if pt in order.keys() and order[pt] is not None:
+                pars_str = pars_str + f" {pt}: {order[pt]}"
+            if "SL" in order.keys() and order["SL"] is not None:
+                pars_str = pars_str + f" SL: {order['SL']}"
+        return pars_str
+
 
     def confirm_and_send(self, order, pars, order_funct):
             resp, order, ord_chngd = self.notify_alert(order, pars)
@@ -256,6 +269,7 @@ class portfolio():
                         new_order['PTs_Qty'] = [round(1/new_n,2) for i in range(new_n)]
                         new_order['PTs_Qty'][-1] = new_order['PTs_Qty'][-1] + (1- sum(new_order['PTs_Qty']))
                 order = new_order
+                pars = order_to_pars(order)
             else :
                 break
             
