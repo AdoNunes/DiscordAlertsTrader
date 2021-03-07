@@ -7,7 +7,7 @@ from place_order import make_optionID
 
 
 def get_author_option_alerts():
-    file = 'data/option_alerts_message_history_2021.csv'
+    file = 'data/option_alerts_message_history.csv'
 
     alerts = pd.read_csv(file)
     alerts.drop(labels=['Attachments', 'Reactions'], axis=1, inplace=True)
@@ -28,8 +28,7 @@ def get_author_option_alerts():
 
 def option_trader(order, trades_log):
 
-    order["Symbol"] = make_optionID(order["Symbol"], order["expDate"],
-                                    order["strike"][:-1], order["strike"][-1])
+    order["Symbol"] = make_optionID(**order)
     
     openTrade = find_open_option(order, trades_log)
 
@@ -186,14 +185,16 @@ alerts_author["trade_act"] = "nan"
 
 
 bad_msg = []
-for i in range(len(alerts_author)):
+# for i in range(len(alerts_author)):
+for i in [4, 9,11,13]:
     msg = alerts_author["Content"].iloc[i]
     msg = msg.replace("~~2.99~~", "")
     trade_date = alerts_author["Date"].iloc[i]
+    # print(msg)
     pars, order =  option_alerts_parser(msg)
-
+    order["qty"] = 3
     alerts_author.loc[i, "parsed"] = pars
-
+    order['Trader'] = alerts_author["Author"].iloc[i]
     # if "reached pre-market" in msg:
     #     alerts_author.loc[i, "parsed"] = "pre-market repeated alert"
     #     continue

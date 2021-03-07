@@ -43,21 +43,20 @@ def option_alerts_parser(msg):
         else:
             order["avg"] = None
 
-        pt_v =  parse_exits_vals(msg, "PT")
-        sl_v = parse_exits_vals(msg, "SL")
-        if pt_v is not None:
-            str_prt = str_prt + f" PT:{pt_v}"
-        if pt_v is not None:
-            str_prt = str_prt + f" SL:{sl_v}"
-                    
-        n_pts = 0 if pt_v is None else 1
+
+        pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
+        str_prt = str_prt + f" PT1:{pt1_v}, PT2:{pt2_v}, PT3:{pt3_v}, SL:{sl_v}"
+        n_pts = 3 if pt3_v else 2 if pt2_v else 1 if pt1_v else 0
         pts_qty = set_pt_qts(n_pts)
 
-        order["PT1"] = pt_v
+        order["PT1"] = pt1_v
+        order["PT2"] = pt2_v
+        order["PT3"] = pt3_v
         order["SL"] = sl_v
         order["n_PTs"] = n_pts
         order["PTs_Qty"] = pts_qty
-
+        
+        
     elif act == "STC":
         amnt = parse_sell_amount(msg)
         str_prt = str_prt + f" amount: {amnt}"

@@ -87,18 +87,6 @@ def get_positions_orders(TDSession):
     return df_pos, df_ordr
 
 
-def get_current_price(Symbol):
-    "Either a single or a string of Symbols"
-
-    if isinstance(Symbol, str):
-        Symbol = [Symbol]
-
-    quotes = TDSession.get_quotes(instruments=Symbol)
-
-    prices = []
-    for v,k in quotes.items():
-        pri = {}
-        prices.append()
 
 
 def make_BTO_lim_order(Symbol:str, qty:int, price:float, **kwarg):
@@ -177,7 +165,7 @@ def make_PT_SL_order(Symbol:str, qty:int,  PT:float, SL:float, SL_stop:float=Non
     return new_order
 
 
-def make_STC_lim(Symbol:str, qty:int, price:float, **kwarg):
+def make_STC_lim(Symbol:str, qty:int, price:float, strike=None, **kwarg):
     
     new_order=Order()
     new_order.order_strategy_type("SINGLE")
@@ -186,16 +174,23 @@ def make_STC_lim(Symbol:str, qty:int, price:float, **kwarg):
     new_order.order_duration('GOOD_TILL_CANCEL')
     new_order.order_price(price)
 
+
     order_leg = OrderLeg()
-    order_leg.order_leg_instruction(instruction="SELL")
     order_leg.order_leg_quantity(quantity=qty)
-    order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
+    if strike is not None:
+        order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+        order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
+    else:
+        order_leg.order_leg_instruction(instruction="SELL")
+        order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
     new_order.add_order_leg(order_leg=order_leg)
     
     return new_order
 
 
-def make_lim_option(optionID:str, qty:int, price:float):
+def make_lim_option(Symbol:str, qty:int, price:float, **kwarg):
+    """ Symbol : is optionID from ```make_optionID```
+    """
     new_order=Order()
     new_order.order_strategy_type("SINGLE")
     new_order.order_type("LIMIT")
@@ -205,19 +200,19 @@ def make_lim_option(optionID:str, qty:int, price:float):
 
     order_leg = OrderLeg()
     order_leg.order_leg_instruction(instruction="BUY_TO_OPEN")
-    order_leg.quantityType 
     order_leg.order_leg_quantity(quantity=qty)
-    order_leg.order_leg_asset(asset_type='OPTION', symbol=optionID)
+    order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
     new_order.add_order_leg(order_leg=order_leg)
 
     return new_order
 
 
-def make_optionID(Symbol:str, date:str, strike, opt_type="C"):
+def make_optionID(Symbol:str, expDate:str, strike=str, **kwarg):
     """
     date: "[M]M/[D]D" or "[M]M/[D]D/YY[YY]"
     """
-    date_elms = date.split("/")
+    strike, opt_type = float(strike[:-1]), strike[-1]
+    date_elms = expDate.split("/")
     date_frm = f"{int(date_elms[0]):02d}{int(date_elms[1]):02d}"
     if len(date_elms) == 2: # MM/DD, year = current year
         year = str(datetime.today().year)[-2:]
