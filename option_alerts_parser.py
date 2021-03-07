@@ -60,7 +60,7 @@ def find_open_option(order, trades_log):
        return None
 
     symbol_trades = trades_log[msk_symbol]
-    sold_Qty =  symbol_trades[[f"STC{i}-Qty" for i in range(1,2)]].sum(1)
+    sold_Qty =  symbol_trades[[f"STC{i}-xQty" for i in range(1,2)]].sum(1)
     open_trade = sold_Qty< .99
 
     if sum(open_trade) == 0:
@@ -141,12 +141,12 @@ def make_STC_option(order, trades_log, openTrade):
 
     trades_log.loc[openTrade, STC] = order["price"]
     trades_log.loc[openTrade, STC + "-Date"] = order["date"]
-    trades_log.loc[openTrade, STC + "-Qty"] = order['Qty']
+    trades_log.loc[openTrade, STC + "-xQty"] = order['xQty']
     trades_log.loc[openTrade, STC + "-PnL"] = stc_price
 
-    str_STC = f"{STC} {order['Symbol']}  ({order['Qty']}), {stc_price:.2f}%"
+    str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), {stc_price:.2f}%"
 
-    Qty_sold = trades_log.loc[openTrade,[f"STC{i}-Qty" for i in range(1,4)]].sum()
+    Qty_sold = trades_log.loc[openTrade,[f"STC{i}-xQty" for i in range(1,4)]].sum()
     if order['Qty'] == 1 or Qty_sold > .98:
         trades_log.loc[openTrade, "Open"] = 0
         str_STC = str_STC + " Closed"
@@ -174,9 +174,9 @@ trade_log_file = "data/options_trade_history.csv"
 trades_log = pd.DataFrame(columns = ["BTO-Date", "Symbol", "Open", "BTO",
                                      "Strike", "ExpDate", "BTO-avg",
                                      "Planned_PT", "Planned_SL",
-                                     "STC1", "STC1-Qty", "STC1-PnL","STC1-Date",
-                                     "STC2", "STC2-Qty", "STC2-PnL","STC2-Date",
-                                     "STC3", "STC3-Qty", "STC3-PnL","STC3-Date"])
+                                     "STC1", "STC1-xQty", "STC1-PnL","STC1-Date",
+                                     "STC2", "STC2-xQty", "STC2-PnL","STC2-Date",
+                                     "STC3", "STC3-xQty", "STC3-PnL","STC3-Date"])
     # trades_log.to_csv(trade_log_file, index=False)
 
 alerts_author = get_author_option_alerts()

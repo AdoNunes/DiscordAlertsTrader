@@ -26,7 +26,6 @@ def find_open_trade(order, trades_log):
     if len(trades_log) == 0:
         return None
 
-
     msk_ticker = trades_log["Symbol"].str.contains( order['Symbol'])
     if sum(msk_ticker) == 0:
        return None
@@ -53,9 +52,9 @@ class portfolio():
         else:
             self.portfolio = pd.DataFrame(columns=[
                 "Date", "Symbol", "Trader", "isOpen", "Asset", "Type", "Price",
-                "Qty", "Avged", "Plan_ord", "Plan_all", "ordID", "plan_ordIds"] + [
+                "uQty", "Avged", "Plan_ord", "Plan_all", "ordID", "plan_ordIds"] + [
                     "STC%d-%s"% (i, v) for v in
-                    ["Alerted", "Status", "Qty", "units", "Price", "PnL","Date", "ordID"] 
+                    ["Alerted", "Status", "xQty", "uQty", "Price", "PnL","Date", "ordID"] 
                     for i in range(1,4)] )
 
         self.alerts_log_fname = data_dir + "/trader_logger.csv"
@@ -84,7 +83,7 @@ class portfolio():
                 if "SL" in order.keys() and order["SL"] is not None:
                     pars_str = pars_str + f" SL: {order['SL']}"
         elif {order['action']} == "STC":
-            pars_str = pars_str + f" Qty:{order['qty']}({int(order['Qty']*100)}%)"
+            pars_str = pars_str + f" Qty:{order['uQty']}({int(order['xQty']*100)}%)"
         return pars_str
 
 
@@ -181,7 +180,7 @@ class portfolio():
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
                          'isOpen': order_status,
-                         "Qty": order_info['quantity'],
+                         "uQty": order_info['quantity'],
                          "Asset" : "Stock",
                          "Type" : "BTO",
                          "Price" : ordered["price"],
@@ -236,20 +235,17 @@ class portfolio():
                 self.save_logs(["alert"])
                 return
             
-            qty_bought = position["Qty"]
+            qty_bought = position["uQty"]
             #TODO: change qty from portfolio to getting TD account position
-            qty_sold = np.nansum([position[f"STC{i}-Qty"] for i in range(1,4)])
+            qty_sold = np.nansum([position[f"STC{i}-uQty"] for i in range(1,4)])
             
-            if order['Qty'] == 1:  # Sell all
+            if order['xQty'] == 1:  # Sell all
                 # TODO: close other waiting orders
-                order['qty'] = int(position["Qty"]) - qty_sold
-            elif order['Qty'] < 1:  #portion 
-                order['qty'] = round(qty_bought * order['Qty'])
-                
-            else:
-                order['qty'] =  order['Qty']
-            
-            assert(order['qty'] + qty_sold <= qty_bought)
+                order['uQty'] = int(position["Qty"]) - qty_sold
+            elif order['xQty'] < 1:  #portion 
+                order['uQty'] = round(qty_bought * order['Qty'])
+
+            assert(order['uQty'] + qty_sold <= qty_bought)
             
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
                            make_STC_lim) 
@@ -271,15 +267,15 @@ class portfolio():
             self.portfolio.loc[open_trade, STC + "-Status"] = order_info['status']
             self.portfolio.loc[open_trade, STC + "-Price"] = order_info['price']
             self.portfolio.loc[open_trade, STC + "-Date"] = date
-            self.portfolio.loc[open_trade, STC + "-Qty"] = order['Qty']
-            self.portfolio.loc[open_trade, STC + "-units"] = sold_unts
+            self.portfolio.loc[open_trade, STC + "-xQty"] = order['xQty']
+            self.portfolio.loc[open_trade, STC + "-uQty"] = sold_unts
             self.portfolio.loc[open_trade, STC + "-PnL"] = stc_PnL
             self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
         
-            str_STC = f"{STC} {order['Symbol']} @{order_info['price']} ({order['Qty']}), {stc_PnL:.2f}%"
+            str_STC = f"{STC} {order['Symbol']} @{order_info['price']} Qty:{order['uQty']} ({order['xQty']}), {stc_PnL:.2f}%"
                       
             #Log trades_log
-            log_alert['action'] = "STC-partial" if order['Qty']<0 else "STC-ALL" 
+            log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL" 
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(self)
             
@@ -337,7 +333,7 @@ class portfolio():
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
                          'isOpen': order_status,
-                         "Qty": order_info['quantity'],
+                         "uQty": order_info['quantity'],
                          "Asset" : "Option",
                          "Type" : "BTO",
                          "Price" : ordered["price"],
@@ -392,20 +388,20 @@ class portfolio():
                 self.save_logs(["alert"])
                 return
             
-            qty_bought = position["Qty"]
+            qty_bought = position["uQty"]
             #TODO: change qty from portfolio to getting TD account position
-            qty_sold = np.nansum([position[f"STC{i}-Qty"] for i in range(1,4)])
+            qty_sold = np.nansum([position[f"STC{i}-uQty"] for i in range(1,4)])
             
-            if order['Qty'] == 1:  # Sell all
+            if order['xQty'] == 1:  # Sell all
                 # TODO: close other waiting orders
-                order['qty'] = int(position["Qty"]) - qty_sold
-            elif order['Qty'] < 1:  #portion 
-                order['qty'] = int(round(qty_bought * order['Qty']))
+                order['uQty'] = int(position["uQty"]) - qty_sold
+            elif order['xQty'] < 1:  #portion 
+                order['uQty'] = int(round(qty_bought * order['xQty']))
                 
             else:
-                order['qty'] =  order['Qty']
+                order['uQty'] =  order['uQty']
             
-            assert(order['qty'] + qty_sold <= qty_bought)
+            assert(order['uQty'] + qty_sold <= qty_bought)
             
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
                            make_STC_lim) 
@@ -427,15 +423,15 @@ class portfolio():
             self.portfolio.loc[open_trade, STC + "-Status"] = order_info['status']
             self.portfolio.loc[open_trade, STC + "-Price"] = order_info['price']
             self.portfolio.loc[open_trade, STC + "-Date"] = date
-            self.portfolio.loc[open_trade, STC + "-Qty"] = order['Qty']
-            self.portfolio.loc[open_trade, STC + "-units"] = sold_unts
+            self.portfolio.loc[open_trade, STC + "-xQty"] = order['xQty']
+            self.portfolio.loc[open_trade, STC + "-uQty"] = sold_unts
             self.portfolio.loc[open_trade, STC + "-PnL"] = stc_PnL
             self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
         
-            str_STC = f"{STC} {order['Symbol']} @{order_info['price']} Qty:{order['qty']}({int(order['Qty']*100)}%), {stc_PnL:.2f}%"
+            str_STC = f"{STC} {order['Symbol']} @{order_info['price']} Qty:{order['uQty']}({int(order['xQty']*100)}%), {stc_PnL:.2f}%"
                       
             #Log trades_log
-            log_alert['action'] = "STC-partial" if order['Qty']<0 else "STC-ALL" 
+            log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL" 
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(self)
             

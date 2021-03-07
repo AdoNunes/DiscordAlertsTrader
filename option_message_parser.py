@@ -6,6 +6,8 @@ Created on Mon Feb  8 18:11:55 2021
 @author: adonay
 """
 import re
+from place_order import make_optionID
+
 
 def option_alerts_parser(msg):
     # if not '@everyone' in msg:
@@ -29,12 +31,14 @@ def option_alerts_parser(msg):
 
     order = {"action": act,
              "Symbol": Symbol,
+             "ticker": Symbol,
              "price": mark,
              "expDate": expDate,
              "strike" : strike + optType             
              }
 
     str_prt = f"{act} {Symbol} {expDate} {strike + optType} @{mark}"
+
     if act == "BTO":
         if "avg" in msg:
             avg_price = parse_avg(msg, Symbol)
@@ -43,28 +47,43 @@ def option_alerts_parser(msg):
         else:
             order["avg"] = None
 
-
         pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
-        str_prt = str_prt + f" PT1:{pt1_v}, PT2:{pt2_v}, PT3:{pt3_v}, SL:{sl_v}"
         n_pts = 3 if pt3_v else 2 if pt2_v else 1 if pt1_v else 0
         pts_qty = set_pt_qts(n_pts)
 
-        order["PT1"] = pt1_v
-        order["PT2"] = pt2_v
-        order["PT3"] = pt3_v
-        order["SL"] = sl_v
+        order["PT1"] =  set_exit_price_type(pt1_v, order)
+        order["PT2"] = set_exit_price_type(pt2_v, order)
+        order["PT3"] = set_exit_price_type(pt3_v, order)
+        order["SL"] = set_exit_price_type(sl_v, order)
         order["n_PTs"] = n_pts
         order["PTs_Qty"] = pts_qty
         
+        str_prt = str_prt + f' PT1:{order["PT1"]}, PT2:{order["PT2"]}, PT3:{order["PT3"]}, SL:{order["SL"] }'
         
     elif act == "STC":
         amnt = parse_sell_amount(msg)
         str_prt = str_prt + f" amount: {amnt}"
-        order["Qty"] = amnt
+        order["xqty"] = amnt
     print(str_prt)
 
-
+    order['Symbol'] = make_optionID(**order)
     return str_prt, order
+
+def set_exit_price_type(exit_price, order):
+    """Contract or stock price decided with closest ratio of 1"""
+    if exit_price is None:
+        return exit_price
+    
+    rtio_stock = abs( 1 - exit_price/float(order['strike'][:-1]))
+    rtio_option = abs( 1 - exit_price/order['price'])
+    
+    if rtio_stock < rtio_option:
+        exit_price = str(exit_price) + 's'
+    elif rtio_stock > rtio_option:
+        exit_price = exit_price
+    else:
+        raise("Not sure if price of contract or stock")
+    return exit_price
 
 def set_pt_qts(n_pts):
     if n_pts == 3:
@@ -136,10 +155,10 @@ def parse_mark(msg):
 
 
 def parse_exits(msg):
-    pt1_v = parse_exits_vals(msg, "PT[1]?:")
-    pt2_v = parse_exits_vals(msg, "PT2:")
-    pt3_v = parse_exits_vals(msg, "PT3:")
-    sl_v = parse_exits_vals(msg, "SL:")
+    pt1_v = parse_exits_vals(msg, "PT[1]?")
+    pt2_v = parse_exits_vals(msg, "PT2")
+    pt3_v = parse_exits_vals(msg, "PT3")
+    sl_v = parse_exits_vals(msg, "SL")
 
     return pt1_v, pt2_v, pt3_v, sl_v
 
@@ -154,7 +173,7 @@ def parse_avg(msg, Symbol):
     return avg
 
 def parse_exits_vals(msg, expr):
-    re_comp= re.compile("(" + expr + "[:][ ]*[$]*(\d+[\.]*[\d]*))")
+    re_comp= re.compile("(" + expr + "[:]?[ ]*[$]*(\d+[\.]*[\d]*))")
     exit_inf = re_comp.search(msg)
     if exit_inf is None:
         return None
