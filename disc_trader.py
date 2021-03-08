@@ -6,17 +6,15 @@ Created on Sat Feb 27 09:26:06 2021
 @author: adonay
 """
 
-
-
-import td
-import json
+import re
 import os.path as op
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from config import (data_dir, CHN_NAMES, channel_IDS, UPDATE_PERIOD)
+from config import data_dir
 from place_order import (get_TDsession, make_BTO_PT_SL_order, send_order, 
-                         make_STC_lim, make_lim_option, make_optionID)
+                         make_STC_lim, make_lim_option,
+                         make_Lim_SL_order, make_STC_SL)
 
 def find_open_trade(order, trades_log):
 
@@ -31,7 +29,7 @@ def find_open_trade(order, trades_log):
        return None
 
     ticker_trades = trades_log[msk_ticker]
-    sold_Qty =  ticker_trades[[f"STC{i}-Qty" for i in range(1,4)]].sum(1)
+    sold_Qty =  ticker_trades[[f"STC{i}-xQty" for i in range(1,4)]].sum(1)
     open_trade = sold_Qty< .99
 
     if sum(open_trade) == 0:
@@ -43,7 +41,7 @@ def find_open_trade(order, trades_log):
     return open_trade
 
 
-class portfolio():
+class AlertTrader():
 
     def __init__(self):
         self.portfolio_fname = data_dir + "/trader_portfolio.csv"
@@ -51,7 +49,7 @@ class portfolio():
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
             self.portfolio = pd.DataFrame(columns=[
-                "Date", "Symbol", "Trader", "isOpen", "Asset", "Type", "Price",
+                "Date", "Symbol", "Trader", "isOpen", "BTO-status", "Asset", "Type", "Price",
                 "uQty", "Avged", "Plan_ord", "Plan_all", "ordID", "plan_ordIds"] + [
                     "STC%d-%s"% (i, v) for v in
                     ["Alerted", "Status", "xQty", "uQty", "Price", "PnL","Date", "ordID"] 
@@ -59,7 +57,7 @@ class portfolio():
 
         self.alerts_log_fname = data_dir + "/trader_logger.csv"
         if op.exists(self.alerts_log_fname):
-            self.portfolio = pd.read_csv(self.alerts_log_fname)
+            self.alerts_log = pd.read_csv(self.alerts_log_fname)
         else:            
             self.alerts_log = pd.DataFrame(columns=["Date", "Symbol", "Trader",
                                                 "action", "pasesed", "msg"])
@@ -179,7 +177,8 @@ class portfolio():
 
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
-                         'isOpen': order_status,
+                         'isOpen': 1,
+                         'BTC-Status' : order_status,
                          "uQty": order_info['quantity'],
                          "Asset" : "Stock",
                          "Type" : "BTO",
@@ -203,13 +202,14 @@ class portfolio():
             
         elif order["action"] == "BTO":
             str_act = "Repeated BTO"
-            log_alert['action'] = "BTO-Null"
+            log_alert['action'] = "BTO-Null-Repeated"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(["alert"])
+            print(str_act)
             
         elif order["action"] == "STC" and isOpen is None:
             str_act = "STC without BTO, maybe alredy sold"
-            log_alert['action'] = "STC-Null"
+            log_alert['action'] = "STC-Null-notOpen"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(["alert"])
             
@@ -288,7 +288,7 @@ class portfolio():
     
     def new_option_alert(self, order:dict, pars:str, msg):
         """ get order from ```parser_alerts``` """
-        order['Symbol'] = make_optionID(**order)
+
         open_trade = find_open_trade(order, self.portfolio)
         isOpen = 1 if open_trade != None else 0
         
@@ -316,9 +316,10 @@ class portfolio():
             order_status = order_info['status']
 
             Plan_ord = {}
-            planIDs = [] # get it from order_info
+            planIDs = np.nan # "STC1-ordID"
             if 'childOrderStrategies' in ordered.keys():
                 for child in ordered['childOrderStrategies']:
+                    planIDs = child['orderId']
                     for childStrat in child['childOrderStrategies']:
                         if childStrat['orderType'] == "LIMIT":
                             Plan_ord['PT']= childStrat['price']
@@ -332,13 +333,15 @@ class portfolio():
 
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
-                         'isOpen': order_status,
+                         'isOpen': 1,
+                         'BTC-Status': order_status,
                          "uQty": order_info['quantity'],
                          "Asset" : "Option",
                          "Type" : "BTO",
                          "Price" : ordered["price"],
                          "ordID" : order_id,
                          "Plan_ord" : Plan_ord,
+                         "STC1-ordID" : planIDs,
                          "Plan_all"  : str(plan_all),
                          "Trader" : order['Trader']
                          }
@@ -437,24 +440,153 @@ class portfolio():
             
             print(str_STC)
 
+    def log_filled_STC(self, order_id, open_trade, STC):
+        
+        order_info = self.TDsession.get_orders(account=self.accountId, 
+                                          order_id=order_id)
 
-# order = {'action': 'BTO',
-#  'Symbol': 'DPW',
-#  'price': 4.05,
-#  'avg': None,
-#  'PT1': 5.84,
-#  'PT2': 6.39,
-#  'PT3': 6.95,
-#  'SL': 4.01,
-#  'n_PTs': 3,
-#  'PTs_Qty': [.33, .33, .34],
-#  'Trader': 'ScaredShirtless#0001',
-#  'PTs': [5.84],
-#  'qty': 2}
+        sold_unts = order_info['orderLegCollection'][0]['quantity']
+        
+        bto_price = self.portfolio.loc[open_trade, "Price"]
+        stc_PnL = float((order["price"] - bto_price)/bto_price) *100
+        
+        date = order_info["closeTime"]
+        #Log portfolio
+        self.portfolio.loc[open_trade, STC + "-Status"] = order_info['status']
+        self.portfolio.loc[open_trade, STC + "-Price"] = order_info['price']
+        self.portfolio.loc[open_trade, STC + "-Date"] = date
+        self.portfolio.loc[open_trade, STC + "-xQty"] = order['xQty']
+        self.portfolio.loc[open_trade, STC + "-uQty"] = sold_unts
+        self.portfolio.loc[open_trade, STC + "-PnL"] = stc_PnL
+        self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
+    
+        str_STC = f"{STC} {order['Symbol']} @{order_info['price']} Qty:{order['uQty']}({int(order['xQty']*100)}%), {stc_PnL:.2f}%"
 
-# pars = "BTO DPW @4.05 PT! 5.84 SL: 4.01"
+        self.save_logs()
+            
+            
+        
+    def update_orders(self):
+        
+        for i in range(len(self.portfolio)):
+            trade = self.portfolio.iloc[i]
+            
+            if trade["isOpen"] == 0:
+                continue
+            
+            if trade["BTO-Status"]  in ["QUEUED", "WORKING"]:
+                order_id = trade['ordID']
+                order_status = self.TDsession.get_orders(account=self.accountId, 
+                                              order_id=order_id)['status']
+                self.portfolio.loc[i, "BTO-Status"] = order_status
+                trade = self.portfolio.iloc[i]
+                
+            if trade["BTO-Status"] != "FILLED":
+                continue
 
-# msg = "BTO DPW @4.05"
+            plan_all = eval(trade["Plan_all"])
+            if  plan_all == {}:
+                continue
+
+            # Calculate x/uQty:
+            uQty_bought = trade['uQty']
+            nPTs =  len([i for i in range(1,4) if plan_all[f"PT{i}"] is not None])
+            uQty = [round(uQty_bought/nPTs)]*nPTs
+            uQty[-1] = uQty_bought - sum(uQty[:-1])
+            
+            xQty = [round(1/nPTs, 1)]*nPTs
+            xQty[-1] = 1 - sum(xQty[:-1])
+            
+            # Go over exit plans and make orders
+            for ii in range(1,4):
+                STC = f"STC{ii}"
+                order = {'Symbol': trade['Symbol']}
+
+                # If Option add strike field
+                ord_inf = trade['Symbol'].split("_")
+                if len(ord_inf) == 2:
+                    opt_type = "C" if "C" in ord_inf[1] else "P"
+                    strike = str(re.split('C|P', ord_inf[1])[1]) + opt_type
+                    order['strike'] = strike
+
+                STC_ordID = int(trade[STC+"-ordID"])
+                if np.isnan(STC_ordID):
+                    SL = plan_all["SL"]
+                    
+                    ord_func = None
+                    # Lim and Sl OCO order
+                    if plan_all[f"PT{ii}"] is not None and SL is not None:
+                        # Lim_SL order
+                        ord_func = make_Lim_SL_order
+                        order["PT"] = plan_all[f"PT{ii}"]
+                        order["SL"] = plan_all["SL"]
+                        order['uQty'] = uQty[ii]
+                        order['xQty'] = xQty[ii]
+                    # Lim order
+                    elif plan_all[f"PT{i}"] is not None and SL is None:
+                        ord_func = make_STC_lim
+                        order["price"] = plan_all[f"PT{ii}"]
+                        order['uQty'] = uQty[ii]
+                        order['xQty'] = xQty[ii]
+                    # SL order
+                    elif i == 1 and SL is not None:
+                        ord_func = make_STC_SL
+                        order["SL"] = plan_all["SL"]
+                        order['uQty'] = trade['uQty']
+                        order['xQty'] = 1
+                    else:
+                        raise("Case not caught")
+
+                    if ord_func is not None:
+                        _, STC_ordID = send_order(ord_func(**order), self.TDsession)
+                        self.portfolio.loc[i, STC+"-ordID"] = STC_ordID
+                        trade = self.portfolio.iloc[i]
+                    else:
+                        break
+                
+                # Get status exit orders
+                order_info = self.TDsession.get_orders(account=self.accountId, 
+                                      order_id=STC_ordID)
+                if order_info['orderStrategyType'] == "OCO":
+                    order_status = [
+                        order_info['childOrderStrategies'][0]['status'],
+                        order_info['childOrderStrategies'][1]['status']]
+                    assert(order_status[0]==order_status[1])
+                    order_status = order_status[0]
+                elif order_info['orderStrategyType'] == 'SINGLE':
+                    order_status = order_info['status']
+                else:
+                    raise("Not sure type order. Check")
+                
+                self.portfolio.loc[i, STC+"-Status"] = order_status
+                trade = self.portfolio.iloc[i]
+                
+                if order_status == "FILLED":
+                    self.log_STC_info(STC_ordID, i, STC)
+
+                    
+                
+                    
+        
+
+
+order = {'action': 'BTO',
+  'Symbol': 'DPW',
+  'price': 3.1,
+  'avg': None,
+  'PT1': 5.84,
+  'PT2': 6.39,
+  'PT3': 6.95,
+  'SL': 3.01,
+  'n_PTs': 3,
+  'PTs_Qty': [.33, .33, .34],
+  'Trader': 'ScaredShirtless#0001',
+  'PTs': [5.84],
+  'uQty': 2}
+
+# pars = "BTO DPW @3.1 PT! 5.84 SL: 3.01"
+
+# msg = "BTO DPW @3.1"
 
 
    
@@ -465,7 +597,24 @@ class portfolio():
 
 # pars = "STC DPW @ 5.84"
 
+order = {'action': 'BTO',
+ 'Symbol': 'KMPH_031921C7.5',
+ 'ticker': 'KMPH',
+ 'price': 1.75,
+ 'expDate': '3/19/21',
+ 'strike': '7.5C',
+ 'avg': None,
+ 'PT1': None,
+ 'PT2': None,
+ 'PT3': None,
+ 'SL': None,
+ 'n_PTs': 0,
+ 'PTs_Qty': [1],
+ 'uQty': 3,
+ 'Trader': 'ScaredShirtless#0001'}
 
+pars = 'BTO KMPH 3/19/21 7.5C @1.75 PT1:None, PT2:None, PT3:None, SL:None'
+msg = "@everyone BTO **KMPH** 3/19/21 7.5c @ 1.75 (swing)"
 # order = {'action': 'STC',
 #  'Symbol': 'CURLF',
 #  'price': 24.05,

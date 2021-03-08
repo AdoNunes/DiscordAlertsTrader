@@ -89,7 +89,7 @@ def get_positions_orders(TDSession):
 
 
 
-def make_BTO_lim_order(Symbol:str, qty:int, price:float, **kwarg):
+def make_BTO_lim_order(Symbol:str, uQty:int, price:float, **kwarg):
 
     new_order=Order()
     new_order.order_strategy_type("TRIGGER")
@@ -100,7 +100,7 @@ def make_BTO_lim_order(Symbol:str, qty:int, price:float, **kwarg):
 
     order_leg = OrderLeg()
     order_leg.order_leg_instruction(instruction="BUY")
-    order_leg.order_leg_quantity(quantity=qty)
+    order_leg.order_leg_quantity(quantity=uQty)
     order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
     new_order.add_order_leg(order_leg=order_leg)
 
@@ -108,25 +108,26 @@ def make_BTO_lim_order(Symbol:str, qty:int, price:float, **kwarg):
 
 
 
-def make_BTO_PT_SL_order(Symbol:str, qty:int, price:float, PTs:list=None,
+def make_BTO_PT_SL_order(Symbol:str, uQty:int, price:float, PTs:list=None,
                          PTs_Qty:list=None, SL:float=None, SL_stop:float=None, **kwarg):
 
-    new_order= make_BTO_lim_order(Symbol, qty, price)
+    new_order= make_BTO_lim_order(Symbol, uQty, price)
 
     if PTs is None:
         return new_order
 
-    PTs_Qty = [ round(qty * pqty) for pqty in PTs_Qty]
+    PTs_Qty = [ round(uQty * pqty) for pqty in PTs_Qty]
 
     for PT, pqty in zip(PTs, PTs_Qty):
         new_child_order = new_order.create_child_order_strategy()
-        new_child_order = make_PT_SL_order(Symbol, pqty, PT, SL, SL_stop, new_child_order)
+        new_child_order = make_Lim_SL_order(Symbol, pqty, PT, SL, SL_stop, new_child_order)
         print(Symbol, pqty, PT, SL, SL_stop)
         new_order.add_child_order_strategy(child_order_strategy=new_child_order)
 
     return new_order
 
-def make_PT_SL_order(Symbol:str, qty:int,  PT:float, SL:float, SL_stop:float=None, new_order=Order(), **kwarg):
+
+def make_Lim_SL_order(Symbol:str, uQty:int,  PT:float, SL:float, SL_stop:float=None, new_order=Order(), **kwarg):
 
     new_order.order_strategy_type("OCO")
 
@@ -139,7 +140,7 @@ def make_PT_SL_order(Symbol:str, qty:int,  PT:float, SL:float, SL_stop:float=Non
 
     child_order_leg = OrderLeg()
     child_order_leg.order_leg_instruction(instruction="SELL")
-    child_order_leg.order_leg_quantity(quantity=qty)
+    child_order_leg.order_leg_quantity(quantity=uQty)
     child_order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
 
     child_order1.add_order_leg(order_leg=child_order_leg)
@@ -152,7 +153,6 @@ def make_PT_SL_order(Symbol:str, qty:int,  PT:float, SL:float, SL_stop:float=Non
 
     if SL_stop is not None:
         child_order2.order_type("STOP_LIMIT")
-        child_order2.stop_price(SL_stop)
         child_order2.order_price(SL)
         child_order2.stop_price(SL_stop)
     else:
@@ -165,7 +165,7 @@ def make_PT_SL_order(Symbol:str, qty:int,  PT:float, SL:float, SL_stop:float=Non
     return new_order
 
 
-def make_STC_lim(Symbol:str, qty:int, price:float, strike=None, **kwarg):
+def make_STC_lim(Symbol:str, uQty:int, price:float, strike=None, **kwarg):
     
     new_order=Order()
     new_order.order_strategy_type("SINGLE")
@@ -174,9 +174,9 @@ def make_STC_lim(Symbol:str, qty:int, price:float, strike=None, **kwarg):
     new_order.order_duration('GOOD_TILL_CANCEL')
     new_order.order_price(price)
 
-
     order_leg = OrderLeg()
-    order_leg.order_leg_quantity(quantity=qty)
+    order_leg.order_leg_quantity(quantity=uQty)
+
     if strike is not None:
         order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
         order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
@@ -187,8 +187,36 @@ def make_STC_lim(Symbol:str, qty:int, price:float, strike=None, **kwarg):
     
     return new_order
 
+def make_STC_SL(Symbol:str, uQty:int, price:float, SL:float, strike=None,
+                SL_stop:float=None, new_order=Order(), **kwarg):
+    
+    new_order=Order()
+    new_order.order_strategy_type("SINGLE")
 
-def make_lim_option(Symbol:str, qty:int, price:float, **kwarg):
+    if SL_stop is not None:
+        new_order.order_type("STOP_LIMIT")
+        new_order.stop_price(SL_stop)
+        new_order.order_price(SL)
+    else:
+        new_order.order_type("STOP")
+        new_order.stop_price(SL)
+
+    new_order.order_session('NORMAL')
+    new_order.order_duration('GOOD_TILL_CANCEL')
+
+    order_leg = OrderLeg()
+    order_leg.order_leg_quantity(quantity=uQty)
+    if strike is not None:
+        order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+        order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
+    else:
+        order_leg.order_leg_instruction(instruction="SELL")
+        order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
+    new_order.add_order_leg(order_leg=order_leg)
+
+    return new_order
+
+def make_lim_option(Symbol:str, uQty:int, price:float, **kwarg):
     """ Symbol : is optionID from ```make_optionID```
     """
     new_order=Order()
@@ -200,11 +228,12 @@ def make_lim_option(Symbol:str, qty:int, price:float, **kwarg):
 
     order_leg = OrderLeg()
     order_leg.order_leg_instruction(instruction="BUY_TO_OPEN")
-    order_leg.order_leg_quantity(quantity=qty)
+    order_leg.order_leg_quantity(quantity=uQty)
     order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
     new_order.add_order_leg(order_leg=order_leg)
 
     return new_order
+
 
 
 def make_optionID(Symbol:str, expDate:str, strike=str, **kwarg):

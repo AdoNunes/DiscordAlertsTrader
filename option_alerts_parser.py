@@ -192,7 +192,7 @@ for i in [4, 9,11,13]:
     trade_date = alerts_author["Date"].iloc[i]
     # print(msg)
     pars, order =  option_alerts_parser(msg)
-    order["qty"] = 3
+    order["uQty"] = 3
     alerts_author.loc[i, "parsed"] = pars
     order['Trader'] = alerts_author["Author"].iloc[i]
     # if "reached pre-market" in msg:
