@@ -60,7 +60,7 @@ class AlertTrader():
             self.alerts_log = pd.read_csv(self.alerts_log_fname)
         else:            
             self.alerts_log = pd.DataFrame(columns=["Date", "Symbol", "Trader",
-                                                "action", "pasesed", "msg"])
+                                                "action", "parsed", "msg", "portfolio_idx"])
         self.TDsession = get_TDsession()
         self.accountId = self.TDsession.accountId
 
@@ -128,9 +128,10 @@ class AlertTrader():
         
         return resp, order, ord_chngd
         
-    
+    def close_waiting_order(open_trade):
+        pass
     ######################################################################
-    # OPTION TRADER
+    # STOCK TRADER
     ######################################################################
     
     def new_stock_alert(self, order:dict, pars:str, msg):
@@ -145,7 +146,7 @@ class AlertTrader():
         log_alert = {"Date": date,
                      "Symbol": order['Symbol'],
                      "Trader" : order['Trader'],
-                     "pasesed" : pars,
+                     "parsed" : pars,
                      "msg": msg
                      }
     
@@ -161,15 +162,32 @@ class AlertTrader():
                                               order_id=order_id)
             order_status = order_info['status']
 
-            Plan_ord = {}
-            planIDs = [] # get it from order_info
-            for child in ordered['childOrderStrategies']:
+            keys = ["PT", "SL"]
+            Plan_ord = {k:[] for k in keys}
+            planIDs =  {k:[] for k in keys}
+            
+            for child in order_info['childOrderStrategies']:
+                # if simple strategy
+                if child['orderStrategyType'] != "OCO":  # Maybe key not exists if not OCO                    
+                    if ord_type == "LIMIT":
+                        Plan_ord["PT"].append(child['price'])
+                        planIDs["PT"].append(child['orderId'])
+                    elif ord_type in ["STOP", "STOPLIMIT"]:
+                        Plan_ord["SL"].append(child['stopPrice'])  
+                        planIDs["SL"].append(child['orderId'])
+                         
+                # empty if not complex strategy                            
                 for childStrat in child['childOrderStrategies']:
                     if childStrat['orderType'] == "LIMIT":
-                        Plan_ord['PT']= childStrat['price']
+                        Plan_ord['PT'].append(childStrat['price'])
+                        planIDs["PT"].append(childStrat['orderId'])
                     elif childStrat['orderType'] in ["STOP", "STOPLIMIT"]:
-                        Plan_ord['SL']= childStrat['stopPrice']
+                        Plan_ord['SL'].append(childStrat['stopPrice'])
+                        planIDs["SL"].append(childStrat['orderId'])
+                        
+            assert(len(planIDs["PT"]) == len(order["PTs"]))  # check why diff N ord IDs
 
+            
             plan_all = {}
             for p in [f"PT{i}" for i in range (1,4)] + ["SL"]:
                 if order[p] is not None:
@@ -178,7 +196,7 @@ class AlertTrader():
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
                          'isOpen': 1,
-                         'BTC-Status' : order_status,
+                         'BTO-Status' : order_status,
                          "uQty": order_info['quantity'],
                          "Asset" : "Stock",
                          "Type" : "BTO",
@@ -186,11 +204,13 @@ class AlertTrader():
                          "ordID" : order_id,
                          "Plan_ord" : Plan_ord,
                          "Plan_all"  : str(plan_all),
+                         "plan_ordIds" : planIDs,
                          "Trader" : order['Trader']
                          }
             self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
             #Log portfolio, trades_log
             log_alert['action'] = "BTO"
+            log_alert["portfolio_idx"] = len(self.portfolio) - 1
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs()
             
@@ -223,6 +243,7 @@ class AlertTrader():
                     if not pd.isnull(position[ f"STC{i}-Price"]):
                         print("Already sold")
                         log_alert['action'] = "STC-DoneBefore"
+                        log_alert["portfolio_idx"] = open_trade
                         self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                         self.save_logs(["alert"])
                         return
@@ -231,6 +252,7 @@ class AlertTrader():
                 str_STC = "How many STC already?"
                 print (str_STC)
                 log_alert['action'] = "STC-TooMany"
+                log_alert["portfolio_idx"] = open_trade
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                 self.save_logs(["alert"])
                 return
@@ -276,6 +298,7 @@ class AlertTrader():
                       
             #Log trades_log
             log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL" 
+            log_alert["portfolio_idx"] = open_trade
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(self)
             
@@ -584,7 +607,25 @@ order = {'action': 'BTO',
   'PTs': [5.84],
   'uQty': 2}
 
-# pars = "BTO DPW @3.1 PT! 5.84 SL: 3.01"
+
+
+order = {'action': 'BTO',
+  'Symbol': 'PLTR',
+  'price': 23,
+  'avg': None,
+  'PT1': None,
+  'PT2': 6.39,
+  'PT3': 6.95,
+  'SL': 3.01,
+  'n_PTs': 3,
+  'PTs_Qty': [.33, .33, .34],
+  'Trader': 'ScaredShirtless#0001',
+  'PTs': [5.84],
+  'uQty': 2}
+
+
+
+# pars = "BTO DPW @3.1 PT1 5.84 SL: 3.01"
 
 # msg = "BTO DPW @3.1"
 
