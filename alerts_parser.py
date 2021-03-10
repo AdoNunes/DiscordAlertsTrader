@@ -126,7 +126,7 @@ def make_STC(order, trades_log, openTrade):
         STC = "STC3"
     else:
         str_STC = "How many STC already?"
-        print (str_STC)
+        # print (str_STC)
         return trades_log, str_STC
 
     # reap, str_STC = check_repeat_STC(order, trades_log, openTrade, STC)
@@ -148,7 +148,7 @@ def make_STC(order, trades_log, openTrade):
         trades_log.loc[openTrade, "Open"] = 0
         str_STC = str_STC + " Closed"
 
-    print(str_STC)
+    # print(str_STC)
     return trades_log, str_STC
 
 
@@ -180,9 +180,9 @@ alerts_author = get_author_alerts()
 alerts_author["parsed"] = "nan"
 alerts_author["trade_act"] = "nan"
 
-from disc_trader import portfolio
+# from disc_trader import portfolio
 
-self = portfolio()
+# self = portfolio()
 bad_msg = []
 for i in range(len(alerts_author)):
     msg = alerts_author["Content"].iloc[i]
@@ -192,8 +192,8 @@ for i in range(len(alerts_author)):
     if order  is None:
         continue
     order['Trader'] = alerts_author["Author"].iloc[i]
-    if order['Symbol'] == "DPW":
-        self.notify_alert(order, pars)
+    # if order['Symbol'] == "DPW":
+    #     self.notify_alert(order, pars)
 
     alerts_author.loc[i, "parsed"] = pars
 

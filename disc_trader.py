@@ -15,6 +15,8 @@ from config import data_dir
 from place_order import (get_TDsession, make_BTO_PT_SL_order, send_order, 
                          make_STC_lim, make_lim_option,
                          make_Lim_SL_order, make_STC_SL)
+# import dateutil.parser.parse as date_parser
+import colorama
 
 def find_open_trade(order, trades_log):
 
@@ -88,6 +90,7 @@ class AlertTrader():
     def confirm_and_send(self, order, pars, order_funct):
             resp, order, ord_chngd = self.notify_alert(order, pars)
             if resp in ["yes", "y"]:
+                print(f"Sending order {pars}")
                 ord_resp, ord_id = send_order(order_funct(**order), self.TDsession)
                 return ord_resp, ord_id, order, ord_chngd
 
@@ -130,6 +133,8 @@ class AlertTrader():
         
     def close_waiting_order(open_trade):
         pass
+    
+    
     ######################################################################
     # STOCK TRADER
     ######################################################################
@@ -168,6 +173,7 @@ class AlertTrader():
             
             for child in order_info['childOrderStrategies']:
                 # if simple strategy
+                ord_type = child['orderType']
                 if child['orderStrategyType'] != "OCO":  # Maybe key not exists if not OCO                    
                     if ord_type == "LIMIT":
                         Plan_ord["PT"].append(child['price'])
@@ -338,16 +344,31 @@ class AlertTrader():
                                               order_id=order_id)
             order_status = order_info['status']
 
-            Plan_ord = {}
-            planIDs = np.nan # "STC1-ordID"
-            if 'childOrderStrategies' in ordered.keys():
-                for child in ordered['childOrderStrategies']:
-                    planIDs = child['orderId']
-                    for childStrat in child['childOrderStrategies']:
-                        if childStrat['orderType'] == "LIMIT":
-                            Plan_ord['PT']= childStrat['price']
-                        elif childStrat['orderType'] in ["STOP", "STOPLIMIT"]:
-                            Plan_ord['SL']= childStrat['stopPrice']
+            keys = ["PT", "SL"]
+            Plan_ord = {k:[] for k in keys}
+            planIDs =  {k:[] for k in keys}
+            
+             # if 'childOrderStrategies' in ordered.keys():           
+            for child in order_info['childOrderStrategies']:
+                # if simple strategy
+                if child['orderStrategyType'] != "OCO":  # Maybe key not exists if not OCO      
+                    ord_type = child['orderType']
+                    if ord_type == "LIMIT":
+                        Plan_ord["PT"].append(child['price'])
+                        planIDs["PT"].append(child['orderId'])
+                    elif ord_type in ["STOP", "STOPLIMIT"]:
+                        Plan_ord["SL"].append(child['stopPrice'])  
+                        planIDs["SL"].append(child['orderId'])
+                         
+                # empty if not complex strategy                            
+                for childStrat in child['childOrderStrategies']:
+                    if childStrat['orderType'] == "LIMIT":
+                        Plan_ord['PT'].append(childStrat['price'])
+                        planIDs["PT"].append(childStrat['orderId'])
+                    elif childStrat['orderType'] in ["STOP", "STOPLIMIT"]:
+                        Plan_ord['SL'].append(childStrat['stopPrice'])
+                        planIDs["SL"].append(childStrat['orderId'])
+                        
 
             plan_all = {}
             for p in [f"PT{i}" for i in range (1,4)] + ["SL"]:
@@ -484,7 +505,7 @@ class AlertTrader():
         self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
     
         str_STC = f"{STC} {order['Symbol']} @{order_info['price']} Qty:{order['uQty']}({int(order['xQty']*100)}%), {stc_PnL:.2f}%"
-
+        print ( f"Filled: {str_STC}")
         self.save_logs()
             
             
@@ -593,35 +614,35 @@ class AlertTrader():
         
 
 
-order = {'action': 'BTO',
-  'Symbol': 'DPW',
-  'price': 3.1,
-  'avg': None,
-  'PT1': 5.84,
-  'PT2': 6.39,
-  'PT3': 6.95,
-  'SL': 3.01,
-  'n_PTs': 3,
-  'PTs_Qty': [.33, .33, .34],
-  'Trader': 'ScaredShirtless#0001',
-  'PTs': [5.84],
-  'uQty': 2}
+# order = {'action': 'BTO',
+#   'Symbol': 'DPW',
+#   'price': 3.1,
+#   'avg': None,
+#   'PT1': 5.84,
+#   'PT2': 6.39,
+#   'PT3': 6.95,
+#   'SL': 3.01,
+#   'n_PTs': 3,
+#   'PTs_Qty': [.33, .33, .34],
+#   'Trader': 'ScaredShirtless#0001',
+#   'PTs': [5.84],
+#   'uQty': 2}
 
 
 
-order = {'action': 'BTO',
-  'Symbol': 'PLTR',
-  'price': 23,
-  'avg': None,
-  'PT1': None,
-  'PT2': 6.39,
-  'PT3': 6.95,
-  'SL': 3.01,
-  'n_PTs': 3,
-  'PTs_Qty': [.33, .33, .34],
-  'Trader': 'ScaredShirtless#0001',
-  'PTs': [5.84],
-  'uQty': 2}
+# order = {'action': 'BTO',
+#   'Symbol': 'PLTR',
+#   'price': 23,
+#   'avg': None,
+#   'PT1': None,
+#   'PT2': 6.39,
+#   'PT3': 6.95,
+#   'SL': 3.01,
+#   'n_PTs': 3,
+#   'PTs_Qty': [.33, .33, .34],
+#   'Trader': 'ScaredShirtless#0001',
+#   'PTs': [5.84],
+#   'uQty': 2}
 
 
 

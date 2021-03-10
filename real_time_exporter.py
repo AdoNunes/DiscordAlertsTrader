@@ -17,6 +17,7 @@ from option_message_parser import option_alerts_parser
 
 from config import (path_dll, data_dir, CHN_NAMES, channel_IDS, discord_token, UPDATE_PERIOD)
 
+from disc_trader import AlertTrader
 
 def updt_chan_hist(df_hist, path_update, path_hist):
     
@@ -42,6 +43,8 @@ last_time = [d['Date'].max() for d in chn_hist.values()]
 last_time = [datetime.strptime(d, time_strf) for d in last_time]
 
 time_after = [None]*len(CHN_NAMES)
+
+Alerts_trader = AlertTrader()
 
 while True:
     
@@ -81,24 +84,37 @@ while True:
             print(f"{last_time[chn_i]} | {chn_name}: got {nmsg} new msgs:")
             
             for ix, msg in new_msg.iterrows():
-                if msg['Author'] == "Xcapture#0190":
-                    print("\t XcaptureD")
-                elif isinstance(msg['Content'], float) and np.isnan(msg['Content']):
-                    "NaN msg"
-                else:
+                # if msg['Author'] == "Xcapture#0190":
+                #     print("\t XcaptureD")
+                # elif isinstance(msg['Content'], float) and np.isnan(msg['Content']):
+                #     "NaN msg"
+                # else:
+                    
+                if msg['Author'] != "Xcapture#0190":  
+                    
                     shrt_date = datetime.strptime(msg["Date"], time_strf
                                                   ).strftime('%H:%M:%S')
                     print(f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
                     
+                    
                     if chn_name.split("_")[0] == "stock":
                         pars, order =  parser_alerts(msg['Content'])
-                    else:
+                        msg_ype = "stock"
+                    elif chn_name.split("_")[0] == "option":
                         pars, order =  option_alerts_parser(msg['Content'])
+                        msg_type = "option"
+                    else:
+                        raise TypeError ("Type of equity not known")
                         
                     if pars is None:
-                        print(f"\t \t MSG NOT UNDERSTOOD")
+                        print("\t \t MSG NOT UNDERSTOOD")
                     else:
                         print(f"\t \t {pars}")
+                        if "avg" not in order.keys() or order['avg'] is None:
+                            if msg['Author'] == "ScaredShirtless#0001":
+                                
+                                eval("Alerts_trader.new_"+ msg_type + "_alert(order, pars,\
+                                                              msg['Content'])")
             
     toc = datetime.now() 
     tictoc = (toc-tic).total_seconds()

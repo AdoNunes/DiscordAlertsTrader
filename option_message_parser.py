@@ -64,7 +64,7 @@ def option_alerts_parser(msg):
         amnt = parse_sell_amount(msg)
         str_prt = str_prt + f" amount: {amnt}"
         order["xqty"] = amnt
-    print(str_prt)
+    # print(str_prt)
 
     order['Symbol'] = make_optionID(**order)
     return str_prt, order
