@@ -18,9 +18,9 @@ from option_message_parser import option_alerts_parser
 from config import (path_dll, data_dir, CHN_NAMES, channel_IDS, discord_token, UPDATE_PERIOD)
 
 from disc_trader import AlertTrader
-import colorama
-from colorama import Fore, Back, Style
-# colorama.init()
+from colorama import Fore, Back, Style, init
+
+init(autoreset=True)
 
 def updt_chan_hist(df_hist, path_update, path_hist):
     
@@ -84,7 +84,7 @@ while True:
             
             chn_hist[chn_name] = df_update
             nmsg = len(new_msg)
-            print(f"{last_time[chn_i]} | {chn_name}: got {nmsg} new msgs:")
+            print(Style.DIM + f"{last_time[chn_i]} | {chn_name}: got {nmsg} new msgs:")
             
             for ix, msg in new_msg.iterrows():
                 # if msg['Author'] == "Xcapture#0190":
@@ -110,9 +110,9 @@ while True:
                         raise TypeError ("Type of equity not known")
                         
                     if pars is None:
-                        print("\t \t MSG NOT UNDERSTOOD")
+                        print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
                     else:
-                        print(f"\t \t {pars}")
+                        print(Fore.RED +f"\t \t {pars}")
                         if "avg" not in order.keys() or order['avg'] is None:
                             if msg['Author'] == "ScaredShirtless#0001":
                                 

@@ -16,7 +16,6 @@ from place_order import (get_TDsession, make_BTO_PT_SL_order, send_order,
                          make_STC_lim, make_lim_option,
                          make_Lim_SL_order, make_STC_SL)
 # import dateutil.parser.parse as date_parser
-import colorama
 from colorama import Fore, Back, Style
 
 
@@ -94,8 +93,13 @@ class AlertTrader():
             if resp in ["yes", "y"]:
                 print(Back.GREEN + f"Sending order {pars}")
                 ord_resp, ord_id = send_order(order_funct(**order), self.TDsession)
+                if ord_resp is None:
+                    raise("Something wrong with order response")
+                    
                 return ord_resp, ord_id, order, ord_chngd
-
+            
+            elif resp in ["no", "n"]:
+                return None, None, order, None
 
     def notify_alert(self, order, pars):
         symb = order['Symbol']
@@ -163,6 +167,12 @@ class AlertTrader():
             order['PTs_Qty'] = [1]
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
                                                        make_BTO_PT_SL_order)
+            
+            if order_response is None:  #Assume trade not accepted
+                log_alert['action'] = "BTO-notAccepted"
+                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.save_logs(["alert"])   
+                
             ordered = eval(order_response['request_body'])
 
             order_info = self.TDsession.get_orders(account=self.accountId, 
@@ -279,7 +289,8 @@ class AlertTrader():
             
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
                            make_STC_lim) 
-
+        
+    
             ordered = eval(order_response['request_body'])
 
             order_info = self.TDsession.get_orders(account=self.accountId, 
@@ -340,6 +351,12 @@ class AlertTrader():
             
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
                                                        make_lim_option)
+            
+            if order_response is None:  #Assume trade not accepted
+                log_alert['action'] = "BTO-notAccepted"
+                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.save_logs(["alert"])  
+                
             ordered = eval(order_response['request_body'])
 
             order_info = self.TDsession.get_orders(account=self.accountId, 

@@ -144,7 +144,7 @@ def parse_strike(msg):
     return strike, optType
 
 def parse_mark(msg):
-    re_mark = re.compile("\@[ ]*[$]?[ ]*([.]?\d+(?:\.\d+)?)")
+    re_mark = re.compile("(?:@|at)[ ]*[$]?[ ]*([.]?\d+(?:\.\d+)?)")
     mark_inf = re_mark.search(msg)
     if mark_inf is None:
         date = parse_date(msg)
@@ -175,8 +175,14 @@ def parse_avg(msg, Symbol):
 def parse_exits_vals(msg, expr):
     re_comp= re.compile("(" + expr + "[:]?[ ]*[$]*(\d+[\.]*[\d]*))")
     exit_inf = re_comp.search(msg)
+    
     if exit_inf is None:
-        return None
+        re_comp= re.compile("(" + expr.lower() + "[:]?[ ]*[$]*(\d+[\.]*[\d]*))")
+        exit_inf = re_comp.search(msg)
+        
+        if exit_inf is None:
+            return None
+        
     exit_v = float(exit_inf.groups()[-1])
     return exit_v
 
