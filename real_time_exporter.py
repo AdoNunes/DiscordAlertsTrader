@@ -18,6 +18,9 @@ from option_message_parser import option_alerts_parser
 from config import (path_dll, data_dir, CHN_NAMES, channel_IDS, discord_token, UPDATE_PERIOD)
 
 from disc_trader import AlertTrader
+import colorama
+from colorama import Fore, Back, Style
+# colorama.init()
 
 def updt_chan_hist(df_hist, path_update, path_hist):
     

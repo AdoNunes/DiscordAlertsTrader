@@ -17,6 +17,8 @@ from place_order import (get_TDsession, make_BTO_PT_SL_order, send_order,
                          make_Lim_SL_order, make_STC_SL)
 # import dateutil.parser.parse as date_parser
 import colorama
+from colorama import Fore, Back, Style
+
 
 def find_open_trade(order, trades_log):
 
@@ -90,7 +92,7 @@ class AlertTrader():
     def confirm_and_send(self, order, pars, order_funct):
             resp, order, ord_chngd = self.notify_alert(order, pars)
             if resp in ["yes", "y"]:
-                print(f"Sending order {pars}")
+                print(Back.GREEN + f"Sending order {pars}")
                 ord_resp, ord_id = send_order(order_funct(**order), self.TDsession)
                 return ord_resp, ord_id, order, ord_chngd
 
@@ -101,7 +103,7 @@ class AlertTrader():
         while True:
             quotes = self.TDsession.get_quotes(instruments=[symb])
             price_now = f"CURRENTLY @{quotes[symb]['askPrice']}"
-            resp = input(f"{pars} {price_now}. Make trade? (y, n or (c)hange) \n")
+            resp = input(Back.RED  + f"{pars} {price_now}. Make trade? (y, n or (c)hange) \n")
             if resp in [ "c", "change"]:
                 new_order = order.copy()
                 new_order['price'] = float(input(f"Change price @{order['price']}" + 
@@ -109,8 +111,8 @@ class AlertTrader():
                                       or order['price']) 
                 if order['action'] == 'BTO':
                     PTs = [order[f'PT{i}'] for i in range(1,4)]
-                    PTs = eval(input(f"Change PTs @{PTs} {price_now}?" + \
-                                      " Leave blank if NO, respnd eg [1, None, None] \n")
+                    PTs = eval(input(f"Change PTs @{PTs} {price_now}? \
+                                      Leave blank if NO, respnd eg [1, None, None] \n")
                                           or str(PTs)) 
                     new_order["SL"] = (input(f"Change SL @{order['SL']} {price_now}?"+
                                       " Leave blank if NO \n")
@@ -231,7 +233,7 @@ class AlertTrader():
             log_alert['action'] = "BTO-Null-Repeated"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(["alert"])
-            print(str_act)
+            print(Back.RED +str_act)
             
         elif order["action"] == "STC" and isOpen is None:
             str_act = "STC without BTO, maybe alredy sold"
@@ -247,7 +249,7 @@ class AlertTrader():
                 if pd.isnull(position[f"STC{i}-Alerted"]):
                     self.portfolio.loc[open_trade, f"STC{i}-Alerted"] = 1
                     if not pd.isnull(position[ f"STC{i}-Price"]):
-                        print("Already sold")
+                        print(Back.GREEN + "Already sold")
                         log_alert['action'] = "STC-DoneBefore"
                         log_alert["portfolio_idx"] = open_trade
                         self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
@@ -256,7 +258,7 @@ class AlertTrader():
                     break
             else:
                 str_STC = "How many STC already?"
-                print (str_STC)
+                print (Back.RED + str_STC)
                 log_alert['action'] = "STC-TooMany"
                 log_alert["portfolio_idx"] = open_trade
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
@@ -308,7 +310,7 @@ class AlertTrader():
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(self)
             
-            print(str_STC)
+            print(Back.GREEN + str_STC)
 
 
     ######################################################################
@@ -421,7 +423,7 @@ class AlertTrader():
                 if pd.isnull(position[f"STC{i}-Alerted"]):
                     self.portfolio.loc[open_trade, f"STC{i}-Alerted"] = 1
                     if not pd.isnull(position[ f"STC{i}-Price"]):
-                        print("Already sold")
+                        print(Back.GREEN + "Already sold")
                         log_alert['action'] = "STC-DoneBefore"
                         self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                         self.save_logs(["alert"])
@@ -429,7 +431,7 @@ class AlertTrader():
                     break
             else:
                 str_STC = "How many STC already?"
-                print (str_STC)
+                print (Back.RED + str_STC)
                 log_alert['action'] = "STC-TooMany"
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                 self.save_logs(["alert"])
@@ -482,7 +484,7 @@ class AlertTrader():
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(self)
             
-            print(str_STC)
+            print(Back.GREEN + str_STC)
 
     def log_filled_STC(self, order_id, open_trade, STC):
         
@@ -505,7 +507,7 @@ class AlertTrader():
         self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
     
         str_STC = f"{STC} {order['Symbol']} @{order_info['price']} Qty:{order['uQty']}({int(order['xQty']*100)}%), {stc_PnL:.2f}%"
-        print ( f"Filled: {str_STC}")
+        print (Back.GREEN + f"Filled: {str_STC}")
         self.save_logs()
             
             
