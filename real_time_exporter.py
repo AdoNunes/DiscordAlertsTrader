@@ -14,11 +14,10 @@ import pandas as pd
 from datetime import datetime, timedelta
 from message_parser import parser_alerts
 from option_message_parser import option_alerts_parser
-
 from config import (path_dll, data_dir, CHN_NAMES, channel_IDS, discord_token, UPDATE_PERIOD)
-
 from disc_trader import AlertTrader
 from colorama import Fore, Back, Style, init
+
 
 init(autoreset=True)
 
@@ -49,6 +48,8 @@ time_after = [None]*len(CHN_NAMES)
 
 Alerts_trader = AlertTrader()
 
+
+ttix = 0
 while True:
     
     tic = datetime.now()
@@ -102,23 +103,26 @@ while True:
                     
                     if chn_name.split("_")[0] == "stock":
                         pars, order =  parser_alerts(msg['Content'])
-                        msg_ype = "stock"
+                        msg_type = "stock"
                     elif chn_name.split("_")[0] == "option":
                         pars, order =  option_alerts_parser(msg['Content'])
                         msg_type = "option"
                     else:
                         raise TypeError ("Type of equity not known")
-                        
+                    
+                    
                     if pars is None:
                         print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
+                    elif pars == 'not an alert':
+                        print(Style.DIM + "\t \tnot for @everyone")
                     else:
                         print(Fore.RED +f"\t \t {pars}")
-                        if "avg" not in order.keys() or order['avg'] is None:
-                            if msg['Author'] == "ScaredShirtless#0001":
-                                
-                                eval("Alerts_trader.new_"+ msg_type + "_alert(order, pars,\
-                                                              msg['Content'])")
-            
+                                            
+                        if msg['Author'] == "ScaredShirtless#0001":
+                            order["Trader"] = "ScaredShirtless#0001"
+                            eval(f"Alerts_trader.new_{msg_type}_alert(order, pars,\
+                                 msg['Content'])")
+    
     toc = datetime.now() 
     tictoc = (toc-tic).total_seconds()
 

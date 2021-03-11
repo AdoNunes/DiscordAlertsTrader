@@ -113,7 +113,7 @@ def make_BTO_PT_SL_order(Symbol:str, uQty:int, price:float, PTs:list=None,
 
     new_order= make_BTO_lim_order(Symbol, uQty, price)
 
-    if PTs is None:
+    if PTs == [None]:
         return new_order
 
     PTs_Qty = [ round(uQty * pqty) for pqty in PTs_Qty]

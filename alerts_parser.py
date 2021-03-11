@@ -5,7 +5,7 @@ import os.path as op
 from message_parser import parser_alerts
 
 def get_author_alerts():
-    file = 'data/stock_alerts_message_history_2021.csv'
+    file = 'data/stock_alerts_message_history.csv'
 
     alerts = pd.read_csv(file)
     alerts.drop(labels=['Attachments', 'Reactions'], axis=1, inplace=True)

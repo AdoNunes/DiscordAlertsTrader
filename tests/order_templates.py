@@ -12,8 +12,13 @@ import json
 
 
 # # Save dic obtained from TDsession.get_orders
-# with open("order_info_template.json", "w") as js:
-#     json.dump(order_info, js)
+with open("order_info_BTO_PT_SL_template.json", "w") as js:
+    json.dump(order_info, js)
+
+
+with open("order_response_BTO_PT_SL_template.json", "w") as js:
+    json.dump(order_response, js)
+
 
 
 order_BTO_PT_LT = {
