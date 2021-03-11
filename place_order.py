@@ -121,7 +121,6 @@ def make_BTO_PT_SL_order(Symbol:str, uQty:int, price:float, PTs:list=None,
     for PT, pqty in zip(PTs, PTs_Qty):
         new_child_order = new_order.create_child_order_strategy()
         new_child_order = make_Lim_SL_order(Symbol, pqty, PT, SL, SL_stop, new_child_order)
-        print(Symbol, pqty, PT, SL, SL_stop)
         new_order.add_child_order_strategy(child_order_strategy=new_child_order)
 
     return new_order

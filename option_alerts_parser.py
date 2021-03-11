@@ -129,7 +129,7 @@ def make_STC_option(order, trades_log, openTrade):
         STC = "STC3"
     else:
         str_STC = "How many STC already?"
-        print (str_STC)
+        # print (str_STC)
         return trades_log, str_STC
 
     # reap, str_STC = check_repeat_STC(order, trades_log, openTrade, STC)

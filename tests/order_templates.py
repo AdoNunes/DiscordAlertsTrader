@@ -29,7 +29,7 @@ order_BTO_PT_LT = {
     'PTs_Qty': [1],
     'Trader': 'ScaredShirtless#0001',
     'PTs': [5.84],
-    'uQty': 3
+    'uQty': 20
     }
 
 
@@ -52,7 +52,7 @@ order_response_BTO_PT_LT = {
                  'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS, HEAD, PATCH',
                  'Content-Security-Policy': "frame-ancestors 'self'",
                  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains, max-age=31536000'},
-    'content': b'',
+    'content': "",
     'status_code': 201,
     'request_body': {
        "orderStrategyType": "TRIGGER",
@@ -63,7 +63,7 @@ order_response_BTO_PT_LT = {
        "orderLegCollection": [
            {
                "instruction": "BUY",
-               "quantity": 2,
+               "quantity": 20,
                "instrument": { 
                    "assetType": "EQUITY",
                    "symbol": "DPW"}
@@ -121,9 +121,9 @@ order_info_BTO_PT_LT = {
     'orderType': 'LIMIT',
     'cancelTime': '2021-09-03',
     'complexOrderStrategyType': 'NONE',
-    'quantity': 2.0,
+    'quantity': 20,
     'filledQuantity': 0.0,
-    'remainingQuantity': 2.0,
+    'remainingQuantity': 20,
     'requestedDestination': 'AUTO',
     'destinationLinkName': 'AutoRoute',
     'price': 3.1,
@@ -138,7 +138,7 @@ order_info_BTO_PT_LT = {
                 },
           'instruction': 'BUY',
           'positionEffect': 'OPENING',
-          'quantity': 2.0
+          'quantity': 20
           }
         ],
     'orderStrategyType': 'TRIGGER',
@@ -163,9 +163,9 @@ order_info_BTO_PT_LT = {
                     'orderType': 'STOP',
                     'cancelTime': '2021-09-03',
                     'complexOrderStrategyType': 'NONE',
-                    'quantity': 2.0,
+                    'quantity': 20,
                     'filledQuantity': 0.0,
-                    'remainingQuantity': 2.0,
+                    'remainingQuantity': 20,
                     'requestedDestination': 'AUTO',
                     'destinationLinkName': 'AutoRoute',
                     'stopPrice': 3.01,
@@ -180,7 +180,7 @@ order_info_BTO_PT_LT = {
                                 },
                             'instruction': 'SELL',
                             'positionEffect': 'CLOSING',
-                            'quantity': 2.0
+                            'quantity': 20
                             }
                         ],
                     'orderStrategyType': 'SINGLE',
@@ -198,9 +198,9 @@ order_info_BTO_PT_LT = {
         'orderType': 'LIMIT',
         'cancelTime': '2021-09-03',
         'complexOrderStrategyType': 'NONE',
-        'quantity': 2.0,
+        'quantity': 20,
         'filledQuantity': 0.0,
-        'remainingQuantity': 2.0,
+        'remainingQuantity': 20,
         'requestedDestination': 'AUTO',
         'destinationLinkName': 'AutoRoute',
         'price': 5.84,
@@ -215,7 +215,7 @@ order_info_BTO_PT_LT = {
                     },
                 'instruction': 'SELL',
                 'positionEffect': 'CLOSING',
-                'quantity': 2.0
+                'quantity': 20
                 }
             ],
         'orderStrategyType': 'SINGLE',
@@ -233,6 +233,6 @@ order_info_BTO_PT_LT = {
     }
 
 
-with open("order_response_BTO_OCO_PT_SL_template.json", "w") as js:
-    json.dump(order_response, js)
+with open("order_response_BTO_PT_LT_template.json", "w") as js:
+    json.dump(order_response_BTO_PT_LT, js)
 
