@@ -11,7 +11,7 @@ import os.path as op
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from config import data_dir
+import config as cfg 
 from place_order import (get_TDsession, make_BTO_PT_SL_order, send_order, 
                          make_STC_lim, make_lim_option,
                          make_Lim_SL_order, make_STC_SL)
@@ -46,8 +46,14 @@ def find_open_trade(order, trades_log):
 
 class AlertTrader():
 
-    def __init__(self):
-        self.portfolio_fname = data_dir + "/trader_portfolio.csv"
+    def __init__(self, 
+                 portfolio_fname=cfg.portfolio_fname,
+                 alerts_log_fname=cfg.alerts_log_fname,
+                 test_TDsession=None):        
+       
+        self.portfolio_fname = portfolio_fname
+        self.alerts_log_fname = alerts_log_fname
+        
         if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
@@ -57,14 +63,19 @@ class AlertTrader():
                     "STC%d-%s"% (i, v) for v in
                     ["Alerted", "Status", "xQty", "uQty", "Price", "PnL","Date", "ordID"] 
                     for i in range(1,4)] )
-
-        self.alerts_log_fname = data_dir + "/trader_logger.csv"
+        
         if op.exists(self.alerts_log_fname):
             self.alerts_log = pd.read_csv(self.alerts_log_fname)
         else:            
             self.alerts_log = pd.DataFrame(columns=["Date", "Symbol", "Trader",
                                                 "action", "parsed", "msg", "portfolio_idx"])
-        self.TDsession = get_TDsession()
+            
+        # For testing a fake TDsession is created
+        if test_TDsession is not None:
+            self.TDsession = test_TDsession
+        else:
+             self.TDsession = get_TDsession()
+                
         self.accountId = self.TDsession.accountId
 
     def save_logs(self, csvs=["port", "alert"]):
