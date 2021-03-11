@@ -172,7 +172,8 @@ class AlertTrader():
                 log_alert['action'] = "BTO-notAccepted"
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                 self.save_logs(["alert"])   
-                
+                return
+            
             ordered = eval(order_response['request_body'])
 
             order_info = self.TDsession.get_orders(account=self.accountId, 
@@ -356,6 +357,7 @@ class AlertTrader():
                 log_alert['action'] = "BTO-notAccepted"
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                 self.save_logs(["alert"])  
+                return
                 
             ordered = eval(order_response['request_body'])
 
@@ -633,21 +635,25 @@ class AlertTrader():
         
 
 
-# order = {'action': 'BTO',
-#   'Symbol': 'DPW',
-#   'price': 3.1,
-#   'avg': None,
-#   'PT1': 5.84,
-#   'PT2': 6.39,
-#   'PT3': 6.95,
-#   'SL': 3.01,
-#   'n_PTs': 3,
-#   'PTs_Qty': [.33, .33, .34],
-#   'Trader': 'ScaredShirtless#0001',
-#   'PTs': [5.84],
-#   'uQty': 2}
+order = {'action': 'BTO',
+  'Symbol': 'DPW',
+  'price': 3.1,
+  'avg': None,
+  'PT1': 5.84,
+  'PT2': 6.39,
+  'PT3': 6.95,
+  'SL': 3.01,
+  'n_PTs': 3,
+  'PTs_Qty': [.33, .33, .34],
+  'Trader': 'ScaredShirtless#0001',
+  'PTs': [5.84],
+  'uQty': 2}
 
+pars = "BTO DPW @3.1 PT1 5.84 SL: 3.01"
+msg = "BTO DPW @3.1 PT1 5.84 SL: 3.01"
 
+al = AlertTrader()
+al.new_stock_alert(order, pars, msg)
 
 # order = {'action': 'BTO',
 #   'Symbol': 'PLTR',
@@ -667,7 +673,7 @@ class AlertTrader():
 
 # pars = "BTO DPW @3.1 PT1 5.84 SL: 3.01"
 
-# msg = "BTO DPW @3.1"
+# msg = "BTO DPW @3.1 PT1 5.84 SL: 3.01"
 
 
    
