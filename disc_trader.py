@@ -731,8 +731,8 @@ if 0 :
      'uQty': 3,
      'Trader': 'ScaredShirtless#0001'}
     
-    pars = 'BTO KMPH 3/19/21 7.5C @1.75 PT1:None, PT2:None, PT3:None, SL:None'
-    msg = "@everyone BTO **KMPH** 3/19/21 7.5c @ 1.75 (swing)"
+    # pars = 'BTO KMPH 3/19/21 7.5C @1.75 PT1:None, PT2:None, PT3:None, SL:None'
+    # msg = "@everyone BTO **KMPH** 3/19/21 7.5c @ 1.75 (swing)"
     # order = {'action': 'STC',
     #  'Symbol': 'CURLF',
     #  'price': 24.05,
@@ -741,3 +741,4 @@ if 0 :
     #  'Qty': 1}
     
     # pars = "STC CURLF @  24.0"
+    msg  = "STC CURLF @  24.0"
