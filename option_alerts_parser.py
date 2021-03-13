@@ -74,6 +74,10 @@ def find_open_option(order, trades_log):
 
 def make_BTO_option(order, trades_log):
 
+    PTs = [order["PT1"], order["PT2"], order["PT3"]]
+    Qts = order["PTs_Qty"]
+
+    planned = [[PTs[i], Qts[i]] for i in range(order['n_PTs'])]
     
     trades_log = trades_log.append({
         "BTO-Date": order['date'],
@@ -81,7 +85,7 @@ def make_BTO_option(order, trades_log):
         "BTO": order['price'],
         "Strike" : order['strike'],
         "ExpDate" : order['expDate'],        
-        "Planned_PT": order["PT1"],
+        "Planned_PT": planned,
         "Planned_SL": order['SL']
         }, ignore_index=True)
     str_act = f"BTO {order['Symbol']} {order['price']} {order['expDate']} {order['strike']}, Plan PT:{order['PT1']}, SL:{order['SL']}"

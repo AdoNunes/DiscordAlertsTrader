@@ -225,7 +225,7 @@ class AlertTrader():
                             planIDs["PT"].append(childStrat['orderId'])
                         elif childStrat['orderType'] in ["STOP", "STOPLIMIT"]:
                             Plan_ord['SL'].append(childStrat['stopPrice'])
-                            planIorder_infoDs["SL"].append(childStrat['orderId'])
+                            planIDs["SL"].append(childStrat['orderId'])
                             
                 assert(len(planIDs["PT"]) == len(order["PTs"]))  # check why diff N ord IDs
 
@@ -454,12 +454,14 @@ class AlertTrader():
             log_alert['action'] = "BTO-Null"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(["alert"])
+            print(Back.RED +str_act)
             
         elif order["action"] == "STC" and isOpen is None:
             str_act = "STC without BTO, maybe alredy sold"
             log_alert['action'] = "STC-Null"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(["alert"])
+            print(Back.RED +str_act)
             
         elif order["action"] == "STC":
             position = self.portfolio.iloc[open_trade]
