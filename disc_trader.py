@@ -27,7 +27,8 @@ def find_open_trade(order, trades_log):
     if len(trades_log) == 0:
         return None
 
-    msk_ticker = trades_log["Symbol"].str.contains( order['Symbol'])
+    msk_ticker = trades_log["Symbol"].str.match(f"{order['Symbol']}$")
+    
     if sum(msk_ticker) == 0:
        return None
 
@@ -156,12 +157,18 @@ class AlertTrader():
             
         ord_chngd = ord_ori != order
         
-        return resp, order, ord_chngd
+        return resp, order, ord_chngde
         
     def close_waiting_order(open_trade):
         pass
     
-    
+    def parse_exit_plan(order):
+        exit_plan = {}
+        for p in [f"PT{i}" for i in range (1,4)] + ["SL"]:
+            if order[p] is not None:
+                exit_plan[p] = order[p]
+        return exit_plan
+                
     ######################################################################
     # STOCK TRADER
     ######################################################################
@@ -181,7 +188,27 @@ class AlertTrader():
                      "parsed" : pars,
                      "msg": msg
                      }
-    
+
+
+        if order['action'] == "ExitUpdate" and isOpen:
+            position = self.portfolio.iloc[open_trade]
+            
+            old_plan = self.portfolio.loc[open_trade, "Plan_all"]
+            new_plan = parse_exit_plan(order)
+            
+            self.portfolio.loc[open_trade, "Plan_all"] = str(new_plan)
+            
+            log_alert['action'] = "ExitUpdate"
+            self.save_logs()  
+            print(Back.GREEN + f"Updated exit plan from :{old_plan} to {new_plan}")
+            self.update_orders()
+            
+            return
+            
+            
+            
+            
+            
         if not isOpen and order["action"] == "BTO":
             # order["PTs"] = [order[f"PT{i}"] for i in range(1, order['n_PTs']+1)]
             order["PTs"] = [order["PT1"]]
@@ -271,6 +298,9 @@ class AlertTrader():
             self.save_logs(["alert"])
             print(Back.RED +str_act)
             
+
+            
+            
         elif order["action"] == "STC" and isOpen == 0:
             str_act = "STC without BTO, maybe alredy sold"
             log_alert['action'] = "STC-Null-notOpen"
@@ -350,9 +380,7 @@ class AlertTrader():
             
             print(Back.GREEN + str_STC)
 
-        elif order["action"] == "ExitUpdate":
-        
-            pass
+
     
     ######################################################################
     # OPTION TRADER
@@ -429,7 +457,7 @@ class AlertTrader():
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
                          'isOpen': 1,
-                         'BTC-Status': order_status,
+                         'BTO-Status': order_status,
                          "uQty": order_info['quantity'],
                          "Asset" : "Option",
                          "Type" : "BTO",
@@ -545,20 +573,22 @@ class AlertTrader():
         sold_unts = order_info['orderLegCollection'][0]['quantity']
         
         bto_price = self.portfolio.loc[open_trade, "Price"]
-        stc_PnL = float((order["price"] - bto_price)/bto_price) *100
+        stc_PnL = float((order_info['price'] - bto_price)/bto_price) *100
+        
+        xQty = sold_unts/ self.portfolio.loc[open_trade, "uQty"]
         
         date = order_info["closeTime"]
         #Log portfolio
         self.portfolio.loc[open_trade, STC + "-Status"] = order_info['status']
         self.portfolio.loc[open_trade, STC + "-Price"] = order_info['price']
         self.portfolio.loc[open_trade, STC + "-Date"] = date
-        self.portfolio.loc[open_trade, STC + "-xQty"] = order['xQty']
+        self.portfolio.loc[open_trade, STC + "-xQty"] =xQty
         self.portfolio.loc[open_trade, STC + "-uQty"] = sold_unts
         self.portfolio.loc[open_trade, STC + "-PnL"] = stc_PnL
         self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
     
-        str_STC = f"{STC} {order['Symbol']} @{order_info['price']} Qty:\
-            {order['uQty']}({int(order['xQty']*100)}%), {stc_PnL:.2f}%"
+        str_STC = f"{STC} {order['Symbol']} @{order_info['price']} Qty:" + \
+            f"{sold_unts}({int(xQty*100)}%), for {stc_PnL:.2f}%"
                                
         print (Back.GREEN + f"Filled: {str_STC}")
         self.save_logs()
@@ -575,11 +605,11 @@ class AlertTrader():
             
             if trade["BTO-Status"]  in ["QUEUED", "WORKING"]:
                 order_id = trade['ordID']
-                order_status = self.TDsession.get_orders(account=self.accountId, 
+                order_info = self.TDsession.get_orders(account=self.accountId, 
                                                          order_id=order_id
-                                                         )['status']
+                                                         )
                 
-                self.portfolio.loc[i, "BTO-Status"] = order_status
+                self.portfolio.loc[i, "BTO-Status"] = order_info['status']
                 trade = self.portfolio.iloc[i]
                 self.save_logs("port")
                 
@@ -612,7 +642,7 @@ class AlertTrader():
                     order['strike'] = strike
 
                 STC_ordID = trade[STC+"-ordID"]
-                if np.isnan(STC_ordID):
+                if pd.isnull(STC_ordID):
                     SL = plan_all["SL"]
                     
                     ord_func = None
@@ -647,8 +677,9 @@ class AlertTrader():
                         break
                 
                 # Get status exit orders
+                STC_ordID = int(float(STC_ordID))  # Might be read as a float
                 order_info = self.TDsession.get_orders(account=self.accountId, 
-                                      order_id=STC_ordID)
+                                      order_id= STC_ordID)
                 if order_info['orderStrategyType'] == "OCO":
                     order_status = [
                         order_info['childOrderStrategies'][0]['status'],
@@ -664,7 +695,7 @@ class AlertTrader():
                 trade = self.portfolio.iloc[i]
                 
                 if order_status == "FILLED":
-                    self.log_STC_info(STC_ordID, i, STC)
+                    self.log_filled_STC(STC_ordID, i, STC)
 
                 self.save_logs("port")
                 
