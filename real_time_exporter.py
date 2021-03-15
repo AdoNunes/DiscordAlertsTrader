@@ -118,8 +118,8 @@ while True:
                     else:
                         print(Fore.RED +f"\t \t {pars}")
                                             
-                        if msg['Author'] == "ScaredShirtless#0001":
-                            order["Trader"] = "ScaredShirtless#0001"
+                        if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
+                            order["Trader"] = msg['Author']
                             eval(f"Alerts_trader.new_{msg_type}_alert(order, pars,\
                                  msg['Content'])")
     

@@ -578,6 +578,7 @@ class AlertTrader():
                 
                 self.portfolio.loc[i, "BTO-Status"] = order_status
                 trade = self.portfolio.iloc[i]
+                self.save_logs("port")
                 
             if trade["BTO-Status"] != "FILLED":
                 continue
@@ -618,16 +619,16 @@ class AlertTrader():
                         ord_func = make_Lim_SL_order
                         order["PT"] = plan_all[f"PT{ii}"]
                         order["SL"] = plan_all["SL"]
-                        order['uQty'] = uQty[ii]
-                        order['xQty'] = xQty[ii]
+                        order['uQty'] = uQty[ii - 1]
+                        order['xQty'] = xQty[ii - 1]
                     # Lim order
-                    elif plan_all[f"PT{i}"] is not None and SL is None:
+                    elif plan_all[f"PT{ii}"] is not None and SL is None:
                         ord_func = make_STC_lim
                         order["price"] = plan_all[f"PT{ii}"]
-                        order['uQty'] = uQty[ii]
-                        order['xQty'] = xQty[ii]
+                        order['uQty'] = uQty[ii - 1]
+                        order['xQty'] = xQty[ii - 1]
                     # SL order
-                    elif i == 1 and SL is not None:
+                    elif ii == 1 and SL is not None:
                         ord_func = make_STC_SL
                         order["SL"] = plan_all["SL"]
                         order['uQty'] = trade['uQty']
@@ -662,7 +663,7 @@ class AlertTrader():
                 if order_status == "FILLED":
                     self.log_STC_info(STC_ordID, i, STC)
 
-                    
+                self.save_logs("port")
                 
                     
         

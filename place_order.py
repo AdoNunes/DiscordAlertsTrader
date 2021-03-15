@@ -126,8 +126,10 @@ def make_BTO_PT_SL_order(Symbol:str, uQty:int, price:float, PTs:list=None,
     return new_order
 
 
-def make_Lim_SL_order(Symbol:str, uQty:int,  PT:float, SL:float, SL_stop:float=None, new_order=Order(), **kwarg):
+def make_Lim_SL_order(Symbol:str, uQty:int,  PT:float, SL:float, SL_stop:float=None, new_order=None, **kwarg):
 
+    if new_order is None:
+        new_order = Order()
     new_order.order_strategy_type("OCO")
 
     child_order1 = new_order.create_child_order_strategy()
