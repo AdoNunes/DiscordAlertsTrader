@@ -350,7 +350,10 @@ class AlertTrader():
             
             print(Back.GREEN + str_STC)
 
-
+        elif order["action"] == "ExitUpdate":
+        
+            pass
+    
     ######################################################################
     # OPTION TRADER
     ######################################################################
@@ -396,27 +399,27 @@ class AlertTrader():
             Plan_ord = {k:[] for k in keys}
             planIDs =  {k:[] for k in keys}
             
-             # if 'childOrderStrategies' in ordered.keys():           
-            for child in order_info['childOrderStrategies']:
-                # if simple strategy
-                if child['orderStrategyType'] != "OCO":  # Maybe key not exists if not OCO      
-                    ord_type = child['orderType']
-                    if ord_type == "LIMIT":
-                        Plan_ord["PT"].append(child['price'])
-                        planIDs["PT"].append(child['orderId'])
-                    elif ord_type in ["STOP", "STOPLIMIT"]:
-                        Plan_ord["SL"].append(child['stopPrice'])  
-                        planIDs["SL"].append(child['orderId'])
-                         
-                # empty if not complex strategy                            
-                for childStrat in child['childOrderStrategies']:
-                    if childStrat['orderType'] == "LIMIT":
-                        Plan_ord['PT'].append(childStrat['price'])
-                        planIDs["PT"].append(childStrat['orderId'])
-                    elif childStrat['orderType'] in ["STOP", "STOPLIMIT"]:
-                        Plan_ord['SL'].append(childStrat['stopPrice'])
-                        planIDs["SL"].append(childStrat['orderId'])
-                        
+            if 'childOrderStrategies' in ordered.keys():           
+                for child in order_info['childOrderStrategies']:
+                    # if simple strategy
+                    if child['orderStrategyType'] != "OCO":  # Maybe key not exists if not OCO      
+                        ord_type = child['orderType']
+                        if ord_type == "LIMIT":
+                            Plan_ord["PT"].append(child['price'])
+                            planIDs["PT"].append(child['orderId'])
+                        elif ord_type in ["STOP", "STOPLIMIT"]:
+                            Plan_ord["SL"].append(child['stopPrice'])  
+                            planIDs["SL"].append(child['orderId'])
+                             
+                    # empty if not complex strategy                            
+                    for childStrat in child['childOrderStrategies']:
+                        if childStrat['orderType'] == "LIMIT":
+                            Plan_ord['PT'].append(childStrat['price'])
+                            planIDs["PT"].append(childStrat['orderId'])
+                        elif childStrat['orderType'] in ["STOP", "STOPLIMIT"]:
+                            Plan_ord['SL'].append(childStrat['stopPrice'])
+                            planIDs["SL"].append(childStrat['orderId'])
+                            
 
             plan_all = {}
             for p in [f"PT{i}" for i in range (1,4)] + ["SL"]:

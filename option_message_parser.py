@@ -63,7 +63,7 @@ def option_alerts_parser(msg):
     elif act == "STC":
         amnt = parse_sell_amount(msg)
         str_prt = str_prt + f" amount: {amnt}"
-        order["xqty"] = amnt
+        order["xQty"] = amnt
     # print(str_prt)
 
     order['Symbol'] = make_optionID(**order)
