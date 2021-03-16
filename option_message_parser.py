@@ -7,7 +7,7 @@ Created on Mon Feb  8 18:11:55 2021
 """
 import re
 from place_order import make_optionID
-
+import pandas as pd
 
 def option_alerts_parser(msg):
     # if not '@everyone' in msg:
@@ -70,19 +70,21 @@ def option_alerts_parser(msg):
     return str_prt, order
 
 def set_exit_price_type(exit_price, order):
-    """Contract or stock price decided with closest ratio of 1"""
+    """Option or stock price decided with smallest distance"""
     if exit_price is None:
         return exit_price
     
-    rtio_stock = abs( 1 - exit_price/float(order['strike'][:-1]))
-    rtio_option = abs( 1 - exit_price/order['price'])
-    
+    price_strk = float(order['strike'][:-1])
+
+    rtio_stock = abs(price_strk - exit_price)
+    rtio_option = abs(order['price'] - exit_price) 
+                             
     if rtio_stock < rtio_option:
         exit_price = str(exit_price) + 's'
     elif rtio_stock > rtio_option:
         exit_price = exit_price
     else:
-        raise("Not sure if price of contract or stock")
+        raise("Not sure if price of option or stock")
     return exit_price
 
 def set_pt_qts(n_pts):
@@ -101,6 +103,8 @@ def set_pt_qts(n_pts):
 #         Symbol, Symbol_info = parse_Symbol(msg)
 
 def parse_action(msg):
+    if pd.isnull(msg):
+        return None
     actions = ["BTO", "STC"]
     act =  actions[0] if actions[0] in msg  else actions[1] if actions[1] in msg else None
     return act

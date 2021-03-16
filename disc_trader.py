@@ -11,7 +11,9 @@ import os.path as op
 import numpy as np
 import pandas as pd
 from datetime import datetime
+import time
 import config as cfg 
+import threading
 from place_order import (get_TDsession, make_BTO_PT_SL_order, send_order, 
                          make_STC_lim, make_lim_option,
                          make_Lim_SL_order, make_STC_SL)
@@ -50,7 +52,7 @@ class AlertTrader():
     def __init__(self, 
                  portfolio_fname=cfg.portfolio_fname,
                  alerts_log_fname=cfg.alerts_log_fname,
-                 test_TDsession=None):        
+                 test_TDsession=None, update_portfolio=True):        
        
         self.portfolio_fname = portfolio_fname
         self.alerts_log_fname = alerts_log_fname
@@ -78,7 +80,24 @@ class AlertTrader():
              self.TDsession = get_TDsession()
                 
         self.accountId = self.TDsession.accountId
+        
+        self.update_portfolio = update_portfolio
+        if update_portfolio:
+            self.activate_trade_updater()
 
+
+    def activate_trade_updater(self, refresh_rate=30):
+        self.update_portfolio = True
+        self.updater = threading.Thread(target=self.trade_updater, args=[refresh_rate])
+        self.updater.start()
+        print(Back.GREEN + f"Updating portfolio orders every {refresh_rate} secs")
+        
+    def trade_updater(self, refresh_rate=30):       
+        while self.update_portfolio is True: 
+            self.update_orders()   
+            time.sleep(refresh_rate)    
+        print("Closing portfolio updater")
+      
     def save_logs(self, csvs=["port", "alert"]):
         if "port" in csvs:
             self.portfolio.to_csv(self.portfolio_fname, index=False)
@@ -209,7 +228,6 @@ class AlertTrader():
             
             
             
-            
         if not isOpen and order["action"] == "BTO":
             # order["PTs"] = [order[f"PT{i}"] for i in range(1, order['n_PTs']+1)]
             order["PTs"] = [order["PT1"]]
@@ -229,33 +247,34 @@ class AlertTrader():
             order_info = self.TDsession.get_orders(account=self.accountId, 
                                               order_id=order_id)
             order_status = order_info['status']
-
-            keys = ["PT", "SL"]
-            Plan_ord = {k:[] for k in keys}  # TODO: change name to exit_sent_price
-            planIDs =  {k:[] for k in keys}  # TODO: change name to exit_sent_ordIDs
             
-            if 'childOrderStrategies' in order_info.keys():
-                for child in order_info['childOrderStrategies']:
-                    # if simple strategy
-                    if child['orderStrategyType'] != "OCO":  # Maybe key not exists if not OCO   
-                        ord_type = child['orderType']    
-                        if ord_type == "LIMIT":
-                            Plan_ord["PT"].append(child['price'])
-                            planIDs["PT"].append(child['orderId'])
-                        elif ord_type in ["STOP", "STOPLIMIT"]:
-                            Plan_ord["SL"].append(child['stopPrice'])  
-                            planIDs["SL"].append(child['orderId'])
+            
+            # keys = ["PT", "SL"]
+            # Plan_ord = {k:[] for k in keys}  
+            # planIDs =  {k:[] for k in keys}  
+            
+            # if 'childOrderStrategies' in order_info.keys():
+            #     for child in order_info['childOrderStrategies']:
+            #         # if simple strategy
+            #         if child['orderStrategyType'] != "OCO":  # Maybe key not exists if not OCO   
+            #             ord_type = child['orderType']    
+            #             if ord_type == "LIMIT":
+            #                 Plan_ord["PT"].append(child['price'])
+            #                 planIDs["PT"].append(child['orderId'])
+            #             elif ord_type in ["STOP", "STOPLIMIT"]:
+            #                 Plan_ord["SL"].append(child['stopPrice'])  
+            #                 planIDs["SL"].append(child['orderId'])
                              
-                    # empty if not complex strategy                            
-                    for childStrat in child['childOrderStrategies']:
-                        if childStrat['orderType'] == "LIMIT":
-                            Plan_ord['PT'].append(childStrat['price'])
-                            planIDs["PT"].append(childStrat['orderId'])
-                        elif childStrat['orderType'] in ["STOP", "STOPLIMIT"]:
-                            Plan_ord['SL'].append(childStrat['stopPrice'])
-                            planIDs["SL"].append(childStrat['orderId'])
+            #         # empty if not complex strategy                            
+            #         for childStrat in child['childOrderStrategies']:
+            #             if childStrat['orderType'] == "LIMIT":
+            #                 Plan_ord['PT'].append(childStrat['price'])
+            #                 planIDs["PT"].append(childStrat['orderId'])
+            #             elif childStrat['orderType'] in ["STOP", "STOPLIMIT"]:
+            #                 Plan_ord['SL'].append(childStrat['stopPrice'])
+            #                 planIDs["SL"].append(childStrat['orderId'])
                             
-                assert(len(planIDs["PT"]) == len(order["PTs"]))  # check why diff N ord IDs
+            #     assert(len(planIDs["PT"]) == len(order["PTs"]))  # check why diff N ord IDs
 
             
             plan_all = {}
@@ -272,9 +291,9 @@ class AlertTrader():
                          "Type" : "BTO",
                          "Price" : ordered["price"],
                          "ordID" : order_id,
-                         "Plan_ord" : Plan_ord,
+                         # "Plan_ord" : Plan_ord,
                          "Plan_all"  : str(plan_all),
-                         "plan_ordIds" : planIDs,
+                         # "plan_ordIds" : planIDs,
                          "Trader" : order['Trader']
                          }
             self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
@@ -284,6 +303,10 @@ class AlertTrader():
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs()
             
+            if order_status == "FILLED":  # FilledQty won't populate if already FILLED
+                ot = find_open_trade(order, self.portfolio)
+                self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
+                
             print(Back.GREEN + f"BTO {order['Symbol']} executed. Status: {order_status}")
             
         elif order["action"] == "BTO" and order['avg'] is not None:
@@ -333,51 +356,70 @@ class AlertTrader():
                 self.save_logs(["alert"])
                 return
             
-            qty_bought = position["uQty"]
-            #TODO: change qty from portfolio to getting TD account position
+            qty_bought = position["filledQty"]
+            if np.isnull(qty_bought ) and order['xQty'] == 1:
+                order_id = position['ordID']
+                self.TDsession.cancel_order(self.TDsession.accountId, order_id)
+                
+                self.portfolio.loc[open_trade, "isOpen"] = 0
+                print(Back.GREEN + f"Order Cancelled {order['Symbol']}, closed before fill")
+                
+                log_alert['action'] = "STC-ClosedBeforeFill"
+                log_alert["portfolio_idx"] = open_trade
+                self.save_logs()
+            
             qty_sold = np.nansum([position[f"STC{i}-uQty"] for i in range(1,4)])
             
             if order['xQty'] == 1:  # Sell all
-                # TODO: close other waiting orders
+                
+                position = self.portfolio.iloc[open_trade]
+                
+                # close other waiting orders
+                for i in range(int(STC[-1]),4):
+                    if not (position[ f"STC{i}-Status"] == "FILLED" | 
+                            pd.isnull(position[ f"STC{i}-Status"])):
+                        
+                        order_ids =  position[ f"STC{i}-ordID"]
+                        print(Back.GREEN + "Cancelling STC{i} to {STC} sell all")
+                        self.TDsession.cancel_order(self.TDsession.accountId, order_id)
+                    
                 order['uQty'] = int(position["Qty"]) - qty_sold
-            elif order['xQty'] < 1:  #portion 
+                
+            elif order['xQty'] < 1:  # portion 
                 order['uQty'] = round(qty_bought * order['Qty'])
 
             assert(order['uQty'] + qty_sold <= qty_bought)
             
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
                            make_STC_lim) 
-        
-    
-            ordered = eval(order_response['request_body'])
-
+            
+            log_alert["portfolio_idx"] = open_trade
+            
+            if order_response is None:  # Assume trade rejected by user
+                log_alert['action'] = "STC-notAccepted"
+                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.save_logs(["alert"]) 
+                print(Back.GREEN + "STC not accepted by user")
+                return
+            
+            #Log trades_log
+            log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL" 
+            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+            self.save_logs()
+                        
+            
             order_info = self.TDsession.get_orders(account=self.accountId, 
                                               order_id=order_id)
             order_status = order_info['status']
-            # Check if STC price changed
-            # if position[STC + "-Status"] in ["WORKING", "WAITING"]
             
-            sold_unts = order_info['orderLegCollection'][0]['quantity']          
-            
-            bto_price = self.portfolio.loc[open_trade, "Price"]
-            stc_PnL = float((order["price"] - bto_price)/bto_price) *100
-            
-            #Log portfolio
-            self.portfolio.loc[open_trade, STC + "-Status"] = order_info['status']
-            self.portfolio.loc[open_trade, STC + "-Price"] = order_info['price']
-            self.portfolio.loc[open_trade, STC + "-Date"] = date
-            self.portfolio.loc[open_trade, STC + "-xQty"] = order['xQty']
-            self.portfolio.loc[open_trade, STC + "-uQty"] = sold_unts
-            self.portfolio.loc[open_trade, STC + "-PnL"] = stc_PnL
             self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
+            
+            # Check if STC price changed
+            if order_status == "FILLED":
+                self.log_filled_STC(self, order_id, open_trade, STC)
+                
         
-            str_STC = f"{STC} {order['Symbol']} @{order_info['price']} Qty:{order['uQty']} ({order['xQty']}), {stc_PnL:.2f}%"
-                      
-            #Log trades_log
-            log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL" 
-            log_alert["portfolio_idx"] = open_trade
-            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
-            self.save_logs(self)
+            str_STC = f"Submitted: {STC} {order['Symbol']} @{order['price']} Qty:{order['uQty']} ({order['xQty']})"       
             
             print(Back.GREEN + str_STC)
 
@@ -424,35 +466,35 @@ class AlertTrader():
                                               order_id=order_id)
             order_status = order_info['status']
 
-            keys = ["PT", "SL"]
-            Plan_ord = {k:[] for k in keys}
-            planIDs =  {k:[] for k in keys}
+            # keys = ["PT", "SL"]
+            # Plan_ord = {k:[] for k in keys}
+            # planIDs =  {k:[] for k in keys}
             
-            if 'childOrderStrategies' in ordered.keys():           
-                for child in order_info['childOrderStrategies']:
-                    # if simple strategy
-                    if child['orderStrategyType'] != "OCO":  # Maybe key not exists if not OCO      
-                        ord_type = child['orderType']
-                        if ord_type == "LIMIT":
-                            Plan_ord["PT"].append(child['price'])
-                            planIDs["PT"].append(child['orderId'])
-                        elif ord_type in ["STOP", "STOPLIMIT"]:
-                            Plan_ord["SL"].append(child['stopPrice'])  
-                            planIDs["SL"].append(child['orderId'])
+            # if 'childOrderStrategies' in ordered.keys():           
+            #     for child in order_info['childOrderStrategies']:
+            #         # if simple strategy
+            #         if child['orderStrategyType'] != "OCO":  # Maybe key not exists if not OCO      
+            #             ord_type = child['orderType']
+            #             if ord_type == "LIMIT":
+            #                 Plan_ord["PT"].append(child['price'])
+            #                 planIDs["PT"].append(child['orderId'])
+            #             elif ord_type in ["STOP", "STOPLIMIT"]:
+            #                 Plan_ord["SL"].append(child['stopPrice'])  
+            #                 planIDs["SL"].append(child['orderId'])
                              
-                    # empty if not complex strategy                            
-                    for childStrat in child['childOrderStrategies']:
-                        if childStrat['orderType'] == "LIMIT":
-                            Plan_ord['PT'].append(childStrat['price'])
-                            planIDs["PT"].append(childStrat['orderId'])
-                        elif childStrat['orderType'] in ["STOP", "STOPLIMIT"]:
-                            Plan_ord['SL'].append(childStrat['stopPrice'])
-                            planIDs["SL"].append(childStrat['orderId'])
+            #         # empty if not complex strategy                            
+            #         for childStrat in child['childOrderStrategies']:
+            #             if childStrat['orderType'] == "LIMIT":
+            #                 Plan_ord['PT'].append(childStrat['price'])
+            #                 planIDs["PT"].append(childStrat['orderId'])
+            #             elif childStrat['orderType'] in ["STOP", "STOPLIMIT"]:
+            #                 Plan_ord['SL'].append(childStrat['stopPrice'])
+            #                 planIDs["SL"].append(childStrat['orderId'])
                             
 
             plan_all = {}
             for p in [f"PT{i}" for i in range (1,4)] + ["SL"]:
-                if order[p] is not None:
+                # if order[p] is not None:
                     plan_all[p] = order[p]
 
             new_trade = {"Date": date,
@@ -464,8 +506,8 @@ class AlertTrader():
                          "Type" : "BTO",
                          "Price" : ordered["price"],
                          "ordID" : order_id,
-                         "Plan_ord" : Plan_ord,
-                         "STC1-ordID" : planIDs,
+                         # "Plan_ord" : Plan_ord,
+                         # "STC1-ordID" : planIDs,
                          "Plan_all"  : str(plan_all),
                          "Trader" : order['Trader']
                          }
@@ -474,6 +516,13 @@ class AlertTrader():
             log_alert['action'] = "BTO"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs( )
+            
+            if order_status == "FILLED":  # FilledQty won't populate if already FILLED
+                ot = find_open_trade(order, self.portfolio)
+                self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
+                        
+            print(Back.GREEN + f"BTO {order['Symbol']} executed. Status: {order_status}")    
+                
             
         elif order["action"] == "BTO" and order['avg'] is not None:
             # if PT in order: cancel previous and make_BTO_PT_SL_order
@@ -517,54 +566,76 @@ class AlertTrader():
                 self.save_logs(["alert"])
                 return
             
-            qty_bought = position["uQty"]
-            #TODO: change qty from portfolio to getting TD account position
+            
+            qty_bought = position["filledQty"]
+             
+            if np.isnull(qty_bought ) and order['xQty'] == 1:
+                order_id = position['ordID']
+                self.TDsession.cancel_order(self.TDsession.accountId, order_id)
+                
+                self.portfolio.loc[open_trade, "isOpen"] = 0
+                print(Back.GREEN + f"Order Cancelled {order['Symbol']}, closed before fill")
+                
+                log_alert['action'] = "STC-ClosedBeforeFill"
+                log_alert["portfolio_idx"] = open_trade
+                self.save_logs()
+            
             qty_sold = np.nansum([position[f"STC{i}-uQty"] for i in range(1,4)])
             
             if order['xQty'] == 1:  # Sell all
-                # TODO: close other waiting orders
-                order['uQty'] = int(position["uQty"]) - qty_sold
-            elif order['xQty'] < 1:  #portion 
-                order['uQty'] = int(round(qty_bought * order['xQty']))
                 
-            else:
-                order['uQty'] =  order['uQty']
-            
+                position = self.portfolio.iloc[open_trade]
+                
+                # close other waiting orders
+                for i in range(int(STC[-1]),4):
+                    if not (position[ f"STC{i}-Status"] == "FILLED" | 
+                            pd.isnull(position[ f"STC{i}-Status"])):
+                        
+                        order_ids =  position[ f"STC{i}-ordID"]
+                        print(Back.GREEN + "Cancelling STC{i} to {STC} sell all")
+                        self.TDsession.cancel_order(self.TDsession.accountId, order_id)
+                    
+                order['uQty'] = int(position["Qty"]) - qty_sold
+                
+            elif order['xQty'] < 1:  # portion 
+                order['uQty'] = round(qty_bought * order['Qty'])
+
             assert(order['uQty'] + qty_sold <= qty_bought)
             
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
                            make_STC_lim) 
-
-            ordered = eval(order_response['request_body'])
-
-            order_info = self.TDsession.get_orders(account=self.accountId, 
-                                              order_id=order_id)
-            order_status = order_info['status']
-            # Check if STC price changed
-            # if position[STC + "-Status"] in ["WORKING", "WAITING"]
             
-            sold_unts = order_info['orderLegCollection'][0]['quantity']          
+            log_alert["portfolio_idx"] = open_trade
             
-            bto_price = self.portfolio.loc[open_trade, "Price"]
-            stc_PnL = float((order["price"] - bto_price)/bto_price) *100
+            if order_response is None:  # Assume trade rejected by user
+                log_alert['action'] = "STC-notAccepted"
+                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.save_logs(["alert"]) 
+                print(Back.GREEN + "STC not accepted by user")
+                return
             
-            #Log portfolio
-            self.portfolio.loc[open_trade, STC + "-Status"] = order_info['status']
-            self.portfolio.loc[open_trade, STC + "-Price"] = order_info['price']
-            self.portfolio.loc[open_trade, STC + "-Date"] = date
-            self.portfolio.loc[open_trade, STC + "-xQty"] = order['xQty']
-            self.portfolio.loc[open_trade, STC + "-uQty"] = sold_unts
-            self.portfolio.loc[open_trade, STC + "-PnL"] = stc_PnL
-            self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
-        
-            str_STC = f"{STC} {order['Symbol']} @{order_info['price']} Qty:{order['uQty']}({int(order['xQty']*100)}%), {stc_PnL:.2f}%"
-                      
             #Log trades_log
             log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL" 
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
-            self.save_logs(self)
+            self.save_logs()
+                        
+            
+            order_info = self.TDsession.get_orders(account=self.accountId, 
+                                              order_id=order_id)
+            order_status = order_info['status']
+            
+            self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
+            
+            # Check if STC price changed
+            if order_status == "FILLED":
+                self.log_filled_STC(self, order_id, open_trade, STC)
+                
+        
+            str_STC = f"Submitted: {STC} {order['Symbol']} @{order['price']} Qty:{order['uQty']} ({order['xQty']})"       
             
             print(Back.GREEN + str_STC)
+            
+            
 
     def log_filled_STC(self, order_id, open_trade, STC):
         
@@ -608,7 +679,8 @@ class AlertTrader():
             
         
     def update_orders(self):
-        
+      
+          
         for i in range(len(self.portfolio)):
             trade = self.portfolio.iloc[i]
             
@@ -713,7 +785,7 @@ class AlertTrader():
                     self.log_filled_STC(STC_ordID, i, STC)
 
                 self.save_logs("port")
-                
+ 
                     
         
 if 0 :

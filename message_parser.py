@@ -74,6 +74,8 @@ def set_pt_qts(n_pts):
 #         Symbol, Symbol_info = parse_Symbol(msg)
 
 def parse_action(msg):
+    if pd.isnull(msg):
+        return None
     actions = ["BTO", "STC"]
     act =  actions[0] if actions[0] in msg  else actions[1] if actions[1] in msg else None
     return act

@@ -149,7 +149,7 @@ while True:
                         
                         symb = mark_inf.groups()[0]
                             
-                        time_since = (datetime.now() - timedelta(hours=3)).strftime(time_strf)
+                        time_since = (datetime.now() - timedelta(hours=23)).strftime(time_strf)
                         out_file = f"{data_dir}/{chn_name}_temp_2.csv"
                         
                         cmd_sh = cmd.format(path_dll, 
@@ -177,13 +177,14 @@ while True:
                                 if msg_type == "stock":
                                     pars, order =  parser_alerts(edit['Content'])                                    
                                 else:
-                                    pars, order =  option_alerts_parser(edit['Content'])   
+                                    pars, order =  option_alerts_parser(edit.loc[0, 'Content'])   
                                 if order is None:
                                     continue
                                 order['action'] = "ExitUpdate"
+                                pars.replace("BTO", "ExitUpdate")
                                 
                                 eval(f"Alerts_trader.new_{msg_type}_alert(order, pars,\
-                                 msg['Content'])")
+                                 edit['Content'])")
                                 
                     elif pars == 'not an alert':
                         print(Style.DIM + "\t \tnot for @everyone")
