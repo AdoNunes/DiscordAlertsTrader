@@ -184,10 +184,25 @@ class AlertTrader():
     def parse_exit_plan(self, order):
         exit_plan = {}
         for p in [f"PT{i}" for i in range (1,4)] + ["SL"]:
-            if order[p] is not None:
                 exit_plan[p] = order[p]
         return exit_plan
+                    
+    def close_open_exit_orders(self, open_trade):
+        position = self.portfolio.iloc[open_trade]
+        # close other waiting orders
+        for i in range(1,4):
+            if not pd.isnull(position[ f"STC{i}-Status"]) and \
+                position[ f"STC{i}-Status"] != "FILLED" :
                 
+                order_ids =  position[ f"STC{i}-ordID"]
+                print(Back.GREEN + f"Cancelling {position['Symbol']} STC{i}")
+                
+                self.TDsession.cancel_order(self.TDsession.accountId, order_id)
+                self.portfolio.loc[open_trade, f"STC{i}-Status"] = np.nan
+                self.portfolio.loc[open_trade, f"STC{i}-ordID"] = np.nan
+                self.save_logs("port")
+    
+    
     ######################################################################
     # STOCK TRADER
     ######################################################################
@@ -210,28 +225,25 @@ class AlertTrader():
 
 
         if order['action'] == "ExitUpdate" and isOpen:
-            position = self.portfolio.iloc[open_trade]
             
             old_plan = self.portfolio.loc[open_trade, "Plan_all"]
             new_plan = self.parse_exit_plan(order)
             
-            # TODO: cancel orders previous plan if any
+            # Cancel orders previous plan if any
+            self.close_open_exit_orders(open_trade)
+            
             self.portfolio.loc[open_trade, "Plan_all"] = str(new_plan)
+            self.update_orders()
             
             log_alert['action'] = "ExitUpdate"
             self.save_logs()  
             print(Back.GREEN + f"Updated exit plan from :{old_plan} to {new_plan}")
-            self.update_orders()
             
             return
             
-            
-            
-            
+                        
         if not isOpen and order["action"] == "BTO":
-            # order["PTs"] = [order[f"PT{i}"] for i in range(1, order['n_PTs']+1)]
-            order["PTs"] = [order["PT1"]]
-            order['PTs_Qty'] = [1]
+           
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
                                                        make_BTO_PT_SL_order)
             
@@ -242,61 +254,39 @@ class AlertTrader():
                 print(Back.GREEN + "BTO not accepted by user")
                 return
             
-            ordered = eval(order_response['request_body'])
+            ordered = eval(order_response['request_body'])  #TODO: check if filled might ve diff price
 
             order_info = self.TDsession.get_orders(account=self.accountId, 
                                               order_id=order_id)
             order_status = order_info['status']
             
             
-            # keys = ["PT", "SL"]
-            # Plan_ord = {k:[] for k in keys}  
-            # planIDs =  {k:[] for k in keys}  
-            
-            # if 'childOrderStrategies' in order_info.keys():
-            #     for child in order_info['childOrderStrategies']:
-            #         # if simple strategy
-            #         if child['orderStrategyType'] != "OCO":  # Maybe key not exists if not OCO   
-            #             ord_type = child['orderType']    
-            #             if ord_type == "LIMIT":
-            #                 Plan_ord["PT"].append(child['price'])
-            #                 planIDs["PT"].append(child['orderId'])
-            #             elif ord_type in ["STOP", "STOPLIMIT"]:
-            #                 Plan_ord["SL"].append(child['stopPrice'])  
-            #                 planIDs["SL"].append(child['orderId'])
-                             
-            #         # empty if not complex strategy                            
-            #         for childStrat in child['childOrderStrategies']:
-            #             if childStrat['orderType'] == "LIMIT":
-            #                 Plan_ord['PT'].append(childStrat['price'])
-            #                 planIDs["PT"].append(childStrat['orderId'])
-            #             elif childStrat['orderType'] in ["STOP", "STOPLIMIT"]:
-            #                 Plan_ord['SL'].append(childStrat['stopPrice'])
-            #                 planIDs["SL"].append(childStrat['orderId'])
-                            
-            #     assert(len(planIDs["PT"]) == len(order["PTs"]))  # check why diff N ord IDs
-
-            
             plan_all = {}
             for p in [f"PT{i}" for i in range (1,4)] + ["SL"]:
-                # if order[p] is not None:
                 plan_all[p] = order[p]
 
+
+            if 'strike' in order.keys():
+                Asset = "Option"
+            else:
+                Asset = "Stock"
+            
+            
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
                          'isOpen': 1,
                          'BTO-Status' : order_status,
                          "uQty": order_info['quantity'],
-                         "Asset" : "Stock",
+                         "Asset" : Asset,
                          "Type" : "BTO",
                          "Price" : ordered["price"],
                          "ordID" : order_id,
-                         # "Plan_ord" : Plan_ord,
                          "Plan_all"  : str(plan_all),
-                         # "plan_ordIds" : planIDs,
                          "Trader" : order['Trader']
                          }
+            
             self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
+           
             #Log portfolio, trades_log
             log_alert['action'] = "BTO"
             log_alert["portfolio_idx"] = len(self.portfolio) - 1
@@ -306,8 +296,10 @@ class AlertTrader():
             if order_status == "FILLED":  # FilledQty won't populate if already FILLED
                 ot = find_open_trade(order, self.portfolio)
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
+                self.save_logs("port")
                 
             print(Back.GREEN + f"BTO {order['Symbol']} executed. Status: {order_status}")
+            
             
         elif order["action"] == "BTO" and order['avg'] is not None:
             # if PT in order: cancel previous and make_BTO_PT_SL_order
@@ -322,9 +314,7 @@ class AlertTrader():
             self.save_logs(["alert"])
             print(Back.RED +str_act)
             
-
-            
-            
+                        
         elif order["action"] == "STC" and isOpen == 0:
             str_act = "STC without BTO, maybe alredy sold"
             log_alert['action'] = "STC-Null-notOpen"
@@ -334,6 +324,7 @@ class AlertTrader():
             
         elif order["action"] == "STC":
             position = self.portfolio.iloc[open_trade]
+            
             # check if position already alerted and closed
             for i in range(1,4):
                 STC = f"STC{i}"
@@ -357,7 +348,9 @@ class AlertTrader():
                 return
             
             qty_bought = position["filledQty"]
-            if np.isnull(qty_bought ) and order['xQty'] == 1:
+            
+            # Closing position but not yet filled
+            if np.isnull(qty_bought) and order['xQty'] == 1:
                 order_id = position['ordID']
                 self.TDsession.cancel_order(self.TDsession.accountId, order_id)
                 
@@ -372,21 +365,13 @@ class AlertTrader():
             
             if order['xQty'] == 1:  # Sell all
                 
-                position = self.portfolio.iloc[open_trade]
+                self.close_open_exit_orders(open_trade)
                 
-                # close other waiting orders
-                for i in range(int(STC[-1]),4):
-                    if not (position[ f"STC{i}-Status"] == "FILLED" | 
-                            pd.isnull(position[ f"STC{i}-Status"])):
-                        
-                        order_ids =  position[ f"STC{i}-ordID"]
-                        print(Back.GREEN + "Cancelling STC{i} to {STC} sell all")
-                        self.TDsession.cancel_order(self.TDsession.accountId, order_id)
-                    
-                order['uQty'] = int(position["Qty"]) - qty_sold
+                position = self.portfolio.iloc[open_trade]
+                order['uQty'] = int(position["uQty"]) - qty_sold
                 
             elif order['xQty'] < 1:  # portion 
-                order['uQty'] = round(qty_bought * order['Qty'])
+                order['uQty'] = round(qty_bought * order['xQty'])
 
             assert(order['uQty'] + qty_sold <= qty_bought)
             
@@ -446,9 +431,6 @@ class AlertTrader():
                      }
     
         if not isOpen and order["action"] == "BTO":
-            # order["PTs"] = [order[f"PT{i}"] for i in range(1, order['n_PTs']+1)]
-            # order["PTs"] = [order["PT1"]]
-            # order['PTs_Qty'] = [1]
             
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
                                                        make_lim_option)
@@ -456,8 +438,7 @@ class AlertTrader():
             if order_response is None:  #Assume trade not accepted
                 log_alert['action'] = "BTO-notAccepted"
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
-                self.save_logs(["alert"])  
-                
+                self.save_logs(["alert"])                  
                 return
                 
             ordered = eval(order_response['request_body'])
@@ -466,31 +447,6 @@ class AlertTrader():
                                               order_id=order_id)
             order_status = order_info['status']
 
-            # keys = ["PT", "SL"]
-            # Plan_ord = {k:[] for k in keys}
-            # planIDs =  {k:[] for k in keys}
-            
-            # if 'childOrderStrategies' in ordered.keys():           
-            #     for child in order_info['childOrderStrategies']:
-            #         # if simple strategy
-            #         if child['orderStrategyType'] != "OCO":  # Maybe key not exists if not OCO      
-            #             ord_type = child['orderType']
-            #             if ord_type == "LIMIT":
-            #                 Plan_ord["PT"].append(child['price'])
-            #                 planIDs["PT"].append(child['orderId'])
-            #             elif ord_type in ["STOP", "STOPLIMIT"]:
-            #                 Plan_ord["SL"].append(child['stopPrice'])  
-            #                 planIDs["SL"].append(child['orderId'])
-                             
-            #         # empty if not complex strategy                            
-            #         for childStrat in child['childOrderStrategies']:
-            #             if childStrat['orderType'] == "LIMIT":
-            #                 Plan_ord['PT'].append(childStrat['price'])
-            #                 planIDs["PT"].append(childStrat['orderId'])
-            #             elif childStrat['orderType'] in ["STOP", "STOPLIMIT"]:
-            #                 Plan_ord['SL'].append(childStrat['stopPrice'])
-            #                 planIDs["SL"].append(childStrat['orderId'])
-                            
 
             plan_all = {}
             for p in [f"PT{i}" for i in range (1,4)] + ["SL"]:
@@ -506,11 +462,10 @@ class AlertTrader():
                          "Type" : "BTO",
                          "Price" : ordered["price"],
                          "ordID" : order_id,
-                         # "Plan_ord" : Plan_ord,
-                         # "STC1-ordID" : planIDs,
                          "Plan_all"  : str(plan_all),
                          "Trader" : order['Trader']
                          }
+            
             self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
             #Log portfolio, trades_log
             log_alert['action'] = "BTO"
@@ -670,9 +625,16 @@ class AlertTrader():
         self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
     
         symb = self.portfolio.loc[open_trade, 'Symbol']
+        
+        sold_Qty =  self.portfolio.loc[open_trade, [f"STC{i}-xQty" for i in range(1,4)]].sum()
+                           
         str_STC = f"{STC} {symb} @{stc_price} Qty:" + \
             f"{sold_unts}({int(xQty*100)}%), for {stc_PnL:.2f}%"
-                               
+        
+        if sold_Qty == 1:
+            str_STC += " (Closed)"
+            self.portfolio.loc[open_trade, "isOpen"] = 0
+            
         print (Back.GREEN + f"Filled: {str_STC}")
         self.save_logs()
             
@@ -683,6 +645,7 @@ class AlertTrader():
           
         for i in range(len(self.portfolio)):
             trade = self.portfolio.iloc[i]
+            redo_orders = False
             
             if trade["isOpen"] == 0:
                 continue
@@ -692,20 +655,31 @@ class AlertTrader():
                 order_info = self.TDsession.get_orders(account=self.accountId, 
                                                          order_id=order_id
                                                          )
+                # Check if number filled Qty changed
+                qty_fill = order_info['filledQuantity']
+                qty_fill_old = self.portfolio.loc[i, "filledQty"]
+                
+                if not pd.isnull(qty_fill_old) and qty_fill_old != qty_fill:
+                    redo_orders = True
+                
                 self.portfolio.loc[i, "filledQty"] = order_info['filledQuantity']
                 self.portfolio.loc[i, "BTO-Status"] = order_info['status']
                 trade = self.portfolio.iloc[i]
                 self.save_logs("port")
                 
-            if trade["BTO-Status"] != "FILLED":
+            if pd.isnull(trade["filledQty"]):
                 continue
 
             plan_all = eval(trade["Plan_all"])
             if  plan_all == {}:
                 continue
-
+            
+            if redo_orders:
+                self.close_open_exit_orders(i)
+                
+                
             # Calculate x/uQty:
-            uQty_bought = trade['uQty']
+            uQty_bought = trade['filledQty']
             nPTs =  len([i for i in range(1,4) if plan_all[f"PT{i}"] is not None])
             if nPTs != 0:  
                 uQty = [round(uQty_bought/nPTs)]*nPTs
@@ -778,11 +752,19 @@ class AlertTrader():
                 else:
                     raise("Not sure type order. Check")
                 
+                if order_status == 'CANCELED':
+                    # Try next order number. probably went through
+                    order_status = self.TDsession.get_orders(account=self.accountId, 
+                                      order_id= STC_ordID + 1)['status']
+                    
+                    if order_status == 'FILLED':
+                         self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID + 1
+                    
                 self.portfolio.loc[i, STC+"-Status"] = order_status
                 trade = self.portfolio.iloc[i]
                 
                 if order_status == "FILLED" and np.isnan(trade[STC+"-xQty"]):
-                    self.log_filled_STC(STC_ordID, i, STC)
+                    self.log_filled_STC(STC_ordID + 1, i, STC)
 
                 self.save_logs("port")
  
