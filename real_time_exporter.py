@@ -177,7 +177,7 @@ while True:
                                 if msg_type == "stock":
                                     pars, order =  parser_alerts(edit['Content'])                                    
                                 else:
-                                    pars, order =  option_alerts_parser(edit.loc[0, 'Content'])   
+                                    pars, order =  option_alerts_parser(edit['Content'])   
                                 if order is None:
                                     continue
                                 order['action'] = "ExitUpdate"

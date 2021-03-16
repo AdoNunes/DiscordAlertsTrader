@@ -6,6 +6,7 @@ Created on Mon Feb  8 18:11:55 2021
 @author: adonay
 """
 import re
+import pandas as pd
 
 def parser_alerts(msg):
     if not '@everyone' in msg:

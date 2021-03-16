@@ -236,8 +236,10 @@ class AlertTrader():
             self.update_orders()
             
             log_alert['action'] = "ExitUpdate"
-            self.save_logs()  
-            print(Back.GREEN + f"Updated exit plan from :{old_plan} to {new_plan}")
+            self.save_logs() 
+            symb = self.portfolio.loc[open_trade, "Symbol"]
+            
+            print(Back.GREEN + f"Updated {symb} exit plan from :{old_plan} to {new_plan}")
             
             return
             
