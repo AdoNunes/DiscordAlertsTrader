@@ -124,10 +124,26 @@ def parse_Symbol(msg, act):
     return Symbol
 
 def parse_date(msg):
-    re_mark = re.compile("(\d{1,2}\/\d{1,2}(?:\/\d{1,2})?)")
-    date_inf = re_mark.search(msg)
+    re_date = re.compile("(\d{1,2}\/\d{1,2}(?:\/\d{1,2})?)")
+    date_inf = re_date.search(msg)
     if date_inf is None:
-        return None
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug",
+                  "Sep", "Oct", "Nov", "Dec"]
+        
+        exp= f"({'|'.join(months)})" + " (\d{1,2}) (20\d{2})"
+        re_date = re.compile(exp)
+        date_inf = re_date.search(msg)
+        
+        if date_inf is None:
+            crx
+            return None
+        else:
+            dt_1 = months.index(date_inf.groups()[0])
+            dt_2 = date_inf.groups()[1]
+            dt_3 = date_inf.groups()[2]
+            date = f"{dt_1}/{dt_2}/{dt_3}"
+            return date
+        
     date = date_inf.groups()[0]
     return date
     

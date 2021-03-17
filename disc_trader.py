@@ -99,6 +99,10 @@ class AlertTrader():
         self.update_portfolio = False
         self.updater._stop()
         self.activate_trade_updater(refresh_rate)
+    
+    def _stop(self):
+        "Lazy trick to stop updater threading"
+        self.update_portfolio = False
         
     def trade_updater(self, refresh_rate=30):       
         while self.update_portfolio is True: 
@@ -159,7 +163,7 @@ class AlertTrader():
         while True:
             question = f"{pars_ori} {price_now(symb)}"
             
-            pdiff = (ord_ori['price'] - price_now(symb,1 ))/ord_ori['price']
+            pdiff = (price_now(symb,1 ) - ord_ori['price'])/ord_ori['price']
             pdiff = round(pdiff*100,1)
             if cfg.sell_current_price:
                 if pdiff < cfg.max_price_diff[order["asset"]]:
@@ -223,10 +227,13 @@ class AlertTrader():
             if not pd.isnull(position[ f"STC{i}-Status"]) and \
                 position[ f"STC{i}-Status"] != "FILLED" :
                 
-                order_id =  position[ f"STC{i}-ordID"]
-                print(Back.GREEN + f"Cancelling {position['Symbol']} STC{i}")
+                order_id =  int(position[ f"STC{i}-ordID"])
+                ord_stat, _ = self.get_order_info(order_id)
                 
-                self.TDsession.cancel_order(self.TDsession.accountId, order_id)
+                if ord_stat != 'CANCELED':
+                    print(Back.GREEN + f"Cancelling {position['Symbol']} STC{i}")                    
+                    self.TDsession.cancel_order(self.TDsession.accountId, order_id)
+                    
                 self.portfolio.loc[open_trade, f"STC{i}-Status"] = np.nan
                 self.portfolio.loc[open_trade, f"STC{i}-ordID"] = np.nan
                 self.save_logs("port")
@@ -283,7 +290,7 @@ class AlertTrader():
            
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
                                                        make_BTO_lim_order)
-            
+            self.save_logs("port")
             if order_response is None:  #Assume trade not accepted
                 log_alert['action'] = "BTO-notAccepted"
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
@@ -313,7 +320,7 @@ class AlertTrader():
             
             self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
                        
-            if order_status == "FILLED":  # FilledQty won't populate if already FILLED
+            if order_status == "FILLED":  
                 ot = find_open_trade(order, self.portfolio)
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
 
@@ -354,16 +361,25 @@ class AlertTrader():
             # check if position already alerted and closed
             for i in range(1,4):
                 STC = f"STC{i}"
-                if pd.isnull(position[f"STC{i}-Alerted"]):
-                    self.portfolio.loc[open_trade, f"STC{i}-Alerted"] = 1
-                    if not pd.isnull(position[ f"STC{i}-Price"]):
+                
+                # If not alerted, mark it
+                if pd.isnull(position[f"{STC}-Alerted"]):
+                    self.portfolio.loc[open_trade, f"{STC}-Alerted"] = 1
+                    
+                    # If alerted and already sold
+                    if not pd.isnull(position[ f"{STC}-Price"]):
                         print(Back.GREEN + "Already sold")
-                        log_alert['action'] = "STC-DoneBefore"
+                        log_alert['action'] = f"{STC}-DoneBefore"
                         log_alert["portfolio_idx"] = open_trade
                         self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                         self.save_logs(["alert"])
                         return
+                    
                     break
+                
+                # # Make sure the previous alert executed STC
+                # assert(not pd.isnull(position[f"STC{i}-Alerted"]) and 
+                #        not pd.isnull(position[ f"STC{i}-Price"]))
             else:
                 str_STC = "How many STC already?"
                 print (Back.RED + str_STC)
@@ -401,7 +417,10 @@ class AlertTrader():
             
             qty_sold = np.nansum([position[f"STC{i}-uQty"] for i in range(1,4)])
             
-            if order['xQty'] == 1:  # Sell all
+            
+            
+            if order['xQty'] == 1: 
+                # Sell all and close waiting stc orders   
                 
                 self.close_open_exit_orders(open_trade)
                 
@@ -413,7 +432,7 @@ class AlertTrader():
 
             assert(order['uQty'] + qty_sold <= qty_bought)
             
-            order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
+            order_response, order_id, order, _ = self.confirm_and_send(order, pars,
                            make_STC_lim) 
             
             log_alert["portfolio_idx"] = open_trade
@@ -430,21 +449,19 @@ class AlertTrader():
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs()
                         
+                       
+            order_status, order_info = self.get_order_info(order_id)
             
-            order_info = self.TDsession.get_orders(account=self.accountId, 
-                                              order_id=order_id)
-            order_status = order_info['status']
             
             self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
             
             # Check if STC price changed
             if order_status == "FILLED":
-                self.log_filled_STC(self, order_id, open_trade, STC)
-                
-        
-            str_STC = f"Submitted: {STC} {order['Symbol']} @{order['price']} Qty:{order['uQty']} ({order['xQty']})"       
+                self.log_filled_STC(order_id, open_trade, STC)
             
-            print(Back.GREEN + str_STC)
+            else:
+                str_STC = f"Submitted: {STC} {order['Symbol']} @{order['price']} Qty:{order['uQty']} ({order['xQty']})"       
+                print(Back.GREEN + str_STC)
 
             
 
@@ -457,6 +474,9 @@ class AlertTrader():
         
         if 'price' in order_info.keys():
             stc_price = order_info['price']
+            
+        elif 'stopPrice' in order_info.keys():  
+            stc_price = order_info['stopPrice']
             
         elif "orderActivityCollection" in order_info.keys():
             prics = []
@@ -545,7 +565,7 @@ class AlertTrader():
                 xQty[-1] = 1 - sum(xQty[:-1])
             
             # Go over exit plans and make orders
-            for ii in range(1,4):
+            for ii in range(1, nPTs):
                 STC = f"STC{ii}"
                 order = {'Symbol': trade['Symbol']}
 
@@ -620,7 +640,7 @@ class AlertTrader():
                 trade = self.portfolio.iloc[i]
                 
                 if order_status == "FILLED" and np.isnan(trade[STC+"-xQty"]):
-                    self.log_filled_STC(STC_ordID + 1, i, STC)
+                    self.log_filled_STC(STC_ordID, i, STC)
 
                 self.save_logs("port")
  

@@ -136,7 +136,24 @@ def parse_exits_vals(msg, expr):
 
 
 def parse_sell_amount(msg):
-    if "partial" in msg:
+    
+    exprs = "(?:sold|sell) (\d\/\d)"    
+    re_comp= re.compile(exprs)
+    amnt_inf = re_comp.search(msg)
+    if amnt_inf is not None: 
+        return round(eval(amnt_inf.groups()[0]), 2)
+        
+    exprs = "(?:sold|sell)(\d of \d)"    
+    re_comp= re.compile(exprs)
+    amnt_inf = re_comp.search(msg)
+    if amnt_inf is not None: 
+        return round(eval(amnt_inf.groups()[0].replace(" of ", "/")), 2)
+    
+    if any(subs in msg.lower() for subs in ["sold half", "sold another half", "half"]): 
+        return 0.5
+          
+    
+    if "partial" in msg.lower():
         amnt = .33
     else:
         amnt = 1
