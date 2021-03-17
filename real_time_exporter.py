@@ -149,7 +149,7 @@ while True:
                         
                         symb = mark_inf.groups()[0]
                             
-                        time_since = (datetime.now() - timedelta(hours=23)).strftime(time_strf)
+                        time_since = (datetime.now() - timedelta(hours=2)).strftime(time_strf)
                         out_file = f"{data_dir}/{chn_name}_temp_2.csv"
                         
                         cmd_sh = cmd.format(path_dll, 
@@ -183,8 +183,7 @@ while True:
                                 order['action'] = "ExitUpdate"
                                 pars.replace("BTO", "ExitUpdate")
                                 
-                                eval(f"Alerts_trader.new_{msg_type}_alert(order, pars,\
-                                 edit['Content'])")
+                                Alerts_trader.new_trade_alert(order, pars, edit['Content'])
                                 
                     elif pars == 'not an alert':
                         print(Style.DIM + "\t \tnot for @everyone")
@@ -193,8 +192,8 @@ while True:
                                             
                         if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
                             order["Trader"] = msg['Author']
-                            eval(f"Alerts_trader.new_{msg_type}_alert(order, pars,\
-                                 msg['Content'])")
+                            Alerts_trader.new_trade_alert(order, pars,\
+                                 msg['Content'])
     
     toc = datetime.now() 
     tictoc = (toc-tic).total_seconds()

@@ -26,7 +26,8 @@ def parser_alerts(msg):
 
     order = {"action": act,
              "Symbol": Symbol,
-             "price": mark
+             "price": mark,
+             "asset": "stock"
              }
 
     str_prt = f"{act} {Symbol} @{mark} "
