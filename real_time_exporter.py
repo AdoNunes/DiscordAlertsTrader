@@ -16,9 +16,10 @@ from datetime import datetime, timedelta
 from message_parser import parser_alerts
 from option_message_parser import option_alerts_parser
 from config import (path_dll, data_dir, CHN_NAMES, channel_IDS, discord_token, UPDATE_PERIOD)
+import config as cfg
 from disc_trader import AlertTrader
+import threading
 from colorama import Fore, Back, Style, init
-
 
 init(autoreset=True)
 
@@ -67,139 +68,158 @@ def update_Edited_msg(df_hist_old, df_hist_upd):
 
 
     
+class AlertsListner():
     
-chn_hist_f = {c:f"{data_dir}/{c}_message_history.csv" for c in CHN_NAMES}
-chn_hist = {c: pd.read_csv(chn_hist_f[c]) for c in CHN_NAMES}
+    def __init__(self):
 
-
-cmd = 'dotnet {} export -c {}   -t {} -f Csv --after "{}" --dateformat "yyyy-MM-dd HH:mm:ss.ffffff" -o {}'
-time_strf = "%Y-%m-%d %H:%M:%S.%f"
-
-
-last_time = [d['Date'].max() for d in chn_hist.values()]
-last_time = [datetime.strptime(d, time_strf) for d in last_time]
-
-time_after = [None]*len(CHN_NAMES)
-
-Alerts_trader = AlertTrader()
-
-
-while True:
-    
-    tic = datetime.now()
-    for chn_i in range(len(CHN_NAMES)):  
-        chn_name = CHN_NAMES[chn_i]
-        
-        out_file = f"{data_dir}/{chn_name}_temp.csv"
+        self.UPDATE_PERIOD = cfg.UPDATE_PERIOD
+        self.CHN_NAMES = cfg.CHN_NAMES
                 
-        time_diff = (datetime.now() - last_time[chn_i])
-        time_after[chn_i] = (datetime.now() - time_diff).strftime(time_strf)  
+        self.cmd = f'dotnet {path_dll} export' + ' -c {} ' + \
+            f'  -t {discord_token}' + \
+                ' -f Csv --after "{}" --dateformat "yyyy-MM-dd HH:mm:ss.ffffff" -o {}'
+                
+        self.time_strf = "%Y-%m-%d %H:%M:%S.%f"
+                
+        self.Altrader = AlertTrader()
         
-        cmd_sh = cmd.format(path_dll, 
-                            channel_IDS[chn_name], 
-                            discord_token, 
-                            time_after[chn_i], 
-                            out_file
-                            )
-        spro = subprocess.Popen(cmd_sh, shell=True, 
-                                stderr=subprocess.PIPE, 
-                                stdout=subprocess.PIPE
-                                )        
-        # Capture if read new messages 
-        spro_err = str(spro.communicate()[1])
-        new_msgs = False if "ERROR" in spro_err else True
-        if new_msgs:
-            
-            last_time[chn_i] = datetime.now()           
+        self.listening = False
+        
+        self.thread =  threading.Thread(target=self.listent_trade_alerts)
+        self.thread.start()
 
-            df_update, new_msg = updt_chan_hist(df_hist=chn_hist[chn_name], 
-                                       path_update=f"{data_dir}/{chn_name}_temp.csv",
-                                       path_hist=chn_hist_f[chn_name]
-                                       )
+    def listent_trade_alerts(self):
+        
+        self.listening = True 
+        
+        chn_hist_f = {c:f"{data_dir}/{c}_message_history.csv" for c in self.CHN_NAMES}
+        chn_hist = {c: pd.read_csv(chn_hist_f[c]) for c in self.CHN_NAMES}
+        
+        time_strf = self.time_strf
+        
+        time_after = [None]*len(self.CHN_NAMES)
+        
+        last_time = [d['Date'].max() for d in chn_hist.values()]
+        last_time = [datetime.strptime(d, time_strf) for d in last_time]
+        
+        while self.listening:
             
-            chn_hist[chn_name] = df_update
-            nmsg = len(new_msg)
-            print(Style.DIM + f"{last_time[chn_i]} | {chn_name}: got {nmsg} new msgs:")
-            
-            for ix, msg in new_msg.iterrows():
-                   
-                if msg['Author'] != "Xcapture#0190":  
-                    
-                    shrt_date = datetime.strptime(msg["Date"], time_strf
-                                                  ).strftime('%H:%M:%S')
-                    print(f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
-                    
-                    
-                    if chn_name.split("_")[0] == "stock":
-                        pars, order =  parser_alerts(msg['Content'])
-                        msg_type = "stock"
-                    elif chn_name.split("_")[0] == "option":
-                        pars, order =  option_alerts_parser(msg['Content'])
-                        msg_type = "option"
-                    else:
-                        raise TypeError ("Type of equity not known")
-                    
-                    
-                    if pars is None:                        
-                        re_upd = re.compile("trade plan (?:.*?)\*\*([A-Z]*?)\*\*(?:.*?) updated")
-                        mark_inf = re_upd.search(msg['Content'])
-                        if mark_inf is None:
-                            print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
-                            continue
+            tic = datetime.now()
+            for chn_i in range(len(self.CHN_NAMES)):  
+                chn_name = self.CHN_NAMES[chn_i]
+                
+                out_file = f"{data_dir}/{chn_name}_temp.csv"
                         
-                        symb = mark_inf.groups()[0]
+                time_diff = (datetime.now() - last_time[chn_i])
+                time_after[chn_i] = (datetime.now() - time_diff).strftime(time_strf)  
+                
+                cmd_sh = self.cmd.format(channel_IDS[chn_name],                                      
+                                    time_after[chn_i], 
+                                    out_file
+                                    )
+                spro = subprocess.Popen(cmd_sh, shell=True, 
+                                        stderr=subprocess.PIPE, 
+                                        stdout=subprocess.PIPE
+                                        )        
+                # Capture if read new messages 
+                spro_err = str(spro.communicate()[1])
+                new_msgs = False if "ERROR" in spro_err else True
+                
+                if new_msgs:
+                    
+                    last_time[chn_i] = datetime.now()           
+        
+                    df_update, new_msg = updt_chan_hist(df_hist=chn_hist[chn_name], 
+                                               path_update=f"{data_dir}/{chn_name}_temp.csv",
+                                               path_hist=chn_hist_f[chn_name]
+                                               )
+                    
+                    chn_hist[chn_name] = df_update
+                    nmsg = len(new_msg)
+                    print(Style.DIM + f"{last_time[chn_i]} | {chn_name}: got {nmsg} new msgs:")
+                    
+                    for ix, msg in new_msg.iterrows():
+                           
+                        if msg['Author'] != "Xcapture#0190":  
                             
-                        time_since = (datetime.now() - timedelta(hours=2)).strftime(time_strf)
-                        out_file = f"{data_dir}/{chn_name}_temp_2.csv"
-                        
-                        cmd_sh = cmd.format(path_dll, 
-                            channel_IDS[chn_name], 
-                            discord_token, 
-                            time_since, 
-                            out_file
-                            )                        
-                        
-                        spro = subprocess.Popen(cmd_sh, shell=True, 
-                                stderr=subprocess.PIPE, 
-                                stdout=subprocess.PIPE
-                                )        
-                        
-                        hist_upd = pd.read_csv(out_file)
-                        
-                        edited =  update_Edited_msg(chn_hist[chn_name], hist_upd)
-                        
-                        if edited is not None:
-                            df = chn_hist[chn_name]
-                            for ix, edit in edited.iterrows():
-                                df.loc[df["Date"] == edit["Date"], "Content"] = edit["Content"]
-                                print(f"Updated exit plan: \n \t {edit['Content']}")
-                                
-                                if msg_type == "stock":
-                                    pars, order =  parser_alerts(edit['Content'])                                    
-                                else:
-                                    pars, order =  option_alerts_parser(edit['Content'])   
-                                if order is None:
+                            shrt_date = datetime.strptime(msg["Date"], time_strf
+                                                          ).strftime('%H:%M:%S')
+                            print(f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
+                            
+                            
+                            if chn_name.split("_")[0] == "stock":
+                                pars, order =  parser_alerts(msg['Content'])
+                                msg_type = "stock"
+                            elif chn_name.split("_")[0] == "option":
+                                pars, order =  option_alerts_parser(msg['Content'])
+                                msg_type = "option"
+                            else:
+                                raise TypeError ("Type of equity not known")
+                            
+                            
+                            if pars is None:                        
+                                re_upd = re.compile("trade plan (?:.*?)\*\*([A-Z]*?)\*\*(?:.*?) updated")
+                                mark_inf = re_upd.search(msg['Content'])
+                                if mark_inf is None:
+                                    print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
                                     continue
-                                order['action'] = "ExitUpdate"
-                                pars.replace("BTO", "ExitUpdate")
                                 
-                                Alerts_trader.new_trade_alert(order, pars, edit['Content'])
+                                symb = mark_inf.groups()[0]
+                                    
+                                time_since = (datetime.now() - timedelta(hours=2)).strftime(time_strf)
+                                out_file = f"{data_dir}/{chn_name}_temp_2.csv"
                                 
-                    elif pars == 'not an alert':
-                        print(Style.DIM + "\t \tnot for @everyone")
-                    else:
-                        print(Fore.RED +f"\t \t {pars}")
-                                            
-                        if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
-                            order["Trader"] = msg['Author']
-                            Alerts_trader.new_trade_alert(order, pars,\
-                                 msg['Content'])
-    
-    toc = datetime.now() 
-    tictoc = (toc-tic).total_seconds()
+                                cmd_sh = self.cmd.format( 
+                                    channel_IDS[chn_name],                                      
+                                    time_since, 
+                                    out_file
+                                    )                        
+                                
+                                spro = subprocess.Popen(cmd_sh, shell=True, 
+                                        stderr=subprocess.PIPE, 
+                                        stdout=subprocess.PIPE
+                                        )        
+                                
+                                hist_upd = pd.read_csv(out_file)
+                                
+                                edited =  update_Edited_msg(chn_hist[chn_name], hist_upd)
+                                
+                                if edited is not None:
+                                    df = chn_hist[chn_name]
+                                    for ix, edit in edited.iterrows():
+                                        df.loc[df["Date"] == edit["Date"], "Content"] = edit["Content"]
+                                        print(f"Updated exit plan: \n \t {edit['Content']}")
+                                        
+                                        if msg_type == "stock":
+                                            pars, order =  parser_alerts(edit['Content'])                                    
+                                        else:
+                                            pars, order =  option_alerts_parser(edit['Content'])   
+                                        if order is None:
+                                            continue
+                                        order['action'] = "ExitUpdate"
+                                        pars.replace("BTO", "ExitUpdate")
+                                        
+                                        self.Altrader.new_trade_alert(order, pars, edit['Content'])
+                                        
+                            elif pars == 'not an alert':
+                                print(Style.DIM + "\t \tnot for @everyone")
+                            else:
+                                print(Fore.RED +f"\t \t {pars}")
+                                                    
+                                if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
+                                    order["Trader"] = msg['Author']
+                                    self.Altrader.new_trade_alert(order, pars,\
+                                         msg['Content'])
+            
+            toc = datetime.now() 
+            tictoc = (toc-tic).total_seconds()
+        
+            # wait UPDATE_PERIOD
+            if tictoc < self.UPDATE_PERIOD:
+                time.sleep(min(self.UPDATE_PERIOD-tictoc, self.UPDATE_PERIOD))
 
-    # wait UPDATE_PERIOD
-    if tictoc < UPDATE_PERIOD:
-        time.sleep(min(UPDATE_PERIOD-tictoc, UPDATE_PERIOD))
+
+alistner = AlertsListner()
 
 
+SL_2buyprice = ['Move SL to buy price',]
