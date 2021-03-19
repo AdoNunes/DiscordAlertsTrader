@@ -26,7 +26,8 @@ def option_alerts_parser(msg):
     expDate = parse_date(msg)
     
     strike, optType = parse_strike(msg)
-
+    optType = optType.upper()
+    
     mark = parse_mark(msg)
 
     order = {"action": act,
@@ -148,7 +149,7 @@ def parse_date(msg):
     return date
     
 def parse_strike(msg):
-    re_strike = re.compile("(\d+(?:\.\d+)?)[ ]?(C|c|P|p)")
+    re_strike = re.compile(" [$]?(\d+(?:\.\d+)?)[ ]?(C|c|P|p)")
     strike_inf = re_strike.search(msg)
     if strike_inf is None and "BTO" in msg:
         sym = parse_Symbol(msg, "BTO")
@@ -156,7 +157,7 @@ def parse_strike(msg):
         strike_inf = re_strike.search(msg)             
         # if strike_inf is None: 
         #     return None, None
-        return strike_inf.groups()[0] , "C"  
+        return strike_inf.groups()[0], "C"
     
     if strike_inf is None: 
         return None, None   
@@ -225,7 +226,12 @@ def parse_sell_amount(msg):
     if any(subs in msg.lower() for subs in ["sold half", "sold another half", "half"]): 
         return 0.5
     
-      
+    exprs = "\((\d(?:\/| of )\d)\)"    
+    re_comp= re.compile(exprs)
+    amnt_inf = re_comp.search(msg)
+    if amnt_inf is not None: 
+        return round(eval(amnt_inf.groups()[0].replace(" of ", "/")), 2)
+    
     
     if "partial" in msg.lower():
         amnt = .33
@@ -234,7 +240,7 @@ def parse_sell_amount(msg):
     return amnt
 
 
-if __name__ == "__main__":
+if 0:
 
 
     file = 'Xtrades.net - 🔹Stock-Trading🔸 - 🔹stock-alerts🔹 [592829298038276096].csv'

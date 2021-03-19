@@ -153,6 +153,13 @@ def parse_sell_amount(msg):
         return 0.5
           
     
+    exprs = "\((\d(?:\/| of )\d)\)"    
+    re_comp= re.compile(exprs)
+    amnt_inf = re_comp.search(msg)
+    if amnt_inf is not None: 
+        return round(eval(amnt_inf.groups()[0].replace(" of ", "/")), 2)
+    
+    
     if "partial" in msg.lower():
         amnt = .33
     else:
