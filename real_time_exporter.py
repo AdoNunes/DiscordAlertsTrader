@@ -20,6 +20,8 @@ import config as cfg
 from disc_trader import AlertTrader
 import threading
 from colorama import Fore, Back, Style, init
+import itertools
+
 
 init(autoreset=True)
 
@@ -64,8 +66,53 @@ def update_Edited_msg(df_hist_old, df_hist_upd):
         
     return edited_msg 
        
+    
 
-
+def closest_fullname_match(name, names_all):
+    """Match first substring in a list from a list of strings,
+    eg, name = ["Name"]
+    """
+    
+    if name is None:
+        return name
+       
+    candidate = [ n for n in names_all if name[0] in n.lower()]
+    
+    if candidate == []:
+        "print name not matched"
+        return None
+    
+    # df unique returned in order of appearence
+    # if candidate > 1, return last most recent
+    return candidate[-1]
+    
+    
+def dm_message(msg, names_all):
+    
+    if "author:" in msg or "A:" in msg:
+        re_author = re.compile("(?:author|A):[ ]?(\w+)")
+        auth_inf = re_author.search(msg)
+        
+        author = closest_fullname_match(auth_inf.groups(), names_all)
+        
+        re_author = re.compile("ms:[ ]?(\w+)")
+                
+        content = msg[auth_inf.span()[1]+1:]
+        
+    else:
+        author = "Me"
+        
+        content = msg
+    
+    if "asset:" in msg or "AS:" in msg:        
+        re_ass = re.compile("(?:asset|AS):[ ]?(\w+)")
+        ass_inf = re_ass.search(msg)
+        asset = ass_inf.groups()[0]
+    else:
+        asset = None
+        
+    return author, asset, content
+    
 
     
 class AlertsListner():
@@ -85,9 +132,12 @@ class AlertsListner():
         
         self.listening = False
         
-        self.thread =  threading.Thread(target=self.listent_trade_alerts)
-        self.thread.start()
-
+        # self.thread =  threading.Thread(target=self.listent_trade_alerts)
+        # self.thread.start()
+        
+    def close(self):
+        self.Altrader.update_portfolio = False
+        
     def listent_trade_alerts(self):
         
         self.listening = True 
@@ -117,6 +167,8 @@ class AlertsListner():
                                     time_after[chn_i], 
                                     out_file
                                     )
+                
+                # TODO: make exe_com function 
                 spro = subprocess.Popen(cmd_sh, shell=True, 
                                         stderr=subprocess.PIPE, 
                                         stdout=subprocess.PIPE
@@ -140,22 +192,37 @@ class AlertsListner():
                     
                     for ix, msg in new_msg.iterrows():
                            
-                        if msg['Author'] != "Xcapture#0190":  
+                        
+                        if msg['Author'] != "Xcapture#0190" and not pd.isnull(msg['Content']):  
+                            
+                            if chn_name.split("_")[0] == "stock":
+                                asset = "stock"
+                            elif chn_name.split("_")[0] == "option":
+                                asset = "option"
+                            else:
+                                asset = None
+                                
+                            if chn_name == 'DM_xcapture': 
+                                # Get authors names from non-DM servers                            
+                                names_all = [chn_hist[n]['Author'].unique() for n in self.CHN_NAMES if n[:2] != "DM"]
+                                names_all = list(itertools.chain(*names_all))                            
+                                                                              
+                                author, asset, content = dm_message(msg["Content"], names_all)
+                                print( author, asset, content)                                
+                                msg['Author'] = author
+                                msg["Content"] = content
                             
                             shrt_date = datetime.strptime(msg["Date"], time_strf
                                                           ).strftime('%H:%M:%S')
                             print(f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
-                            
-                            
-                            if chn_name.split("_")[0] == "stock":
+
+
+                            if asset == "stock":
                                 pars, order =  parser_alerts(msg['Content'])
-                                msg_type = "stock"
-                            elif chn_name.split("_")[0] == "option":
+                            elif asset == "option":
                                 pars, order =  option_alerts_parser(msg['Content'])
-                                msg_type = "option"
-                            else:
-                                raise TypeError ("Type of equity not known")
-                            
+                                    
+                                                        
                             
                             if pars is None:                        
                                 re_upd = re.compile("trade plan (?:.*?)\*\*([A-Z]*?)\*\*(?:.*?) updated")
@@ -190,12 +257,14 @@ class AlertsListner():
                                         df.loc[df["Date"] == edit["Date"], "Content"] = edit["Content"]
                                         print(f"Updated exit plan: \n \t {edit['Content']}")
                                         
-                                        if msg_type == "stock":
+                                        if asset == "stock":
                                             pars, order =  parser_alerts(edit['Content'])                                    
                                         else:
-                                            pars, order =  option_alerts_parser(edit['Content'])   
+                                            pars, order =  option_alerts_parser(edit['Content'])  
+                                            
                                         if order is None:
                                             continue
+                                        
                                         order['action'] = "ExitUpdate"
                                         pars.replace("BTO", "ExitUpdate")
                                         
@@ -203,6 +272,7 @@ class AlertsListner():
                                         
                             elif pars == 'not an alert':
                                 print(Style.DIM + "\t \tnot for @everyone")
+                                
                             else:
                                 print(Fore.RED +f"\t \t {pars}")
                                                     
@@ -220,6 +290,6 @@ class AlertsListner():
 
 
 alistner = AlertsListner()
-
+alistner.listent_trade_alerts()
 
 SL_2buyprice = ['Move SL to buy price',]
