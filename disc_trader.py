@@ -62,7 +62,7 @@ class AlertTrader():
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
             self.portfolio = pd.DataFrame(columns=[
-                "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price",
+                "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Alert-Price",
                 "uQty", "filledQty", "Avged", "exit_plan", "ordID"] + [
                     "STC%d-%s"% (i, v) for v in
                     ["Alerted", "Status", "xQty", "uQty", "Price", "PnL","Date", "ordID"] 
@@ -166,10 +166,17 @@ class AlertTrader():
             pdiff = (price_now(symb,1 ) - ord_ori['price'])/ord_ori['price']
             pdiff = round(pdiff*100,1)
             if cfg.sell_current_price:
+                
                 if pdiff < cfg.max_price_diff[order["asset"]]:
                     order['price'] = price_now(symb,1 )
                     pars = self.order_to_pars(order)
                     question += f"\n new price: {pars}"
+                                    
+                # # Skip user input
+                # if 'uQty' not in order.keys():
+                #     order['uQty'] = round(200/ order['price'])
+                    
+                # break       
                     
             resp = input(Back.RED  + question + "\n Make trade? (y, n or (c)hange) \n").lower()
                          
@@ -287,7 +294,9 @@ class AlertTrader():
             
                         
         if not isOpen and order["action"] == "BTO":
-           
+            
+            alert_price = order['price']
+            
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
                                                        make_BTO_lim_order)
             self.save_logs("port")
@@ -313,6 +322,7 @@ class AlertTrader():
                          "Asset" : order["asset"],
                          "Type" : "BTO",
                          "Price" : ordered["price"],
+                         "Alert-Price" : alert_price,
                          "ordID" : order_id,
                          "exit_plan"  : str(exit_plan),
                          "Trader" : order['Trader']
@@ -565,7 +575,7 @@ class AlertTrader():
                 xQty[-1] = 1 - sum(xQty[:-1])
             
             # Go over exit plans and make orders
-            for ii in range(1, nPTs):
+            for ii in range(1, nPTs+1):
                 STC = f"STC{ii}"
                 order = {'Symbol': trade['Symbol']}
 
