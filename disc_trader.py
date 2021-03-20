@@ -407,8 +407,10 @@ class AlertTrader():
                 self.save_logs(["alert"])
                 return
             
-            # Closing position but not yet filled
-            if qty_bought == 0 and order['xQty'] == 1:
+            # Close position of STC All or STC SL
+            if (qty_bought == 0 and order['xQty'] == 1) or (
+                    order["price"] < self.portfolio.loc[open_trade, "Price"]):
+                
                 order_id = position['ordID']
                 _ = self.TDsession.cancel_order(self.TDsession.accountId, order_id)
                 
@@ -423,7 +425,16 @@ class AlertTrader():
                 log_alert["portfolio_idx"] = open_trade
                 self.save_logs()
                 return
-            
+            elif qty_bought == 0:
+                # Set STC as exit plan
+                
+                exit_plan = eval(self.portfolio.loc[open_trade, "exit_plan"])
+                exit_plan[f"PT{STC[-1]}"] = order["price"]
+                self.portfolio.loc[open_trade, "exit_plan"] = str(exit_plan)
+                print(Back.GREEN + f"Exit Plan {order['Symbol']} updated, with PT{STC[-1]}: {order['price']}")
+                log_alert['action'] = "STC-partial-BeforeFill-ExUp"
+                log_alert["portfolio_idx"] = open_trade
+                return
             
             qty_sold = np.nansum([position[f"STC{i}-uQty"] for i in range(1,4)])
             
@@ -617,8 +628,16 @@ class AlertTrader():
                         _, STC_ordID = send_order(ord_func(**order), self.TDsession)
                         self.portfolio.loc[i, STC+"-ordID"] = STC_ordID
                         trade = self.portfolio.iloc[i]
+                        self.save_logs("port")
                     else:
                         break
+                
+            # Go over STC orders and check status
+            for ii in range(1, 4):
+                STC = f"STC{ii}"
+                
+                if pd.isnull(self.portfolio.loc[i, STC+"-ordID"]):
+                    continue
                 
                 # Get status exit orders
                 STC_ordID = int(float(STC_ordID))  # Might be read as a float
