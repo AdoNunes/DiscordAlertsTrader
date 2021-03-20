@@ -217,9 +217,7 @@ class AlertTrader():
         ord_chngd = ord_ori != order
         
         return resp, order, ord_chngd
-        
-    def close_waiting_order(open_trade):
-        pass
+
     
     def parse_exit_plan(self, order):
         exit_plan = {}
@@ -227,6 +225,7 @@ class AlertTrader():
                 exit_plan[p] = order[p]
         return exit_plan
                     
+    
     def close_open_exit_orders(self, open_trade):
         position = self.portfolio.iloc[open_trade]
         # close other waiting orders
@@ -238,7 +237,7 @@ class AlertTrader():
                 ord_stat, _ = self.get_order_info(order_id)
                 
                 if ord_stat != 'CANCELED':
-                    print(Back.GREEN + f"Cancelling {position['Symbol']} STC{i}")                    
+                    print(Back.GREEN + f"Cancelling {position['Symbol']} STC{i}")
                     self.TDsession.cancel_order(self.TDsession.accountId, order_id)
                     
                 self.portfolio.loc[open_trade, f"STC{i}-Status"] = np.nan
@@ -309,7 +308,7 @@ class AlertTrader():
             
             ordered = eval(order_response['request_body'])  #TODO: check if filled might ve diff price
 
-            order_status, order_info = self.get_order_info(order_id)                     
+            order_status, order_info = self.get_order_info(order_id)
             
             exit_plan = self.parse_exit_plan(order)
                        
@@ -425,9 +424,8 @@ class AlertTrader():
                 self.save_logs()
                 return
             
+            
             qty_sold = np.nansum([position[f"STC{i}-uQty"] for i in range(1,4)])
-            
-            
             
             if order['xQty'] == 1: 
                 # Sell all and close waiting stc orders   
@@ -477,8 +475,7 @@ class AlertTrader():
 
     def log_filled_STC(self, order_id, open_trade, STC):
         
-        order_info = self.TDsession.get_orders(account=self.accountId, 
-                                          order_id=order_id)
+        order_status, order_info = self.get_order_info(order_id)
 
         sold_unts = order_info['orderLegCollection'][0]['quantity']
         
@@ -502,7 +499,7 @@ class AlertTrader():
         
         date = order_info["closeTime"]
         #Log portfolio
-        self.portfolio.loc[open_trade, STC + "-Status"] = order_info['status']
+        self.portfolio.loc[open_trade, STC + "-Status"] = order_status
         self.portfolio.loc[open_trade, STC + "-Price"] = stc_price
         self.portfolio.loc[open_trade, STC + "-Date"] = date
         self.portfolio.loc[open_trade, STC + "-xQty"] =xQty
