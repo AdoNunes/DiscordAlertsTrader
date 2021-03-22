@@ -21,7 +21,7 @@ from disc_trader import AlertTrader
 import threading
 from colorama import Fore, Back, Style, init
 import itertools
-
+import json 
 
 init(autoreset=True)
 
@@ -32,8 +32,8 @@ def updt_chan_hist(df_hist, path_update, path_hist):
     new_msg = pd.read_csv(path_update)
     new_msg = new_msg.loc[new_msg['Date']>last_date]
     
-    df_hist = df_hist.append(new_msg, ignore_index=True)    
-    df_hist.to_csv(path_hist, index=False)    
+    df_hist = df_hist.append(new_msg, ignore_index=True)
+    df_hist.to_csv(path_hist, index=False)
     return df_hist, new_msg
 
 
@@ -114,7 +114,34 @@ def dm_message(msg, names_all):
     return author, asset, content
     
 
+def send_sh_cmd(cmd):
+    "takes command string, returns true if no error"
+    spro = subprocess.Popen(cmd, shell=True, 
+                            stderr=subprocess.PIPE, 
+                            stdout=subprocess.PIPE
+                            )        
+    # Capture if read new messages 
+    spro_err = str(spro.communicate()[1])
+
+    return False if "ERROR" in spro_err else True
+
+def read_json(file_path):
+    with open(file_path, "r") as f:
+        data = json.load(f)
+    return data
+
+
+def disc_json_time_corr(time_json):
+    """ Mesages from json are 4hs forward
     
+        Original format: '2021-03-19T18:31:01.609+00:00'
+        output: dateime object - 4hs !"""
+        
+    date = datetime.strptime(time_json.split("+")[0], "%Y-%m-%dT%H:%M:%S.%f")
+    
+    return  date + timedelta(hours=-4)
+
+
 class AlertsListner():
     
     def __init__(self):
@@ -134,10 +161,36 @@ class AlertsListner():
         
         # self.thread =  threading.Thread(target=self.listent_trade_alerts)
         # self.thread.start()
-        
+
+
     def close(self):
         self.Altrader.update_portfolio = False
+
+
+    def find_edited_msgs(self, chn_id, time_after_last, out_file,  hours=19):
         
+        out_json = out_file.replace("csv", "json")
+
+        date = time_after_last - timedelta(hours=hours)
+        date = date.strftime(self.time_strf)
+        
+        cmd = self.cmd.format( chn_id, date, out_json)
+        cmd = cmd.replace("Csv", "Json")
+        
+        if not send_sh_cmd(cmd):
+            return False
+        
+        data = read_json(out_json)["messages"]
+        msg_edit = []
+        for msg in data:
+            if msg['timestampEdited']:
+                aux = disc_json_time_corr(msg['timestamp'])
+                msg['timestamp'] = aux.strftime(self.time_strf)
+                msg_edit.append(msg)
+
+        return msg_edit
+
+
     def listent_trade_alerts(self):
         
         self.listening = True 
@@ -153,46 +206,39 @@ class AlertsListner():
         last_time = [datetime.strptime(d, time_strf) for d in last_time]
         
         while self.listening:
-            
+
             tic = datetime.now()
             for chn_i in range(len(self.CHN_NAMES)):  
                 chn_name = self.CHN_NAMES[chn_i]
                 
                 out_file = f"{data_dir}/{chn_name}_temp.csv"
                         
-                time_diff = (datetime.now() - last_time[chn_i])
+                time_diff = (datetime.now() - last_time[chn_i]) + timedelta(seconds=.01)
                 time_after[chn_i] = (datetime.now() - time_diff).strftime(time_strf)  
                 
                 cmd_sh = self.cmd.format(channel_IDS[chn_name],                                      
                                     time_after[chn_i], 
                                     out_file
                                     )
-                
-                # TODO: make exe_com function 
-                spro = subprocess.Popen(cmd_sh, shell=True, 
-                                        stderr=subprocess.PIPE, 
-                                        stdout=subprocess.PIPE
-                                        )        
-                # Capture if read new messages 
-                spro_err = str(spro.communicate()[1])
-                new_msgs = False if "ERROR" in spro_err else True
-                
+                new_msgs = send_sh_cmd(cmd_sh)
+
                 if new_msgs:
                     
-                    last_time[chn_i] = datetime.now()           
+                    last_time[chn_i] = datetime.now()
         
                     df_update, new_msg = updt_chan_hist(df_hist=chn_hist[chn_name], 
-                                               path_update=f"{data_dir}/{chn_name}_temp.csv",
+                                               path_update=out_file,
                                                path_hist=chn_hist_f[chn_name]
                                                )
                     
                     chn_hist[chn_name] = df_update
                     nmsg = len(new_msg)
-                    print(Style.DIM + f"{last_time[chn_i]} | {chn_name}: got {nmsg} new msgs:")
+                    if nmsg:
+                        print(Style.DIM + f"{last_time[chn_i]} | {chn_name}: got {nmsg} new msgs:")
                     
+                    # Loop over new msg and take action
                     for ix, msg in new_msg.iterrows():
-                           
-                        
+
                         if msg['Author'] != "Xcapture#0190" and not pd.isnull(msg['Content']):  
                             
                             if chn_name.split("_")[0] == "stock":
@@ -203,7 +249,7 @@ class AlertsListner():
                                 asset = None
                                 
                             if chn_name == 'DM_xcapture': 
-                                # Get authors names from non-DM servers                            
+                                # Get authors names from non-DM servers
                                 names_all = [chn_hist[n]['Author'].unique() for n in self.CHN_NAMES if n[:2] != "DM"]
                                 names_all = list(itertools.chain(*names_all))                            
                                                                               
@@ -221,9 +267,8 @@ class AlertsListner():
                                 pars, order =  parser_alerts(msg['Content'])
                             elif asset == "option":
                                 pars, order =  option_alerts_parser(msg['Content'])
-                                    
-                                                        
-                            
+
+
                             if pars is None:                        
                                 re_upd = re.compile("trade plan (?:.*?)\*\*([A-Z]*?)\*\*(?:.*?) updated")
                                 mark_inf = re_upd.search(msg['Content'])
@@ -242,10 +287,7 @@ class AlertsListner():
                                     out_file
                                     )                        
                                 
-                                spro = subprocess.Popen(cmd_sh, shell=True, 
-                                        stderr=subprocess.PIPE, 
-                                        stdout=subprocess.PIPE
-                                        )        
+                                new_msgs = send_sh_cmd(cmd_sh)
                                 
                                 hist_upd = pd.read_csv(out_file)
                                 
