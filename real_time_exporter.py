@@ -37,36 +37,54 @@ def updt_chan_hist(df_hist, path_update, path_hist):
     return df_hist, new_msg
 
 
-def prev_msg_exitUpdate(df_hist, path_update, path_hist):
+def update_edited_msg(df_hist, json_msg):
     
-    parser_alerts(msg)
+    msg_old = []
+    for jmsg in json_msg:
+        inx, = np.where(df_hist['Date']== jmsg['timestamp'])
+        if df_hist.loc[inx, 'Content'].values == jmsg['content']:
+            continue
+        msg_old.append((inx, df_hist.loc[inx, 'Content']))
+        df_hist.loc[inx, 'Content']  = jmsg['content']
+
+    return df_hist, msg_old
+
+
+def msg_update_alert(df_hist, json_msg, asset):
     
+    df_hist, msg_old = update_edited_msg(df_hist, json_msg)
     
-def update_Edited_msg(df_hist_old, df_hist_upd):
-    
-    df_hist_upd = df_hist_upd[["Author", 'Content', 'Date']]
-    df_hist_old = df_hist_old[["Author", 'Content', 'Date']]
-    
-    df_hist_upd = df_hist_upd.loc[~(df_hist_upd["Author"] == "Xcapture#0190")]
-    df_hist_old = df_hist_old.loc[~(df_hist_old["Author"] == "Xcapture#0190")]
-   
-        
-    since_date = df_hist_upd['Date'].min()
-    msg_inxs = df_hist_old['Date'] >= since_date
-    
-    df_hist_upd.reset_index( inplace=True)
-    hist_last = df_hist_old.loc[msg_inxs]
-    hist_last.reset_index( inplace=True)
-    
-    if df_hist_upd.equals(hist_last):
+    if msg_old == []:
         return None
-            
-    diff_msg_inx = df_hist_upd['Content'] == hist_last['Content']    
-    edited_msg = df_hist_upd.loc[~diff_msg_inx,:]
+
+    if asset == "stock":
+        parser =  parser_alerts
+    else:
+         parser =  option_alerts_parser
+
+    new_alerts=[]
+    for msg in msg_old:
         
-    return edited_msg 
-       
-    
+        _, order_old =  parser(msg[1])
+        msg_content = df_hist.loc[msg[0], "Content"]
+        pars, order_upd = parser(msg_content)
+        
+        if order_old == order_upd:
+            continue
+        
+        ex_old = [order_old[f"PT{i}"] for i in range(1,4)]
+        ex_upd = [order_old[f"PT{i}"] for i in range(1,4)]
+        
+        if ex_old != ex_upd:
+            order_upd['action'] = "ExitUpdate"
+            pars.replace("BTO", "ExitUpdate")
+            new_alerts.append([pars,order_upd, msg_content])
+        else:
+            raise NotImplementedError ("Check what to do with msg update")
+            
+    return new_alerts, msg_old
+
+
 
 def closest_fullname_match(name, names_all):
     """Match first substring in a list from a list of strings,
@@ -167,7 +185,7 @@ class AlertsListner():
         self.Altrader.update_portfolio = False
 
 
-    def find_edited_msgs(self, chn_id, time_after_last, out_file,  hours=19):
+    def get_edited_msgs(self, chn_id, time_after_last, out_file,  hours=1):
         
         out_json = out_file.replace("csv", "json")
 
@@ -216,7 +234,7 @@ class AlertsListner():
                 time_diff = (datetime.now() - last_time[chn_i]) + timedelta(seconds=.01)
                 time_after[chn_i] = (datetime.now() - time_diff).strftime(time_strf)  
                 
-                cmd_sh = self.cmd.format(channel_IDS[chn_name],                                      
+                cmd_sh = self.cmd.format(channel_IDS[chn_name],
                                     time_after[chn_i], 
                                     out_file
                                     )
@@ -226,10 +244,8 @@ class AlertsListner():
                     
                     last_time[chn_i] = datetime.now()
         
-                    df_update, new_msg = updt_chan_hist(df_hist=chn_hist[chn_name], 
-                                               path_update=out_file,
-                                               path_hist=chn_hist_f[chn_name]
-                                               )
+                    df_update, new_msg = updt_chan_hist(chn_hist[chn_name], 
+                                               out_file, chn_hist_f[chn_name])
                     
                     chn_hist[chn_name] = df_update
                     nmsg = len(new_msg)
@@ -254,7 +270,7 @@ class AlertsListner():
                                 names_all = list(itertools.chain(*names_all))                            
                                                                               
                                 author, asset, content = dm_message(msg["Content"], names_all)
-                                print( author, asset, content)                                
+                                print("DM: ", author, asset, content)                                
                                 msg['Author'] = author
                                 msg["Content"] = content
                             
@@ -269,49 +285,25 @@ class AlertsListner():
                                 pars, order =  option_alerts_parser(msg['Content'])
 
 
-                            if pars is None:                        
+                            if pars is None:
+                                # Check if msg alerting exitUpdate in prev msg
                                 re_upd = re.compile("trade plan (?:.*?)\*\*([A-Z]*?)\*\*(?:.*?) updated")
-                                mark_inf = re_upd.search(msg['Content'])
-                                if mark_inf is None:
+                                upd_inf = re_upd.search(msg['Content'])
+                                if upd_inf is None:
                                     print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
                                     continue
-                                
-                                symb = mark_inf.groups()[0]
+
+                                json_msg = self.get_edited_msgs(
+                                    channel_IDS[chn_name], time_after[chn_i],
+                                    out_file)
+
+                                new_alerts, _ = msg_update_alert(chn_hist[chn_name], json_msg, asset)
+
+                                for alert in new_alerts:
+                                    self.Altrader.new_trade_alert(alert[0], alert[1], alert[2])
+                                    print(f"Updated exit plan: \n \t {alert[0]}")
+
                                     
-                                time_since = (datetime.now() - timedelta(hours=2)).strftime(time_strf)
-                                out_file = f"{data_dir}/{chn_name}_temp_2.csv"
-                                
-                                cmd_sh = self.cmd.format( 
-                                    channel_IDS[chn_name],                                      
-                                    time_since, 
-                                    out_file
-                                    )                        
-                                
-                                new_msgs = send_sh_cmd(cmd_sh)
-                                
-                                hist_upd = pd.read_csv(out_file)
-                                
-                                edited =  update_Edited_msg(chn_hist[chn_name], hist_upd)
-                                
-                                if edited is not None:
-                                    df = chn_hist[chn_name]
-                                    for ix, edit in edited.iterrows():
-                                        df.loc[df["Date"] == edit["Date"], "Content"] = edit["Content"]
-                                        print(f"Updated exit plan: \n \t {edit['Content']}")
-                                        
-                                        if asset == "stock":
-                                            pars, order =  parser_alerts(edit['Content'])                                    
-                                        else:
-                                            pars, order =  option_alerts_parser(edit['Content'])  
-                                            
-                                        if order is None:
-                                            continue
-                                        
-                                        order['action'] = "ExitUpdate"
-                                        pars.replace("BTO", "ExitUpdate")
-                                        
-                                        self.Altrader.new_trade_alert(order, pars, edit['Content'])
-                                        
                             elif pars == 'not an alert':
                                 print(Style.DIM + "\t \tnot for @everyone")
                                 

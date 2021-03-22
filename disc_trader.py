@@ -561,7 +561,7 @@ class AlertTrader():
                 trade = self.portfolio.iloc[i]
                 self.save_logs("port")
                 
-            if pd.isnull(trade["filledQty"]):
+            if pd.isnull(trade["filledQty"]) or trade["filledQty"] == 0:
                 continue
 
             exit_plan = eval(trade["exit_plan"])
