@@ -654,11 +654,11 @@ class AlertTrader():
                 # Get status exit orders
                 STC_ordID = int(float(STC_ordID))  # Might be read as a float
 
-                order_status, _ =  self.get_order_info(order_id)
+                order_status, _ =  self.get_order_info(STC_ordID)
                 
                 if order_status == 'CANCELED':
                     # Try next order number. probably went through
-                    order_status, _ =  self.get_order_info(order_id + 1)
+                    order_status, _ =  self.get_order_info(STC_ordID + 1)
                     
                     if order_status == 'FILLED':
                         STC_ordID = STC_ordID + 1
