@@ -172,6 +172,8 @@ def parse_mark(msg):
         date = parse_date(msg)
         re_mark = re.compile(f"{date}[ ]*[$]?[ ]*([.]?\d+(?:\.\d+)?)")
         mark_inf = re_mark.search(msg)
+        if mark_inf is None:
+            return None
     mark = float(mark_inf.groups()[-1])
     return mark
 

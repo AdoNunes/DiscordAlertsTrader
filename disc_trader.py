@@ -248,7 +248,19 @@ class AlertTrader():
     def get_order_info(self, order_id):
         order_info = self.TDsession.get_orders(account=self.accountId, 
                                               order_id=order_id)
-        return order_info['status'], order_info   
+
+        if order_info['orderStrategyType'] == "OCO":
+            order_status = [
+                order_info['childOrderStrategies'][0]['status'],
+                order_info['childOrderStrategies'][1]['status']]
+            assert(order_status[0]==order_status[1])
+            order_status = order_status[0]
+        elif order_info['orderStrategyType'] == 'SINGLE':
+            order_status = order_info['status']
+        else:
+            raise("Not sure type order. Check")
+            
+        return order_status, order_info   
     
     
     ######################################################################
@@ -635,32 +647,22 @@ class AlertTrader():
             # Go over STC orders and check status
             for ii in range(1, 4):
                 STC = f"STC{ii}"
-                
+                STC_ordID = trade[STC+"-ordID"]
                 if pd.isnull(self.portfolio.loc[i, STC+"-ordID"]):
                     continue
                 
                 # Get status exit orders
                 STC_ordID = int(float(STC_ordID))  # Might be read as a float
-                order_info = self.TDsession.get_orders(account=self.accountId, 
-                                      order_id= STC_ordID)
-                if order_info['orderStrategyType'] == "OCO":
-                    order_status = [
-                        order_info['childOrderStrategies'][0]['status'],
-                        order_info['childOrderStrategies'][1]['status']]
-                    assert(order_status[0]==order_status[1])
-                    order_status = order_status[0]
-                elif order_info['orderStrategyType'] == 'SINGLE':
-                    order_status = order_info['status']
-                else:
-                    raise("Not sure type order. Check")
+
+                order_status, _ =  self.get_order_info(order_id)
                 
                 if order_status == 'CANCELED':
                     # Try next order number. probably went through
-                    order_status = self.TDsession.get_orders(account=self.accountId, 
-                                      order_id= STC_ordID + 1)['status']
+                    order_status, _ =  self.get_order_info(order_id + 1)
                     
                     if order_status == 'FILLED':
-                         self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID + 1
+                        STC_ordID = STC_ordID + 1
+                        self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID
                     
                 self.portfolio.loc[i, STC+"-Status"] = order_status
                 trade = self.portfolio.iloc[i]
@@ -669,9 +671,8 @@ class AlertTrader():
                     self.log_filled_STC(STC_ordID, i, STC)
 
                 self.save_logs("port")
- 
-                    
-        
+
+
 if 0 :
     
     order = {'action': 'BTO',
@@ -691,8 +692,8 @@ if 0 :
     pars = "BTO DPW @3.7 PT1: 3.72 PT2: 4.39 PT3:5.96 SL: 3.01"
     msg = "BTO DPW @3.7 PT1 3.72 SL: 3.01"
     
-    al = AlertTrader()
-    al.new_stock_alert(order, pars, msg)
+    self = AlertTrader(update_portfolio=False)
+    self.new_stock_alert(order, pars, msg)
     
     # order = {'action': 'BTO',
     #   'Symbol': 'PLTR',
