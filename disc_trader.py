@@ -318,7 +318,7 @@ class AlertTrader():
                 print(Back.GREEN + "BTO not accepted by user")
                 return
             
-            ordered = eval(order_response['request_body'])  #TODO: check if filled might ve diff price
+            ordered = eval(order_response['request_body'])
 
             order_status, order_info = self.get_order_info(order_id)
             
@@ -342,7 +342,8 @@ class AlertTrader():
             self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
                        
             if order_status == "FILLED":  
-                ot = find_open_trade(order, self.portfolio)
+                ot = find_open_trade(order, self.portfolio)                
+                self.portfolio.loc[ot, "Price"] = order_info['price']
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
 
                 
@@ -648,6 +649,7 @@ class AlertTrader():
             for ii in range(1, 4):
                 STC = f"STC{ii}"
                 STC_ordID = trade[STC+"-ordID"]
+                
                 if pd.isnull(self.portfolio.loc[i, STC+"-ordID"]):
                     continue
                 
