@@ -14,6 +14,8 @@ from datetime import datetime
 import time
 import config as cfg 
 import threading
+from pprint import pprint
+from td.exceptions import GeneralError
 from place_order import (get_TDsession, make_BTO_lim_order, send_order, 
                          make_STC_lim, make_lim_option,
                          make_Lim_SL_order, make_STC_SL)
@@ -106,9 +108,12 @@ class AlertTrader():
         
     def trade_updater(self, refresh_rate=30):       
         while self.update_portfolio is True: 
-            self.update_orders()   
+            try:
+                self.update_orders()   
+            except GeneralError:
+                print(Back.GREEN + "General error raised, trying again")
             time.sleep(refresh_rate)    
-        print("Closing portfolio updater")
+        print(Back.GREEN + "Closing portfolio updater")
       
     def save_logs(self, csvs=["port", "alert"]):
         if "port" in csvs:
