@@ -14,6 +14,8 @@ from datetime import datetime
 import time
 import config as cfg 
 import threading
+from pprint import pprint
+from td.exceptions import GeneralError
 from place_order import (get_TDsession, make_BTO_lim_order, send_order, 
                          make_STC_lim, make_lim_option,
                          make_Lim_SL_order, make_STC_SL)
@@ -106,9 +108,12 @@ class AlertTrader():
         
     def trade_updater(self, refresh_rate=30):       
         while self.update_portfolio is True: 
-            self.update_orders()   
+            try:
+                self.update_orders()   
+            except GeneralError:
+                print(Back.GREEN + "General error raised, trying again")
             time.sleep(refresh_rate)    
-        print("Closing portfolio updater")
+        print(Back.GREEN + "Closing portfolio updater")
       
     def save_logs(self, csvs=["port", "alert"]):
         if "port" in csvs:
@@ -318,7 +323,7 @@ class AlertTrader():
                 print(Back.GREEN + "BTO not accepted by user")
                 return
             
-            ordered = eval(order_response['request_body'])  #TODO: check if filled might ve diff price
+            ordered = eval(order_response['request_body'])
 
             order_status, order_info = self.get_order_info(order_id)
             
@@ -342,7 +347,8 @@ class AlertTrader():
             self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
                        
             if order_status == "FILLED":  
-                ot = find_open_trade(order, self.portfolio)
+                ot = find_open_trade(order, self.portfolio)                
+                self.portfolio.loc[ot, "Price"] = order_info['price']
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
 
                 
@@ -648,6 +654,7 @@ class AlertTrader():
             for ii in range(1, 4):
                 STC = f"STC{ii}"
                 STC_ordID = trade[STC+"-ordID"]
+                
                 if pd.isnull(self.portfolio.loc[i, STC+"-ordID"]):
                     continue
                 

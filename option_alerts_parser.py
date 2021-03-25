@@ -13,7 +13,7 @@ def get_author_option_alerts():
     alerts.drop(labels=['Attachments', 'Reactions'], axis=1, inplace=True)
 
     authors = alerts["Author"].unique()
-    author = 'ScaredShirtless#0001'
+    author = 'Xtrades Option Guru'
 
     # author = "Kevin Wan#0083"
 
@@ -23,7 +23,7 @@ def get_author_option_alerts():
     alerts_author = alerts_author.dropna(subset=["Content"])
     alerts_author.reset_index(drop=True, inplace=True)
 
-    return alerts_author
+    return alerts_author, author
 
 
 def option_trader(order, trades_log):
@@ -34,7 +34,8 @@ def option_trader(order, trades_log):
 
     if openTrade is None and order["action"] == "BTO":
         trades_log, str_act = make_BTO_option(order, trades_log)
-
+        openTrade = find_open_option(order, trades_log)
+        
     elif order["action"] == "BTO" and order['avg'] is not None:
         trades_log, str_act = make_BTO_option_Avg(order, trades_log, openTrade)
 
@@ -48,7 +49,7 @@ def option_trader(order, trades_log):
         trades_log, str_act = make_STC_option(order, trades_log, openTrade)
 
     print(str_act)
-    return trades_log, str_act
+    return trades_log, str_act, openTrade
 
 
 def find_open_option(order, trades_log):
@@ -109,12 +110,14 @@ def make_BTO_option_Avg(order, trades_log, openTrade):
 
     trades_log.loc[openTrade, "BTO"] = order["avg"]
 
-    planned = trades_log.loc[openTrade, "Planned_PTs"]
-    for i in range(1, order['n_PTs']+1):
-        pt_Str = order[f'PT{i}']
-        str_act = str_act + f" update PL{i}: {pt_Str}"
-        planned[i-1][0] = pt_Str
-    trades_log.loc[openTrade, "Planned_PTs"] = [planned]
+    planned = trades_log.loc[openTrade, "Planned_PT"]
+
+    PTs = [order["PT1"], order["PT2"], order["PT3"]]
+    Qts = order["PTs_Qty"]
+    planned = [[PTs[i], Qts[i]] for i in range(order['n_PTs'])]
+
+    if len(planned):
+        trades_log.loc[openTrade, "Planned_PT"] = [planned]
 
     if order["SL"] is not None:
         trades_log.loc[openTrade, "Planned_SL"] = order["SL"]
@@ -151,7 +154,7 @@ def make_STC_option(order, trades_log, openTrade):
     str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), {stc_price:.2f}%"
 
     Qty_sold = trades_log.loc[openTrade,[f"STC{i}-xQty" for i in range(1,4)]].sum()
-    if order['Qty'] == 1 or Qty_sold > .98:
+    if order['xQty'] == 1 or Qty_sold > .98:
         trades_log.loc[openTrade, "Open"] = 0
         str_STC = str_STC + " Closed"
 
@@ -170,7 +173,13 @@ def check_repeat_STC(order, trades_log, openTrade, STC):
         return False, None
 
 
-trade_log_file = "data/options_trade_history.csv"
+
+alerts_author, author = get_author_option_alerts()
+alerts_author["parsed"] = "nan"
+alerts_author["trade_act"] = "nan"
+
+
+trade_log_file = f"data/options_portfolio_history_{author}.csv"
 
 # if op.exists(trade_log_file):
 #     trades_log = pd.read_csv(trade_log_file)
@@ -180,30 +189,32 @@ trades_log = pd.DataFrame(columns = ["BTO-Date", "Symbol", "Open", "BTO",
                                      "Planned_PT", "Planned_SL",
                                      "STC1", "STC1-xQty", "STC1-PnL","STC1-Date",
                                      "STC2", "STC2-xQty", "STC2-PnL","STC2-Date",
-                                     "STC3", "STC3-xQty", "STC3-PnL","STC3-Date"])
+                                     "STC3", "STC3-xQty", "STC3-PnL","STC3-Date", "Total PnL", "Portfolio_inx"])
     # trades_log.to_csv(trade_log_file, index=False)
 
-alerts_author = get_author_option_alerts()
-alerts_author["parsed"] = "nan"
-alerts_author["trade_act"] = "nan"
+
 
 
 bad_msg = []
-# for i in range(len(alerts_author)):
-for i in [4, 9,11,13]:
+for i in range(1,len(alerts_author)):
     msg = alerts_author["Content"].iloc[i]
     msg = msg.replace("~~2.99~~", "")
     trade_date = alerts_author["Date"].iloc[i]
     # print(msg)
     pars, order =  option_alerts_parser(msg)
-    order["uQty"] = 3
-    alerts_author.loc[i, "parsed"] = pars
-    order['Trader'] = alerts_author["Author"].iloc[i]
+   
+    
     # if "reached pre-market" in msg:
     #     alerts_author.loc[i, "parsed"] = "pre-market repeated alert"
     #     continue
+
     if order  is None:
         continue
+    
+    order["uQty"] = 3
+    alerts_author.loc[i, "parsed"] = pars
+    order['Trader'] = alerts_author["Author"].iloc[i]  
+    
     # order['Trader'] = alerts_author["Author"].iloc[i]
     # if order['Symbol'] == "DPW":
     #     crh
@@ -213,11 +224,12 @@ for i in [4, 9,11,13]:
         continue
 
     order["date"] = trade_date
-    trades_log, str_act = option_trader(order, trades_log)
+    trades_log, str_act, trade_ix = option_trader(order, trades_log)
 
     alerts_author.loc[i,"trade_act"] = str_act
-
-alerts_author.to_csv("data/option_alerts_author_parsed.csv")
+    alerts_author.loc[i, "Portfolio_inx"] = trade_ix
+    
+alerts_author.to_csv(f"data/option_alerts_parsed_{author}.csv")
 trades_log.to_csv(trade_log_file)
 
 

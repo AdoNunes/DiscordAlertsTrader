@@ -231,7 +231,7 @@ class AlertsListner():
                 
                 out_file = f"{data_dir}/{chn_name}_temp.csv"
                         
-                time_diff = (datetime.now() - last_time[chn_i]) + timedelta(seconds=.01)
+                time_diff = (datetime.now() - last_time[chn_i]) 
                 time_after[chn_i] = (datetime.now() - time_diff).strftime(time_strf)  
                 
                 cmd_sh = self.cmd.format(channel_IDS[chn_name],

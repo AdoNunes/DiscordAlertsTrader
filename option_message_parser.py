@@ -24,6 +24,8 @@ def option_alerts_parser(msg):
         return None, None
     
     expDate = parse_date(msg)
+    if expDate is None:
+        return None, None
     
     strike, optType = parse_strike(msg)
     optType = optType.upper()
@@ -42,7 +44,7 @@ def option_alerts_parser(msg):
     str_prt = f"{act} {Symbol} {expDate} {strike + optType} @{mark}"
 
     if act == "BTO":
-        if "avg" in msg:
+        if "avg" in msg or 'new average' in msg:
             avg_price = parse_avg(msg, Symbol)
             str_prt = str_prt + f"AVG to {avg_price} "
             order["avg"] = avg_price
@@ -136,7 +138,7 @@ def parse_date(msg):
         date_inf = re_date.search(msg)
         
         if date_inf is None:
-            crx
+            # crx
             return None
         else:
             dt_1 = months.index(date_inf.groups()[0])
@@ -189,10 +191,12 @@ def parse_exits(msg):
 # (BTO|STC)[ ]*[\*]*([A-Z]+)[\*]*[ ]*(\d+[.\d+]?)
 
 def parse_avg(msg, Symbol):
-    re_avg = re.compile("avg[ ]*[$]*(\d+(?:\.\d+)?)")
+    re_avg = re.compile("(?:avg|new average)[ ]*[$]*(\d+(?:\.\d+)?)")
     avg_inf = re_avg.search(msg)
+    
     if avg_inf is None:
         return None
+
     avg = float(avg_inf.groups()[-1])
     return avg
 
