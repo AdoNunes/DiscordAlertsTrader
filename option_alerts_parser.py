@@ -29,13 +29,13 @@ def get_author_option_alerts():
 def option_trader(order, trades_log):
 
     order["Symbol"] = make_optionID(**order)
-    
+
     openTrade = find_open_option(order, trades_log)
 
     if openTrade is None and order["action"] == "BTO":
         trades_log, str_act = make_BTO_option(order, trades_log)
         openTrade = find_open_option(order, trades_log)
-        
+
     elif order["action"] == "BTO" and order['avg'] is not None:
         trades_log, str_act = make_BTO_option_Avg(order, trades_log, openTrade)
 
@@ -79,18 +79,18 @@ def make_BTO_option(order, trades_log):
     Qts = order["PTs_Qty"]
 
     planned = [[PTs[i], Qts[i]] for i in range(order['n_PTs'])]
-    
+
     trades_log = trades_log.append({
         "BTO-Date": order['date'],
         "Symbol" : order['Symbol'],
         "BTO": order['price'],
         "Strike" : order['strike'],
-        "ExpDate" : order['expDate'],        
+        "ExpDate" : order['expDate'],
         "Planned_PT": planned,
         "Planned_SL": order['SL']
         }, ignore_index=True)
     str_act = f"BTO {order['Symbol']} {order['price']} {order['expDate']} {order['strike']}, Plan PT:{order['PT1']}, SL:{order['SL']}"
-  
+
 
     return trades_log, str_act
 
@@ -196,25 +196,27 @@ trades_log = pd.DataFrame(columns = ["BTO-Date", "Symbol", "Open", "BTO",
 
 
 bad_msg = []
+not_msg = pd.DataFrame(columns=["MSG"])
 for i in range(1,len(alerts_author)):
     msg = alerts_author["Content"].iloc[i]
     msg = msg.replace("~~2.99~~", "")
     trade_date = alerts_author["Date"].iloc[i]
     # print(msg)
     pars, order =  option_alerts_parser(msg)
-   
-    
+
+
     # if "reached pre-market" in msg:
     #     alerts_author.loc[i, "parsed"] = "pre-market repeated alert"
     #     continue
 
     if order  is None:
+        not_msg = not_msg.append({"MSG":msg}, ignore_index=True)
         continue
-    
+
     order["uQty"] = 3
     alerts_author.loc[i, "parsed"] = pars
-    order['Trader'] = alerts_author["Author"].iloc[i]  
-    
+    order['Trader'] = alerts_author["Author"].iloc[i]
+
     # order['Trader'] = alerts_author["Author"].iloc[i]
     # if order['Symbol'] == "DPW":
     #     crh
@@ -228,8 +230,8 @@ for i in range(1,len(alerts_author)):
 
     alerts_author.loc[i,"trade_act"] = str_act
     alerts_author.loc[i, "Portfolio_inx"] = trade_ix
-    
+
 alerts_author.to_csv(f"data/option_alerts_parsed_{author}.csv")
 trades_log.to_csv(trade_log_file)
 
-
+not_msg.to_csv(f"data/not_understood_{author}.csv")
