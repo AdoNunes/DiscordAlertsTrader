@@ -309,7 +309,10 @@ class AlertsListner():
                                 
                             else:
                                 print(Fore.RED +f"\t \t {pars}")
-                                                    
+                                
+                                if msg['Author'] == "Kevin (Momentum)#8888":
+                                    msg['Author'] =  "Kevin (Momentum)#4441"
+                                    
                                 if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
                                     order["Trader"] = msg['Author']
                                     self.Altrader.new_trade_alert(order, pars,\
