@@ -634,17 +634,16 @@ class AlertTrader():
         for v, pt in exit_plan.items():
             if not isinstance(pt, str): continue
             if v[:2] == "PT" and float(pt[:-1]) >= quote:
-                exit_plan[v] = quote
+                exit_plan[v] = quote_opt
                 # Add another exit plan for x2
                 STCn = int(v[2])
                 if STCn < 3 and exit_plan[f"PT{STCn+1}"] is None:
                     exit_plan[f"PT{STCn+1}"] = quote_opt * 2
-                exit_plan[v[:2]] = quote
-            elif v[:2] == "SL" and float(pt[:-1]) <= quote:
+            elif v[:2] == "SL" and float(pt[:-1]) >= quote:
                  exit_plan[v] = quote
 
         if exit_plan_ori != exit_plan:
-            self.portfolio.loc[i, "exit_plan"] = exit_plan
+            self.portfolio.loc[i, "exit_plan"] = str(exit_plan)
             self.save_logs("port")
             self.make_exit_orders(i, exit_plan)
 
