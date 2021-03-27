@@ -441,9 +441,8 @@ class AlertTrader():
                 log_alert["portfolio_idx"] = open_trade
                 self.save_logs()
                 return
+            # Set STC as exit plan
             elif qty_bought == 0:
-                # Set STC as exit plan
-
                 exit_plan = eval(self.portfolio.loc[open_trade, "exit_plan"])
                 exit_plan[f"PT{STC[-1]}"] = order["price"]
                 self.portfolio.loc[open_trade, "exit_plan"] = str(exit_plan)
@@ -456,16 +455,19 @@ class AlertTrader():
 
             if order['xQty'] == 1:
                 # Sell all and close waiting stc orders
-
                 self.close_open_exit_orders(open_trade)
 
                 position = self.portfolio.iloc[open_trade]
                 order['uQty'] = int(position["uQty"]) - qty_sold
 
             elif order['xQty'] < 1:  # portion
+            # TODO check if current STC order is open
                 order['uQty'] = round(qty_bought * order['xQty'])
 
-            assert(order['uQty'] + qty_sold <= qty_bought)
+            if order['uQty'] + qty_sold > qty_bought:
+                order['uQty'] = qty_bought - qty_sold
+                print(Back.RED + Fore.BLACK +
+                      f"Order {order['Symbol']} Qty exceeded, changed to ")
 
             order_response, order_id, order, _ = self.confirm_and_send(order, pars,
                            make_STC_lim)
@@ -493,7 +495,6 @@ class AlertTrader():
             # Check if STC price changed
             if order_status == "FILLED":
                 self.log_filled_STC(order_id, open_trade, STC)
-
             else:
                 str_STC = f"Submitted: {STC} {order['Symbol']} @{order['price']} Qty:{order['uQty']} ({order['xQty']})"
                 print(Back.GREEN + str_STC)
