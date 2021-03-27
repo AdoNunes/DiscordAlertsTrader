@@ -136,6 +136,14 @@ class AlertTrader():
         return pars_str
 
 
+    def price_now(self, Symbol, flag=0):
+        quote = self.TDsession.get_quotes(
+            instruments=[Symbol])[Symbol]['askPrice']
+        if flag:
+            return quote
+        else:
+            return "CURRENTLY @%.2f"% quote
+
     def confirm_and_send(self, order, pars, order_funct):
             resp, order, ord_chngd = self.notify_alert(order, pars)
             if resp in ["yes", "y"]:
@@ -151,16 +159,7 @@ class AlertTrader():
                 return None, None, order, None
 
     def notify_alert(self, order, pars):
-
-        def price_now(Symbol, flag=0):
-            quote = self.TDsession.get_quotes(
-                instruments=[Symbol])[Symbol]['askPrice']
-            if flag:
-                return quote
-            else:
-                return "CURRENTLY @%.2f"% quote
-
-
+        price_now = self.price_now
         symb = order['Symbol']
         ord_ori = order.copy()
         pars_ori = pars
@@ -307,7 +306,6 @@ class AlertTrader():
             print(Back.GREEN + f"Updated {symb} exit plan from :{old_plan} to {new_plan}")
 
             return
-
 
         if not isOpen and order["action"] == "BTO":
 
@@ -501,7 +499,6 @@ class AlertTrader():
                 print(Back.GREEN + str_STC)
 
 
-
     def log_filled_STC(self, order_id, open_trade, STC):
 
         order_status, order_info = self.get_order_info(order_id)
@@ -585,7 +582,11 @@ class AlertTrader():
 
             exit_plan = eval(trade["exit_plan"])
             if  exit_plan != {}:
-                self.make_exit_orders(i, exit_plan)
+                # If strings in exit values, stock price for option
+                if any([isinstance(e, str) for e in exit_plan.values()]):
+                    self.check_opt_stock_price(i, exit_plan)
+                else:
+                    self.make_exit_orders(i, exit_plan)
 
 
             # Go over STC orders and check status
@@ -617,6 +618,36 @@ class AlertTrader():
 
                 self.save_logs("port")
 
+    def check_opt_stock_price(self, open_trade, exit_plan):
+        "Option exits in stock price"
+        i = open_trade
+        exit_plan_ori = exit_plan.copy()
+        trade = self.portfolio.iloc[i]
+
+        ord_inf = trade['Symbol'].split("_")
+        if len(ord_inf) != 2: return
+        symb_stock = ord_inf[0]
+
+        quote = self.price_now(symb_stock, 1)
+        quote_opt = self.price_now(trade['Symbol'], 1)
+
+        for v, pt in exit_plan.items():
+            if not isinstance(pt, str): continue
+            if v[:2] == "PT" and float(pt[:-1]) >= quote:
+                exit_plan[v] = quote
+                # Add another exit plan for x2
+                STCn = int(v[2])
+                if STCn < 3 and exit_plan[f"PT{STCn+1}"] is None:
+                    exit_plan[f"PT{STCn+1}"] = quote_opt * 2
+                exit_plan[v[:2]] = quote
+            elif v[:2] == "SL" and float(pt[:-1]) <= quote:
+                 exit_plan[v] = quote
+
+        if exit_plan_ori != exit_plan:
+            self.portfolio.loc[i, "exit_plan"] = exit_plan
+            self.save_logs("port")
+            self.make_exit_orders(i, exit_plan)
+
 
     def make_exit_orders(self, open_trade, exit_plan):
         i = open_trade
@@ -647,9 +678,11 @@ class AlertTrader():
             STC_ordID = trade[STC+"-ordID"]
             if pd.isnull(STC_ordID):
                 SL = exit_plan["SL"]
+                # Check if exit prices are strings (stock price for option)
+                if isinstance(SL, str): SL = None
+                if isinstance(exit_plan[f"PT{ii}"], str): continue
 
                 ord_func = None
-
                 # Lim and Sl OCO order
                 if exit_plan[f"PT{ii}"] is not None and SL is not None:
                     # Lim_SL order
@@ -686,6 +719,7 @@ class AlertTrader():
                     self.save_logs("port")
                 else:
                     break
+
 
 
 
