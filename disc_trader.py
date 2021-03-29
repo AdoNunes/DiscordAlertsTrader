@@ -593,9 +593,10 @@ class AlertTrader():
             # Go over STC orders and check status
             for ii in range(1, 4):
                 STC = f"STC{ii}"
+                trade = self.portfolio.iloc[i]
                 STC_ordID = trade[STC+"-ordID"]
 
-                if pd.isnull(self.portfolio.loc[i, STC+"-ordID"]):
+                if pd.isnull(STC_ordID):
                     continue
 
                 # Get status exit orders
