@@ -56,7 +56,7 @@ def msg_update_alert(df_hist, json_msg, asset):
     df_hist, msg_old = update_edited_msg(df_hist, json_msg)
 
     if msg_old == []:
-        return None
+        return [], []
 
     if asset == "stock":
         parser =  parser_alerts
@@ -67,7 +67,7 @@ def msg_update_alert(df_hist, json_msg, asset):
     for msg in msg_old:
 
         _, order_old =  parser(msg[1])
-        msg_content = df_hist.loc[msg[0], "Content"]
+        msg_content = df_hist.loc[msg[0], "Content"].values[0]
         pars, order_upd = parser(msg_content)
 
         if order_old == order_upd:

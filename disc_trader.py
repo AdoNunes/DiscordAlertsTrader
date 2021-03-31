@@ -173,23 +173,28 @@ class AlertTrader():
 
             pdiff = (price_now(symb,1 ) - ord_ori['price'])/ord_ori['price']
             pdiff = round(pdiff*100,1)
-            if cfg.sell_current_price:
 
+            if cfg.sell_current_price:
                 if pdiff < cfg.max_price_diff[order["asset"]]:
                     order['price'] = price_now(symb,1 )
                     pars = self.order_to_pars(order)
                     question += f"\n new price: {pars}"
+                else:
+                    if cfg.auto_trade is True:
+                        return "no", order, False
 
-                # # Skip user input
-                # if 'uQty' not in order.keys():
-                #     order['uQty'] = round(200/ order['price'])
+            if cfg.auto_trade is True:
+                if 'uQty' not in order.keys():
+                    price = order['price']
+                    price = price*100 if order["asset"] == "option" else price
+                    order['uQty'] =  max(round(price/cfg.trade_capital), 1)
+                return "yes", order, False
 
-                # break
 
             resp = input(Back.RED  + question + "\n Make trade? (y, n or (c)hange) \n").lower()
 
             if resp in [ "c", "change", "y", "yes"] and 'uQty' not in order.keys():
-                order['uQty'] = int(input(" Numer of share/contractsnot available." +
+                order['uQty'] = int(input("Order qty not available." +
                                           f" How many units to buy? {price_now(symb)} \n"))
 
             if resp in [ "c", "change"]:
