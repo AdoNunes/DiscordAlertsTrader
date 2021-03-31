@@ -44,7 +44,8 @@ def update_edited_msg(df_hist, json_msg):
         inx, = np.where(df_hist['Date']== jmsg['timestamp'])
         if df_hist.loc[inx, 'Content'].values == jmsg['content']:
             continue
-        msg_old.append((inx, df_hist.loc[inx, 'Content']))
+
+        msg_old.append((inx, df_hist.loc[inx, 'Content'].values))
         df_hist.loc[inx, 'Content']  = jmsg['content']
 
     return df_hist, msg_old
@@ -70,6 +71,11 @@ def msg_update_alert(df_hist, json_msg, asset):
         pars, order_upd = parser(msg_content)
 
         if order_old == order_upd:
+            continue
+
+        # Previous non edited msg not understood
+        if order_old is None and order_upd is not None:
+            new_alerts.append([pars,order_upd, msg_content])
             continue
 
         ex_old = [order_old[f"PT{i}"] for i in range(1,4)]
@@ -189,8 +195,9 @@ class AlertsListner():
 
         out_json = out_file.replace("csv", "json")
 
-        date = time_after_last - timedelta(hours=hours)
-        date = date.strftime(self.time_strf)
+        date_obj = datetime.strptime(time_after_last, self.time_strf)
+        date_obj -= timedelta(hours=hours)
+        date = date_obj.strftime(self.time_strf)
 
         cmd = self.cmd.format( chn_id, date, out_json)
         cmd = cmd.replace("Csv", "Json")
@@ -292,9 +299,6 @@ class AlertsListner():
                         # Check if msg alerting exitUpdate in prev msg
                         re_upd = re.compile("trade plan (?:.*?)\*\*([A-Z]*?)\*\*(?:.*?) updated")
                         upd_inf = re_upd.search(msg['Content'])
-                        if upd_inf is None:
-                            print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
-                            continue
 
                         json_msg = self.get_edited_msgs(
                             channel_IDS[chn_name], time_after[chn_i],
@@ -302,11 +306,13 @@ class AlertsListner():
 
                         new_alerts, _ = msg_update_alert(chn_hist[chn_name], json_msg, asset)
 
+                        if new_alerts is []:
+                            print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
+                            continue
+
                         for alert in new_alerts:
-                            print(f"Updating exit plan: \n \t {alert[0]}")
+                            print(f"Updating edited msgs: \n \t {alert[0]}")
                             self.Altrader.new_trade_alert(alert[0], alert[1], alert[2])
-
-
 
                     elif pars == 'not an alert':
                         print(Style.DIM + "\t \tnot for @everyone")
@@ -333,4 +339,7 @@ class AlertsListner():
 alistner = AlertsListner()
 alistner.listent_trade_alerts()
 
+if 0:
+    alistner.close()
+    self = alistner
 # SL_2buyprice = ['Move SL to buy price',]

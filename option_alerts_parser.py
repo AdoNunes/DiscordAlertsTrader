@@ -7,7 +7,7 @@ from place_order import make_optionID
 
 
 def get_author_option_alerts():
-    file = 'data/option_alerts_message_history.csv'
+    file = 'data/option_alerts_message_history_copy.csv'
 
     alerts = pd.read_csv(file)
     alerts.drop(labels=['Attachments', 'Reactions'], axis=1, inplace=True)
@@ -235,3 +235,10 @@ alerts_author.to_csv(f"data/option_alerts_parsed_{author}.csv")
 trades_log.to_csv(trade_log_file)
 
 not_msg.to_csv(f"data/not_understood_{author}.csv")
+
+
+
+Exits = not_msg[not_msg["MSG"].str.contains("target|stop")]
+
+not_msg_exit = not_msg[~not_msg["MSG"].str.contains("target|stop")]
+not_msg_exit.to_csv(f"data/not_understood_notexit_{author}.csv")

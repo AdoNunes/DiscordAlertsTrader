@@ -20,7 +20,7 @@ from place_order import (get_TDsession, make_BTO_lim_order, send_order,
                          make_STC_lim, make_lim_option,
                          make_Lim_SL_order, make_STC_SL)
 # import dateutil.parser.parse as date_parser
-
+import table_viewer
 from colorama import Fore, Back, Style
 
 
@@ -87,6 +87,10 @@ class AlertTrader():
         self.update_portfolio = update_portfolio
         if update_portfolio:
             self.activate_trade_updater()
+
+    def plot_portfolio(self):
+        self.plotter = threading.Thread(target=table_viewer.app)
+        self.plotter.start()
 
 
     def activate_trade_updater(self, refresh_rate=30):
@@ -745,6 +749,7 @@ if 0 :
     msg = "BTO DPW @3.7 PT1 3.72 SL: 3.01"
 
     self = AlertTrader(update_portfolio=False)
+    self.plot_portfolio()
     self.new_stock_alert(order, pars, msg)
 
     # order = {'action': 'BTO',
