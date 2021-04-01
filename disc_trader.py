@@ -50,6 +50,40 @@ def find_open_trade(order, trades_log):
     return open_trade
 
 
+def find_last_trade(order, trades_log):
+
+    trades_authr = trades_log["Trader"] == order["Trader"]
+    trades_log = trades_log.loc[trades_authr]
+
+    msk_ticker = trades_log["Symbol"].str.match(f"{order['Symbol']}$")
+
+    # Order ticker without dates and strike
+    if sum(msk_ticker) == 0 and order['asset'] == 'option':
+        trades_log = trades_log[trades_log["Asset"] == "option"]
+        trade_symb = trades_log["Symbol"].apply(lambda x: x.split("_")[0])
+
+        msk_ticker = trade_symb.str.match(f"{order['Symbol']}$")
+
+    if sum(msk_ticker) == 1:
+        last_trade, = trades_log[msk_ticker].index.values
+    # Either take open trade or last
+    elif sum(msk_ticker) > 1:
+        open_trade = trades_log.loc[msk_ticker, "isOpen"]
+        if open_trade.sum() == 1:
+            last_trade, = open_trade.index[open_trade==1]
+        elif open_trade.sum() > 1:
+            raise ValueError ("Trade with more than one open position")
+            last_trade = open_trade.index[open_trade==1][-1]
+        elif open_trade.sum() == 0:
+            last_trade = open_trade.index[-1]
+    else:
+        return None, None
+
+    isOpen = trades_log.loc[last_trade, 'isOpen']
+    return last_trade, isOpen
+
+
+
 class AlertTrader():
 
     def __init__(self,
@@ -187,7 +221,7 @@ class AlertTrader():
                 if 'uQty' not in order.keys():
                     price = order['price']
                     price = price*100 if order["asset"] == "option" else price
-                    order['uQty'] =  max(round(price/cfg.trade_capital), 1)
+                    order['uQty'] =  max(round(cfg.trade_capital/price), 1)
                 return "yes", order, False
 
 
@@ -243,7 +277,7 @@ class AlertTrader():
         position = self.portfolio.iloc[open_trade]
         # close other waiting orders
         for i in range(1,4):
-            if not pd.isnull(position[ f"STC{i}-Status"]) and \
+            if not pd.isnull(position[ f"STC{i}-ordID"]) and \
                 position[ f"STC{i}-Status"] != "FILLED" :
 
                 order_id =  int(position[ f"STC{i}-ordID"])
@@ -296,7 +330,6 @@ class AlertTrader():
                      "msg": msg
                      }
 
-
         if order['action'] == "ExitUpdate" and isOpen:
 
             old_plan = self.portfolio.loc[open_trade, "exit_plan"]
@@ -310,10 +343,9 @@ class AlertTrader():
 
             log_alert['action'] = "ExitUpdate"
             self.save_logs()
+
             symb = self.portfolio.loc[open_trade, "Symbol"]
-
             print(Back.GREEN + f"Updated {symb} exit plan from :{old_plan} to {new_plan}")
-
             return
 
         if not isOpen and order["action"] == "BTO":
@@ -383,6 +415,7 @@ class AlertTrader():
 
 
         elif order["action"] == "STC" and isOpen == 0:
+            # TODO log it in the portfoliio
             str_act = "STC without BTO, maybe alredy sold"
             log_alert['action'] = "STC-Null-notOpen"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
@@ -403,12 +436,14 @@ class AlertTrader():
                     # If alerted and already sold
                     if not pd.isnull(position[ f"{STC}-Price"]):
                         print(Back.GREEN + "Already sold")
+
                         log_alert['action'] = f"{STC}-DoneBefore"
                         log_alert["portfolio_idx"] = open_trade
                         self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                         self.save_logs(["alert"])
-                        return
 
+                        if order['xQty'] != 1:  # if not close all
+                            return
                     break
 
                 # # Make sure the previous alert executed STC

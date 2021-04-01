@@ -15,7 +15,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from message_parser import parser_alerts
 from option_message_parser import option_alerts_parser
-from config import (path_dll, data_dir, CHN_NAMES, channel_IDS, discord_token, UPDATE_PERIOD)
+from config import (path_dll, data_dir, CHN_NAMES, chn_IDS, discord_token, UPDATE_PERIOD)
 import config as cfg
 from disc_trader import AlertTrader
 import threading
@@ -180,8 +180,12 @@ class AlertsListner():
         self.time_strf = "%Y-%m-%d %H:%M:%S.%f"
 
         self.Altrader = AlertTrader()
-
         self.listening = False
+
+        self.chn_hist_f = {c:f"{data_dir}/{c}_message_history.csv"
+                           for c in self.CHN_NAMES}
+        self.chn_hist = {c: pd.read_csv( self.chn_hist_f[c])
+                         for c in self.CHN_NAMES}
 
         # self.thread =  threading.Thread(target=self.listent_trade_alerts)
         # self.thread.start()
@@ -220,113 +224,31 @@ class AlertsListner():
 
         self.listening = True
 
-        chn_hist_f = {c:f"{data_dir}/{c}_message_history.csv" for c in self.CHN_NAMES}
-        chn_hist = {c: pd.read_csv(chn_hist_f[c]) for c in self.CHN_NAMES}
-
-        time_strf = self.time_strf
-
-        time_after = [None]*len(self.CHN_NAMES)
-
-        last_time = [d['Date'].max() for d in chn_hist.values()]
-        last_time = [datetime.strptime(d, time_strf) for d in last_time]
-
         while self.listening:
 
             tic = datetime.now()
             for chn_i in range(len(self.CHN_NAMES)):
-                chn_name = self.CHN_NAMES[chn_i]
+                chn = self.CHN_NAMES[chn_i]
 
-                out_file = f"{data_dir}/{chn_name}_temp.csv"
-
-                time_diff = (datetime.now() - last_time[chn_i])
-                time_after[chn_i] = (datetime.now() - time_diff).strftime(time_strf)
-
-
-                cmd_sh = self.cmd.format(channel_IDS[chn_name],
-                                    time_after[chn_i],
-                                    out_file)
-
+                out_file = f"{data_dir}/{chn}_temp.csv"
+                time_after = self.chn_hist[chn]['Date'].max()
+                cmd_sh = self.cmd.format(chn_IDS[chn],
+                                    time_after, out_file)
                 new_msgs = send_sh_cmd(cmd_sh)
 
                 if not new_msgs:
                     continue
 
-                last_time[chn_i] = datetime.now()
-
-                df_update, new_msg = updt_chan_hist(chn_hist[chn_name],
-                                           out_file, chn_hist_f[chn_name])
-                chn_hist[chn_name] = df_update
+                df_update, new_msg = updt_chan_hist(self.chn_hist[chn],
+                                           out_file, self.chn_hist_f[chn])
+                self.chn_hist[chn] = df_update
 
                 nmsg = len(new_msg)
                 if nmsg:
-                    print(Style.DIM + f"{last_time[chn_i]} | {chn_name}: got {nmsg} new msgs:")
+                    dnow = short_date(datetime.now())
+                    print(Style.DIM + f"{dnow} | {chn}: got {nmsg} new msgs:")
 
-                # Loop over new msg and take action
-                for ix, msg in new_msg.iterrows():
-
-                    if msg['Author'] == "Xcapture#0190" or pd.isnull(msg['Content']):
-                        continue
-
-                    if chn_name.split("_")[0] == "stock":
-                        asset = "stock"
-                    elif chn_name.split("_")[0] == "option":
-                        asset = "option"
-                    else:
-                        asset = None
-
-                    if chn_name == 'DM_xcapture':
-                        # Get authors names from non-DM servers
-                        names_all = [chn_hist[n]['Author'].unique() for n in self.CHN_NAMES if n[:2] != "DM"]
-                        names_all = list(itertools.chain(*names_all))
-
-                        author, asset, content = dm_message(msg["Content"], names_all)
-                        print("DM: ", author, asset, content)
-                        msg['Author'] = author
-                        msg["Content"] = content
-
-                    shrt_date = datetime.strptime(msg["Date"], time_strf
-                                                  ).strftime('%H:%M:%S')
-                    print(f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
-
-
-                    if asset == "stock":
-                        pars, order =  parser_alerts(msg['Content'])
-                    elif asset == "option":
-                        pars, order =  option_alerts_parser(msg['Content'])
-
-
-                    if pars is None:
-                        # Check if msg alerting exitUpdate in prev msg
-                        re_upd = re.compile("trade plan (?:.*?)\*\*([A-Z]*?)\*\*(?:.*?) updated")
-                        upd_inf = re_upd.search(msg['Content'])
-
-                        json_msg = self.get_edited_msgs(
-                            channel_IDS[chn_name], time_after[chn_i],
-                            out_file)
-
-                        new_alerts, _ = msg_update_alert(chn_hist[chn_name], json_msg, asset)
-
-                        if new_alerts is []:
-                            print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
-                            continue
-
-                        for alert in new_alerts:
-                            print(f"Updating edited msgs: \n \t {alert[0]}")
-                            self.Altrader.new_trade_alert(alert[0], alert[1], alert[2])
-
-                    elif pars == 'not an alert':
-                        print(Style.DIM + "\t \tnot for @everyone")
-
-                    else:
-                        print(Fore.RED +f"\t \t {pars}")
-
-                        if msg['Author'] == "Kevin (Momentum)#8888":
-                            msg['Author'] =  "Kevin (Momentum)#4441"
-
-                        if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
-                            order["Trader"] = msg['Author']
-                            self.Altrader.new_trade_alert(order, pars,\
-                                 msg['Content'])
+                    self.new_msg_acts(new_msg, chn, out_file)
 
             toc = datetime.now()
             tictoc = (toc-tic).total_seconds()
@@ -334,6 +256,82 @@ class AlertsListner():
             # wait UPDATE_PERIOD
             if tictoc < self.UPDATE_PERIOD:
                 time.sleep(min(self.UPDATE_PERIOD-tictoc, self.UPDATE_PERIOD))
+
+
+    def new_msg_acts(self, new_msg, chn, out_file):
+        # Loop over new msg and take action
+        for ix, msg in new_msg.iterrows():
+
+            if msg['Author'] == "Xcapture#0190" or pd.isnull(msg['Content']):
+                continue
+
+            if chn.split("_")[0] == "stock":
+                asset = "stock"
+            elif chn.split("_")[0] == "option":
+                asset = "option"
+            else:
+                asset = None
+
+            # Private DM message
+            if chn == 'DM_xcapture':
+                # Get authors names from non-DM servers
+                names_all = [self.chn_hist[n]['Author'].unique() for n in
+                             self.CHN_NAMES if n[:2] != "DM"]
+                names_all = list(itertools.chain(*names_all))
+
+                author, asset, content = dm_message(msg["Content"], names_all)
+                print("DM: ", author, asset, content)
+                msg['Author'] = author
+                msg["Content"] = content
+
+            if asset == "stock":
+                pars, order =  parser_alerts(msg['Content'])
+            elif asset == "option":
+                pars, order =  option_alerts_parser(msg['Content'])
+
+            shrt_date = datetime.strptime(msg["Date"], self.time_strf
+                                          ).strftime('%H:%M:%S')
+            print(f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
+
+            if pars is None:
+                # Check if msg alerting exitUpdate in prev msg
+                re_upd = re.compile("trade plan (?:.*?)\*\*([A-Z]*?)\*\*(?:.*?) updated")
+                upd_inf = re_upd.search(msg['Content'])
+
+                time_after = self.chn_hist[chn]['Date'].max()
+                json_msg = self.get_edited_msgs(chn_IDS[chn], time_after,
+                                                out_file)
+
+                new_alerts, _ = msg_update_alert(self.chn_hist[chn], json_msg,
+                                                 asset)
+
+                if new_alerts is []:
+                    print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
+                    continue
+
+                for alert in new_alerts:
+                    print(f"Updating edited msgs: \n \t {alert[0]}")
+                    self.Altrader.new_trade_alert(alert[0], alert[1], alert[2])
+
+            elif pars == 'not an alert':
+                print(Style.DIM + "\t \tnot for @everyone")
+
+            else:
+                print(Fore.RED +f"\t \t {pars}")
+
+                if msg['Author'] == "Kevin (Momentum)#8888":
+                    msg['Author'] =  "Kevin (Momentum)#4441"
+
+                if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
+                    order["Trader"] = msg['Author']
+                    self.Altrader.new_trade_alert(order, pars,\
+                         msg['Content'])
+
+
+
+
+def short_date(dateobj, frm="%m/%d %H:%M:%S"):
+    return dateobj.strftime(frm)
 
 
 alistner = AlertsListner()
