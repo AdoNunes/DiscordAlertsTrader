@@ -50,7 +50,7 @@ def find_open_trade(order, trades_log):
     return open_trade
 
 
-def find_last_trade(order, trades_log):
+def find_last_trade(order, trades_log, open_only=True):
 
     trades_authr = trades_log["Trader"] == order["Trader"]
     trades_log = trades_log.loc[trades_authr]
@@ -77,10 +77,14 @@ def find_last_trade(order, trades_log):
         elif open_trade.sum() == 0:
             last_trade = open_trade.index[-1]
     else:
-        return None, None
+        return None, 0
 
     isOpen = trades_log.loc[last_trade, 'isOpen']
-    return last_trade, isOpen
+
+    if open_only and isOpen == 0:
+        return None, 0
+    else:
+        return last_trade, isOpen
 
 
 
@@ -317,8 +321,8 @@ class AlertTrader():
     def new_trade_alert(self, order:dict, pars:str, msg):
         """ get order from ```parser_alerts``` """
 
-        open_trade = find_open_trade(order, self.portfolio)
-        isOpen = 1 if open_trade != None else 0
+        open_trade, isOpen = find_last_trade(order, self.portfolio)
+
 
         time_strf = "%Y-%m-%d %H:%M:%S.%f"
         date = datetime.now().strftime(time_strf)
@@ -363,11 +367,15 @@ class AlertTrader():
                 return
 
             ordered = eval(order_response['request_body'])
-
             order_status, order_info = self.get_order_info(order_id)
 
             exit_plan = self.parse_exit_plan(order)
 
+            try:
+                 order_info['price']
+                 print(Back.RED + "order info from ord status [chng line 377 disc trader]")
+            except:
+                 print(Back.RED + "FAILED order info from ord status [chng line 377 disc trader]")
 
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
@@ -386,10 +394,9 @@ class AlertTrader():
             self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
 
             if order_status == "FILLED":
-                ot = find_open_trade(order, self.portfolio)
+                ot, _ = find_last_trade(order, self.portfolio)
                 self.portfolio.loc[ot, "Price"] = order_info['price']
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
-
 
             print(Back.GREEN + f"BTO {order['Symbol']} executed. Status: {order_status}")
 
