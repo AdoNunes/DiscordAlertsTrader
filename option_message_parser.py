@@ -157,8 +157,8 @@ def parse_strike(msg):
         sym = parse_Symbol(msg, "BTO")
         re_strike = re.compile(f"{sym} (\d+(?:\.\d+)?)")
         strike_inf = re_strike.search(msg)             
-        # if strike_inf is None: 
-        #     return None, None
+        if strike_inf is None: 
+            return None, None
         return strike_inf.groups()[0], "C"
     
     if strike_inf is None: 

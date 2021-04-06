@@ -39,7 +39,7 @@ def parser_alerts(msg, asset=None):
         mark = parse_mark_option(msg)
         
     elif asset == "stock":
-        mark,  = parse_mark_stock(msg, Symbol, act)
+        mark  = parse_mark_stock(msg, Symbol, act)
 
     order = {"action": act,
              "Symbol": Symbol,
@@ -154,9 +154,9 @@ def parse_mark_stock(msg, Symbol, act):
         re_mark = re.compile(f"{act} "+ "([\*])?([\*])?" + f"{Symbol}" +"([\*])?([\*])? (\d+(?:\.\d+)?)")
         mark_inf = re_mark.search(msg)
         if mark_inf is None:
-            return None, None
+            return None
     mark = float(mark_inf.groups()[-1])
-    return mark, mark_inf.span()
+    return mark
 
 
 def parse_mark_option(msg):
@@ -179,8 +179,8 @@ def parse_strike(msg):
         sym = parse_Symbol(msg, "BTO")
         re_strike = re.compile(f"{sym} (\d+(?:\.\d+)?)")
         strike_inf = re_strike.search(msg)             
-        # if strike_inf is None: 
-        #     return None, None
+        if strike_inf is None: 
+            return None, None
         return strike_inf.groups()[0], "C"
     
     if strike_inf is None: 
@@ -240,7 +240,7 @@ def parse_exits_vals(msg, expr):
         exit_inf = re_comp.search(msg)
         
         if exit_inf is None:
-            return None
+            return None, None
 
     exit_v = float(exit_inf.groups()[-1])
     return exit_v, exit_inf

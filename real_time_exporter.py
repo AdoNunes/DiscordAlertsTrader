@@ -285,7 +285,7 @@ class AlertsListner():
                 msg["Content"] = content
 
             if asset == "stock":
-                pars, order =  parser_alerts(msg['Content'])
+                pars, order =  parser_alerts(msg['Content'], asset)
             elif asset == "option":
                 pars, order =  option_alerts_parser(msg['Content'])
 
@@ -310,8 +310,10 @@ class AlertsListner():
                     continue
 
                 for alert in new_alerts:
-                    print(f"Updating edited msgs: \n \t {alert[0]}")
-                    self.Altrader.new_trade_alert(alert[0], alert[1], alert[2])
+                    if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
+                        order["Trader"] = msg['Author']
+                        print(f"Updating edited msgs: \n \t {alert[0]}")
+                        self.Altrader.new_trade_alert(alert[0], alert[1], alert[2])
 
             elif pars == 'not an alert':
                 print(Style.DIM + "\t \tnot for @everyone")
