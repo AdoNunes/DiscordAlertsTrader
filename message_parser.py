@@ -145,13 +145,16 @@ def parse_Symbol(msg, act):
         Symbol_info = re_Symbol.search(msg)
         
         if Symbol_info is None:
-            re_Symbol = re.compile("([A-Z]+[^a-z\s]?)")
+            for wrd in ["I", "ATH", "BTO", "STC", 'VWAP']:
+                msg = msg.replace(wrd+" ", " ")
+            msg = msg.replace("I'", "i'")
+
+            re_Symbol = re.compile("([A-Z]+)(?![a-z])")
             Symbol_info = re_Symbol.search(msg)
             if Symbol_info is None:
                 return None, None
             Symbol = Symbol_info.groups()[-1].replace(" ",'')
-            if Symbol in ["I", "I'", "ATH", "BTO", "STC", 'VWAP']:
-                return None, None
+
 
     Symbol = Symbol_info.groups()[-1]
     # print ("Symbol: ", Symbol)
@@ -339,24 +342,30 @@ def auhtor_parser(msg, order, author):
             for exp in pt1_exps:
                 pt1 = match_exp(exp, msg)
                 if pt1:
+                    pt1 = pt1[:-1] if pt1[-1] == '.' else pt1
                     new_order["PT1"] = pt1
+                    msg = msg.replace(pt1, " ")
                     break
 
             pt2 = "target[a-zA-Z0-9\.\s\,]*then (\d+[\.]*[\d]*)"
             pt2 = match_exp(pt2, msg)
             if pt2:
+                pt2 = pt2[:-1] if pt2[-1] == '.' else pt2
                 new_order["PT2"] = pt2
+                msg = msg.replace(pt2, " ")
         else:
             pt2 = "second target[a-zA-Z0-9\.\s\,]*(\d+[\.]*[\d]*)"
             pt2 = match_exp(pt2, msg)
             if pt2:
                 new_order["PT2"] = pt2
+                msg = msg.replace(pt2, " ")
 
         sl_exps = ['(\d+[\.]*[\d]*)[a-zA-Z\s\,\.]*stop',
                    'stop[a-zA-Z\s\,\.]*(\d+[\.]*[\d]*)']
         for exp in sl_exps:
             sl = match_exp(exp, msg)
             if sl:
+                sl = sl[:-1] if sl[-1] == '.' else sl
                 new_order["SL"] = sl
                 break
             

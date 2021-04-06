@@ -198,7 +198,7 @@ trades_log = pd.DataFrame(columns = ["BTO-Date", "Symbol", "Open", "BTO",
 
 bad_msg = []
 not_msg = pd.DataFrame(columns=["MSG"])
-for i in range(232,len(alerts_author)):
+for i in range(274,len(alerts_author)):
     msg = alerts_author["Content"].iloc[i]
     msg = msg.replace("~~2.99~~", "")
     trade_date = alerts_author["Date"].iloc[i]
