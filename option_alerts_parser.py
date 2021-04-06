@@ -2,12 +2,12 @@ import pandas as pd
 import re
 import numpy as np
 import os.path as op
-from option_message_parser import option_alerts_parser
+from message_parser import parser_alerts, auhtor_parser
 from place_order import make_optionID
 
 
 def get_author_option_alerts():
-    file = 'data/option_alerts_message_history_copy.csv'
+    file = 'data/option_alerts_message_history.csv'
 
     alerts = pd.read_csv(file)
     alerts.drop(labels=['Attachments', 'Reactions'], axis=1, inplace=True)
@@ -189,7 +189,8 @@ trades_log = pd.DataFrame(columns = ["BTO-Date", "Symbol", "Open", "BTO",
                                      "Planned_PT", "Planned_SL",
                                      "STC1", "STC1-xQty", "STC1-PnL","STC1-Date",
                                      "STC2", "STC2-xQty", "STC2-PnL","STC2-Date",
-                                     "STC3", "STC3-xQty", "STC3-PnL","STC3-Date", "Total PnL", "Portfolio_inx"])
+                                     "STC3", "STC3-xQty", "STC3-PnL","STC3-Date",
+                                     "Total PnL", "Portfolio_inx"])
     # trades_log.to_csv(trade_log_file, index=False)
 
 
@@ -197,18 +198,28 @@ trades_log = pd.DataFrame(columns = ["BTO-Date", "Symbol", "Open", "BTO",
 
 bad_msg = []
 not_msg = pd.DataFrame(columns=["MSG"])
-for i in range(1,len(alerts_author)):
+for i in range(232,len(alerts_author)):
     msg = alerts_author["Content"].iloc[i]
     msg = msg.replace("~~2.99~~", "")
     trade_date = alerts_author["Date"].iloc[i]
-    # print(msg)
-    pars, order =  option_alerts_parser(msg)
-
+    print("\n")
+    print(f"msg {i}: ", msg)
+    pars, order =  parser_alerts(msg, 'option')
+    print(order)
 
     # if "reached pre-market" in msg:
     #     alerts_author.loc[i, "parsed"] = "pre-market repeated alert"
     #     continue
-
+    author = alerts_author["Author"].iloc[i].split("#")[0]
+    new_order = auhtor_parser(msg, order, author)
+    if new_order is not None:
+        print("NEW: ", new_order)
+        resp = input("press o to stop")
+        if resp == "o":
+            print(f"stopped at {i}")
+            break
+    """
+    
     if order  is None:
         not_msg = not_msg.append({"MSG":msg}, ignore_index=True)
         continue
@@ -242,3 +253,5 @@ Exits = not_msg[not_msg["MSG"].str.contains("target|stop")]
 
 not_msg_exit = not_msg[~not_msg["MSG"].str.contains("target|stop")]
 not_msg_exit.to_csv(f"data/not_understood_notexit_{author}.csv")
+
+"""
