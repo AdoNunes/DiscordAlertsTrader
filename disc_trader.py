@@ -179,8 +179,13 @@ class AlertTrader():
 
 
     def price_now(self, Symbol, flag=0):
-        quote = self.TDsession.get_quotes(
-            instruments=[Symbol])[Symbol]['askPrice']
+        try:
+            quote = self.TDsession.get_quotes(
+                instruments=[Symbol])[Symbol]['askPrice']
+        except KeyError as e:
+                print (Back.RED + f"price_now ERROR: {e}.\n Trying again")
+                quote = self.TDsession.get_quotes(
+                instruments=[Symbol])[Symbol]['askPrice']
         if flag:
             return quote
         else:
@@ -218,7 +223,8 @@ class AlertTrader():
                     pars = self.order_to_pars(order)
                     question += f"\n new price: {pars}"
                 else:
-                    if cfg.auto_trade is True:
+                    if cfg.auto_trade is True and order['action'] == "BTO":
+                        print(Back.GREEN + f"BTO alert price diff too high: {pdiff}")
                         return "no", order, False
 
             if cfg.auto_trade is True:
@@ -277,19 +283,22 @@ class AlertTrader():
         return exit_plan
 
 
-    def close_open_exit_orders(self, open_trade):
+    def close_open_exit_orders(self, open_trade, STCn=range(1,4)):
+        # close STCn waiting orders
+
         position = self.portfolio.iloc[open_trade]
-        # close other waiting orders
-        for i in range(1,4):
-            if not pd.isnull(position[ f"STC{i}-ordID"]) and \
-                position[ f"STC{i}-Status"] != "FILLED" :
+        if type(STCn) == int: STCn = [STCn]
 
-                order_id =  int(position[ f"STC{i}-ordID"])
-                ord_stat, _ = self.get_order_info(order_id)
+        for i in STCn:
+            if pd.isnull(position[ f"STC{i}-ordID"]):
+                continue
 
-                if ord_stat != 'CANCELED':
-                    print(Back.GREEN + f"Cancelling {position['Symbol']} STC{i}")
-                    self.TDsession.cancel_order(self.TDsession.accountId, order_id)
+            order_id =  int(position[ f"STC{i}-ordID"])
+            ord_stat, _ = self.get_order_info(order_id)
+
+            if ord_stat not in ["FILLED", 'CANCELED']:
+                print(Back.GREEN + f"Cancelling {position['Symbol']} STC{i}")
+                _ = self.TDsession.cancel_order(self.TDsession.accountId, order_id)
 
                 self.portfolio.loc[open_trade, f"STC{i}-Status"] = np.nan
                 self.portfolio.loc[open_trade, f"STC{i}-ordID"] = np.nan
@@ -449,7 +458,7 @@ class AlertTrader():
                         self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                         self.save_logs(["alert"])
 
-                        if order['xQty'] != 1:  # if not close all
+                        if order['xQty'] != 1:  # if partial and sold, leave
                             return
                     break
 
@@ -512,8 +521,9 @@ class AlertTrader():
                 order['uQty'] = int(position["uQty"]) - qty_sold
 
             elif order['xQty'] < 1:  # portion
-            # TODO check if current STC order is open
-                order['uQty'] = round(qty_bought * order['xQty'])
+
+                self.close_open_exit_orders(open_trade, i)
+                order['uQty'] = max(round(qty_bought * order['xQty']), 1)
 
             if order['uQty'] + qty_sold > qty_bought:
                 order['uQty'] = qty_bought - qty_sold

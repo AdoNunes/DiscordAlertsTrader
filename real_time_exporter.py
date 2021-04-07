@@ -73,6 +73,7 @@ def msg_update_alert(df_hist, json_msg, asset):
         if order_old == order_upd:
             continue
 
+        order_upd['Trader'] = df_hist.loc[msg[0], 'Author']
         # Previous non edited msg not understood
         if order_old is None and order_upd is not None:
             new_alerts.append([pars,order_upd, msg_content])
@@ -295,8 +296,11 @@ class AlertsListner():
 
             if pars is None:
                 # Check if msg alerting exitUpdate in prev msg
-                re_upd = re.compile("trade plan (?:.*?)\*\*([A-Z]*?)\*\*(?:.*?) updated")
-                upd_inf = re_upd.search(msg['Content'])
+                if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
+                    re_upd = re.compile("(?:T|t)rade plan[a-zA-Z\s\,\.]*\*{2}([A-Z]*?)\*{2}[a-zA-Z\s\,\.]* updated")
+                    upd_inf = re_upd.search(msg['Content'])
+                    if upd_inf:
+                        print(Fore.GREEN + f"Updating edited msgs: \n \t {alert[0]}")
 
                 time_after = self.chn_hist[chn]['Date'].max()
                 json_msg = self.get_edited_msgs(chn_IDS[chn], time_after,
@@ -308,12 +312,9 @@ class AlertsListner():
                 if new_alerts is []:
                     print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
                     continue
-
                 for alert in new_alerts:
-                    if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
-                        order["Trader"] = msg['Author']
-                        print(f"Updating edited msgs: \n \t {alert[0]}")
-                        self.Altrader.new_trade_alert(alert[0], alert[1], alert[2])
+                    pars, order, msg_str = alert
+                        self.Altrader.new_trade_alert(order, pars, msg_str)
 
             elif pars == 'not an alert':
                 print(Style.DIM + "\t \tnot for @everyone")

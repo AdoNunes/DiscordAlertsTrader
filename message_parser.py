@@ -25,7 +25,6 @@ def parser_alerts(msg, asset=None):
 
     if asset != "stock":
         strike, optType = parse_strike(msg)
-        optType = optType.upper()
         if asset is None:
             asset="option" if strike is not None else "stock"
         elif asset == "option" and strike is None:
@@ -35,9 +34,9 @@ def parser_alerts(msg, asset=None):
         expDate = parse_date(msg)
         if expDate is None:
             return None, None
-        
+
         mark = parse_mark_option(msg)
-        
+
     elif asset == "stock":
         mark  = parse_mark_stock(msg, Symbol, act)
 
@@ -46,16 +45,17 @@ def parser_alerts(msg, asset=None):
              "price": mark,
              "asset": asset
              }
-    
+
     str_prt = f"{act} {Symbol} @{mark} "
 
     if asset == "option":
+        optType = optType.upper()
         order["expDate"] = expDate
         order["strike"] = strike + optType
         str_prt = f"{act} {Symbol} {expDate} {strike + optType} @{mark}"
         order['Symbol'] = make_optionID(**order)
-        
-    
+
+
     if act == "BTO":
         if "avg" in msg or "average" in msg:
             avg_price, _ = parse_avg(msg)
@@ -81,7 +81,7 @@ def parser_alerts(msg, asset=None):
             order["PT3"] = pt3_v
             order["SL"] = sl_v
             str_prt = str_prt + f"PT1:{pt1_v}, PT2:{pt2_v}, PT3:{pt3_v}, SL:{sl_v}"
-            
+
         order["n_PTs"] = n_pts
         order["PTs_Qty"] = pts_qty
 
@@ -98,12 +98,12 @@ def set_exit_price_type(exit_price, order):
     """Option or stock price decided with smallest distance"""
     if exit_price is None:
         return exit_price
-    
+
     price_strk = float(order['strike'][:-1])
 
     rtio_stock = abs(price_strk - exit_price)
-    rtio_option = abs(order['price'] - exit_price) 
-                             
+    rtio_option = abs(order['price'] - exit_price)
+
     if rtio_stock < rtio_option:
         exit_price = str(exit_price) + 's'
     elif rtio_stock > rtio_option:
@@ -139,11 +139,11 @@ def parse_action(msg):
 def parse_Symbol(msg, act):
     re_Symbol = re.compile("\*\*([A-Z]*?)\*\*")
     Symbol_info = re_Symbol.search(msg)
-    
+
     if Symbol_info is None:
         re_Symbol = re.compile(f"{act} ([A-Z]+)")
         Symbol_info = re_Symbol.search(msg)
-        
+
         if Symbol_info is None:
             re_Symbol = re.compile("([A-Z]+[^a-z\s]?)")
             Symbol_info = re_Symbol.search(msg)
@@ -189,13 +189,13 @@ def parse_strike(msg):
     if strike_inf is None and "BTO" in msg:
         sym = parse_Symbol(msg, "BTO")[0]
         re_strike = re.compile(f"{sym} (\d+(?:\.\d+)?)")
-        strike_inf = re_strike.search(msg)             
-        if strike_inf is None: 
+        strike_inf = re_strike.search(msg)
+        if strike_inf is None:
             return None, None
         return strike_inf.groups()[0], "C"
-    
-    if strike_inf is None: 
-        return None, None   
+
+    if strike_inf is None:
+        return None, None
     strike = strike_inf.groups()[0]
     optType = strike_inf.groups()[1].capitalize()
     return strike, optType
@@ -206,11 +206,11 @@ def parse_date(msg):
     if date_inf is None:
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug",
                   "Sep", "Oct", "Nov", "Dec"]
-        
+
         exp= f"({'|'.join(months)})" + " (\d{1,2}) (20\d{2})"
         re_date = re.compile(exp)
         date_inf = re_date.search(msg)
-        
+
         if date_inf is None:
             # crx
             return None
@@ -220,7 +220,7 @@ def parse_date(msg):
             dt_3 = date_inf.groups()[2]
             date = f"{dt_1}/{dt_2}/{dt_3}"
             return date
-        
+
     date = date_inf.groups()[0]
     return date
 
@@ -249,36 +249,36 @@ def parse_exits_vals(msg, expr):
     if exit_inf is None:
         re_comp= re.compile("(" + expr.lower() + "[:]?[ ]*[$]*(\d+[\.]*[\d]*))")
         exit_inf = re_comp.search(msg)
-        
+
         if exit_inf is None:
-            return None, None
+            return None
 
     exit_v = float(exit_inf.groups()[-1])
     return exit_v
 
 
 def parse_sell_amount(msg, asset):
-    
-    exprs = "(?:sold|sell) (\d\/\d)"    
+
+    exprs = "(?:sold|sell) (\d\/\d)"
     re_comp= re.compile(exprs, re.IGNORECASE)
     amnt_inf = re_comp.search(msg)
-    if amnt_inf is not None: 
+    if amnt_inf is not None:
         return round(eval(amnt_inf.groups()[0]), 2)
-        
-    exprs = "(?:sold|sell)(\d of \d)"    
+
+    exprs = "(?:sold|sell)(\d of \d)"
     re_comp= re.compile(exprs, re.IGNORECASE)
     amnt_inf = re_comp.search(msg)
-    if amnt_inf is not None: 
+    if amnt_inf is not None:
         return round(eval(amnt_inf.groups()[0].replace(" of ", "/")), 2)
-    
-    if any(subs in msg.lower() for subs in ["sold half", "sold another half", "half"]): 
+
+    if any(subs in msg.lower() for subs in ["sold half", "sold another half", "half"]):
         return 0.5
-          
-    
-    exprs = "\((\d(?:\/| of )\d)\)"    
+
+
+    exprs = "\((\d(?:\/| of )\d)\)"
     re_comp= re.compile(exprs)
     amnt_inf = re_comp.search(msg)
-    if amnt_inf is not None: 
+    if amnt_inf is not None:
         return round(eval(amnt_inf.groups()[0].replace(" of ", "/")), 2)
 
     partial = ['scaling out', 'selling more', 'trimming more off']
@@ -296,13 +296,13 @@ def parse_sell_amount(msg, asset):
 
 
 def auhtor_parser(msg, order, author):
-    
+
     new_order = {}
     if author == 'Xtrades Option Guru':
-        
+
         def stc_amount(msg):
             ######### Leave N untis
-            units = ["one", "two", "three"]            
+            units = ["one", "two", "three"]
             units_left = f'(?:leaving|leave)[ ]*(?:only )?[ ]*({"|".join(units)})'
             mtch = re.compile(units_left, re.IGNORECASE)
             mtch = mtch.search(msg)
@@ -317,7 +317,7 @@ def auhtor_parser(msg, order, author):
             mtch = mtch.search(msg)
             if mtch is not None:
                 return "few"
-            
+
             ######### Leave % amount
             left_perc = '(?:leaving|leave) (?:about|only) (\d{1,2})%'
             mtch = re.compile(left_perc, re.IGNORECASE)
@@ -325,7 +325,7 @@ def auhtor_parser(msg, order, author):
             if mtch is not None:
                 perc = mtch.groups()[0]
                 return eval(perc)/100
-            
+
             return None
 
         def match_exp(exp, msg):
@@ -363,7 +363,7 @@ def auhtor_parser(msg, order, author):
             if sl:
                 new_order["SL"] = sl
                 break
-            
+
         sl_mental = True if "mental" in msg.lower() else False
         if sl_mental:
             new_order["SL_mental"] = True
@@ -377,12 +377,12 @@ def auhtor_parser(msg, order, author):
                     break
             if risk_level:
                 new_order["risk"] = risk_level
-                
+
         else:
             amnt_left = stc_amount(msg)
             if amnt_left:
                 new_order["amnt_left"] = amnt_left
-            
+
             if "STC" not in msg:
                 stc = "([^a-z]selling|[^a-z]sold|all out|(:?(out|took)[a-zA-Z\s]*last))"
                 mtch = re.compile(stc, re.IGNORECASE)
