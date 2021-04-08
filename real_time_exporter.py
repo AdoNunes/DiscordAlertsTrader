@@ -101,7 +101,7 @@ def closest_fullname_match(name, names_all):
     if name is None:
         return name
 
-    candidate = [ n for n in names_all if name[0] in n.lower()]
+    candidate = [ n for n in names_all if name[0].lower() in n.lower()]
 
     if candidate == []:
         "print name not matched"
@@ -327,8 +327,8 @@ class AlertsListner():
 
             else:
                 print(Fore.RED +f"\t \t {pars}")
-
-                msg['Author'].repalce("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
+                if msg['Author'] == "Kevin (Momentum)#8888":
+                    msg['Author'].repalce("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
 
                 if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
                     order["Trader"] = msg['Author']
@@ -341,7 +341,7 @@ def combine_new_old_orders(msg, order_old, pars, author):
 
     order_author = auhtor_parser(msg, author)
     if order_author is None:
-        return order_old
+        return order_old, pars
 
     for k in order_author.keys():
         if order_author[k] == order_old.get(k) and k != "Symbol" or \
@@ -358,7 +358,7 @@ def combine_new_old_orders(msg, order_old, pars, author):
         if any([order.get(k) for k in ["PT1", "PT2", "PT3", "SL"]]):
             order['action'] = "ExitUpdate"
             pars = f"ExitUpdate: {pars}"
-    return order
+    return order, pars
 
 
 def short_date(dateobj, frm="%m/%d %H:%M:%S"):
