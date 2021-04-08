@@ -43,7 +43,7 @@ def option_alerts_parser(msg):
              "expDate": expDate,
              "strike" : strike + optType,
              "asset": "option",
-             "risk": risk_level}
+             "risk": risk_level
              }
 
     str_prt = f"{act} {Symbol} {expDate} {strike + optType} @{mark}"

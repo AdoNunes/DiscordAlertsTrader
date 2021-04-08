@@ -152,11 +152,11 @@ def make_STC_option(order, trades_log, openTrade):
     if order.get("amnt_left"):
         left = order["amnt_left"]
         if left == "few":
-            order['xQty'] =  .1
+            order['xQty'] =   1- .1
         elif left > .99:  # unit left
-            order['xQty'] =  .05
+            order['xQty'] =  1 - (.02 * left)
         elif left < .99:  # percentage left
-            order['xQty'] = left
+            order['xQty'] = 1 - left
 
     trades_log.loc[openTrade, STC] = order["price"]
     trades_log.loc[openTrade, STC + "-Date"] = order["date"]
@@ -166,7 +166,7 @@ def make_STC_option(order, trades_log, openTrade):
     str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), {stc_price:.2f}%"
 
     Qty_sold = trades_log.loc[openTrade,[f"STC{i}-xQty" for i in range(1,4)]].sum()
-    if order['xQty'] == 1 or Qty_sold > .98:
+    if order['xQty'] == 1 or Qty_sold > .99:
         trades_log.loc[openTrade, "Open"] = 0
         str_STC = str_STC + " Closed"
 

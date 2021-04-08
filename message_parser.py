@@ -50,10 +50,6 @@ def parser_alerts(msg, asset=None):
              "asset": asset,
              "risk": risk_level}
 
-    sl_mental = True if "mental" in msg.lower() else False
-    if sl_mental:
-        order["SL_mental"] = True
-
     str_prt = f"{act} {Symbol} @{mark} "
 
     if asset == "option":
@@ -75,6 +71,9 @@ def parser_alerts(msg, asset=None):
         pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
         n_pts = 3 if pt3_v else 2 if pt2_v else 1 if pt1_v else 0
         pts_qty = set_pt_qts(n_pts)
+
+        sl_mental = True if "mental" in msg.lower() else False
+        order["SL_mental"] = True
 
         if asset == "option":
             order["PT1"] =  set_exit_price_type(pt1_v, order)
@@ -322,11 +321,10 @@ def parse_risk(msg):
 
 
 
-def auhtor_parser(msg, order, author):
+def auhtor_parser(msg, author):
 
-    new_order = {}
-    if author == 'Xtrades Option Guru':
-
+    if author == 'Xtrades Option Guru#8905':
+        new_order = {}
         def stc_amount(msg):
             ######### Leave N untis
             units = ["one", "two", "three"]
@@ -401,7 +399,7 @@ def auhtor_parser(msg, order, author):
                 mtch = re.compile(stc, re.IGNORECASE)
                 mtch = mtch.search(msg)
                 if mtch is not None:
-                    new_order['act'] = "STC"
+                    new_order['action'] = "STC"
 
         if len(list(new_order.values())):
             symbol, _ = parse_Symbol(msg, parse_action(msg))
@@ -410,6 +408,7 @@ def auhtor_parser(msg, order, author):
             return new_order
         else:
             return None
+    return None
 
 
 def get_symb_prev_msg(df_hist, msg_ix, author):

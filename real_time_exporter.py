@@ -13,7 +13,7 @@ import time
 import re
 import pandas as pd
 from datetime import datetime, timedelta
-from message_parser import parser_alerts
+from message_parser import parser_alerts, auhtor_parser, get_symb_prev_msg
 from option_message_parser import option_alerts_parser
 from config import (path_dll, data_dir, CHN_NAMES, chn_IDS, discord_token, UPDATE_PERIOD)
 import config as cfg
@@ -285,10 +285,13 @@ class AlertsListner():
                 msg['Author'] = author
                 msg["Content"] = content
 
-            if asset == "stock":
-                pars, order =  parser_alerts(msg['Content'], asset)
-            elif asset == "option":
-                pars, order =  option_alerts_parser(msg['Content'])
+            pars, order =  parser_alerts(msg['Content'], asset)
+            order, pars = combine_new_old_orders(msg['Content'], order, pars, msg['Author'])
+            if order is not None and order.get("Symbol") is None:
+                if author == 'Xtrades Option Guru#8905':
+
+                    get_symb_prev_msg(df_hist, msg_ix, author)
+
 
             shrt_date = datetime.strptime(msg["Date"], self.time_strf
                                           ).strftime('%H:%M:%S')
@@ -300,7 +303,7 @@ class AlertsListner():
                     re_upd = re.compile("(?:T|t)rade plan[a-zA-Z\s\,\.]*\*{2}([A-Z]*?)\*{2}[a-zA-Z\s\,\.]* updated")
                     upd_inf = re_upd.search(msg['Content'])
                     if upd_inf:
-                        print(Fore.GREEN + f"Updating trade plan msg:}")
+                        print(Fore.GREEN + f"Updating trade plan msg:")
 
                 time_after = self.chn_hist[chn]['Date'].max()
                 json_msg = self.get_edited_msgs(chn_IDS[chn], time_after,
@@ -312,7 +315,7 @@ class AlertsListner():
                 if new_alerts is []:
                     print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
                     continue
-                print(Fore.GREEN + f"Updating edited msgs}")
+                print(Fore.GREEN + f"Updating edited msgs")
                 for alert in new_alerts:
                     pars, order, msg_str = alert
                     order['Trader'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
@@ -333,6 +336,29 @@ class AlertsListner():
                          msg['Content'])
 
 
+
+def combine_new_old_orders(msg, order_old, pars, author):
+
+    order_author = auhtor_parser(msg, author)
+    if order_author is None:
+        return order_old
+
+    for k in order_author.keys():
+        if order_author[k] == order_old.get(k) and k != "Symbol" or \
+            order_author[k] != order_old.get(k) and k == "Symbol":
+            resp = input("Found diff vals for {k}: new= {order_author[k]}, old= {order_old[k]} " +
+                         "[1- new, 2- old, 0- break and fix]")
+            if resp == 2:
+                order_author[k] = order_old.get(k)
+            elif resp == 0:
+                raise error
+    order = {**order_old, **order_author}
+
+    if order["action"] is None:
+        if any([order.get(k) for k in ["PT1", "PT2", "PT3", "SL"]]):
+            order['action'] = "ExitUpdate"
+            pars = f"ExitUpdate: {pars}"
+    return order
 
 
 def short_date(dateobj, frm="%m/%d %H:%M:%S"):

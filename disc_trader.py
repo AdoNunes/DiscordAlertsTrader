@@ -103,7 +103,7 @@ class AlertTrader():
         else:
             self.portfolio = pd.DataFrame(columns=[
                 "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Alert-Price",
-                "uQty", "filledQty", "Avged", "exit_plan", "ordID"] + [
+                "uQty", "filledQty", "Avged", "exit_plan", "ordID", "Risk", "SL_mental"] + [
                     "STC%d-%s"% (i, v) for v in
                     ["Alerted", "Status", "xQty", "uQty", "Price", "PnL","Date", "ordID"]
                     for i in range(1,4)] )
@@ -259,7 +259,6 @@ class AlertTrader():
                         new_order['PTs_Qty'] = [round(1/new_n,2) for i in range(new_n)]
                         new_order['PTs_Qty'][-1] = new_order['PTs_Qty'][-1] + (1- sum(new_order['PTs_Qty']))
 
-
                     new_order["SL"] = (input(f"Change SL @{order['SL']} {price_now(symb)}?"+
                                              " Leave blank if NO \n")
                                        or order['SL'])
@@ -390,8 +389,10 @@ class AlertTrader():
                          "Price" : order_info["price"],
                          "Alert-Price" : alert_price,
                          "ordID" : order_id,
-                         "exit_plan"  : str(exit_plan),
-                         "Trader" : order['Trader']
+                         "exit_plan" : str(exit_plan),
+                         "Trader" : order['Trader'],
+                         "Risk" : order['risk'],
+                         "SL_mental" : order["SL_mental"]
                          }
 
             self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
@@ -436,7 +437,8 @@ class AlertTrader():
 
             if order.get("amnt_left"):
                 order, changed = amnt_left(order, position)
-                print(Back.GREEN + "Updated order xQty based on alerted amnt left")
+                print(Back.GREEN + f"Based on alerted amnt left, Updated order: " +
+                      f"xQty: {order['xQty']} and uQty: {order['uQty']}")
 
             # check if position already alerted and closed
             for i in range(1,4):
@@ -787,12 +789,12 @@ def amnt_left(order, position):
             order['uQty'] = max(round(available * order['xQty']), 1)
         elif left > .99:  # unit left
             order['uQty'] = max(available - left, 1)
-            order['xQty'] = available - order['uQty'])/(available
+            order['xQty'] = (available - order['uQty'])/available
         elif left < .99:  # percentage left
             order['xQty'] = 1 - left
             order['uQty'] = max(round(available * order['xQty']), 1)
         else:
-            error check
+            error
         return order, True
     else:
         return order, False
