@@ -8,6 +8,8 @@ Created on Mon Feb  8 18:11:55 2021
 import re
 import pandas as pd
 from place_order import make_optionID
+import numpy as np
+
 
 def parser_alerts(msg, asset=None):
     # if not '@everyone' in msg:
@@ -40,11 +42,17 @@ def parser_alerts(msg, asset=None):
     elif asset == "stock":
         mark  = parse_mark_stock(msg, Symbol, act)
 
+    risk_level = parse_risk(msg)
+
     order = {"action": act,
              "Symbol": Symbol,
              "price": mark,
-             "asset": asset
-             }
+             "asset": asset,
+             "risk": risk_level}
+
+    sl_mental = True if "mental" in msg.lower() else False
+    if sl_mental:
+        order["SL_mental"] = True
 
     str_prt = f"{act} {Symbol} @{mark} "
 
@@ -295,6 +303,25 @@ def parse_sell_amount(msg, asset):
     return amnt
 
 
+def parse_risk(msg):
+
+    risk = {'very high risk':"very high",
+            'risk very high':"very high",
+            'very risky':"very high",
+            'risk high': "high",
+            'high risk': "high",
+            'risky': "medium",
+            'yolo':"yolo"}
+    risk_level = None
+    if "BTO" in msg:
+        for k, rsk in risk.items():
+            if k in msg.lower():
+                risk_level = rsk
+                break
+    return risk_level
+
+
+
 def auhtor_parser(msg, order, author):
 
     new_order = {}
@@ -364,21 +391,7 @@ def auhtor_parser(msg, order, author):
                 new_order["SL"] = sl
                 break
 
-        sl_mental = True if "mental" in msg.lower() else False
-        if sl_mental:
-            new_order["SL_mental"] = True
-
-        risk = ['very high risk', 'very risky', 'risk high', 'risky', 'yolo']
-        risk_level = None
-        if "BTO" in msg:
-            for rsk in risk:
-                if rsk in msg.lower():
-                    risk_level = rsk
-                    break
-            if risk_level:
-                new_order["risk"] = risk_level
-
-        else:
+        if "BTO" not in msg:
             amnt_left = stc_amount(msg)
             if amnt_left:
                 new_order["amnt_left"] = amnt_left
@@ -397,3 +410,20 @@ def auhtor_parser(msg, order, author):
             return new_order
         else:
             return None
+
+
+def get_symb_prev_msg(df_hist, msg_ix, author):
+
+    df_hist["Author"]  = df_hist["Author"].apply(lambda x: x.split("#")[0])
+
+    df_hist_auth = df_hist[df_hist["Author"]==author]
+    msg_inx_auth, = np.nonzero(df_hist_auth.index == msg_ix)
+    indexes = df_hist_auth.index.values
+
+    for n in range(1,3):
+        inx = indexes[msg_inx_auth - n]
+        msg, = df_hist_auth.loc[inx, 'Content'].values
+        symbol, _ = parse_Symbol(msg, parse_action(msg))
+        if symbol is not None:
+            return symbol, inx
+    return None, None

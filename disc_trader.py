@@ -380,12 +380,6 @@ class AlertTrader():
 
             exit_plan = self.parse_exit_plan(order)
 
-            try:
-                 order_info['price']
-                 print(Back.RED + "order info from ord status [chng line 377 disc trader]")
-            except:
-                 print(Back.RED + "FAILED order info from ord status [chng line 377 disc trader]")
-
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
                          'isOpen': 1,
@@ -393,7 +387,7 @@ class AlertTrader():
                          "uQty": order_info['quantity'],
                          "Asset" : order["asset"],
                          "Type" : "BTO",
-                         "Price" : ordered["price"],
+                         "Price" : order_info["price"],
                          "Alert-Price" : alert_price,
                          "ordID" : order_id,
                          "exit_plan"  : str(exit_plan),
@@ -431,7 +425,6 @@ class AlertTrader():
 
 
         elif order["action"] == "STC" and isOpen == 0:
-            # TODO log it in the portfoliio
             str_act = "STC without BTO, maybe alredy sold"
             log_alert['action'] = "STC-Null-notOpen"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
@@ -440,6 +433,10 @@ class AlertTrader():
 
         elif order["action"] == "STC":
             position = self.portfolio.iloc[open_trade]
+
+            if order.get("amnt_left"):
+                order, changed = amnt_left(order, position)
+                print(Back.GREEN + "Updated order xQty based on alerted amnt left")
 
             # check if position already alerted and closed
             for i in range(1,4):
@@ -521,7 +518,6 @@ class AlertTrader():
                 order['uQty'] = int(position["uQty"]) - qty_sold
 
             elif order['xQty'] < 1:  # portion
-
                 self.close_open_exit_orders(open_trade, i)
                 order['uQty'] = max(round(qty_bought * order['xQty']), 1)
 
@@ -547,9 +543,7 @@ class AlertTrader():
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs()
 
-
             order_status, order_info = self.get_order_info(order_id)
-
 
             self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
 
@@ -783,7 +777,25 @@ class AlertTrader():
                     break
 
 
-
+def amnt_left(order, position):
+    # Calculate amnt to sell based on alerted left amount
+    available = position["uQty"]
+    if order.get("amnt_left"):
+        left = order["amnt_left"]
+        if left == "few":
+            order['xQty'] =  1 - .2
+            order['uQty'] = max(round(available * order['xQty']), 1)
+        elif left > .99:  # unit left
+            order['uQty'] = max(available - left, 1)
+            order['xQty'] = available - order['uQty'])/(available
+        elif left < .99:  # percentage left
+            order['xQty'] = 1 - left
+            order['uQty'] = max(round(available * order['xQty']), 1)
+        else:
+            error check
+        return order, True
+    else:
+        return order, False
 
 
 if 0 :

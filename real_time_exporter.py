@@ -300,7 +300,7 @@ class AlertsListner():
                     re_upd = re.compile("(?:T|t)rade plan[a-zA-Z\s\,\.]*\*{2}([A-Z]*?)\*{2}[a-zA-Z\s\,\.]* updated")
                     upd_inf = re_upd.search(msg['Content'])
                     if upd_inf:
-                        print(Fore.GREEN + f"Updating edited msgs: \n \t {alert[0]}")
+                        print(Fore.GREEN + f"Updating trade plan msg:}")
 
                 time_after = self.chn_hist[chn]['Date'].max()
                 json_msg = self.get_edited_msgs(chn_IDS[chn], time_after,
@@ -312,8 +312,11 @@ class AlertsListner():
                 if new_alerts is []:
                     print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
                     continue
+                print(Fore.GREEN + f"Updating edited msgs}")
                 for alert in new_alerts:
                     pars, order, msg_str = alert
+                    order['Trader'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
+                    if order['Trader'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
                         self.Altrader.new_trade_alert(order, pars, msg_str)
 
             elif pars == 'not an alert':
@@ -322,8 +325,7 @@ class AlertsListner():
             else:
                 print(Fore.RED +f"\t \t {pars}")
 
-                if msg['Author'] == "Kevin (Momentum)#8888":
-                    msg['Author'] =  "Kevin (Momentum)#4441"
+                msg['Author'].repalce("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
 
                 if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
                     order["Trader"] = msg['Author']
