@@ -328,6 +328,7 @@ class AlertsListner():
             else:
                 print(Fore.RED +f"\t \t {pars}")
                 if msg['Author'] == "Kevin (Momentum)#8888":
+                    print("That s kevin")
                     msg['Author'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
 
                 if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
