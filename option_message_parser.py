@@ -8,6 +8,8 @@ Created on Mon Feb  8 18:11:55 2021
 import re
 from place_order import make_optionID
 import pandas as pd
+from message_parser import parse_risk
+
 
 def option_alerts_parser(msg):
     # if not '@everyone' in msg:
@@ -22,23 +24,26 @@ def option_alerts_parser(msg):
     Symbol = parse_Symbol(msg, act)
     if Symbol is None:
         return None, None
-    
+
     expDate = parse_date(msg)
     if expDate is None:
         return None, None
-    
+
     strike, optType = parse_strike(msg)
     optType = optType.upper()
-    
+
     mark = parse_mark(msg)
+
+    risk_level = parse_risk(msg)
 
     order = {"action": act,
              "Symbol": Symbol,
              "ticker": Symbol,
              "price": mark,
              "expDate": expDate,
-             "strike" : strike + optType,        
-             "asset": "option"
+             "strike" : strike + optType,
+             "asset": "option",
+             "risk": risk_level
              }
 
     str_prt = f"{act} {Symbol} {expDate} {strike + optType} @{mark}"
@@ -61,9 +66,9 @@ def option_alerts_parser(msg):
         order["SL"] = set_exit_price_type(sl_v, order)
         order["n_PTs"] = n_pts
         order["PTs_Qty"] = pts_qty
-        
+
         str_prt = str_prt + f' PT1:{order["PT1"]}, PT2:{order["PT2"]}, PT3:{order["PT3"]}, SL:{order["SL"] }'
-        
+
     elif act == "STC":
         amnt = parse_sell_amount(msg)
         str_prt = str_prt + f" amount: {amnt}"
@@ -77,12 +82,12 @@ def set_exit_price_type(exit_price, order):
     """Option or stock price decided with smallest distance"""
     if exit_price is None:
         return exit_price
-    
+
     price_strk = float(order['strike'][:-1])
 
     rtio_stock = abs(price_strk - exit_price)
-    rtio_option = abs(order['price'] - exit_price) 
-                             
+    rtio_option = abs(order['price'] - exit_price)
+
     if rtio_stock < rtio_option:
         exit_price = str(exit_price) + 's'
     elif rtio_stock > rtio_option:
@@ -132,11 +137,11 @@ def parse_date(msg):
     if date_inf is None:
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug",
                   "Sep", "Oct", "Nov", "Dec"]
-        
+
         exp= f"({'|'.join(months)})" + " (\d{1,2}) (20\d{2})"
         re_date = re.compile(exp)
         date_inf = re_date.search(msg)
-        
+
         if date_inf is None:
             # crx
             return None
@@ -146,23 +151,23 @@ def parse_date(msg):
             dt_3 = date_inf.groups()[2]
             date = f"{dt_1}/{dt_2}/{dt_3}"
             return date
-        
+
     date = date_inf.groups()[0]
     return date
-    
+
 def parse_strike(msg):
     re_strike = re.compile(" [$]?(\d+(?:\.\d+)?)[ ]?(C|c|P|p)")
     strike_inf = re_strike.search(msg)
     if strike_inf is None and "BTO" in msg:
         sym = parse_Symbol(msg, "BTO")
         re_strike = re.compile(f"{sym} (\d+(?:\.\d+)?)")
-        strike_inf = re_strike.search(msg)             
-        # if strike_inf is None: 
-        #     return None, None
+        strike_inf = re_strike.search(msg)
+        if strike_inf is None:
+            return None, None
         return strike_inf.groups()[0], "C"
-    
-    if strike_inf is None: 
-        return None, None   
+
+    if strike_inf is None:
+        return None, None
     strike = strike_inf.groups()[0]
     optType = strike_inf.groups()[1].capitalize()
     return strike, optType
@@ -193,7 +198,7 @@ def parse_exits(msg):
 def parse_avg(msg, Symbol):
     re_avg = re.compile("(?:avg|new average)[ ]*[$]*(\d+(?:\.\d+)?)")
     avg_inf = re_avg.search(msg)
-    
+
     if avg_inf is None:
         return None
 
@@ -203,42 +208,42 @@ def parse_avg(msg, Symbol):
 def parse_exits_vals(msg, expr):
     re_comp= re.compile("(" + expr + "[:]?[ ]*[$]*(\d+[\.]*[\d]*))")
     exit_inf = re_comp.search(msg)
-    
+
     if exit_inf is None:
         re_comp= re.compile("(" + expr.lower() + "[:]?[ ]*[$]*(\d+[\.]*[\d]*))")
         exit_inf = re_comp.search(msg)
-        
+
         if exit_inf is None:
             return None
-        
+
     exit_v = float(exit_inf.groups()[-1])
     return exit_v
 
 
 def parse_sell_amount(msg):
-    
-    exprs = "(?:sold|sell) (\d\/\d)"    
+
+    exprs = "(?:sold|sell) (\d\/\d)"
     re_comp= re.compile(exprs)
     amnt_inf = re_comp.search(msg)
-    if amnt_inf is not None: 
+    if amnt_inf is not None:
         return round(eval(amnt_inf.groups()[0]), 2)
-        
-    exprs = "(?:sold|sell)(\d of \d)"    
+
+    exprs = "(?:sold|sell)(\d of \d)"
     re_comp= re.compile(exprs)
     amnt_inf = re_comp.search(msg)
-    if amnt_inf is not None: 
+    if amnt_inf is not None:
         return round(eval(amnt_inf.groups()[0].replace(" of ", "/")), 2)
-    
-    if any(subs in msg.lower() for subs in ["sold half", "sold another half", "half"]): 
+
+    if any(subs in msg.lower() for subs in ["sold half", "sold another half", "half"]):
         return 0.5
-    
-    exprs = "\((\d(?:\/| of )\d)\)"    
+
+    exprs = "\((\d(?:\/| of )\d)\)"
     re_comp= re.compile(exprs)
     amnt_inf = re_comp.search(msg)
-    if amnt_inf is not None: 
+    if amnt_inf is not None:
         return round(eval(amnt_inf.groups()[0].replace(" of ", "/")), 2)
-    
-    
+
+
     if "partial" in msg.lower():
         amnt = .33
     else:

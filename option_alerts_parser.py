@@ -2,7 +2,7 @@ import pandas as pd
 import re
 import numpy as np
 import os.path as op
-from message_parser import parser_alerts, auhtor_parser
+from message_parser import parser_alerts, auhtor_parser, get_symb_prev_msg
 from place_order import make_optionID
 
 
@@ -80,6 +80,8 @@ def make_BTO_option(order, trades_log):
 
     planned = [[PTs[i], Qts[i]] for i in range(order['n_PTs'])]
 
+    sl_mental = True if "mental" in msg.lower() else False
+
     trades_log = trades_log.append({
         "BTO-Date": order['date'],
         "Symbol" : order['Symbol'],
@@ -87,10 +89,11 @@ def make_BTO_option(order, trades_log):
         "Strike" : order['strike'],
         "ExpDate" : order['expDate'],
         "Planned_PT": planned,
-        "Planned_SL": order['SL']
+        "Planned_SL": order['SL'],
+        "SL_mental" : sl_mental,
+        "Risk": order['risk']
         }, ignore_index=True)
     str_act = f"BTO {order['Symbol']} {order['price']} {order['expDate']} {order['strike']}, Plan PT:{order['PT1']}, SL:{order['SL']}"
-
 
     return trades_log, str_act
 
@@ -146,6 +149,15 @@ def make_STC_option(order, trades_log, openTrade):
     bto_price = trades_log.loc[openTrade, "BTO"]
     stc_price = float((order["price"] - bto_price)/bto_price) *100
 
+    if order.get("amnt_left"):
+        left = order["amnt_left"]
+        if left == "few":
+            order['xQty'] =   1- .1
+        elif left > .99:  # unit left
+            order['xQty'] =  1 - (.02 * left)
+        elif left < .99:  # percentage left
+            order['xQty'] = 1 - left
+
     trades_log.loc[openTrade, STC] = order["price"]
     trades_log.loc[openTrade, STC + "-Date"] = order["date"]
     trades_log.loc[openTrade, STC + "-xQty"] = order['xQty']
@@ -154,7 +166,7 @@ def make_STC_option(order, trades_log, openTrade):
     str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), {stc_price:.2f}%"
 
     Qty_sold = trades_log.loc[openTrade,[f"STC{i}-xQty" for i in range(1,4)]].sum()
-    if order['xQty'] == 1 or Qty_sold > .98:
+    if order['xQty'] == 1 or Qty_sold > .99:
         trades_log.loc[openTrade, "Open"] = 0
         str_STC = str_STC + " Closed"
 
@@ -198,6 +210,7 @@ trades_log = pd.DataFrame(columns = ["BTO-Date", "Symbol", "Open", "BTO",
 
 bad_msg = []
 not_msg = pd.DataFrame(columns=["MSG"])
+
 for i in range(274,len(alerts_author)):
     msg = alerts_author["Content"].iloc[i]
     msg = msg.replace("~~2.99~~", "")
@@ -212,14 +225,25 @@ for i in range(274,len(alerts_author)):
     #     continue
     author = alerts_author["Author"].iloc[i].split("#")[0]
     new_order = auhtor_parser(msg, order, author)
-    if new_order is not None:
+
+    if new_order is None:
+        continue
+
+    if new_order.get("Symbol") ==  None:
+        symbol, prev_msg_inx = get_symb_prev_msg(alerts_author, i, author)
+        # new_order["Symbol"] = symbol
+    else:
+        symbol, prev_msg_inx = None, None
+
+
+    if symbol is not None:
         print("NEW: ", new_order)
+        print(f"Symb {symbol} from: ", alerts_author.loc[prev_msg_inx, "Content"])
         resp = input("press o to stop")
         if resp == "o":
             print(f"stopped at {i}")
             break
-    """
-    
+
     if order  is None:
         not_msg = not_msg.append({"MSG":msg}, ignore_index=True)
         continue
@@ -254,4 +278,4 @@ Exits = not_msg[not_msg["MSG"].str.contains("target|stop")]
 not_msg_exit = not_msg[~not_msg["MSG"].str.contains("target|stop")]
 not_msg_exit.to_csv(f"data/not_understood_notexit_{author}.csv")
 
-"""
+
