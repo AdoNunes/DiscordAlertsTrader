@@ -73,7 +73,7 @@ def msg_update_alert(df_hist, json_msg, asset):
         if order_old == order_upd:
             continue
 
-        order_upd['Trader'] = df_hist.loc[msg[0], 'Author'].values
+        order_upd['Trader'] = df_hist.loc[msg[0], 'Author'].values[0]
         # Previous non edited msg not understood
         if order_old is None and order_upd is not None:
             new_alerts.append([pars,order_upd, msg_content])
