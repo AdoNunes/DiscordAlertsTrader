@@ -352,7 +352,7 @@ def combine_new_old_orders(msg, order_old, pars, author):
                 if resp == 2:
                     order_author[k] = order_old.get(k)
                 elif resp == 0:
-                    raise "error""
+                    raise "error"
         order = {**order_old, **order_author}
     else:
         order = order_author
