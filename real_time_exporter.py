@@ -315,7 +315,7 @@ class AlertsListner():
                 if new_alerts is []:
                     print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
                     continue
-                print(Fore.GREEN + f"Updating edited msgs")
+                print(Fore.GREEN + "Updating edited msgs")
                 for alert in new_alerts:
                     pars, order, msg_str = alert
                     order['Trader'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
@@ -343,16 +343,19 @@ def combine_new_old_orders(msg, order_old, pars, author):
     if order_author is None:
         return order_old, pars
 
-    for k in order_author.keys():
-        if order_author[k] == order_old.get(k) and k != "Symbol" or \
-            order_author[k] != order_old.get(k) and k == "Symbol":
-            resp = input("Found diff vals for {k}: new= {order_author[k]}, old= {order_old[k]} " +
-                         "[1- new, 2- old, 0- break and fix]")
-            if resp == 2:
-                order_author[k] = order_old.get(k)
-            elif resp == 0:
-                raise error
-    order = {**order_old, **order_author}
+    if order_old is not None:
+        for k in order_author.keys():
+            if order_author[k] == order_old.get(k) and k != "Symbol" or \
+                order_author[k] != order_old.get(k) and k == "Symbol":
+                resp = input("Found diff vals for {k}: new= {order_author[k]}, old= {order_old[k]} " +
+                             "[1- new, 2- old, 0- break and fix]")
+                if resp == 2:
+                    order_author[k] = order_old.get(k)
+                elif resp == 0:
+                    raise "error""
+        order = {**order_old, **order_author}
+    else:
+        order = order_author
 
     if order["action"] is None:
         if any([order.get(k) for k in ["PT1", "PT2", "PT3", "SL"]]):
