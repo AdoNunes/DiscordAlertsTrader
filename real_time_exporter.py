@@ -357,7 +357,7 @@ def combine_new_old_orders(msg, order_old, pars, author):
     else:
         order = order_author
 
-    if order["action"] is None:
+    if order.get("action") is None:
         if any([order.get(k) for k in ["PT1", "PT2", "PT3", "SL"]]):
             order['action'] = "ExitUpdate"
             pars = f"ExitUpdate: {pars}"
