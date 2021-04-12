@@ -298,6 +298,8 @@ class AlertsListner():
             print(f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
 
             if pars is None:
+                if msg['Author'] == "Kevin (Momentum)#8888":
+                    msg['Author'] = msg['Author'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
                 # Check if msg alerting exitUpdate in prev msg
                 if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
                     re_upd = re.compile("(?:T|t)rade plan[a-zA-Z\s\,\.]*\*{2}([A-Z]*?)\*{2}[a-zA-Z\s\,\.]* updated")
@@ -317,6 +319,7 @@ class AlertsListner():
                     continue
                 print(Fore.GREEN + "Updating edited msgs")
                 for alert in new_alerts:
+                    print(Fore.GREEN + alert)
                     pars, order, msg_str = alert
                     order['Trader'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
                     if order['Trader'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
@@ -328,8 +331,7 @@ class AlertsListner():
             else:
                 print(Fore.RED +f"\t \t {pars}")
                 if msg['Author'] == "Kevin (Momentum)#8888":
-                    print("That s kevin")
-                    msg['Author'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
+                    msg['Author'] = msg['Author'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
 
                 if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
                     order["Trader"] = msg['Author']
