@@ -305,8 +305,12 @@ class AlertTrader():
 
 
     def get_order_info(self, order_id):
-        order_info = self.TDsession.get_orders(account=self.accountId,
+        try:
+            order_info = self.TDsession.get_orders(account=self.accountId,
                                               order_id=order_id)
+        except td.exceptions.ServerError as e:
+            print("Caught TD Server Error, skipping order info retr.")
+            return None, None
 
         if order_info['orderStrategyType'] == "OCO":
             order_status = [
