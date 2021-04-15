@@ -182,15 +182,19 @@ class AlertTrader():
         return pars_str
 
 
-    def price_now(self, Symbol, flag=0):
+    def price_now(self, Symbol, price_type="BTO", pflag=0):
+        if price_type in ["BTO", "BTC"]:
+            ptype = 'askPrice'
+        else:
+            ptype= 'bidPrice'
         try:
             quote = self.TDsession.get_quotes(
-                instruments=[Symbol])[Symbol]['askPrice']
+                instruments=[Symbol])[Symbol][ptype]
         except KeyError as e:
                 print (Back.RED + f"price_now ERROR: {e}.\n Trying again")
                 quote = self.TDsession.get_quotes(
-                instruments=[Symbol])[Symbol]['askPrice']
-        if flag:
+                instruments=[Symbol])[Symbol][ptype]
+        if pflag:
             return quote
         else:
             return "CURRENTLY @%.2f"% quote
@@ -214,16 +218,17 @@ class AlertTrader():
         symb = order['Symbol']
         ord_ori = order.copy()
         pars_ori = pars
+        act = order['action']
 
         while True:
-            question = f"{pars_ori} {price_now(symb)}"
+            question = f"{pars_ori} {price_now(symb, act)}"
 
-            pdiff = (price_now(symb,1 ) - ord_ori['price'])/ord_ori['price']
+            pdiff = (price_now(symb, act, 1 ) - ord_ori['price'])/ord_ori['price']
             pdiff = round(pdiff*100,1)
 
             if cfg.sell_current_price:
                 if pdiff < cfg.max_price_diff[order["asset"]]:
-                    order['price'] = price_now(symb,1 )
+                    order['price'] = price_now(symb, act, 1)
                     pars = self.order_to_pars(order)
                     question += f"\n new price: {pars}"
                 else:
@@ -243,17 +248,17 @@ class AlertTrader():
 
             if resp in [ "c", "change", "y", "yes"] and 'uQty' not in order.keys():
                 order['uQty'] = int(input("Order qty not available." +
-                                          f" How many units to buy? {price_now(symb)} \n"))
+                                          f" How many units to buy? {price_now(symb, act)} \n"))
 
             if resp in [ "c", "change"]:
                 new_order = order.copy()
                 new_order['price'] = float(input(f"Change price @{order['price']}" +
-                                        f" {price_now(symb)}? Leave blank if NO \n")
+                                        f" {price_now(symb, act)}? Leave blank if NO \n")
                                       or order['price'])
 
                 if order['action'] == 'BTO':
                     PTs = [order[f'PT{i}'] for i in range(1,4)]
-                    PTs = eval(input(f"Change PTs @{PTs} {price_now(symb)}? \
+                    PTs = eval(input(f"Change PTs @{PTs} {price_now(symb, act)}? \
                                       Leave blank if NO, respnd eg [1, 2, None] \n")
                                       or str(PTs))
 
@@ -263,7 +268,7 @@ class AlertTrader():
                         new_order['PTs_Qty'] = [round(1/new_n,2) for i in range(new_n)]
                         new_order['PTs_Qty'][-1] = new_order['PTs_Qty'][-1] + (1- sum(new_order['PTs_Qty']))
 
-                    new_order["SL"] = (input(f"Change SL @{order['SL']} {price_now(symb)}?"+
+                    new_order["SL"] = (input(f"Change SL @{order['SL']} {price_now(symb, act)}?"+
                                              " Leave blank if NO \n")
                                        or order['SL'])
 
@@ -702,8 +707,8 @@ class AlertTrader():
         if len(ord_inf) != 2: return
         symb_stock = ord_inf[0]
 
-        quote = self.price_now(symb_stock, 1)
-        quote_opt = self.price_now(trade['Symbol'], 1)
+        quote = self.price_now(symb_stock, act, 1)
+        quote_opt = self.price_now(trade['Symbol'], act, 1)
 
         for v, pt in exit_plan.items():
             if not isinstance(pt, str): continue
