@@ -285,17 +285,23 @@ class AlertsListner():
                 msg['Author'] = author
                 msg["Content"] = content
 
-            pars, order =  parser_alerts(msg['Content'], asset)
-            order, pars = combine_new_old_orders(msg['Content'], order, pars, msg['Author'])
-            if order is not None and order.get("Symbol") is None:
-                if author == 'Xtrades Option Guru#8905':
-
-                    get_symb_prev_msg(df_hist, msg_ix, author)
-
-
             shrt_date = datetime.strptime(msg["Date"], self.time_strf
                                           ).strftime('%H:%M:%S')
             print(f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
+
+            pars, order =  parser_alerts(msg['Content'], asset)
+            author = msg['Author']
+            order, pars = combine_new_old_orders(msg['Content'], order, pars, author)
+            if order is not None and order.get("Symbol") is None:
+                if author == 'Xtrades Option Guru#8905':
+                    df_hist = self.chn_hist[chn]
+                    msg_ix, = df_hist[df_hist['Content'] == msg['Content']].index.values
+                    sym, inxf = get_symb_prev_msg(df_hist, msg_ix, author.split("#")[0])
+                    if sym is not None:
+                        order["Symbol"] = sym
+                        print(Fore.GREEN + f"Got {sym} symbol from previous msg {inxf}, author: {author}")
+                    else:
+                        pars = None
 
             if pars is None:
                 if msg['Author'] == "Kevin (Momentum)#8888":
@@ -314,12 +320,12 @@ class AlertsListner():
                 new_alerts, _ = msg_update_alert(self.chn_hist[chn], json_msg,
                                                  asset)
 
-                if new_alerts is []:
+                if new_alerts == []:
                     print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
                     continue
                 print(Fore.GREEN + "Updating edited msgs")
                 for alert in new_alerts:
-                    print(Fore.GREEN + alert)
+                    print(Fore.GREEN + alert[2])
                     pars, order, msg_str = alert
                     order['Trader'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
                     if order['Trader'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:

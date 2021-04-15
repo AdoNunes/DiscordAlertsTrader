@@ -15,7 +15,7 @@ import time
 import config as cfg
 import threading
 from pprint import pprint
-from td.exceptions import GeneralError
+from td.exceptions import GeneralError, ServerError
 from place_order import (get_TDsession, make_BTO_lim_order, send_order,
                          make_STC_lim, make_lim_option,
                          make_Lim_SL_order, make_STC_SL)
@@ -123,7 +123,10 @@ class AlertTrader():
         self.accountId = self.TDsession.accountId
 
         self.update_portfolio = update_portfolio
+        self.update_paused = False
         if update_portfolio:
+            # first do a synch process, then thread it
+            self.update_orders()
             self.activate_trade_updater()
 
     def plot_portfolio(self):
@@ -141,7 +144,7 @@ class AlertTrader():
         """ Will stop threding updater and restart.
         To avoid delays or parallel updatings. """
         self.update_portfolio = False
-        self.updater._stop()
+        time.sleep(refresh_rate)
         self.activate_trade_updater(refresh_rate)
 
     def _stop(self):
@@ -150,10 +153,11 @@ class AlertTrader():
 
     def trade_updater(self, refresh_rate=30):
         while self.update_portfolio is True:
-            try:
-                self.update_orders()
-            except GeneralError:
-                print(Back.GREEN + "General error raised, trying again")
+            if self.update_paused is False:
+                try:
+                    self.update_orders()
+                except GeneralError:
+                    print(Back.GREEN + "General error raised, trying again")
             time.sleep(refresh_rate)
         print(Back.GREEN + "Closing portfolio updater")
 
@@ -308,7 +312,7 @@ class AlertTrader():
         try:
             order_info = self.TDsession.get_orders(account=self.accountId,
                                               order_id=order_id)
-        except td.exceptions.ServerError as e:
+        except ServerError as e:
             print("Caught TD Server Error, skipping order info retr.")
             return None, None
 
@@ -347,6 +351,8 @@ class AlertTrader():
                      }
 
         if order['action'] == "ExitUpdate" and isOpen:
+            # Pause updater to avoid overlapping
+            self.update_paused = True
 
             old_plan = self.portfolio.loc[open_trade, "exit_plan"]
             new_plan = self.parse_exit_plan(order)
@@ -355,7 +361,7 @@ class AlertTrader():
             self.close_open_exit_orders(open_trade)
 
             self.portfolio.loc[open_trade, "exit_plan"] = str(new_plan)
-            self.trade_updater_reset()
+            self.update_paused = False
 
             log_alert['action'] = "ExitUpdate"
             self.save_logs()
@@ -487,8 +493,7 @@ class AlertTrader():
                 return
 
             # Close position of STC All or STC SL
-            if (qty_bought == 0 and order['xQty'] == 1) or (
-                    order["price"] < self.portfolio.loc[open_trade, "Price"]):
+            if qty_bought == 0 and order['xQty'] == 1:
 
                 order_id = position['ordID']
                 _ = self.TDsession.cancel_order(self.TDsession.accountId, order_id)
@@ -503,6 +508,7 @@ class AlertTrader():
                 log_alert['action'] = "STC-ClosedBeforeFill"
                 log_alert["portfolio_idx"] = open_trade
                 self.save_logs()
+                # self.activate_trade_updater()
                 return
             # Set STC as exit plan
             elif qty_bought == 0:
@@ -517,6 +523,8 @@ class AlertTrader():
             qty_sold = np.nansum([position[f"STC{i}-uQty"] for i in range(1,4)])
 
             if order['xQty'] == 1:
+                # Stop updater to avoid overlapping
+                self.update_paused = True
                 # Sell all and close waiting stc orders
                 self.close_open_exit_orders(open_trade)
 
@@ -524,6 +532,8 @@ class AlertTrader():
                 order['uQty'] = int(position["uQty"]) - qty_sold
 
             elif order['xQty'] < 1:  # portion
+                # Stop updater to avoid overlapping
+                self.update_paused = True
                 self.close_open_exit_orders(open_trade, i)
                 order['uQty'] = max(round(qty_bought * order['xQty']), 1)
 
@@ -542,15 +552,10 @@ class AlertTrader():
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                 self.save_logs(["alert"])
                 print(Back.GREEN + "STC not accepted by user")
+                self.update_paused = False
                 return
 
-            #Log trades_log
-            log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL"
-            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
-            self.save_logs()
-
             order_status, order_info = self.get_order_info(order_id)
-
             self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
 
             # Check if STC price changed
@@ -560,6 +565,12 @@ class AlertTrader():
                 str_STC = f"Submitted: {STC} {order['Symbol']} @{order['price']} Qty:{order['uQty']} ({order['xQty']})"
                 print(Back.GREEN + str_STC)
 
+            #Log trades_log
+            log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL"
+            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+            self.save_logs()
+            
+            self.update_paused = False
 
     def log_filled_STC(self, order_id, open_trade, STC):
 
