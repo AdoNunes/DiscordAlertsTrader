@@ -569,7 +569,7 @@ class AlertTrader():
             log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs()
-            
+
             self.update_paused = False
 
     def log_filled_STC(self, order_id, open_trade, STC):
@@ -753,7 +753,7 @@ class AlertTrader():
                 SL = exit_plan["SL"]
                 # Check if exit prices are strings (stock price for option)
                 if isinstance(SL, str): SL = None
-                if isinstance(exit_plan[f"PT{ii}"], str): continue
+                if isinstance(exit_plan[f"PT{ii}"], str): exit_plan[f"PT{ii}"] = None
 
                 ord_func = None
                 # Lim and Sl OCO order
@@ -785,7 +785,7 @@ class AlertTrader():
                 else:
                     raise("Case not caught")
 
-                if ord_func is not None:
+                if ord_func is not None and order['uQty'] > 0:
                     _, STC_ordID = send_order(ord_func(**order), self.TDsession)
                     self.portfolio.loc[i, STC+"-ordID"] = STC_ordID
                     trade = self.portfolio.iloc[i]

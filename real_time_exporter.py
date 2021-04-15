@@ -80,7 +80,7 @@ def msg_update_alert(df_hist, json_msg, asset):
             continue
 
         ex_old = [order_old[f"PT{i}"] for i in range(1,4)]
-        ex_upd = [order_old[f"PT{i}"] for i in range(1,4)]
+        ex_upd = [order_upd[f"PT{i}"] for i in range(1,4)]
 
         if ex_old != ex_upd:
             order_upd['action'] = "ExitUpdate"
