@@ -101,7 +101,7 @@ def closest_fullname_match(name, names_all):
     if name is None:
         return name
 
-    candidate = [ n for n in names_all if name[0].lower() in n.lower()]
+    candidate = [n for n in names_all if name[0].lower() in n.lower()]
 
     if candidate == []:
         "print name not matched"

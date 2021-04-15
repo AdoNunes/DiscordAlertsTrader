@@ -17,7 +17,7 @@ import threading
 from pprint import pprint
 from td.exceptions import GeneralError, ServerError
 from place_order import (get_TDsession, make_BTO_lim_order, send_order,
-                         make_STC_lim, make_lim_option,
+                         make_STC_lim,
                          make_Lim_SL_order, make_STC_SL)
 # import dateutil.parser.parse as date_parser
 import table_viewer
@@ -441,6 +441,23 @@ class AlertTrader():
 
 
         elif order["action"] == "STC" and isOpen == 0:
+            open_trade, _ = find_last_trade(order, self.portfolio, open_only=False)
+            position = self.portfolio.iloc[open_trade]
+            # Check if closed position was not alerted
+            for i in range(1,4):
+                STC = f"STC{i}"
+                if pd.isnull(position[f"{STC}-Alerted"]):
+                    self.portfolio.loc[open_trade, f"{STC}-Alerted"] = 1
+                    # If alerted and already sold
+                    if not pd.isnull(position[ f"{STC}-Price"]):
+                        print(Back.GREEN + "Position already closed")
+
+                        log_alert['action'] = f"{STC}-alerterdAfterClose"
+                        log_alert["portfolio_idx"] = open_trade
+                        self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                        self.save_logs()
+                    return
+
             str_act = "STC without BTO, maybe alredy sold"
             log_alert['action'] = "STC-Null-notOpen"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
