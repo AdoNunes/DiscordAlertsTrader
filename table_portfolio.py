@@ -15,7 +15,7 @@ gui_data['port'] = get_portf_data()
 
 ly_port = [
      [sg.Column([[sg.Button("Update", button_color=('white', 'black'), key="UPD-port")]])],               
-      [sg.Table(values=gui_data['port'][0],
+     [sg.Table(values=gui_data['port'][0],
                           headings=gui_data['port'][1],
                           display_row_numbers=True, vertical_scroll_only=False,
                           auto_size_columns=True,  pad=(0,0),
@@ -53,14 +53,23 @@ layout_msg = [
 ]
 
 
-layout = [[sg.TabGroup([[sg.Tab('Portfolio', ly_port), sg.Tab(chn, layout_msg, k="kk")]])],
-              ]
+layout = [[sg.Column([[sg.TabGroup([[sg.Tab('Portfolio', ly_port), 
+                                    sg.Tab(chn, layout_msg, k="kk")]])]])
+           ],
+          [sg.Output(key='-OUTPUT-', size=(54, 15))]]
 
 window = sg.Window('Xtrader', layout,# force_toplevel=True,
                    size=(1090, 500), auto_size_text=False, resizable=True, finalize=True)
 
 window['_HIST_'].set_vscroll_position(1)
 
+sg.Print('This text is white on a green background', text_color='white', background_color='green', font='Courier 10')
+sg.Print('The first call sets some window settings like font that cannot be changed')
+sg.Print('This is plain text just like a print would display')
+sg.Print('White on Red', background_color='red', text_color='white')
+sg.Print('The other print', 'parms work', 'such as sep', sep=',')
+sg.Print('To not extend a colored line use the "end" parm', background_color='blue', text_color='white', end='')
+sg.Print('\nThis line has no color.')
 
 #sg.popup_scrolled('your_table = [ ', ',\n'.join([str(table[i]) for i in range(MAX_ROWS)]) + '  ]', title='Copy your data from here', font='fixedsys', keep_on_top=True)
 
