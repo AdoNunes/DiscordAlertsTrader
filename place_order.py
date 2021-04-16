@@ -99,14 +99,14 @@ def make_BTO_lim_order(Symbol:str, uQty:int, price:float, strike=None, **kwarg):
     new_order.order_price(price)
 
     order_leg = OrderLeg()
-    
+
     if strike is not None:
         order_leg.order_leg_instruction(instruction="BUY_TO_OPEN")
         order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
     else:
         order_leg.order_leg_instruction(instruction="BUY")
         order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
-        
+
     order_leg.order_leg_quantity(quantity=uQty)
     new_order.add_order_leg(order_leg=order_leg)
 
@@ -146,7 +146,7 @@ def make_Lim_SL_order(Symbol:str, uQty:int,  PT:float, SL:float, SL_stop:float=N
     child_order1.order_price(float(PT))
 
     child_order_leg = OrderLeg()
-    
+
     child_order_leg.order_leg_quantity(quantity=uQty)
     if strike is not None:
         child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
@@ -170,7 +170,7 @@ def make_Lim_SL_order(Symbol:str, uQty:int,  PT:float, SL:float, SL_stop:float=N
     else:
         child_order2.order_type("STOP")
         child_order2.stop_price(float(SL))
-        
+
     child_order2.add_order_leg(order_leg=child_order_leg)
     new_order.add_child_order_strategy(child_order_strategy=child_order2)
 
@@ -178,11 +178,11 @@ def make_Lim_SL_order(Symbol:str, uQty:int,  PT:float, SL:float, SL_stop:float=N
 
 
 def make_STC_lim(Symbol:str, uQty:int, price:float, strike=None, **kwarg):
-    
+
     new_order=Order()
     new_order.order_strategy_type("SINGLE")
     new_order.order_type("LIMIT")
-    new_order.order_session('NORMAL')
+    new_order.order_session('SEAMLESS')
     new_order.order_duration('GOOD_TILL_CANCEL')
     new_order.order_price(float(price))
 
@@ -196,12 +196,12 @@ def make_STC_lim(Symbol:str, uQty:int, price:float, strike=None, **kwarg):
         order_leg.order_leg_instruction(instruction="SELL")
         order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
     new_order.add_order_leg(order_leg=order_leg)
-    
+
     return new_order
 
 def make_STC_SL(Symbol:str, uQty:int, SL:float, strike=None,
                 SL_stop:float=None, new_order=Order(), **kwarg):
-    
+
     new_order=Order()
     new_order.order_strategy_type("SINGLE")
 
@@ -241,7 +241,7 @@ def make_optionID(Symbol:str, expDate:str, strike=str, **kwarg):
         date_frm = date_frm + year
     elif len(date_elms) == 3:
         date_frm = date_frm + f"{int(date_elms[2][-2:]):02d}"
-    
+
     # Strike in interger if no decimals
     if strike / int(strike) == 1:
         return f"{Symbol}_{date_frm}{opt_type}{int(strike)}"
