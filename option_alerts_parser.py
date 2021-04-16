@@ -2,9 +2,9 @@ import pandas as pd
 import re
 import numpy as np
 import os.path as op
-from message_parser import parser_alerts, auhtor_parser, get_symb_prev_msg
+from message_parser import parser_alerts, auhtor_parser, get_symb_prev_msg, combine_new_old_orders
 from place_order import make_optionID
-
+from disc_trader import  find_last_trade
 
 def get_author_option_alerts():
     file = 'data/option_alerts_message_history.csv'
@@ -28,13 +28,15 @@ def get_author_option_alerts():
 
 def option_trader(order, trades_log):
 
-    order["Symbol"] = make_optionID(**order)
+    if order.get("expDate"):
+        order["Symbol"] = make_optionID(**order)
 
-    openTrade = find_open_option(order, trades_log)
+    # openTrade = find_open_option(order, trades_log)
 
+    openTrade, isOpen = find_last_trade(order, trades_log, open_only=True)
     if openTrade is None and order["action"] == "BTO":
         trades_log, str_act = make_BTO_option(order, trades_log)
-        openTrade = find_open_option(order, trades_log)
+        openTrade, isOpen = find_last_trade(order, trades_log)
 
     elif order["action"] == "BTO" and order['avg'] is not None:
         trades_log, str_act = make_BTO_option_Avg(order, trades_log, openTrade)
@@ -48,29 +50,29 @@ def option_trader(order, trades_log):
     elif order["action"] == "STC":
         trades_log, str_act = make_STC_option(order, trades_log, openTrade)
 
+    elif order["action"] == "ExitUpdate" and openTrade is not None:
+        planned = eval(str(trades_log.loc[openTrade, "Planned_PT"]))
+        str_act = "ExitUpdate: "
+        for i in range(1,4):
+            if order.get(f"PT{i}"):
+                planned.append(order.get(f"PT{i}"))
+                str_act = str_act + f"PT{i}, "
+        if len(planned):
+            trades_log.loc[openTrade, "Planned_PT"] = str(planned)
+
+        SL = eval(str(trades_log.loc[openTrade, "Planned_SL"]))
+        if SL is None: SL = []
+        if order.get("SL"):
+            SL.append(order.get("SL"))
+            str_act = str_act + f"SL",
+            trades_log.loc[openTrade, "Planned_SL"] = SL
+    else:
+        str_act = "Nothing"
+
     print(str_act)
     return trades_log, str_act, openTrade
 
 
-def find_open_option(order, trades_log):
-    if len(trades_log) == 0:
-        return None
-
-    msk_symbol = trades_log["Symbol"].str.contains(order['Symbol'])
-    if sum(msk_symbol) == 0:
-       return None
-
-    symbol_trades = trades_log[msk_symbol]
-    sold_Qty =  symbol_trades[[f"STC{i}-xQty" for i in range(1,2)]].sum(1)
-    open_trade = sold_Qty< .99
-
-    if sum(open_trade) == 0:
-       return None
-
-    if sum(open_trade)> 1:
-       raise "Traded more than once open"
-    open_trade, = open_trade[open_trade].index.values
-    return open_trade
 
 
 def make_BTO_option(order, trades_log):
@@ -84,8 +86,11 @@ def make_BTO_option(order, trades_log):
 
     trades_log = trades_log.append({
         "BTO-Date": order['date'],
+        'Trader': order['Trader'],
         "Symbol" : order['Symbol'],
         "BTO": order['price'],
+        'Asset': order['asset'],
+        'isOpen': 1,
         "Strike" : order['strike'],
         "ExpDate" : order['expDate'],
         "Planned_PT": planned,
@@ -147,7 +152,10 @@ def make_STC_option(order, trades_log, openTrade):
     #     return trades_log, str_STC
 
     bto_price = trades_log.loc[openTrade, "BTO"]
-    stc_price = float((order["price"] - bto_price)/bto_price) *100
+    if order.get("price") is None:
+        stc_price = "none"
+    else:
+        stc_price = float((order.get("price") - bto_price)/bto_price) *100
 
     if order.get("amnt_left"):
         left = order["amnt_left"]
@@ -158,17 +166,21 @@ def make_STC_option(order, trades_log, openTrade):
         elif left < .99:  # percentage left
             order['xQty'] = 1 - left
 
-    trades_log.loc[openTrade, STC] = order["price"]
+    trades_log.loc[openTrade, STC] = order.get("price")
     trades_log.loc[openTrade, STC + "-Date"] = order["date"]
     trades_log.loc[openTrade, STC + "-xQty"] = order['xQty']
     trades_log.loc[openTrade, STC + "-PnL"] = stc_price
 
-    str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), {stc_price:.2f}%"
+    if order.get("price") is None:
+        str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), no price provided%"
+    else:
+        str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), {stc_price:.2f}%"
 
     Qty_sold = trades_log.loc[openTrade,[f"STC{i}-xQty" for i in range(1,4)]].sum()
     if order['xQty'] == 1 or Qty_sold > .99:
         trades_log.loc[openTrade, "Open"] = 0
         str_STC = str_STC + " Closed"
+        trades_log.loc[openTrade, "isOpen"] = 0
 
     return trades_log, str_STC
 
@@ -196,9 +208,9 @@ trade_log_file = f"data/options_portfolio_history_{author}.csv"
 # if op.exists(trade_log_file):
 #     trades_log = pd.read_csv(trade_log_file)
 # else:
-trades_log = pd.DataFrame(columns = ["BTO-Date", "Symbol", "Open", "BTO",
+trades_log = pd.DataFrame(columns = ["BTO-Date", "Symbol", "isOpen", "BTO", "Trader",
                                      "Strike", "ExpDate", "BTO-avg",
-                                     "Planned_PT", "Planned_SL",
+                                     "Planned_PT", "Planned_SL", "Asset",
                                      "STC1", "STC1-xQty", "STC1-PnL","STC1-Date",
                                      "STC2", "STC2-xQty", "STC2-PnL","STC2-Date",
                                      "STC3", "STC3-xQty", "STC3-PnL","STC3-Date",
@@ -211,7 +223,7 @@ trades_log = pd.DataFrame(columns = ["BTO-Date", "Symbol", "Open", "BTO",
 bad_msg = []
 not_msg = pd.DataFrame(columns=["MSG"])
 
-for i in range(274,len(alerts_author)):
+for i in range(1,len(alerts_author)):
     msg = alerts_author["Content"].iloc[i]
     msg = msg.replace("~~2.99~~", "")
     trade_date = alerts_author["Date"].iloc[i]
@@ -223,44 +235,60 @@ for i in range(274,len(alerts_author)):
     # if "reached pre-market" in msg:
     #     alerts_author.loc[i, "parsed"] = "pre-market repeated alert"
     #     continue
-    author = alerts_author["Author"].iloc[i].split("#")[0]
-    new_order = auhtor_parser(msg, order, author)
+    symbol, prev_msg_inx = None, None
 
-    if new_order is None:
+    author = alerts_author["Author"].iloc[i]#.split("#")[0]
+    order, pars = combine_new_old_orders(msg, order, pars, author)
+    if order is not None and order.get("Symbol") is None:
+        if author == 'Xtrades Option Guru#8905':
+            msg_ix, = alerts_author[alerts_author['Content'] == msg].index.values
+            sym, inxf = get_symb_prev_msg(alerts_author, i, author)
+            if sym is not None:
+                order["Symbol"] = sym
+                print(f"Got {sym} symbol from previous msg {inxf}, author: {author}")
+            else:
+                pars = None
+    new_order = auhtor_parser(msg, author)
+
+    if order is None:
         continue
 
-    if new_order.get("Symbol") ==  None:
-        symbol, prev_msg_inx = get_symb_prev_msg(alerts_author, i, author)
-        # new_order["Symbol"] = symbol
-    else:
-        symbol, prev_msg_inx = None, None
+    print(new_order)
+
+    # if new_order.get("Symbol") ==  None:
+    #     symbol, prev_msg_inx = get_symb_prev_msg(alerts_author, i, author)
+    #     order["Symbol"] = symbol
+    # else:
 
 
     if symbol is not None:
         print("NEW: ", new_order)
         print(f"Symb {symbol} from: ", alerts_author.loc[prev_msg_inx, "Content"])
-        resp = input("press o to stop")
-        if resp == "o":
-            print(f"stopped at {i}")
-            break
+        # resp = input("press o to stop")
+        # if resp == "o":
+        #     print(f"stopped at {i}")
+        #     break
 
     if order  is None:
         not_msg = not_msg.append({"MSG":msg}, ignore_index=True)
         continue
 
-    order["uQty"] = 3
+    # order["uQty"] = 3
     alerts_author.loc[i, "parsed"] = pars
     order['Trader'] = alerts_author["Author"].iloc[i]
+    order['asset'] = "option"
 
     # order['Trader'] = alerts_author["Author"].iloc[i]
     # if order['Symbol'] == "DPW":
     #     crh
 
-    if order['price'] is None:
-        bad_msg.append((msg, trade_date))
-        continue
+    # if order['price'] is None:
+    #     bad_msg.append((msg, trade_date))
+    #     continue
 
     order["date"] = trade_date
+    if order['action'] == 'STC' and  order.get('xQty') is None:
+        continue
     trades_log, str_act, trade_ix = option_trader(order, trades_log)
 
     alerts_author.loc[i,"trade_act"] = str_act

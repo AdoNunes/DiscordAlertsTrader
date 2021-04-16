@@ -72,7 +72,7 @@ def find_last_trade(order, trades_log, open_only=True):
         if open_trade.sum() == 1:
             last_trade, = open_trade.index[open_trade==1]
         elif open_trade.sum() > 1:
-            raise ValueError ("Trade with more than one open position")
+            # raise ValueError ("Trade with more than one open position")
             last_trade = open_trade.index[open_trade==1][-1]
         elif open_trade.sum() == 0:
             last_trade = open_trade.index[-1]

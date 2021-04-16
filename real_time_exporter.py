@@ -356,11 +356,11 @@ def combine_new_old_orders(msg, order_old, pars, author):
         for k in order_author.keys():
             if order_author[k] == order_old.get(k) and k != "Symbol" or \
                 order_author[k] != order_old.get(k) and k == "Symbol":
-                resp = input("Found diff vals for {k}: new= {order_author[k]}, old= {order_old[k]} " +
+                resp = input(f"Found diff vals for {k}: new= {order_author[k]}, old= {order_old[k]} " +
                              "[1- new, 2- old, 0- break and fix]")
-                if resp == 2:
+                if resp == '2':
                     order_author[k] = order_old.get(k)
-                elif resp == 0:
+                elif resp == '0':
                     raise "error"
         order = {**order_old, **order_author}
     else:

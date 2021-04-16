@@ -152,8 +152,9 @@ def parse_Symbol(msg, act):
         Symbol_info = re_Symbol.search(msg)
 
         if Symbol_info is None:
-            for wrd in ["I", "ATH", "BTO", "STC", 'VWAP']:
+            for wrd in ["I", "ATH", "BTO", "STC"]:
                 msg = msg.replace(wrd+" ", " ")
+            msg = msg.replace('VWAP', " ")
             msg = msg.replace("I'", "i'")
 
             re_Symbol = re.compile("([A-Z]+)(?![a-z])")
@@ -324,7 +325,7 @@ def parse_risk(msg):
 
 
 
-def auhtor_parser(msg, author):
+def auhtor_parser(msg, author, asset="option"):
 
     if author == 'Xtrades Option Guru#8905':
         new_order = {}
@@ -422,7 +423,7 @@ def auhtor_parser(msg, author):
 
 def get_symb_prev_msg(df_hist, msg_ix, author):
 
-    df_hist["Author"]  = df_hist["Author"].apply(lambda x: x.split("#")[0])
+    # df_hist["Author"]  = df_hist["Author"].apply(lambda x: x.split("#")[0])
 
     df_hist_auth = df_hist[df_hist["Author"]==author]
     msg_inx_auth, = np.nonzero(df_hist_auth.index == msg_ix)
@@ -435,3 +436,37 @@ def get_symb_prev_msg(df_hist, msg_ix, author):
         if symbol is not None:
             return symbol, inx
     return None, None
+
+
+
+def combine_new_old_orders(msg, order_old, pars, author):
+
+    order_author = auhtor_parser(msg, author)
+    if order_author is None:
+        return order_old, pars
+
+    if order_old is not None:
+        for k in order_author.keys():
+            # If
+            if order_author[k] == order_old.get(k) and k != "Symbol" or \
+                order_author[k] != order_old.get(k) and k == "Symbol":
+                if k == "Symbol":
+                    # in case of ticker vs option symbol ID
+                    if order_author[k] == order_old[k][:len(order_author[k])]:
+                        order_author[k] = order_old[k]
+                        continue
+                resp = input(f"Found diff vals for {k}: new= {order_author[k]}, old= {order_old[k]} " +
+                             "[1- new, 2- old, 0- break and fix]")
+                if resp == '2':
+                    order_author[k] = order_old.get(k)
+                elif resp == '0':
+                    raise "error"
+        order = {**order_old, **order_author}
+    else:
+        order = order_author
+
+    if order.get("action") is None:
+        if any([order.get(k) for k in ["PT1", "PT2", "PT3", "SL"]]):
+            order['action'] = "ExitUpdate"
+            pars = f"ExitUpdate: {pars}"
+    return order, pars
