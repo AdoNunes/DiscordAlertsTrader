@@ -15,9 +15,9 @@ import time
 import config as cfg
 import threading
 from pprint import pprint
-from td.exceptions import GeneralError
+from td.exceptions import GeneralError, ServerError
 from place_order import (get_TDsession, make_BTO_lim_order, send_order,
-                         make_STC_lim, make_lim_option,
+                         make_STC_lim,
                          make_Lim_SL_order, make_STC_SL)
 # import dateutil.parser.parse as date_parser
 import table_viewer
@@ -123,7 +123,10 @@ class AlertTrader():
         self.accountId = self.TDsession.accountId
 
         self.update_portfolio = update_portfolio
+        self.update_paused = False
         if update_portfolio:
+            # first do a synch process, then thread it
+            self.update_orders()
             self.activate_trade_updater()
 
     def plot_portfolio(self):
@@ -141,7 +144,7 @@ class AlertTrader():
         """ Will stop threding updater and restart.
         To avoid delays or parallel updatings. """
         self.update_portfolio = False
-        self.updater._stop()
+        time.sleep(refresh_rate)
         self.activate_trade_updater(refresh_rate)
 
     def _stop(self):
@@ -150,10 +153,11 @@ class AlertTrader():
 
     def trade_updater(self, refresh_rate=30):
         while self.update_portfolio is True:
-            try:
-                self.update_orders()
-            except GeneralError:
-                print(Back.GREEN + "General error raised, trying again")
+            if self.update_paused is False:
+                try:
+                    self.update_orders()
+                except GeneralError:
+                    print(Back.GREEN + "General error raised, trying again")
             time.sleep(refresh_rate)
         print(Back.GREEN + "Closing portfolio updater")
 
@@ -178,15 +182,19 @@ class AlertTrader():
         return pars_str
 
 
-    def price_now(self, Symbol, flag=0):
+    def price_now(self, Symbol, price_type="BTO", pflag=0):
+        if price_type in ["BTO", "BTC"]:
+            ptype = 'askPrice'
+        else:
+            ptype= 'bidPrice'
         try:
             quote = self.TDsession.get_quotes(
-                instruments=[Symbol])[Symbol]['askPrice']
+                instruments=[Symbol])[Symbol][ptype]
         except KeyError as e:
                 print (Back.RED + f"price_now ERROR: {e}.\n Trying again")
                 quote = self.TDsession.get_quotes(
-                instruments=[Symbol])[Symbol]['askPrice']
-        if flag:
+                instruments=[Symbol])[Symbol][ptype]
+        if pflag:
             return quote
         else:
             return "CURRENTLY @%.2f"% quote
@@ -210,16 +218,17 @@ class AlertTrader():
         symb = order['Symbol']
         ord_ori = order.copy()
         pars_ori = pars
+        act = order['action']
 
         while True:
-            question = f"{pars_ori} {price_now(symb)}"
+            question = f"{pars_ori} {price_now(symb, act)}"
 
-            pdiff = (price_now(symb,1 ) - ord_ori['price'])/ord_ori['price']
+            pdiff = (price_now(symb, act, 1 ) - ord_ori['price'])/ord_ori['price']
             pdiff = round(pdiff*100,1)
 
             if cfg.sell_current_price:
                 if pdiff < cfg.max_price_diff[order["asset"]]:
-                    order['price'] = price_now(symb,1 )
+                    order['price'] = price_now(symb, act, 1)
                     pars = self.order_to_pars(order)
                     question += f"\n new price: {pars}"
                 else:
@@ -239,17 +248,17 @@ class AlertTrader():
 
             if resp in [ "c", "change", "y", "yes"] and 'uQty' not in order.keys():
                 order['uQty'] = int(input("Order qty not available." +
-                                          f" How many units to buy? {price_now(symb)} \n"))
+                                          f" How many units to buy? {price_now(symb, act)} \n"))
 
             if resp in [ "c", "change"]:
                 new_order = order.copy()
                 new_order['price'] = float(input(f"Change price @{order['price']}" +
-                                        f" {price_now(symb)}? Leave blank if NO \n")
+                                        f" {price_now(symb, act)}? Leave blank if NO \n")
                                       or order['price'])
 
                 if order['action'] == 'BTO':
                     PTs = [order[f'PT{i}'] for i in range(1,4)]
-                    PTs = eval(input(f"Change PTs @{PTs} {price_now(symb)}? \
+                    PTs = eval(input(f"Change PTs @{PTs} {price_now(symb, act)}? \
                                       Leave blank if NO, respnd eg [1, 2, None] \n")
                                       or str(PTs))
 
@@ -259,7 +268,7 @@ class AlertTrader():
                         new_order['PTs_Qty'] = [round(1/new_n,2) for i in range(new_n)]
                         new_order['PTs_Qty'][-1] = new_order['PTs_Qty'][-1] + (1- sum(new_order['PTs_Qty']))
 
-                    new_order["SL"] = (input(f"Change SL @{order['SL']} {price_now(symb)}?"+
+                    new_order["SL"] = (input(f"Change SL @{order['SL']} {price_now(symb, act)}?"+
                                              " Leave blank if NO \n")
                                        or order['SL'])
 
@@ -308,7 +317,7 @@ class AlertTrader():
         try:
             order_info = self.TDsession.get_orders(account=self.accountId,
                                               order_id=order_id)
-        except td.exceptions.ServerError as e:
+        except ServerError as e:
             print("Caught TD Server Error, skipping order info retr.")
             return None, None
 
@@ -347,6 +356,8 @@ class AlertTrader():
                      }
 
         if order['action'] == "ExitUpdate" and isOpen:
+            # Pause updater to avoid overlapping
+            self.update_paused = True
 
             old_plan = self.portfolio.loc[open_trade, "exit_plan"]
             new_plan = self.parse_exit_plan(order)
@@ -355,7 +366,7 @@ class AlertTrader():
             self.close_open_exit_orders(open_trade)
 
             self.portfolio.loc[open_trade, "exit_plan"] = str(new_plan)
-            self.trade_updater_reset()
+            self.update_paused = False
 
             log_alert['action'] = "ExitUpdate"
             self.save_logs()
@@ -430,6 +441,23 @@ class AlertTrader():
 
 
         elif order["action"] == "STC" and isOpen == 0:
+            open_trade, _ = find_last_trade(order, self.portfolio, open_only=False)
+            position = self.portfolio.iloc[open_trade]
+            # Check if closed position was not alerted
+            for i in range(1,4):
+                STC = f"STC{i}"
+                if pd.isnull(position[f"{STC}-Alerted"]):
+                    self.portfolio.loc[open_trade, f"{STC}-Alerted"] = 1
+                    # If alerted and already sold
+                    if not pd.isnull(position[ f"{STC}-Price"]):
+                        print(Back.GREEN + "Position already closed")
+
+                        log_alert['action'] = f"{STC}-alerterdAfterClose"
+                        log_alert["portfolio_idx"] = open_trade
+                        self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                        self.save_logs()
+                    return
+
             str_act = "STC without BTO, maybe alredy sold"
             log_alert['action'] = "STC-Null-notOpen"
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
@@ -487,8 +515,7 @@ class AlertTrader():
                 return
 
             # Close position of STC All or STC SL
-            if (qty_bought == 0 and order['xQty'] == 1) or (
-                    order["price"] < self.portfolio.loc[open_trade, "Price"]):
+            if qty_bought == 0 and order['xQty'] == 1:
 
                 order_id = position['ordID']
                 _ = self.TDsession.cancel_order(self.TDsession.accountId, order_id)
@@ -503,6 +530,7 @@ class AlertTrader():
                 log_alert['action'] = "STC-ClosedBeforeFill"
                 log_alert["portfolio_idx"] = open_trade
                 self.save_logs()
+                # self.activate_trade_updater()
                 return
             # Set STC as exit plan
             elif qty_bought == 0:
@@ -517,6 +545,8 @@ class AlertTrader():
             qty_sold = np.nansum([position[f"STC{i}-uQty"] for i in range(1,4)])
 
             if order['xQty'] == 1:
+                # Stop updater to avoid overlapping
+                self.update_paused = True
                 # Sell all and close waiting stc orders
                 self.close_open_exit_orders(open_trade)
 
@@ -524,6 +554,8 @@ class AlertTrader():
                 order['uQty'] = int(position["uQty"]) - qty_sold
 
             elif order['xQty'] < 1:  # portion
+                # Stop updater to avoid overlapping
+                self.update_paused = True
                 self.close_open_exit_orders(open_trade, i)
                 order['uQty'] = max(round(qty_bought * order['xQty']), 1)
 
@@ -542,15 +574,10 @@ class AlertTrader():
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                 self.save_logs(["alert"])
                 print(Back.GREEN + "STC not accepted by user")
+                self.update_paused = False
                 return
 
-            #Log trades_log
-            log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL"
-            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
-            self.save_logs()
-
             order_status, order_info = self.get_order_info(order_id)
-
             self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
 
             # Check if STC price changed
@@ -560,6 +587,12 @@ class AlertTrader():
                 str_STC = f"Submitted: {STC} {order['Symbol']} @{order['price']} Qty:{order['uQty']} ({order['xQty']})"
                 print(Back.GREEN + str_STC)
 
+            #Log trades_log
+            log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL"
+            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+            self.save_logs()
+
+            self.update_paused = False
 
     def log_filled_STC(self, order_id, open_trade, STC):
 
@@ -691,8 +724,8 @@ class AlertTrader():
         if len(ord_inf) != 2: return
         symb_stock = ord_inf[0]
 
-        quote = self.price_now(symb_stock, 1)
-        quote_opt = self.price_now(trade['Symbol'], 1)
+        quote = self.price_now(symb_stock, act, 1)
+        quote_opt = self.price_now(trade['Symbol'], act, 1)
 
         for v, pt in exit_plan.items():
             if not isinstance(pt, str): continue
@@ -742,7 +775,7 @@ class AlertTrader():
                 SL = exit_plan["SL"]
                 # Check if exit prices are strings (stock price for option)
                 if isinstance(SL, str): SL = None
-                if isinstance(exit_plan[f"PT{ii}"], str): continue
+                if isinstance(exit_plan[f"PT{ii}"], str): exit_plan[f"PT{ii}"] = None
 
                 ord_func = None
                 # Lim and Sl OCO order
@@ -774,7 +807,7 @@ class AlertTrader():
                 else:
                     raise("Case not caught")
 
-                if ord_func is not None:
+                if ord_func is not None and order['uQty'] > 0:
                     _, STC_ordID = send_order(ord_func(**order), self.TDsession)
                     self.portfolio.loc[i, STC+"-ordID"] = STC_ordID
                     trade = self.portfolio.iloc[i]

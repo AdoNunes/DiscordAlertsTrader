@@ -199,7 +199,7 @@ def make_STC_lim(Symbol:str, uQty:int, price:float, strike=None, **kwarg):
     
     return new_order
 
-def make_STC_SL(Symbol:str, uQty:int, price:float, SL:float, strike=None,
+def make_STC_SL(Symbol:str, uQty:int, SL:float, strike=None,
                 SL_stop:float=None, new_order=Order(), **kwarg):
     
     new_order=Order()
@@ -227,25 +227,6 @@ def make_STC_SL(Symbol:str, uQty:int, price:float, SL:float, strike=None,
     new_order.add_order_leg(order_leg=order_leg)
 
     return new_order
-
-def make_lim_option(Symbol:str, uQty:int, price:float, **kwarg):
-    """ Symbol : is optionID from ```make_optionID```
-    """
-    new_order=Order()
-    new_order.order_strategy_type("SINGLE")
-    new_order.order_type("LIMIT")
-    new_order.order_session('NORMAL')
-    new_order.order_duration('GOOD_TILL_CANCEL')
-    new_order.order_price(float(price))
-
-    order_leg = OrderLeg()
-    order_leg.order_leg_instruction(instruction="BUY_TO_OPEN")
-    order_leg.order_leg_quantity(quantity=int(uQty))
-    order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
-    new_order.add_order_leg(order_leg=order_leg)
-
-    return new_order
-
 
 
 def make_optionID(Symbol:str, expDate:str, strike=str, **kwarg):
