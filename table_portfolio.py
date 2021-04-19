@@ -9,12 +9,14 @@ import PySimpleGUI as sg
 import pandas as pd
 from datetime import datetime
 from gui_generator import (get_portf_data, get_hist_msgs)
+from place_order import get_TDsession
+
 
 gui_data = {}
 gui_data['port'] = get_portf_data()
 
 ly_port = [
-     [sg.Column([[sg.Button("Update", button_color=('white', 'black'), key="UPD-port")]])],               
+     [sg.Column([[sg.Button("Update", button_color=('white', 'black'), key="UPD-port")]])],
      [sg.Table(values=gui_data['port'][0],
                           headings=gui_data['port'][1],
                           display_row_numbers=True, vertical_scroll_only=False,
@@ -44,7 +46,7 @@ layout_msg = [
               display_row_numbers=False,
               max_col_width=200, text_color='black',
               font=("courier", 15),
-              # auto_size_columns=True, 
+              # auto_size_columns=True,
               vertical_scroll_only=False,
                alternating_row_color='grey',
               # col_widths=[30,300, 1300],
@@ -52,11 +54,12 @@ layout_msg = [
               num_rows=30, key='_HIST_')],
 ]
 
+layout_account =
 
-layout = [[sg.Column([[sg.TabGroup([[sg.Tab('Portfolio', ly_port), 
+layout = [[sg.Column([[sg.TabGroup([[sg.Tab('Portfolio', ly_port),
                                     sg.Tab(chn, layout_msg, k="kk")]])]])
            ],
-          [sg.Output(key='-OUTPUT-', size=(54, 15))]]
+          [sg.Output(key='-OUTPUT-', size=(54, 3))]]
 
 window = sg.Window('Xtrader', layout,# force_toplevel=True,
                    size=(1090, 500), auto_size_text=False, resizable=True, finalize=True)
@@ -90,7 +93,7 @@ while True:
     elif event == "UPD-chn":
         print("Updating!")
         print(values)
-        
+
         window['_HIST_'].AutoSizeText=True
         del values[0]
         dt, _  =  get_hist_msgs(**values)
@@ -99,8 +102,8 @@ while True:
 
 #  window['-TABLE-'].set_vscroll_position(.5)
 # wraplen = window['_HIST_'].Widget.winfo_reqwidth()  # width tkinter says widget will be
-#             window['-OUT-'].Widget.configure(wraplen=wraplen) 
-            
+#             window['-OUT-'].Widget.configure(wraplen=wraplen)
+
 window.close()
 
 
