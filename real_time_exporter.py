@@ -13,7 +13,7 @@ import time
 import re
 import pandas as pd
 from datetime import datetime, timedelta
-from message_parser import parser_alerts, auhtor_parser, get_symb_prev_msg
+from message_parser import parser_alerts, auhtor_parser, get_symb_prev_msg, combine_new_old_orders
 from option_message_parser import option_alerts_parser
 from config import (path_dll, data_dir, CHN_NAMES, chn_IDS, discord_token, UPDATE_PERIOD)
 import config as cfg
@@ -58,17 +58,12 @@ def msg_update_alert(df_hist, json_msg, asset):
     if msg_old == []:
         return [], []
 
-    if asset == "stock":
-        parser =  parser_alerts
-    else:
-         parser =  option_alerts_parser
-
     new_alerts=[]
     for msg in msg_old:
 
-        _, order_old =  parser(msg[1])
+        _, order_old =  parser_alerts(msg[1], asset)
         msg_content = df_hist.loc[msg[0], "Content"].values[0]
-        pars, order_upd = parser(msg_content)
+        pars, order_upd = parser_alerts(msg_content, asset)
 
         if order_old == order_upd:
             continue
@@ -344,33 +339,6 @@ class AlertsListner():
                     self.Altrader.new_trade_alert(order, pars,\
                          msg['Content'])
 
-
-
-def combine_new_old_orders(msg, order_old, pars, author):
-
-    order_author = auhtor_parser(msg, author)
-    if order_author is None:
-        return order_old, pars
-
-    if order_old is not None:
-        for k in order_author.keys():
-            if order_author[k] == order_old.get(k) and k != "Symbol" or \
-                order_author[k] != order_old.get(k) and k == "Symbol":
-                resp = input(f"Found diff vals for {k}: new= {order_author[k]}, old= {order_old[k]} " +
-                             "[1- new, 2- old, 0- break and fix]")
-                if resp == '2':
-                    order_author[k] = order_old.get(k)
-                elif resp == '0':
-                    raise "error"
-        order = {**order_old, **order_author}
-    else:
-        order = order_author
-
-    if order.get("action") is None:
-        if any([order.get(k) for k in ["PT1", "PT2", "PT3", "SL"]]):
-            order['action'] = "ExitUpdate"
-            pars = f"ExitUpdate: {pars}"
-    return order, pars
 
 
 def short_date(dateobj, frm="%m/%d %H:%M:%S"):

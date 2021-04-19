@@ -466,7 +466,14 @@ def combine_new_old_orders(msg, order_old, pars, author):
         order = order_author
 
     if order.get("action") is None:
-        if any([order.get(k) for k in ["PT1", "PT2", "PT3", "SL"]]):
+        exits = ["PT1", "PT2", "PT3", "SL"]
+        if any([order.get(k) for k in exits]):
             order['action'] = "ExitUpdate"
             pars = f"ExitUpdate: {pars}"
+            for ex in exits:
+                val = order.get(ex)
+                if val is not None:
+                    pars = pars + f" {ex}:{val},"
+
+
     return order, pars
