@@ -10,7 +10,7 @@ import pandas as pd
 from datetime import datetime
 from gui_generator import (get_portf_data, get_hist_msgs)
 from place_order import get_TDsession
-
+import gui_generator as gg
 
 gui_data = {}
 gui_data['port'] = get_portf_data()
@@ -54,10 +54,21 @@ layout_msg = [
               num_rows=30, key='_HIST_')],
 ]
 
-layout_account =
+
+layout_account = [[sg.Column([
+    [sg.T("Account ID",font=('Arial', 12, 'bold', "underline"),size=(20, 1)),
+     sg.T("Balance",font=('Arial', 12, 'bold', "underline"),size=(20, 1)),
+     sg.T("Cash",font=('Arial', 12, 'bold', "underline"),size=(20, 1)),
+     sg.T("Funds",font=('Arial', 12, 'bold', "underline"), size=(20, 1)),
+     ]])],[
+    sg.Column([[sg.T("Positions",font=('Arial', 15, 'bold', "underline"))]])],
+    [sg.Column([[sg.T("Orders",font=('Arial', 15, 'bold', "underline"))]])]
+     ]
+
 
 layout = [[sg.Column([[sg.TabGroup([[sg.Tab('Portfolio', ly_port),
-                                    sg.Tab(chn, layout_msg, k="kk")]])]])
+                                    sg.Tab(chn, layout_msg, k="kk"),
+                                    sg.Tab("Account", layout_account)]])]])
            ],
           [sg.Output(key='-OUTPUT-', size=(54, 3))]]
 
@@ -66,13 +77,13 @@ window = sg.Window('Xtrader', layout,# force_toplevel=True,
 
 window['_HIST_'].set_vscroll_position(1)
 
-sg.Print('This text is white on a green background', text_color='white', background_color='green', font='Courier 10')
-sg.Print('The first call sets some window settings like font that cannot be changed')
-sg.Print('This is plain text just like a print would display')
-sg.Print('White on Red', background_color='red', text_color='white')
-sg.Print('The other print', 'parms work', 'such as sep', sep=',')
-sg.Print('To not extend a colored line use the "end" parm', background_color='blue', text_color='white', end='')
-sg.Print('\nThis line has no color.')
+# sg.Print('This text is white on a green background', text_color='white', background_color='green', font='Courier 10')
+# sg.Print('The first call sets some window settings like font that cannot be changed')
+# sg.Print('This is plain text just like a print would display')
+# sg.Print('White on Red', background_color='red', text_color='white')
+# sg.Print('The other print', 'parms work', 'such as sep', sep=',')
+# sg.Print('To not extend a colored line use the "end" parm', background_color='blue', text_color='white', end='')
+# sg.Print('\nThis line has no color.')
 
 #sg.popup_scrolled('your_table = [ ', ',\n'.join([str(table[i]) for i in range(MAX_ROWS)]) + '  ]', title='Copy your data from here', font='fixedsys', keep_on_top=True)
 

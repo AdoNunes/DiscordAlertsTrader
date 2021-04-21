@@ -22,6 +22,13 @@ def formt_num_2str(x, decim=2):
     x = round(x, decim)
     return  f"%.{decim}f" % x if abs(x) % 1 else "%d" % x
 
+
+def round_int_flt(x, n=1):
+    if x%1 == 0:
+        return round(x)
+    else:
+        return round(x, n)
+
 def format_exitplan(plan):
 
     if plan == "" or plan == "{}":
@@ -113,47 +120,50 @@ def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
     return data.values.tolist(), header_list
 
 
-acc_inf = TDSession.get_accounts(TDSession.accountId, ['orders','positions'])
 
-msft_quotes = TDSession.get_quotes(instruments=['RIOT_012122C80'])
+def get_acc_bals(TDSession):
+    acc_inf = TDSession.get_accounts(TDSession.accountId, ['orders','positions'])
 
-acc_inf['securitiesAccount']['accountId']
-acc_inf['securitiesAccount']['currentBalances']['liquidationValue']
-acc_inf['securitiesAccount']['currentBalances']['cashBalance']
-acc_inf['securitiesAccount']['currentBalances']['availableFunds']
-
-
-positions = acc_inf['securitiesAccount']['positions']
-
-pos_tab = []
-for pos in positions:
-
-    price= round(pos['averagePrice'], 2)
-    pnl = pos['currentDayProfitLoss']
-    pnl_p = pos['currentDayProfitLossPercentage']
-    uQty = pos['longQuantity']
-    cost = round(price * uQty, 2)
-    last = pos["marketValue"]
-    sym = pos['instrument']['symbol']
-    asset = pos['instrument']['assetType']
-
-    if pos['instrument']['assetType'] == "OPTION":
-        last = pos["marketValue"]/100
-        cost = round(price * uQty * 100, 2)
-
-    pos_vals = [sym, price, last, pnl_p, pnl, uQty, cost]
-    pos_tab.append(pos_vals)
-
-orders =acc_inf['securitiesAccount']['orderStrategies']
+    accnt= {"id" : acc_inf['securitiesAccount']['accountId'],
+        "balance": acc_inf['securitiesAccount']['currentBalances']['liquidationValue'],
+        "cash": acc_inf['securitiesAccount']['currentBalances']['cashBalance'],
+        "funds": acc_inf['securitiesAccount']['currentBalances']['availableFunds'],
+        }
+    return acc_inf, accnt
 
 
-def order_info(ord_dic, ord_list):
+def get_pos(acc_inf):
+    positions = acc_inf['securitiesAccount']['positions']
+    pos_tab = []
+    pos_headings = ["Sym", "Last", "PnL_%", "PnL","Qty", "Val", "Cost"]
+    for pos in positions:
+
+        price= round(pos['averagePrice'], 2)
+        pnl = pos['currentDayProfitLoss']
+        pnl_p = pos['currentDayProfitLossPercentage']
+        uQty = pos['longQuantity']
+        cost = round(price * uQty, 2)
+        last = pos["marketValue"]
+        sym = pos['instrument']['symbol']
+        asset = pos['instrument']['assetType']
+
+        if pos['instrument']['assetType'] == "OPTION":
+            last = pos["marketValue"]/100
+            cost = round(price * uQty * 100, 2)
+
+        pos_vals = [sym, last, pnl_p, pnl, uQty, price, cost]
+        pos_tab.append(pos_vals)
+    return pos_tab, pos_headings
+
+
+def order_info_pars(ord_dic, ord_list):
     """ get info from order request
     :param ord_dic: dict with order info, from 'orderStrategies' or
     'childOrderStrategies'
     """
     ord_fields = ['quantity', 'filledQuantity','price', "stop", 'status',
               'enteredTime']
+    ord_headings = ["Sym", "Act", "Strat", "Price/stp","Date", "Qty/fill", "Status", "ordId"]
     sing_ord = []
 
     price = ord_dic.get("price")
@@ -162,16 +172,20 @@ def order_info(ord_dic, ord_list):
     if price is None:
         price = ord_dic.get("stopPrice")
         stprice = None
+    price = f"{price}" if stprice == None else f"{price}/{stprice}"
+
     sing_ord.append(ord_dic['orderType'])
     sing_ord.append(price)
-    sing_ord.append(stprice)
+    # sing_ord.append(stprice)
 
     date = ord_dic['enteredTime'].split("+")[0]
     date = short_date(date, "%Y-%m-%dT%H:%M:%S")
     sing_ord.append(date)
 
-    sing_ord.append(ord_dic['quantity'])
-    sing_ord.append(ord_dic['filledQuantity'])
+    qty = round_int_flt(ord_dic['quantity'])
+    fill = round_int_flt(ord_dic['filledQuantity'])
+    qty_fll = f"{qty}/{fill}" if fill else f"{qty}"
+    sing_ord.append(qty_fll)
     sing_ord.append(ord_dic['status'])
     sing_ord.append(ord_dic['orderId'])
 
@@ -181,38 +195,29 @@ def order_info(ord_dic, ord_list):
         sing_ord_c.insert(1, leg["instruction"])
         ord_list.append(sing_ord_c)
 
-    return ord_list
+    return ord_list, ord_headings
 
 
-ord_tab = []
-for ordr in orders:
+def get_orders(acc_inf):
+    orders =acc_inf['securitiesAccount']['orderStrategies']
 
-    ord_type = ordr['orderStrategyType']
-
-    if ord_type == "OCO":
-        for chl in ordr['childOrderStrategies']:
-            ord_tab = order_info(chl, ord_tab)
-    else:
-        ord_tab = order_info(ordr, ord_tab)
-
-
-
-
-
-
-
-
-
-
-
-    ordr
-    ordr
-    ordr
-
-
-
-
-
+    ord_tab, cols = [], []
+    col = 0
+    for ordr in orders:
+        col = not col
+        ord_type = ordr['orderStrategyType']
+        if ord_type == "OCO":
+            for chl in ordr['childOrderStrategies']:
+                nlen = len(ord_tab)
+                ord_tab, heads = order_info_pars(chl, ord_tab)
+                nnlen = len(ord_tab) - nlen
+                cols = cols + [col]*nnlen
+        else:
+            nlen = len(ord_tab)
+            ord_tab, heads = order_info_pars(ordr, ord_tab)
+            nnlen = len(ord_tab) - nlen
+            cols = cols + [col]*nnlen
+    return ord_tab,heads
 
 
 
