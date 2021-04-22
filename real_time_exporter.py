@@ -291,7 +291,7 @@ class AlertsListner():
                 if author == 'Xtrades Option Guru#8905':
                     df_hist = self.chn_hist[chn]
                     msg_ix, = df_hist[df_hist['Content'] == msg['Content']].index.values
-                    sym, inxf = get_symb_prev_msg(df_hist, msg_ix, author.split("#")[0])
+                    sym, inxf = get_symb_prev_msg(df_hist, msg_ix, author)
                     if sym is not None:
                         order["Symbol"] = sym
                         print(Fore.GREEN + f"Got {sym} symbol from previous msg {inxf}, author: {author}")
