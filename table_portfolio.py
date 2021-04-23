@@ -113,7 +113,7 @@ window = sg.Window('Xtrader', layout,# force_toplevel=True,
 
 window['_HIST_'].set_vscroll_position(1)
 
-window.TKroot.tk.call('tk', 'scaling', 2)
+# window.TKroot.tk.call('tk', 'scaling', 2)
 
 # window['_orders_'].Widget.config(width=8)
 

@@ -22,11 +22,11 @@ def formt_num_2str(x, decim=2, str_len=6, remove_zero=True):
     if remove_zero and x == 0:
         return ""
     x = round(x, decim)
-    return f'{x: >{str_len}.{decim}f}'.replace(".00", "   ")
+    return f'{x: >{str_len}.{decim}f}'#.replace(".00", "   ")
 
 def max_dig_len(values, decim=2):
     # Gives interger and decimal lengths in an array-like values
-    values_s = [ str(round(v, decim)) for v in values]
+    values_s = [str(round(v, decim)) if v %1 else str(round(v)) for v in values]
     len_int = max([len(v.split('.')[0]) for v in values_s])
     len_dig = max([len(v.split('.')[-1]) if "." in v else 0 for v in values_s])
     len_tot = len_int + len_dig + 1 if len_dig else  len_int + len_dig
@@ -35,6 +35,12 @@ def max_dig_len(values, decim=2):
 def pd_col_str_frmt(pd_Series, max_decim=2, remove_zero=True):
     slen,_, decim = max_dig_len(pd_Series.to_numpy(), max_decim)
     return pd_Series.apply(lambda x: formt_num_2str(x,decim, slen, remove_zero))
+
+def dataframe_num2str(db):
+    for col in db:
+        if db[col].dtype in [float, int]:
+            db[col] = pd_col_str_frmt(db[col])
+    return db
 
 def round_int_flt(x, n=1):
     if x%1 == 0:
@@ -75,7 +81,6 @@ def get_portf_data():
     data["Alerted"]= alerts.astype(int)
 
     cols_pnl = ['STC1-PnL', 'STC2-PnL', 'STC3-PnL']
-
     for i in range(1,4):
         # Get xQty relative PnL
         data[f"STC{i}-qPnL"] = data[f'STC{i}-PnL']* data[f'STC{i}-xQty']
@@ -86,12 +91,14 @@ def get_portf_data():
     data["PnL"]  = data[f"STC1-qPnL"].fillna(0) + \
         data["STC2-qPnL"].fillna(0) + \
             data["STC3-qPnL"].fillna(0)
-
     data["PnL"] = pd_col_str_frmt(data["PnL"], 1)
 
     isopen = data['isOpen']
-
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
+
+    frm_cols = ['Price', 'Alert-Price', 'uQty', 'filledQty', 'Alerted']
+    for cfrm in frm_cols:
+        data[cfrm] = pd_col_str_frmt(data[cfrm])
 
     cols = ['isOpen', "PnL", 'Date', 'Symbol', 'Trader', 'BTO-Status',
        'Price', 'Alert-Price', 'uQty', 'filledQty',
@@ -154,7 +161,6 @@ def get_pos(acc_inf):
     pos_tab = []
     pos_headings = ["Sym", "Last", "PnL_%", "PnL","Qty", "Val", "Cost"]
     for pos in positions:
-
         price= round(pos['averagePrice'], 2)
         pnl = pos['currentDayProfitLoss']
         pnl_p = pos['currentDayProfitLossPercentage']
@@ -170,7 +176,13 @@ def get_pos(acc_inf):
 
         pos_vals = [sym, last, pnl_p, pnl, uQty, price, cost]
         pos_tab.append(pos_vals)
-    return pos_tab, pos_headings
+
+    db = pd.DataFrame(data=pos_tab, columns=pos_headings)
+    db = dataframe_num2str(db)
+
+    return db.values.tolist(), pos_headings
+
+
 
 
 def order_info_pars(ord_dic, ord_list):
@@ -234,7 +246,11 @@ def get_orders(acc_inf):
             ord_tab, heads = order_info_pars(ordr, ord_tab)
             nnlen = len(ord_tab) - nlen
             cols = cols + [col]*nnlen
-    return ord_tab,heads, cols
+
+    db = pd.DataFrame(data=ord_tab, columns=heads)
+    db = dataframe_num2str(db)
+
+    return db.values.tolist(),heads, cols
 
 
 
