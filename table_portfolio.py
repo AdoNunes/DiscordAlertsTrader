@@ -12,17 +12,24 @@ from gui_generator import (get_portf_data, get_hist_msgs)
 from place_order import get_TDsession
 import gui_generator as gg
 
+TDSession = get_TDsession()
+
+# sg.SetOptions(font=("Courier New", -13))#, background_color="whitesmoke",
+               # element_padding=(0, 0), margins=(1, 1))
+sg.theme('Dark Blue 3')
 gui_data = {}
 gui_data['port'] = get_portf_data()
 
 ly_port = [
-     [sg.Column([[sg.Button("Update", button_color=('white', 'black'), key="UPD-port")]])],
+     [sg.Column([[sg.Button("Update", button_color=('white', 'black'), key="UPD-port"),
+                  sg.Slider((6, 50), default_value=12, size=(14, 20),
+                     orientation='h', key='-slider-', change_submits=True)]])],
      [sg.Table(values=gui_data['port'][0],
                           headings=gui_data['port'][1],
                           display_row_numbers=True, vertical_scroll_only=False,
                           auto_size_columns=True,  pad=(0,0),
-                          header_font=("courier", 10), text_color='black',
-                          font=("courier", 15), justification='left',
+                          header_font=("Helvitica", 10), text_color='black',
+                          font=("Helvitica", 15), justification='left',
                           alternating_row_color='grey',
                           num_rows=len(gui_data['port'][0]), key='_PORT_'),]
            ]
@@ -54,28 +61,61 @@ layout_msg = [
               num_rows=30, key='_HIST_')],
 ]
 
+acc_inf, ainf = gg.get_acc_bals(TDSession)
+pos_tab, pos_headings = gg.get_pos(acc_inf)
+ord_tab, ord_headings, cols= gg.get_orders(acc_inf)
+
+def tt_acnt(text, fsize=12):
+    return sg.T(text,font=('Arial', fsize, 'bold', "underline"),size=(20, 1))
+def tv_acnt(text, fsize=12):
+    return sg.T(text,font=('Arial', fsize),size=(20, 1))
+
+def row_cols(cols, vals=("Grey", "Brown")):
+    # cols = bool x n rows
+    return list(map(lambda a: (a[0], vals[0]) if a[1] else (a[0], vals[1]), enumerate(cols)))
+
+
 
 layout_account = [[sg.Column([
-    [sg.T("Account ID",font=('Arial', 12, 'bold', "underline"),size=(20, 1)),
-     sg.T("Balance",font=('Arial', 12, 'bold', "underline"),size=(20, 1)),
-     sg.T("Cash",font=('Arial', 12, 'bold', "underline"),size=(20, 1)),
-     sg.T("Funds",font=('Arial', 12, 'bold', "underline"), size=(20, 1)),
-     ]])],[
-    sg.Column([[sg.T("Positions",font=('Arial', 15, 'bold', "underline"))]])],
-    [sg.Column([[sg.T("Orders",font=('Arial', 15, 'bold', "underline"))]])]
-     ]
+    [tt_acnt("Account ID"), tt_acnt("Balance"),
+     tt_acnt("Cash"), tt_acnt("Funds")],
+    [tv_acnt(ainf["id"]), tv_acnt("$" + str(ainf["balance"])),
+     tv_acnt("$" + str(ainf["cash"])), tv_acnt("$" + str(ainf["funds"]))]
+    ])],
+    [sg.Column(
+        [[sg.T("Positions", font=('Arial', 15, 'bold', "underline"))],
+         [sg.Table(values=pos_tab, headings=pos_headings,justification='left',
+          display_row_numbers=False, text_color='black', font=("courier", 15),
+          # auto_size_columns=True,
+          vertical_scroll_only=False, alternating_row_color='grey',
+          # col_widths=[30,300, 1300],
+          row_height=20, key='_positions_')]])],
+    [sg.Column(
+        [[sg.T("Orders",font=('Arial', 15, 'bold', "underline"))],
+         [sg.Table(values=ord_tab, headings=ord_headings,justification='left',
+          display_row_numbers=False, text_color='black', font=("courier", 15),
+          selected_row_colors= cols,
+          vertical_scroll_only=False,
+          row_colors=row_cols(cols),
+          row_height=20,  key='_orders_')]])
+        ]]
+
 
 
 layout = [[sg.Column([[sg.TabGroup([[sg.Tab('Portfolio', ly_port),
                                     sg.Tab(chn, layout_msg, k="kk"),
                                     sg.Tab("Account", layout_account)]])]])
-           ],
-          [sg.Output(key='-OUTPUT-', size=(54, 3))]]
+           ],]
+          # [sg.Output(key='-OUTPUT-', size=(54, 3))]]
 
 window = sg.Window('Xtrader', layout,# force_toplevel=True,
-                   size=(1090, 500), auto_size_text=False, resizable=True, finalize=True)
+                   size=(2590, 1500), auto_size_text=False, resizable=True, finalize=True)
 
 window['_HIST_'].set_vscroll_position(1)
+
+window.TKroot.tk.call('tk', 'scaling', 2)
+
+# window['_orders_'].Widget.config(width=8)
 
 # sg.Print('This text is white on a green background', text_color='white', background_color='green', font='Courier 10')
 # sg.Print('The first call sets some window settings like font that cannot be changed')
@@ -94,6 +134,12 @@ while True:
     event, values = window.read()
     if event == sg.WINDOW_CLOSED:
         break
+
+    if event == '-slider-':
+        font_string = 'Helvitica '
+        font_string += str(int(values['-slider-']))
+        window.Element('_PORT_').Update(font=font_string)
+
     elif event == "UPD-port":
         print("Updateing!")
         # gui_data['port'] = get_portf_data()

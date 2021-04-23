@@ -24,31 +24,6 @@ import table_viewer
 from colorama import Fore, Back, Style
 
 
-def find_open_trade(order, trades_log):
-
-    trades_authr = trades_log["Trader"] == order["Trader"]
-    trades_log = trades_log.loc[trades_authr]
-
-    if len(trades_log) == 0:
-        return None
-
-    msk_ticker = trades_log["Symbol"].str.match(f"{order['Symbol']}$")
-
-    if sum(msk_ticker) == 0:
-       return None
-
-    ticker_trades = trades_log[msk_ticker]
-    sold_Qty =  ticker_trades[[f"STC{i}-xQty" for i in range(1,4)]].sum(1)
-    open_trade = sold_Qty< .99
-
-    if sum(open_trade) == 0:
-       return None
-
-    if sum(open_trade)> 1:
-       raise "Traded more than once open"
-    open_trade, = open_trade[open_trade].index.values
-    return open_trade
-
 
 def find_last_trade(order, trades_log, open_only=True):
 
@@ -128,10 +103,6 @@ class AlertTrader():
             # first do a synch process, then thread it
             self.update_orders()
             self.activate_trade_updater()
-
-    def plot_portfolio(self):
-        self.plotter = threading.Thread(target=table_viewer.app)
-        self.plotter.start()
 
 
     def activate_trade_updater(self, refresh_rate=30):
@@ -744,6 +715,17 @@ class AlertTrader():
             self.make_exit_orders(i, exit_plan)
 
 
+    def SL_below_market(self, order, new_SL_ratio=.95):
+        SL = order.get("SL")
+        price_now = self.price_now(order["Symbol"], "STC", 1)
+
+        if SL > price_now:
+            new_SL = round(price_now * new_SL_ratio, 2)
+            print(Back.RED + f"{order['Symbol']} SL below bid price, changed from {SL} to {new_SL}")
+            order["SL"] = new_SL
+        return order
+
+
     def make_exit_orders(self, open_trade, exit_plan):
         i = open_trade
         trade = self.portfolio.iloc[i]
@@ -806,6 +788,10 @@ class AlertTrader():
 
                 else:
                     raise("Case not caught")
+
+                # Check that is below current price
+                if order.get("SL") is not None:
+                    order = self.SL_below_market(order)
 
                 if ord_func is not None and order['uQty'] > 0:
                     _, STC_ordID = send_order(ord_func(**order), self.TDsession)

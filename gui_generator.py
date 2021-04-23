@@ -6,7 +6,7 @@ Created on Fri Apr  9 09:53:44 2021
 @author: adonay
 """
 
-import PySimpleGUI as sg
+
 import pandas as pd
 from datetime import datetime
 import numpy as np
@@ -16,12 +16,25 @@ from place_order import get_TDsession
 def short_date(datestr, infrm="%Y-%m-%d %H:%M:%S.%f", outfrm="%m/%d %H:%M"):
     return datetime.strptime(datestr, infrm).strftime(outfrm)
 
-def formt_num_2str(x, decim=2):
+def formt_num_2str(x, decim=2, str_len=6, remove_zero=True):
     if pd.isnull(x) or x == 'nan':
         return ""
+    if remove_zero and x == 0:
+        return ""
     x = round(x, decim)
-    return  f"%.{decim}f" % x if abs(x) % 1 else "%d" % x
+    return f'{x: >{str_len}.{decim}f}'.replace(".00", "   ")
 
+def max_dig_len(values, decim=2):
+    # Gives interger and decimal lengths in an array-like values
+    values_s = [ str(round(v, decim)) for v in values]
+    len_int = max([len(v.split('.')[0]) for v in values_s])
+    len_dig = max([len(v.split('.')[-1]) if "." in v else 0 for v in values_s])
+    len_tot = len_int + len_dig + 1 if len_dig else  len_int + len_dig
+    return len_tot, len_int, len_dig
+
+def pd_col_str_frmt(pd_Series, max_decim=2, remove_zero=True):
+    slen,_, decim = max_dig_len(pd_Series.to_numpy(), max_decim)
+    return pd_Series.apply(lambda x: formt_num_2str(x,decim, slen, remove_zero))
 
 def round_int_flt(x, n=1):
     if x%1 == 0:
@@ -66,13 +79,16 @@ def get_portf_data():
     for i in range(1,4):
         # Get xQty relative PnL
         data[f"STC{i}-qPnL"] = data[f'STC{i}-PnL']* data[f'STC{i}-xQty']
-        data[f'STC{i}-PnL'] = data[f'STC{i}-PnL'].apply(lambda x: formt_num_2str(x))
+        # Format nums to str for left centered col
+        data[f'STC{i}-PnL'] = pd_col_str_frmt(data[f'STC{i}-PnL'])
+        data[f'STC{i}-xQty'] = pd_col_str_frmt(data[f'STC{i}-xQty'])
 
     data["PnL"]  = data[f"STC1-qPnL"].fillna(0) + \
         data["STC2-qPnL"].fillna(0) + \
             data["STC3-qPnL"].fillna(0)
 
-    data["PnL"] = data["PnL"].apply(lambda x: formt_num_2str(x, 1))
+    data["PnL"] = pd_col_str_frmt(data["PnL"], 1)
+
     isopen = data['isOpen']
 
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
@@ -83,6 +99,7 @@ def get_portf_data():
        'STC2-Status', 'STC3-Status', 'STC1-xQty', 'STC2-xQty', 'STC3-xQty', 'exit_plan'
         ]
     data = data[cols]
+    data.fillna("", inplace=True)
     header_list = data.columns.tolist()
     header_list = [d.replace('STC', '') for d in header_list]
 
@@ -217,7 +234,7 @@ def get_orders(acc_inf):
             ord_tab, heads = order_info_pars(ordr, ord_tab)
             nnlen = len(ord_tab) - nlen
             cols = cols + [col]*nnlen
-    return ord_tab,heads
+    return ord_tab,heads, cols
 
 
 
