@@ -189,11 +189,11 @@ def make_STC_lim(Symbol:str, uQty:int, price:float, strike=None, **kwarg):
     order_leg.order_leg_quantity(quantity=int(uQty))
 
     if strike is not None:
-        new_order.order_session('SEAMLESS')
+        new_order.order_session('NORMAL')
         order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
         order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
     else:
-        new_order.order_session('NORMAL')
+        new_order.order_session('SEAMLESS')
         order_leg.order_leg_instruction(instruction="SELL")
         order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
     new_order.add_order_leg(order_leg=order_leg)

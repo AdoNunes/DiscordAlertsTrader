@@ -183,8 +183,6 @@ def get_pos(acc_inf):
     return db.values.tolist(), pos_headings
 
 
-
-
 def order_info_pars(ord_dic, ord_list):
     """ get info from order request
     :param ord_dic: dict with order info, from 'orderStrategies' or
