@@ -20,7 +20,6 @@ from place_order import (get_TDsession, make_BTO_lim_order, send_order,
                          make_STC_lim,
                          make_Lim_SL_order, make_STC_SL)
 # import dateutil.parser.parse as date_parser
-import table_viewer
 from colorama import Fore, Back, Style
 
 
