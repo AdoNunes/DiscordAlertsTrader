@@ -41,21 +41,10 @@ ly_accnt = gl.layout_account(TDSession, fnt_b, fnt_h)
 layout = [[sg.Column([[sg.TabGroup([[sg.Tab('Portfolio', ly_port)],
                                     [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],
                                     [sg.Tab("Account", ly_accnt)]])]])]]
-           
+
 
 window = sg.Window('Xtrader', layout,# force_toplevel=True,
                    size=(3000, 50), auto_size_text=False, resizable=True, finalize=True)
-
-
-# window['_HIST_'].set_vscroll_position(1)
-
-# window['_orders_'].Widget.config(width=8)
-
-# sg.Print('This text is white on a green background', text_color='white', background_color='green', font='Courier 10')
-# sg.Print('The first call sets some window settings like font that cannot be changed')
-
-
-#sg.popup_scrolled('your_table = [ ', ',\n'.join([str(table[i]) for i in range(MAX_ROWS)]) + '  ]', title='Copy your data from here', font='fixedsys', keep_on_top=True)
 
 
 def fit_table_elms(Widget_element):
@@ -107,8 +96,14 @@ while True:
             window.Element(f"{chn}_table").Update(values=dt,  num_rows=n_rows)
         else:
             window.Element(f"{chn}_table").Update(values=dt)
-            
+
         fit_table_elms(window.Element(f"{chn}_table").Widget)
+
+    elif event == 'acc_updt':
+        gl.update_acct_ly(TDSession, window)
+
+
+
 
 window.close()
 

@@ -58,19 +58,22 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
                    alternating_row_color='grey',
                   # col_widths=[30,300, 1300],
                   # row_height=20,
-                  num_rows=30, 
+                  num_rows=30,
                   key=f"{chn}_table")]
         ]
     return layout
 
 
-def tt_acnt(text, fsize=12, bold=True, underline=True, font_name="Arial", size=None):
+def tt_acnt(text, fsize=12, bold=True, underline=True, font_name="Arial", size=None, k=None):
     font = [font_name, fsize]
     if bold: font += ['bold']
     if underline: font += ["underline"]
     if size is None:
         size = (len(text) *2, 1)
-    return sg.T(text,font=font,size=size)
+    if k is not None:
+        return sg.T(text,font=font,size=size, key=k)
+    else:
+        return sg.T(text,font=font,size=size)
 
 
 def row_cols(cols, vals=("Grey", "Brown")):
@@ -79,30 +82,31 @@ def row_cols(cols, vals=("Grey", "Brown")):
 
 
 def layout_account(TDSession, font_body, font_header):
-    
+
     acc_inf, ainf = gg.get_acc_bals(TDSession)
     pos_tab, pos_headings = gg.get_pos(acc_inf)
     ord_tab, ord_headings, cols= gg.get_orders(acc_inf)
-    
+
     layout = [[sg.Column([
         [tt_acnt("Account ID:"), tt_acnt(ainf["id"], font_body[1], 0, 0, font_body[0]),
-         tt_acnt("Balance:"), tt_acnt("$" + str(ainf["balance"]), font_body[1], 0, 0, font_body[0]),
-         tt_acnt("Cash:"), tt_acnt("$" + str(ainf["cash"]), font_body[1], 0, 0, font_body[0]),
-         tt_acnt("Funds:"), tt_acnt("$" + str(ainf["funds"]), font_body[1], 0, 0, font_body[0])
-         ]])],
+         tt_acnt("Balance:"), tt_acnt("$" + str(ainf["balance"]), font_body[1], 0, 0, font_body[0], k="acc_b"),
+         tt_acnt("Cash:"), tt_acnt("$" + str(ainf["cash"]), font_body[1], 0, 0, font_body[0], k="acc_c"),
+         tt_acnt("Funds:"), tt_acnt("$" + str(ainf["funds"]), font_body[1], 0, 0, font_body[0], k="acc_f")
+         ],[sg.ReadFormButton("Update", button_color=('white', 'black'), key='acc_updt', bind_return_key=True)]
+             ])],
         [sg.Column(
             [
              [sg.T("Positions", font=(font_header[0], font_header[1], 'bold', "underline"),size=(20,1.5))],
              [sg.Table(values=pos_tab, headings=pos_headings,justification='left',
               display_row_numbers=False, text_color='black', font=font_body,
-               auto_size_columns=True,header_font=font_header,    
+               auto_size_columns=True,header_font=font_header,
               alternating_row_color='grey',
               # col_widths=[30,300, 1300],
               # row_height=20,
               key='_positions_')]]),
         sg.Column(
             [
-             [sg.T("Orders",font=(font_header[0], font_header[1], 'bold',              "underline"),size=(20,1.5))],
+             [sg.T("Orders",font=(font_header[0], font_header[1], 'bold', "underline"),size=(20,1.5))],
              [sg.Table(values=ord_tab, headings=ord_headings,justification='left',
               display_row_numbers=False, text_color='black', font=font_body,
               auto_size_columns=True, header_font=font_header,
@@ -110,6 +114,19 @@ def layout_account(TDSession, font_body, font_header):
             ]]
     return layout
 
+
+def update_acct_ly(TDSession, window):
+
+    acc_inf, ainf = gg.get_acc_bals(TDSession)
+    pos_tab, pos_headings = gg.get_pos(acc_inf)
+    ord_tab, ord_headings, cols= gg.get_orders(acc_inf)
+
+    window.Element("acc_b").update(ainf["balance"])
+    window.Element("acc_c").update(ainf["cash"])
+    window.Element("acc_f").update(ainf["funds"])
+
+    window.Element("_positions_").update(pos_tab)
+    window.Element("_orders_").update(ord_tab)
 
 
 
