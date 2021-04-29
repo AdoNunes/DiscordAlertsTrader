@@ -78,7 +78,7 @@ while True:
         print("Updateing!")
         dt, hdr = gg.get_portf_data()
         # window.Element('_portfolio_').expand(expand_x=True)
-        window.Element('_portfolio_').Update(values=dt, num_rows=len(dt))
+        window.Element('_portfolio_').Update(values=dt)
 
     elif event[-3:] == "UPD":
         chn = event[:-4]
@@ -101,8 +101,6 @@ while True:
 
     elif event == 'acc_updt':
         gl.update_acct_ly(TDSession, window)
-
-
 
 
 window.close()

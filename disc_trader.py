@@ -21,7 +21,7 @@ from place_order import (get_TDsession, make_BTO_lim_order, send_order,
                          make_Lim_SL_order, make_STC_SL)
 # import dateutil.parser.parse as date_parser
 from colorama import Fore, Back, Style
-
+from message_parser import parse_exit_plan
 
 
 def find_last_trade(order, trades_log, open_only=True):
@@ -126,7 +126,7 @@ class AlertTrader():
             if self.update_paused is False:
                 try:
                     self.update_orders()
-                except GeneralError:
+                except (GeneralError, ConnectionError):
                     print(Back.GREEN + "General error raised, trying again")
             time.sleep(refresh_rate)
         print(Back.GREEN + "Closing portfolio updater")
@@ -254,13 +254,6 @@ class AlertTrader():
         return resp, order, ord_chngd
 
 
-    def parse_exit_plan(self, order):
-        exit_plan = {}
-        for p in [f"PT{i}" for i in range (1,4)] + ["SL"]:
-                exit_plan[p] = order[p]
-        return exit_plan
-
-
     def close_open_exit_orders(self, open_trade, STCn=range(1,4)):
         # close STCn waiting orders
 
@@ -330,23 +323,41 @@ class AlertTrader():
             self.update_paused = True
 
             old_plan = self.portfolio.loc[open_trade, "exit_plan"]
-            new_plan = self.parse_exit_plan(order)
+            new_plan = parse_exit_plan(order)
 
-            # Cancel orders previous plan if any
-            self.close_open_exit_orders(open_trade)
+            # Update PT is already STCn
+            istc = None
+            for i in range(1,4):
+                if self.portfolio.loc[open_trade, f"STC{i}-Alerted"] is not None:
+                    istc = i+1
+            if istc is not None and any(["PT" in k for k in new_plan.keys()]):
+                new_plan_c = new_plan.copy()
+                for i in range(1,4):
+                    if new_plan.get(f"PT{i}"):
+                        del new_plan_c[f"PT{i}"]
+                        new_plan_c[f"PT{istc}"] = new_plan[f"PT{i}"]
+                        # Cancel orders previous plan if any
+                        self.close_open_exit_orders(open_trade, istc)
+                new_plan = new_plan
 
-            self.portfolio.loc[open_trade, "exit_plan"] = str(new_plan)
+            renew_plan = eval(old_plan)
+            if renew_plan is not None or renew_plan != {}:
+                for k in new_plan.keys():
+                    renew_plan[k] = new_plan[k]
+            else:
+                renew_plan = new_plan
+
+            self.portfolio.loc[open_trade, "exit_plan"] = str(renew_plan)
             self.update_paused = False
 
             log_alert['action'] = "ExitUpdate"
             self.save_logs()
 
             symb = self.portfolio.loc[open_trade, "Symbol"]
-            print(Back.GREEN + f"Updated {symb} exit plan from :{old_plan} to {new_plan}")
+            print(Back.GREEN + f"Updated {symb} exit plan from :{old_plan} to {renew_plan}")
             return
 
         if not isOpen and order["action"] == "BTO":
-
             alert_price = order['price']
 
             order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
@@ -362,7 +373,7 @@ class AlertTrader():
             ordered = eval(order_response['request_body'])
             order_status, order_info = self.get_order_info(order_id)
 
-            exit_plan = self.parse_exit_plan(order)
+            exit_plan = parse_exit_plan(order)
 
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],

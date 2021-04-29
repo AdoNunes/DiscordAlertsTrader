@@ -13,7 +13,7 @@ import time
 import re
 import pandas as pd
 from datetime import datetime, timedelta
-from message_parser import parser_alerts, auhtor_parser, get_symb_prev_msg, combine_new_old_orders
+from message_parser import parser_alerts, get_symb_prev_msg, combine_new_old_orders
 from option_message_parser import option_alerts_parser
 from config import (path_dll, data_dir, CHN_NAMES, chn_IDS, discord_token, UPDATE_PERIOD)
 import config as cfg

@@ -19,7 +19,7 @@ from PySide2.QtWidgets import QHeaderView
 def layout_portfolio(data_n_headers, font_body, font_header):
     layout = [
          [sg.Column([[sg.Button("Update", button_color=('white', 'black'), key="_upd-portfolio_")]])],
-         [sg.Table(values=data_n_headers[0],
+         [sg.Column([[sg.Table(values=data_n_headers[0],
                         headings=data_n_headers[1],
                         display_row_numbers=True,
                         auto_size_columns=True,
@@ -29,7 +29,7 @@ def layout_portfolio(data_n_headers, font_body, font_header):
                         justification='left',
                         alternating_row_color='grey',
                         # num_rows=30, #len(data_n_headers[0]),
-                        key='_portfolio_')]
+                        key='_portfolio_'), sg.Stretch()]])]
          ]
     return layout
 
@@ -45,7 +45,7 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
          sg.Text('Num. rows display: '), sg.Input(key=f'{chn}_n_rows', size=(5, 1)),
          ],
         [sg.ReadFormButton("Update", button_color=('white', 'black'), key=f'{chn}_UPD', bind_return_key=True)],
-        [sg.Table(values=data_n_headers[0],
+        [sg.Column([[sg.Table(values=data_n_headers[0],
                   headings=data_n_headers[1],
                   justification='left',
                   display_row_numbers=False,
@@ -59,7 +59,7 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
                   # col_widths=[30,300, 1300],
                   # row_height=20,
                   num_rows=30,
-                  key=f"{chn}_table")]
+                  key=f"{chn}_table")]])]
         ]
     return layout
 

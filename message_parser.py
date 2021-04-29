@@ -324,10 +324,16 @@ def parse_risk(msg):
     return risk_level
 
 
+def parse_exit_plan(order):
+    exit_plan = {}
+    for p in [f"PT{i}" for i in range (1,4)] + ["SL"]:
+            exit_plan[p] = order.get(p)
+    return exit_plan
 
-def auhtor_parser(msg, author, asset="option"):
 
-    if author == 'Xtrades Option Guru#8905':
+def auhtor_parser(msg, author):
+
+    if author not in ['ScaredShirtless#0001', 'Kevin (Momentum)#4441']:
         new_order = {}
         def stc_amount(msg):
             ######### Leave N untis
@@ -439,7 +445,7 @@ def get_symb_prev_msg(df_hist, msg_ix, author):
 
 
 
-def combine_new_old_orders(msg, order_old, pars, author):
+def combine_new_old_orders(msg, order_old, pars, author, asset="option"):
 
     order_author = auhtor_parser(msg, author)
     if order_author is None:
