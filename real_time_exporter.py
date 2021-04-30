@@ -23,7 +23,7 @@ from colorama import Fore, Back, Style, init
 import itertools
 import json
 
-init(autoreset=True)
+
 
 def updt_chan_hist(df_hist, path_update, path_hist):
 
@@ -99,7 +99,7 @@ def closest_fullname_match(name, names_all):
     candidate = [n for n in names_all if name[0].lower() in n.lower()]
 
     if candidate == []:
-        "print name not matched"
+        print ("name not matched")
         return None
 
     # df unique returned in order of appearence
@@ -164,7 +164,7 @@ def disc_json_time_corr(time_json):
 
 class AlertsListner():
 
-    def __init__(self):
+    def __init__(self, print_func=None):
 
         self.UPDATE_PERIOD = cfg.UPDATE_PERIOD
         self.CHN_NAMES = cfg.CHN_NAMES
@@ -183,12 +183,18 @@ class AlertsListner():
         self.chn_hist = {c: pd.read_csv( self.chn_hist_f[c])
                          for c in self.CHN_NAMES}
 
-        # self.thread =  threading.Thread(target=self.listent_trade_alerts)
-        # self.thread.start()
+        if print_func == None:
+            self.print_func = print
+        else:
+            self.print_func = print_func
+
+        self.thread =  threading.Thread(target=self.listent_trade_alerts)
+        self.thread.start()
 
 
     def close(self):
         self.Altrader.update_portfolio = False
+        self.listening = False
 
 
     def get_edited_msgs(self, chn_id, time_after_last, out_file,  hours=1):
@@ -242,7 +248,7 @@ class AlertsListner():
                 nmsg = len(new_msg)
                 if nmsg:
                     dnow = short_date(datetime.now())
-                    print(Style.DIM + f"{dnow} | {chn}: got {nmsg} new msgs:")
+                    self.print_func(f"{dnow} | {chn}: got {nmsg} new msgs:", text_color="gray")
 
                     self.new_msg_acts(new_msg, chn, out_file)
 
@@ -276,13 +282,13 @@ class AlertsListner():
                 names_all = list(itertools.chain(*names_all))
 
                 author, asset, content = dm_message(msg["Content"], names_all)
-                print("DM: ", author, asset, content)
+                self.print_func("DM: ", author, asset, content, text_color="blue")
                 msg['Author'] = author
                 msg["Content"] = content
 
             shrt_date = datetime.strptime(msg["Date"], self.time_strf
                                           ).strftime('%H:%M:%S')
-            print(f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
+            self.print_func(f"{shrt_date} \t {msg['Author']}: {msg['Content']} ", text_color="blue")
 
             pars, order =  parser_alerts(msg['Content'], asset)
             author = msg['Author']
@@ -294,7 +300,7 @@ class AlertsListner():
                     sym, inxf = get_symb_prev_msg(df_hist, msg_ix, author)
                     if sym is not None:
                         order["Symbol"] = sym
-                        print(Fore.GREEN + f"Got {sym} symbol from previous msg {inxf}, author: {author}")
+                        self.print_func(f"Got {sym} symbol from previous msg {inxf}, author: {author}", text_color="green")
                     else:
                         pars = None
 
@@ -306,7 +312,7 @@ class AlertsListner():
                     re_upd = re.compile("(?:T|t)rade plan[a-zA-Z\s\,\.]*\*{2}([A-Z]*?)\*{2}[a-zA-Z\s\,\.]* updated")
                     upd_inf = re_upd.search(msg['Content'])
                     if upd_inf:
-                        print(Fore.GREEN + f"Updating trade plan msg:")
+                        self.print_func(f"Updating trade plan msg:", text_color="green")
 
                 time_after = self.chn_hist[chn]['Date'].max()
                 json_msg = self.get_edited_msgs(chn_IDS[chn], time_after,
@@ -316,21 +322,21 @@ class AlertsListner():
                                                  asset)
 
                 if new_alerts == []:
-                    print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
+                    self.print_func("\t \t MSG NOT UNDERSTOOD", text_color="grey")
                     continue
-                print(Fore.GREEN + "Updating edited msgs")
+                self.print_func("Updating edited msgs", text_color="green")
                 for alert in new_alerts:
-                    print(Fore.GREEN + alert[2])
+                    self.print_func(alert[2], text_color="green")
                     pars, order, msg_str = alert
                     order['Trader'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
                     if order['Trader'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
                         self.Altrader.new_trade_alert(order, pars, msg_str)
 
             elif pars == 'not an alert':
-                print(Style.DIM + "\t \tnot for @everyone")
+                self.print_func("\t \tnot for @everyone", text_color="grey")
 
             else:
-                print(Fore.RED +f"\t \t {pars}")
+                self.print_func(Fore.RED +f"\t \t {pars}")
                 if msg['Author'] == "Kevin (Momentum)#8888":
                     msg['Author'] = msg['Author'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
 
@@ -345,10 +351,13 @@ def short_date(dateobj, frm="%m/%d %H:%M:%S"):
     return dateobj.strftime(frm)
 
 
-alistner = AlertsListner()
-alistner.listent_trade_alerts()
+
 
 if 0:
+    alistner = AlertsListner()
+    alistner.listent_trade_alerts()
+
+
     alistner.close()
     self = alistner
 # SL_2buyprice = ['Move SL to buy price',]

@@ -33,6 +33,7 @@ def get_date():
     time_strf = "%Y-%m-%d %H:%M:%S.%f"
     date = datetime.now().strftime(time_strf)
 
+
 class Trades_Tracker():
 
     def __init__(self, TDSession=None,

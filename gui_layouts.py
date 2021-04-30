@@ -16,6 +16,13 @@ from PySide2.QtGui import QPainter, QPixmap, QPen, QColor
 from PySide2.QtWidgets import QHeaderView
 
 
+def layout_console():
+    MLINE_KEY = '-MLINE-__WRITE ONLY__'
+    layout = [[sg.Text('Real Time Discord Alert Trader', size=(200,1))],
+     [sg.Multiline( key=MLINE_KEY)] ]
+    return layout, MLINE_KEY
+
+
 def layout_portfolio(data_n_headers, font_body, font_header):
     layout = [
          [sg.Column([[sg.Button("Update", button_color=('white', 'black'), key="_upd-portfolio_")]])],

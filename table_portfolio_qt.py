@@ -13,15 +13,21 @@ import gui_generator as gg
 import gui_layouts as gl
 from PySide2.QtGui import QPainter, QPixmap, QPen, QColor
 from PySide2.QtWidgets import QHeaderView
+from real_time_exporter import AlertsListner
 
 TDSession = get_TDsession()
 
 # sg.SetOptions(font=("Courier New", -13))#, background_color="whitesmoke",
                # element_padding=(0, 0), margins=(1, 1))
 
-
 fnt_b = ("Helvitica", "11")
 fnt_h = ("Helvitica", "10")
+
+ly_cons, MLINE_KEY = gl.layout_console()
+
+def mprint(*args, **kwargs):
+    window[MLINE_KEY].print(*args, **kwargs)
+
 
 gui_data = {}
 gui_data['port'] = gg.get_portf_data()
@@ -38,7 +44,8 @@ for chn in chns:
 ly_accnt = gl.layout_account(TDSession, fnt_b, fnt_h)
 
 
-layout = [[sg.Column([[sg.TabGroup([[sg.Tab('Portfolio', ly_port)],
+layout = [[sg.Column([[sg.TabGroup([[sg.Tab("Console", ly_cons)],
+                                    [sg.Tab('Portfolio', ly_port)],
                                     [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],
                                     [sg.Tab("Account", ly_accnt)]])]])]]
 
@@ -65,8 +72,11 @@ for chn in chns:
     # table.setSectionResizeMode(2, QHeaderView.ResizeToContents)
     window[f"{chn}_table"].Widget.scrollToBottom()
 
-# i = window.Element('_PORT_').Widget.item(1,1)
-# i.setBackground(QColor('red'))
+
+alistner = AlertsListner(mprint)
+
+
+
 event, values = window.read(.5)
 while True:
     event, values = window.read()
@@ -104,5 +114,5 @@ while True:
 
 
 window.close()
-
+alistner.close()
 
