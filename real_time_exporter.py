@@ -23,7 +23,7 @@ from colorama import Fore, Back, Style, init
 import itertools
 import json
 
-
+init(autoreset=True)
 
 def updt_chan_hist(df_hist, path_update, path_hist):
 
@@ -161,6 +161,8 @@ def disc_json_time_corr(time_json):
 
     return  date + timedelta(hours=-4)
 
+def null_print(*args, **kwargs):
+    pass
 
 class AlertsListner():
 
@@ -175,7 +177,7 @@ class AlertsListner():
 
         self.time_strf = "%Y-%m-%d %H:%M:%S.%f"
 
-        self.Altrader = AlertTrader()
+        self.Altrader = AlertTrader(print_func=print_func)
         self.listening = False
 
         self.chn_hist_f = {c:f"{data_dir}/{c}_message_history.csv"
@@ -184,7 +186,7 @@ class AlertsListner():
                          for c in self.CHN_NAMES}
 
         if print_func == None:
-            self.print_func = print
+            self.print_func = null_print
         else:
             self.print_func = print_func
 
@@ -197,7 +199,7 @@ class AlertsListner():
         self.listening = False
 
 
-    def get_edited_msgs(self, chn_id, time_after_last, out_file,  hours=1):
+    def get_edited_msgs(self, chn_id, time_after_last, out_file, hours=1):
 
         out_json = out_file.replace("csv", "json")
 
@@ -234,6 +236,8 @@ class AlertsListner():
 
                 out_file = f"{data_dir}/{chn}_temp.csv"
                 time_after = self.chn_hist[chn]['Date'].max()
+                new_t = min(59.99, float(time_after[-9:]) + .1)
+                time_after = time_after[:-9] + f"{new_t:.6f}"
                 cmd_sh = self.cmd.format(chn_IDS[chn],
                                     time_after, out_file)
                 new_msgs = send_sh_cmd(cmd_sh)
@@ -249,6 +253,7 @@ class AlertsListner():
                 if nmsg:
                     dnow = short_date(datetime.now())
                     self.print_func(f"{dnow} | {chn}: got {nmsg} new msgs:", text_color="gray")
+                    print(Style.DIM + f"{dnow} | {chn}: got {nmsg} new msgs:")
 
                     self.new_msg_acts(new_msg, chn, out_file)
 
@@ -283,12 +288,14 @@ class AlertsListner():
 
                 author, asset, content = dm_message(msg["Content"], names_all)
                 self.print_func("DM: ", author, asset, content, text_color="blue")
+                print("DM: ", author, asset, content)
                 msg['Author'] = author
                 msg["Content"] = content
 
             shrt_date = datetime.strptime(msg["Date"], self.time_strf
                                           ).strftime('%H:%M:%S')
             self.print_func(f"{shrt_date} \t {msg['Author']}: {msg['Content']} ", text_color="blue")
+            print(Fore.BLUE + f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
 
             pars, order =  parser_alerts(msg['Content'], asset)
             author = msg['Author']
@@ -301,6 +308,7 @@ class AlertsListner():
                     if sym is not None:
                         order["Symbol"] = sym
                         self.print_func(f"Got {sym} symbol from previous msg {inxf}, author: {author}", text_color="green")
+                        print(Fore.GREEN + f"Got {sym} symbol from previous msg {inxf}, author: {author}")
                     else:
                         pars = None
 
@@ -313,6 +321,7 @@ class AlertsListner():
                     upd_inf = re_upd.search(msg['Content'])
                     if upd_inf:
                         self.print_func(f"Updating trade plan msg:", text_color="green")
+                        print(Fore.GREEN + f"Updating trade plan msg:")
 
                 time_after = self.chn_hist[chn]['Date'].max()
                 json_msg = self.get_edited_msgs(chn_IDS[chn], time_after,
@@ -323,10 +332,15 @@ class AlertsListner():
 
                 if new_alerts == []:
                     self.print_func("\t \t MSG NOT UNDERSTOOD", text_color="grey")
+                    print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
                     continue
+
                 self.print_func("Updating edited msgs", text_color="green")
+                print(Fore.GREEN + "Updating edited msgs")
+
                 for alert in new_alerts:
                     self.print_func(alert[2], text_color="green")
+                    print(Fore.GREEN + alert[2])
                     pars, order, msg_str = alert
                     order['Trader'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
                     if order['Trader'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
@@ -334,6 +348,7 @@ class AlertsListner():
 
             elif pars == 'not an alert':
                 self.print_func("\t \tnot for @everyone", text_color="grey")
+                print(Style.DIM + "\t \tnot for @everyone")
 
             else:
                 self.print_func(Fore.RED +f"\t \t {pars}")

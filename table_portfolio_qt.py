@@ -50,8 +50,8 @@ layout = [[sg.Column([[sg.TabGroup([[sg.Tab("Console", ly_cons)],
                                     [sg.Tab("Account", ly_accnt)]])]])]]
 
 
-window = sg.Window('Xtrader', layout,# force_toplevel=True,
-                   size=(3000, 50), auto_size_text=False, resizable=True, finalize=True)
+window = sg.Window('Xtrader', layout,size=(2000, 50), # force_toplevel=True,
+                    auto_size_text=False, resizable=True, finalize=True)
 
 
 def fit_table_elms(Widget_element):
@@ -61,7 +61,7 @@ def fit_table_elms(Widget_element):
     Widget_element.resizeColumnsToContents()
 
 # event, values = window.read(.1)
-
+# window.GetScreenDimensions()
 els = ['_portfolio_', '_orders_', '_positions_'] + [f"{chn}_table" for chn in chns]
 for el in els:
     fit_table_elms(window.Element(el).Widget)
@@ -74,17 +74,18 @@ for chn in chns:
 
 
 alistner = AlertsListner(mprint)
-
+# alistner = AlertsListner()
 
 
 event, values = window.read(.5)
 while True:
     event, values = window.read()
-    print(event)
+
     if event == sg.WINDOW_CLOSED:
         break
+    print(event)
 
-    elif event == "_upd-portfolio_":
+    if event == "_upd-portfolio_":
         print("Updateing!")
         dt, hdr = gg.get_portf_data()
         # window.Element('_portfolio_').expand(expand_x=True)

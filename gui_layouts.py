@@ -19,7 +19,7 @@ from PySide2.QtWidgets import QHeaderView
 def layout_console():
     MLINE_KEY = '-MLINE-__WRITE ONLY__'
     layout = [[sg.Text('Real Time Discord Alert Trader', size=(200,1))],
-     [sg.Multiline( key=MLINE_KEY)] ]
+     [sg.Column([[sg.Multiline(key=MLINE_KEY, size_px=(None,1000))] ])]]
     return layout, MLINE_KEY
 
 

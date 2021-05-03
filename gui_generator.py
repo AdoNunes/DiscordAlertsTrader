@@ -159,22 +159,25 @@ def get_acc_bals(TDSession):
 def get_pos(acc_inf):
     positions = acc_inf['securitiesAccount']['positions']
     pos_tab = []
-    pos_headings = ["Sym", "Last", "PnL_%", "PnL","Qty", "Val", "Cost"]
+    pos_headings = ["Sym", "Last", "price", "PnL_%\nday", "PnL\nday","PnL_%\ntot", "PnL\ntot","Qty", "Val", "Cost"]
     for pos in positions:
         price= round(pos['averagePrice'], 2)
         pnl = pos['currentDayProfitLoss']
-        pnl_p = pos['currentDayProfitLossPercentage']
+        pnl_p = pos['currentDayProfitLossPercentage'] * 100
         uQty = pos['longQuantity']
         cost = round(price * uQty, 2)
-        last = pos["marketValue"]
+        last = round(pos["marketValue"] / uQty, 2)
         sym = pos['instrument']['symbol']
         asset = pos['instrument']['assetType']
-
-        if pos['instrument']['assetType'] == "OPTION":
-            last = pos["marketValue"]/100
+        val = pos["marketValue"]
+        pnl_t = round(val - cost, 2)
+        pnl_p_t = round((val -cost)*100 / cost, 2)
+        
+        if pos['instrument']['assetType'] == "option":
+            val = round(pos["marketValue"] * uQty * 100, 2)
             cost = round(price * uQty * 100, 2)
 
-        pos_vals = [sym, last, pnl_p, pnl, uQty, price, cost]
+        pos_vals = [sym, last, price, pnl_p, pnl, pnl_p_t ,pnl_t, uQty, val , cost]
         pos_tab.append(pos_vals)
 
     db = pd.DataFrame(data=pos_tab, columns=pos_headings)
