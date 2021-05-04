@@ -22,7 +22,7 @@ from place_order import (get_TDsession, make_BTO_lim_order, send_order,
 # import dateutil.parser.parse as date_parser
 from colorama import Fore, Back, Style
 from message_parser import parse_exit_plan
-
+import queue
 
 def find_last_trade(order, trades_log, open_only=True):
 
