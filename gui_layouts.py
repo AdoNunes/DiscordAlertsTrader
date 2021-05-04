@@ -18,8 +18,9 @@ from PySide2.QtWidgets import QHeaderView
 
 def layout_console():
     MLINE_KEY = '-MLINE-__WRITE ONLY__'
-    layout = [[sg.Text('Real Time Discord Alert Trader', size=(200,1))],
-     [sg.Column([[sg.Multiline(key=MLINE_KEY, size_px=(None,1000))] ])]]
+    layout = [[sg.Text('Real Time Discord Alert Trader', size=(50,1))],
+              [sg.Multiline(size=(1000,800), key=MLINE_KEY)]]
+     # [sg.Column([[sg.Multiline(key=MLINE_KEY),sg.Stretch()]])]]
     return layout, MLINE_KEY
 
 
@@ -56,16 +57,16 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
                   headings=data_n_headers[1],
                   justification='left',
                   display_row_numbers=False,
-                  max_col_width=2000, text_color='black',
+                  max_col_width=300, text_color='black',
                   font=font_body,
-                  col_widths=[30,300, 1300],
+                  # col_widths=[30,200, 300],
                   header_font=font_header,
                   # auto_size_columns=True,
                   # vertical_scroll_only=False,
                    alternating_row_color='grey',
                   # col_widths=[30,300, 1300],
                   # row_height=20,
-                  num_rows=30,
+                  # num_rows=30,
                   key=f"{chn}_table")]])]
         ]
     return layout

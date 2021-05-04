@@ -11,6 +11,7 @@ import numpy as np
 import subprocess
 import time
 import re
+import queue
 import pandas as pd
 from datetime import datetime, timedelta
 from message_parser import parser_alerts, get_symb_prev_msg, combine_new_old_orders
@@ -168,7 +169,7 @@ def null_print(*args, **kwargs):
 
 class AlertsListner():
 
-    def __init__(self, print_func=None):
+    def __init__(self, queue_prints=queue.Queue(maxsize=10)):
 
         self.UPDATE_PERIOD = cfg.UPDATE_PERIOD
         self.CHN_NAMES = cfg.CHN_NAMES
@@ -178,8 +179,9 @@ class AlertsListner():
                 ' -f Csv --after "{}" --dateformat "yyyy-MM-dd HH:mm:ss.ffffff" -o {}'
 
         self.time_strf = "%Y-%m-%d %H:%M:%S.%f"
-
-        self.Altrader = AlertTrader(print_func=print_func)
+        self.queue_prints = queue_prints
+        
+        self.Altrader = AlertTrader(queue_prints=self.queue_prints)
         self.listening = False
 
         self.chn_hist_f = {c:f"{data_dir}/{c}_message_history.csv"
@@ -187,10 +189,6 @@ class AlertsListner():
         self.chn_hist = {c: pd.read_csv( self.chn_hist_f[c])
                          for c in self.CHN_NAMES}
 
-        if print_func == None:
-            self.print_func = null_print
-        else:
-            self.print_func = print_func
 
         self.thread =  threading.Thread(target=self.listent_trade_alerts)
         self.thread.start()
@@ -254,7 +252,7 @@ class AlertsListner():
                 nmsg = len(new_msg)
                 if nmsg:
                     dnow = short_date(datetime.now())
-                    self.print_func(f"{dnow} | {chn}: got {nmsg} new msgs:", text_color="gray")
+                    self.queue_prints.put([f"{dnow} | {chn}: got {nmsg} new msgs:", "gray"])
                     print(Style.DIM + f"{dnow} | {chn}: got {nmsg} new msgs:")
 
                     self.new_msg_acts(new_msg, chn, out_file)
@@ -289,14 +287,14 @@ class AlertsListner():
                 names_all = list(itertools.chain(*names_all))
 
                 author, asset, content = dm_message(msg["Content"], names_all)
-                self.print_func("DM: ", author, asset, content, text_color="blue")
+                self.queue_prints.put([f"DM: {author}, {asset}, {content},", "blue"])
                 print("DM: ", author, asset, content)
                 msg['Author'] = author
                 msg["Content"] = content
 
             shrt_date = datetime.strptime(msg["Date"], self.time_strf
                                           ).strftime('%H:%M:%S')
-            self.print_func(f"{shrt_date} \t {msg['Author']}: {msg['Content']} ", text_color="blue")
+            self.queue_prints.put([f"{shrt_date} \t {msg['Author']}: {msg['Content']} ", "blue"])
             print(Fore.BLUE + f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
 
             pars, order =  parser_alerts(msg['Content'], asset)
@@ -309,7 +307,7 @@ class AlertsListner():
                     sym, inxf = get_symb_prev_msg(df_hist, msg_ix, author)
                     if sym is not None:
                         order["Symbol"] = sym
-                        self.print_func(f"Got {sym} symbol from previous msg {inxf}, author: {author}", text_color="green")
+                        self.queue_prints.put([f"Got {sym} symbol from previous msg {inxf}, author: {author}", "green"])
                         print(Fore.GREEN + f"Got {sym} symbol from previous msg {inxf}, author: {author}")
                     else:
                         pars = None
@@ -322,7 +320,7 @@ class AlertsListner():
                     re_upd = re.compile("(?:T|t)rade plan[a-zA-Z\s\,\.]*\*{2}([A-Z]*?)\*{2}[a-zA-Z\s\,\.]* updated")
                     upd_inf = re_upd.search(msg['Content'])
                     if upd_inf:
-                        self.print_func(f"Updating trade plan msg:", text_color="green")
+                        self.queue_prints.put([f"Updating trade plan msg:", "green"])
                         print(Fore.GREEN + f"Updating trade plan msg:")
 
                 time_after = self.chn_hist[chn]['Date'].max()
@@ -333,15 +331,15 @@ class AlertsListner():
                                                  asset)
 
                 if new_alerts == []:
-                    self.print_func("\t \t MSG NOT UNDERSTOOD", text_color="grey")
+                    self.queue_prints.put(["\t \t MSG NOT UNDERSTOOD", "grey"])
                     print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
                     continue
 
-                self.print_func("Updating edited msgs", text_color="green")
+                self.queue_prints.put(["Updating edited msgs", "green"])
                 print(Fore.GREEN + "Updating edited msgs")
 
                 for alert in new_alerts:
-                    self.print_func(alert[2], text_color="green")
+                    self.queue_prints.put([alert[2], "green"])
                     print(Fore.GREEN + alert[2])
                     pars, order, msg_str = alert
                     order['Trader'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
@@ -349,11 +347,11 @@ class AlertsListner():
                         self.Altrader.new_trade_alert(order, pars, msg_str)
 
             elif pars == 'not an alert':
-                self.print_func("\t \tnot for @everyone", text_color="grey")
+                self.queue_prints.put(["\t \tnot for @everyone", "grey"])
                 print(Style.DIM + "\t \tnot for @everyone")
 
             else:
-                self.print_func(f"\t \t {pars}", text_color="green")
+                self.queue_prints.put([f"\t \t {pars}", "green"])
                 print(Fore.GREEN + f"\t \t {pars}")
 
                 if msg['Author'] == "Kevin (Momentum)#8888":
@@ -362,7 +360,7 @@ class AlertsListner():
                 if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
                     order["Trader"] = msg['Author']
                     self.Altrader.new_trade_alert(order, pars,\
-                         msg['Content'])
+                          msg['Content'])
 
 
 

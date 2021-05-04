@@ -14,6 +14,7 @@ import gui_layouts as gl
 from PySide2.QtGui import QPainter, QPixmap, QPen, QColor
 from PySide2.QtWidgets import QHeaderView
 from real_time_exporter import AlertsListner
+import queue
 
 TDSession = get_TDsession()
 
@@ -44,14 +45,34 @@ for chn in chns:
 ly_accnt = gl.layout_account(TDSession, fnt_b, fnt_h)
 
 
-layout = [[sg.Column([[sg.TabGroup([[sg.Tab("Console", ly_cons)],
+layout = [[sg.TabGroup([
+                        [sg.Tab("Console", ly_cons)],
                                     [sg.Tab('Portfolio', ly_port)],
                                     [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],
-                                    [sg.Tab("Account", ly_accnt)]])]])]]
+                                    [sg.Tab("Account", ly_accnt)]
+                                    ])]]
 
 
-window = sg.Window('Xtrader', layout,size=(2000, 50), # force_toplevel=True,
+window = sg.Window('Xtrader', layout,size=(1000, 500), # force_toplevel=True,
                     auto_size_text=False, resizable=True, finalize=True)
+
+window[MLINE_KEY].update(readonly=True)
+
+def mprint_queue(queue_item_list):
+    # queue_item_list = [string, text_color, background_color]
+    kwargs = {}
+    text = queue_item_list[0]
+    len_que = len(queue_item_list)
+    if len_que == 2:
+        kwargs["text_color"] = queue_item_list[1]
+    elif len_que == 3:
+        tcol = queue_item_list[1]
+        if tcol != "":
+            kwargs["text_color"] = tcol
+        bcol = queue_item_list[2]
+        if bcol != "":
+            kwargs["background_color"] = tcol
+    window[MLINE_KEY].print(text, **kwargs)
 
 
 def fit_table_elms(Widget_element):
@@ -73,17 +94,18 @@ for chn in chns:
     window[f"{chn}_table"].Widget.scrollToBottom()
 
 
-alistner = AlertsListner(mprint)
+trade_events = queue.Queue(maxsize=20)
+alistner = AlertsListner(trade_events)
 # alistner = AlertsListner()
 
 
-event, values = window.read(.5)
+# event, values = window.read(.5)
 while True:
-    event, values = window.read()
+    event, values = window.read(.1)
 
     if event == sg.WINDOW_CLOSED:
         break
-    print(event)
+    # print(event)
 
     if event == "_upd-portfolio_":
         print("Updateing!")
@@ -114,6 +136,14 @@ while True:
         gl.update_acct_ly(TDSession, window)
 
 
+    try:
+        event_feedb = trade_events.get(False)
+        mprint_queue(event_feedb)
+
+    except queue.Empty:
+       pass
+       
+        
 window.close()
 alistner.close()
 
