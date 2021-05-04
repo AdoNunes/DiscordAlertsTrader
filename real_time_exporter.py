@@ -354,6 +354,8 @@ class AlertsListner():
 
             else:
                 self.print_func(f"\t \t {pars}", text_color="green")
+                print(Fore.GREEN + f"\t \t {pars}")
+
                 if msg['Author'] == "Kevin (Momentum)#8888":
                     msg['Author'] = msg['Author'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
 
