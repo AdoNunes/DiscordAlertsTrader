@@ -21,10 +21,10 @@ def get_author_alerts():
 
     # author = "Kevin Wan#0083"
 
-    alerts_author = alerts[alerts["Author"].str.contains(author)]
+    # alerts_author = alerts[alerts["Author"].str.contains(author)]
 
 
-    alerts_author = alerts_author.dropna(subset=["Content"])
+    alerts_author = alerts#_author.dropna(subset=["Content"])
     alerts_author.reset_index(drop=True, inplace=True)
 
     return alerts_author, author
@@ -180,7 +180,7 @@ class Trades_Tracker():
 
         str_act =f"BTO {order['Symbol']} {current_Avg}th averging down @ {order['price']}"
         old_price = self.portfolio.loc[openTrade, "Price"]
-        self.portfolio.loc[openTrade, "Price"] = f"{old_price}/order['avg']"
+        self.portfolio.loc[openTrade, "Price"] = f"{old_price}/{order['avg']}"
 
         price_old = self.portfolio.loc[openTrade, "Alert-Price"]
         alert_price = order.get("price_current")
@@ -213,6 +213,8 @@ class Trades_Tracker():
             return self.portfolio, str_STC
 
         bto_price = self.portfolio.loc[openTrade, "Price"]
+        if isinstance(bto_price, str):
+            bto_price = float(bto_price.split("/")[-1])
         if order.get("price") is None:
             stc_price = "none"
         else:
@@ -247,7 +249,7 @@ class Trades_Tracker():
         return str_STC
 
 
-    def check_repeat_STC(order, openTrade, STC):
+    def check_repeat_STC(self, order, openTrade, STC):
 
         STC_prev = [self.portfolio.loc[openTrade, f"STC{i}"] for i in range(1, 4)]
 
@@ -266,7 +268,7 @@ if 0:
     bad_msg = []
     not_msg = pd.DataFrame(columns=["MSG"])
 
-    for i in range(1,20):#len(alerts_author)):
+    for i in range(len(alerts_author)):
 
         msg = alerts_author["Content"].iloc[i]
         date = alerts_author["Date"].iloc[i]

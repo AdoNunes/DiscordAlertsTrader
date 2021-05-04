@@ -22,6 +22,9 @@ import threading
 from colorama import Fore, Back, Style, init
 import itertools
 import json
+from trader_tracker import Trades_Tracker
+
+
 
 init(autoreset=True)
 
