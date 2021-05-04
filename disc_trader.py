@@ -445,7 +445,7 @@ class AlertTrader():
                     # If alerted and already sold
                     if not pd.isnull(position[ f"{STC}-Price"]):
                         print(Back.RED + "Position already closed")
-                        self.queue_prints.put("[Position already closed", "", "red"])
+                        self.queue_prints.put(["Position already closed", "", "red"])
 
                         log_alert['action'] = f"{STC}-alerterdAfterClose"
                         log_alert["portfolio_idx"] = open_trade
