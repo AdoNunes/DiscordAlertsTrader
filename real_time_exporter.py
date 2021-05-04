@@ -14,7 +14,6 @@ import re
 import pandas as pd
 from datetime import datetime, timedelta
 from message_parser import parser_alerts, get_symb_prev_msg, combine_new_old_orders
-from option_message_parser import option_alerts_parser
 from config import (path_dll, data_dir, CHN_NAMES, chn_IDS, discord_token, UPDATE_PERIOD)
 import config as cfg
 from disc_trader import AlertTrader
@@ -351,7 +350,7 @@ class AlertsListner():
                 print(Style.DIM + "\t \tnot for @everyone")
 
             else:
-                self.print_func(Fore.RED +f"\t \t {pars}")
+                self.print_func(f"\t \t {pars}", text_color="green")
                 if msg['Author'] == "Kevin (Momentum)#8888":
                     msg['Author'] = msg['Author'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
 
