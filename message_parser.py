@@ -96,7 +96,6 @@ def parser_alerts(msg, asset=None):
         amnt = parse_sell_amount(msg, asset)
         str_prt = str_prt + f" amount: {amnt}"
         order["xQty"] = amnt
-    print(str_prt)
 
     return str_prt, order
 
