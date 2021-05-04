@@ -60,19 +60,17 @@ def find_last_trade(order, trades_log, open_only=True):
     else:
         return last_trade, isOpen
 
-def null_print(*args, **kwargs):
-    pass
 
 class AlertTrader():
 
     def __init__(self,
                  portfolio_fname=cfg.portfolio_fname,
-                 alerts_log_fname=cfg.alerts_log_fname, print_func=None,
+                 alerts_log_fname=cfg.alerts_log_fname, queue_prints=queue.Queue(maxsize=10),
                  test_TDsession=None, update_portfolio=True):
 
         self.portfolio_fname = portfolio_fname
         self.alerts_log_fname = alerts_log_fname
-
+        self.queue_prints = queue_prints
         if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
@@ -97,11 +95,6 @@ class AlertTrader():
 
         self.accountId = self.TDsession.accountId
 
-        if print_func == None:
-            self.print_func = null_print
-        else:
-            self.print_func = print_func
-
         self.update_portfolio = update_portfolio
         self.update_paused = False
         if update_portfolio:
@@ -114,7 +107,7 @@ class AlertTrader():
         self.update_portfolio = True
         self.updater = threading.Thread(target=self.trade_updater, args=[refresh_rate])
         self.updater.start()
-        self.print_func(f"Updating portfolio orders every {refresh_rate} secs", background_color="green")
+        self.queue_prints.put([f"Updating portfolio orders every {refresh_rate} secs", "", "green"])
         print(Back.GREEN + f"Updating portfolio orders every {refresh_rate} secs")
 
     def trade_updater_reset(self, refresh_rate=30):
@@ -135,10 +128,10 @@ class AlertTrader():
                     self.update_orders()
                 except (GeneralError, ConnectionError):
                     print(Back.RED + "General error raised, trying again")
-                    self.print_func("General error raised, trying again", background_color="red")
+                    self.queue_prints.put(["General error raised, trying again", "", "red"])
             time.sleep(refresh_rate)
         print(Back.GREEN + "Closing portfolio updater")
-        self.print_func("Closing portfolio updater", background_color="green")
+        self.queue_prints.put(["Closing portfolio updater", "", "green"])
 
     def save_logs(self, csvs=["port", "alert"]):
         if "port" in csvs:
@@ -171,7 +164,7 @@ class AlertTrader():
                 instruments=[Symbol])[Symbol][ptype]
         except KeyError as e:
                 print (Back.RED + f"price_now ERROR: {e}.\n Trying again")
-                self.print_func(f"price_now ERROR: {e}.\n Trying again", background_color="red")
+                self.queue_prints.put([f"price_now ERROR: {e}.\n Trying again", "", "red"])
                 quote = self.TDsession.get_quotes(
                 instruments=[Symbol])[Symbol][ptype]
         if pflag:
@@ -188,7 +181,7 @@ class AlertTrader():
                     raise("Something wrong with order response")
 
                 print(Back.GREEN + f"Sent order {pars}")
-                self.print_func(f"Sent order {pars}", background_color="green")
+                self.queue_prints.put([f"Sent order {pars}", "", "green"])
                 return ord_resp, ord_id, order, ord_chngd
 
             elif resp in ["no", "n"]:
@@ -215,7 +208,7 @@ class AlertTrader():
                 else:
                     if cfg.auto_trade is True and order['action'] == "BTO":
                         print(Back.GREEN + f"BTO alert price diff too high: {pdiff}")
-                        self.print_func( f"BTO alert price diff too high: {pdiff}", background_color="green")
+                        self.queue_prints.put([f"BTO alert price diff too high: {pdiff}", "", "green"])
                         return "no", order, False
 
             if cfg.auto_trade is True:
@@ -281,7 +274,7 @@ class AlertTrader():
 
             if ord_stat not in ["FILLED", 'CANCELED']:
                 print(Back.GREEN + f"Cancelling {position['Symbol']} STC{i}")
-                self.print_func( f"Cancelling {position['Symbol']} STC{i}", background_color="green")
+                self.queue_prints.put([f"Cancelling {position['Symbol']} STC{i}", "", "green"])
                 _ = self.TDsession.cancel_order(self.TDsession.accountId, order_id)
 
                 self.portfolio.loc[open_trade, f"STC{i}-Status"] = np.nan
@@ -295,7 +288,7 @@ class AlertTrader():
                                               order_id=order_id)
         except ServerError as e:
             print("Caught TD Server Error, skipping order info retr.")
-            self.print_func("Caught TD Server Error, skipping order info retr.", background_color="red")
+            self.queue_prints.put(["Caught TD Server Error, skipping order info retr.", "", "red"])
             return None, None
 
         if order_info['orderStrategyType'] == "OCO":
@@ -369,7 +362,7 @@ class AlertTrader():
 
             symb = self.portfolio.loc[open_trade, "Symbol"]
             print(Back.GREEN + f"Updated {symb} exit plan from :{old_plan} to {renew_plan}")
-            self.print_func(f"Updated {symb} exit plan from :{old_plan} to {renew_plan}", background_color="green")
+            self.queue_prints.put([f"Updated {symb} exit plan from :{old_plan} to {renew_plan}", "", "green"])
             return
 
         if not isOpen and order["action"] == "BTO":
@@ -383,7 +376,7 @@ class AlertTrader():
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                 self.save_logs(["alert"])
                 print(Back.GREEN + "BTO not accepted by user")
-                self.print_func("BTO not accepted by user", background_color="green")
+                self.queue_prints.put(["BTO not accepted by user", "", "green"])
 
                 return
 
@@ -416,7 +409,7 @@ class AlertTrader():
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
 
             print(Back.GREEN + f"BTO {order['Symbol']} executed. Status: {order_status}")
-            self.print_func(f"BTO {order['Symbol']} executed. Status: {order_status}", background_color="green")
+            self.queue_prints.put([f"BTO {order['Symbol']} executed. Status: {order_status}", "", "green"])
 
             #Log portfolio, trades_log
             log_alert['action'] = "BTO"
@@ -429,7 +422,7 @@ class AlertTrader():
             # if PT in order: cancel previous and make_BTO_PT_SL_order
             # else : BTO
             print(Back.BLUE + "BTO AVG not implemented yet")
-            self.print_func("BTO AVG not implemented yet""BTO AVG not implemented yet", background_color="blue")
+            self.queue_prints.put(["BTO AVG not implemented yet""BTO AVG not implemented yet", "", "blue"])
             #Log portfolio, trades_log
 
         elif order["action"] == "BTO":
@@ -438,7 +431,7 @@ class AlertTrader():
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(["alert"])
             print(Back.RED + str_act)
-            self.print_func(str_act, background_color="red")
+            self.queue_prints.put([str_act, "", "red"])
 
 
         elif order["action"] == "STC" and isOpen == 0:
@@ -452,7 +445,7 @@ class AlertTrader():
                     # If alerted and already sold
                     if not pd.isnull(position[ f"{STC}-Price"]):
                         print(Back.RED + "Position already closed")
-                        self.print_func("Position already closed", background_color="red")
+                        self.queue_prints.put("[Position already closed", "", "red"])
 
                         log_alert['action'] = f"{STC}-alerterdAfterClose"
                         log_alert["portfolio_idx"] = open_trade
@@ -465,7 +458,7 @@ class AlertTrader():
             self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
             self.save_logs(["alert"])
             print(Back.RED + str_act)
-            self.print_func(str_act, background_color="red")
+            self.queue_prints.put([str_act, "", "red"])
 
         elif order["action"] == "STC":
             position = self.portfolio.iloc[open_trade]
@@ -474,8 +467,8 @@ class AlertTrader():
                 order, changed = amnt_left(order, position)
                 print(Back.GREEN + f"Based on alerted amnt left, Updated order: " +
                       f"xQty: {order['xQty']} and uQty: {order['uQty']}")
-                self.print_func(f"Based on alerted amnt left, Updated order: " +
-                      f"xQty: {order['xQty']} and uQty: {order['uQty']}", background_color="green")
+                self.queue_prints.put([f"Based on alerted amnt left, Updated order: " +
+                      f"xQty: {order['xQty']} and uQty: {order['uQty']}", "", "green"])
 
             # check if position already alerted and closed
             for i in range(1,4):
@@ -488,7 +481,7 @@ class AlertTrader():
                     # If alerted and already sold
                     if not pd.isnull(position[ f"{STC}-Price"]):
                         print(Back.GREEN + "Already sold")
-                        self.print_func( "Already sold", background_color="green")
+                        self.queue_prints.put(["Already sold", "", "green"])
 
                         log_alert['action'] = f"{STC}-DoneBefore"
                         log_alert["portfolio_idx"] = open_trade
@@ -505,7 +498,7 @@ class AlertTrader():
             else:
                 str_STC = "How many STC already?"
                 print (Back.RED + str_STC)
-                self.print_func(str_STC, background_color="red")
+                self.queue_prints.put([str_STC, "", "red"])
                 log_alert['action'] = "STC-TooMany"
                 log_alert["portfolio_idx"] = open_trade
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
@@ -533,7 +526,7 @@ class AlertTrader():
                 self.portfolio.loc[open_trade, "BTO-Status"] = order_status
 
                 print(Back.GREEN + f"Order Cancelled {order['Symbol']}, closed before fill")
-                self.print_func(f"Order Cancelled {order['Symbol']}, closed before fill", background_color="green")
+                self.queue_prints.put([f"Order Cancelled {order['Symbol']}, closed before fill", "", "green"])
 
                 log_alert['action'] = "STC-ClosedBeforeFill"
                 log_alert["portfolio_idx"] = open_trade
@@ -546,7 +539,7 @@ class AlertTrader():
                 exit_plan[f"PT{STC[-1]}"] = order["price"]
                 self.portfolio.loc[open_trade, "exit_plan"] = str(exit_plan)
                 print(Back.GREEN + f"Exit Plan {order['Symbol']} updated, with PT{STC[-1]}: {order['price']}")
-                self.print_func(f"Exit Plan {order['Symbol']} updated, with PT{STC[-1]}: {order['price']}", background_color="green")
+                self.queue_prints.put([f"Exit Plan {order['Symbol']} updated, with PT{STC[-1]}: {order['price']}","", "green"])
 
                 log_alert['action'] = "STC-partial-BeforeFill-ExUp"
                 log_alert["portfolio_idx"] = open_trade
@@ -573,8 +566,8 @@ class AlertTrader():
                 order['uQty'] = qty_bought - qty_sold
                 print(Back.RED + Fore.BLACK +
                       f"Order {order['Symbol']} Qty exceeded, changed to {order['uQty']}")
-                self.print_func(f"Order {order['Symbol']} Qty exceeded, changed to {order['uQty']}",
-                                background_color="red")
+                self.queue_prints.put([f"Order {order['Symbol']} Qty exceeded, changed to {order['uQty']}",
+                                "", "red"])
 
 
             order_response, order_id, order, _ = self.confirm_and_send(order, pars,
@@ -587,7 +580,7 @@ class AlertTrader():
                 self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
                 self.save_logs(["alert"])
                 print(Back.GREEN + "STC not accepted by user")
-                self.print_func("STC not accepted by user", background_color="green")
+                self.queue_prints.put(["STC not accepted by user", "", "green"])
                 self.update_paused = False
                 return
 
@@ -600,7 +593,7 @@ class AlertTrader():
             else:
                 str_STC = f"Submitted: {STC} {order['Symbol']} @{order['price']} Qty:{order['uQty']} ({order['xQty']})"
                 print(Back.GREEN + str_STC)
-                self.print_func(str_STC, background_color="green")
+                self.queue_prints.put([str_STC, "", "green"])
 
             #Log trades_log
             log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL"
@@ -655,7 +648,7 @@ class AlertTrader():
             self.portfolio.loc[open_trade, "isOpen"] = 0
 
         print (Back.GREEN + f"Filled: {str_STC}")
-        self.print_func(f"Filled: {str_STC}", background_color="green")
+        self.queue_prints.put([f"Filled: {str_STC}","", "green"])
         self.save_logs()
 
 
@@ -767,8 +760,8 @@ class AlertTrader():
         if SL > price_now:
             new_SL = round(price_now * new_SL_ratio, 2)
             print(Back.RED + f"{order['Symbol']} SL below bid price, changed from {SL} to {new_SL}")
-            self.print_func(f"{order['Symbol']} SL below bid price, changed from {SL} to {new_SL}",
-                            background_color="red")
+            self.queue_prints.put([f"{order['Symbol']} SL below bid price, changed from {SL} to {new_SL}",
+                            "", "red"])
             order["SL"] = new_SL
         return order
 
