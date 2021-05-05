@@ -126,7 +126,7 @@ class AlertTrader():
             if self.update_paused is False:
                 try:
                     self.update_orders()
-                except (GeneralError, ConnectionError):
+                except (GeneralError, ConnectionError, KeyError):
                     print(Back.RED + "General error raised, trying again")
                     self.queue_prints.put(["General error raised, trying again", "", "red"])
             time.sleep(refresh_rate)
@@ -272,7 +272,7 @@ class AlertTrader():
             order_id =  int(position[ f"STC{i}-ordID"])
             ord_stat, _ = self.get_order_info(order_id)
 
-            if ord_stat not in ["FILLED", 'CANCELED']:
+            if ord_stat not in ["FILLED", 'CANCELED', 'REJECTED']:
                 print(Back.GREEN + f"Cancelling {position['Symbol']} STC{i}")
                 self.queue_prints.put([f"Cancelling {position['Symbol']} STC{i}", "", "green"])
                 _ = self.TDsession.cancel_order(self.TDsession.accountId, order_id)
@@ -334,8 +334,8 @@ class AlertTrader():
 
             # Update PT is already STCn
             istc = None
-            for i in range(1,4):
-                if self.portfolio.loc[open_trade, f"STC{i}-Alerted"] is not None:
+            for i in range(1,3):
+                if not pd.isnull(self.portfolio.loc[open_trade, f"STC{i}-Alerted"]):
                     istc = i+1
             if istc is not None and any(["PT" in k for k in new_plan.keys()]):
                 new_plan_c = new_plan.copy()
@@ -476,7 +476,7 @@ class AlertTrader():
 
                 # If not alerted, mark it
                 if pd.isnull(position[f"{STC}-Alerted"]):
-                    self.portfolio.loc[open_trade, f"{STC}-Alerted"] = 1
+                    self.portfolio.loc[open_trade, f"{STC}-Alerted"] = 1  # TODO: put current price
 
                     # If alerted and already sold
                     if not pd.isnull(position[ f"{STC}-Price"]):
@@ -559,7 +559,7 @@ class AlertTrader():
             elif order['xQty'] < 1:  # portion
                 # Stop updater to avoid overlapping
                 self.update_paused = True
-                self.close_open_exit_orders(open_trade, i)
+                self.close_open_exit_orders(open_trade)
                 order['uQty'] = max(round(qty_bought * order['xQty']), 1)
 
             if order['uQty'] + qty_sold > qty_bought:
@@ -793,7 +793,25 @@ class AlertTrader():
                 order['strike'] = strike
 
             STC_ordID = trade[STC+"-ordID"]
-            if pd.isnull(STC_ordID):
+            if not pd.isnull(STC_ordID):
+                # Adjust if necessary uQty based on remaining shares
+                if nPTs < 2:
+                    continue
+                ord_stat, ord_inf = self.get_order_info(int(STC_ordID))
+                iord_qty = ord_inf.get('quantity')
+                if iord_qty is None:
+                    iord_qty = ord_inf['childOrderStrategies'][0]['quantity']
+                if uQty[ii - 1] != iord_qty:
+                    uQty[ii - 1] = int(iord_qty)
+                    uleft = uQty_bought - sum(uQty[:ii])
+                    if uleft == 0:
+                        break
+                    nPts = len(uQty) - ii
+                    uQty = uQty[:ii] + [round(uleft/nPts)]*nPts
+                    uQty[-1] = int(uQty_bought - sum(uQty[:-1]))
+                    xQty = [round(u/uQty_bought,1) for u in uQty]
+
+            else:
                 SL = exit_plan["SL"]
                 # Check if exit prices are strings (stock price for option)
                 if isinstance(SL, str): SL = None
@@ -835,6 +853,12 @@ class AlertTrader():
 
                 if ord_func is not None and order['uQty'] > 0:
                     _, STC_ordID = send_order(ord_func(**order), self.TDsession)
+                    if order.get("price"):
+                        str_prt = f"{STC} {order['Symbol']} @{order['price']}(Qty:{order['uQty']}) sent during order update"
+                    else:
+                        str_prt = f"{STC} {order['Symbol']} @{order.get('PT')}/{order.get('SL')} (Qty:{order['uQty']}) sent during order update"
+                    print (Back.GREEN + str_prt)
+                    self.queue_prints.put([str_prt,"", "green"])
                     self.portfolio.loc[i, STC+"-ordID"] = STC_ordID
                     trade = self.portfolio.iloc[i]
                     self.save_logs("port")

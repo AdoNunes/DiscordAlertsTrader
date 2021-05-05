@@ -44,14 +44,11 @@ for chn in chns:
 
 ly_accnt = gl.layout_account(TDSession, fnt_b, fnt_h)
 
-
-layout = [[sg.TabGroup([
-                        [sg.Tab("Console", ly_cons)],
-                                    [sg.Tab('Portfolio', ly_port)],
-                                    [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],
-                                    [sg.Tab("Account", ly_accnt)]
-                                    ])]]
-
+layout = [[sg.TabGroup([[sg.Tab("Console", ly_cons)],
+                        [sg.Tab('Portfolio', ly_port)],
+                        [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],
+                        [sg.Tab("Account", ly_accnt)]
+                        ])]]
 
 window = sg.Window('Xtrader', layout,size=(1000, 500), # force_toplevel=True,
                     auto_size_text=False, resizable=True, finalize=True)
@@ -67,11 +64,13 @@ def mprint_queue(queue_item_list):
         kwargs["text_color"] = queue_item_list[1]
     elif len_que == 3:
         tcol = queue_item_list[1]
-        if tcol != "":
-            kwargs["text_color"] = tcol
+        tcol = "black" if tcol == "" else tcol
+        kwargs["text_color"] = tcol
+
         bcol = queue_item_list[2]
-        if bcol != "":
-            kwargs["background_color"] = tcol
+        bcol = "white" if bcol == "" else bcol
+        kwargs["background_color"] = bcol
+
     window[MLINE_KEY].print(text, **kwargs)
 
 
@@ -142,8 +141,8 @@ while True:
 
     except queue.Empty:
        pass
-       
-        
+
+
 window.close()
 alistner.close()
 

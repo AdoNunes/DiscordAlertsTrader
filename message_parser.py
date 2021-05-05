@@ -471,6 +471,7 @@ def combine_new_old_orders(msg, order_old, pars, author, asset="option"):
         order = order_author
 
     if order.get("action") is None:
+        order["asset"] = asset
         exits = ["PT1", "PT2", "PT3", "SL"]
         if any([order.get(k) for k in exits]):
             order['action'] = "ExitUpdate"

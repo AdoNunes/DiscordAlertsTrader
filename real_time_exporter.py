@@ -180,7 +180,7 @@ class AlertsListner():
 
         self.time_strf = "%Y-%m-%d %H:%M:%S.%f"
         self.queue_prints = queue_prints
-        
+
         self.Altrader = AlertTrader(queue_prints=self.queue_prints)
         self.listening = False
 
@@ -299,7 +299,7 @@ class AlertsListner():
 
             pars, order =  parser_alerts(msg['Content'], asset)
             author = msg['Author']
-            order, pars = combine_new_old_orders(msg['Content'], order, pars, author)
+            order, pars = combine_new_old_orders(msg['Content'], order, pars, author, asset)
             if order is not None and order.get("Symbol") is None:
                 if author == 'Xtrades Option Guru#8905':
                     df_hist = self.chn_hist[chn]
