@@ -73,7 +73,7 @@ def parser_alerts(msg, asset=None):
         pts_qty = set_pt_qts(n_pts)
 
         sl_mental = True if "mental" in msg.lower() else False
-        order["SL_mental"] = True
+        if sl_mental: order["SL_mental"] = True
 
         if asset == "option":
             order["PT1"] =  set_exit_price_type(pt1_v, order)
@@ -242,8 +242,6 @@ def parse_exits(msg):
 
     return pt1_v, pt2_v, pt3_v, sl_v
 
-
-
 def parse_avg(msg):
     re_avg = re.compile("(?:avg|new average)[ ]*[$]*(\d+(?:\.\d+)?)", re.IGNORECASE)
     avg_inf = re_avg.search(msg.lower())
@@ -281,6 +279,16 @@ def parse_sell_amount(msg, asset):
     if amnt_inf is not None:
         return round(eval(amnt_inf.groups()[0].replace(" of ", "/")), 2)
 
+
+    exprs = "(?:sold|sell) (\d{1,2})%"
+    re_comp= re.compile(exprs, re.IGNORECASE)
+    amnt_inf = re_comp.search(msg)
+    if amnt_inf is not None:
+        return round(float(amnt_inf.groups()[0])/100, 2)
+
+    if any(subs in msg.lower() for subs in ["half off my remaining position", "selling half off"]):
+        return 0.25
+
     if any(subs in msg.lower() for subs in ["sold half", "sold another half", "half"]):
         return 0.5
 
@@ -291,7 +299,7 @@ def parse_sell_amount(msg, asset):
     if amnt_inf is not None:
         return round(eval(amnt_inf.groups()[0].replace(" of ", "/")), 2)
 
-    partial = ['scaling out', 'selling more', 'trimming more off']
+    partial = ['scaling out', 'selling more', 'trimming more off', "selling some more"]
     if any([True if m in msg.lower() else False for m in partial]):
         return .33
 
@@ -330,7 +338,7 @@ def parse_exit_plan(order):
     return exit_plan
 
 
-def auhtor_parser(msg, author):
+def auhtor_parser(msg, author, asset):
 
     if author not in ['ScaredShirtless#0001', 'Kevin (Momentum)#4441']:
         new_order = {}
@@ -410,11 +418,13 @@ def auhtor_parser(msg, author):
                 new_order["amnt_left"] = amnt_left
 
             if "STC" not in msg:
-                stc = "([^a-z]selling|[^a-z]sold|all out|(:?(out|took)[a-zA-Z\s]*last))"
+                stc = "([^a-z]selling|[^a-z]sold|all out|(:?(out|took)[a-zA-Z\s]*last)|sell here)"
                 mtch = re.compile(stc, re.IGNORECASE)
                 mtch = mtch.search(msg)
-                if mtch is not None:
+                no_Sell = ["not selling yet", "Over Sold", "contracts sold", "How many sold it?"]
+                if mtch is not None and not any([True if s in msg else False for s  in no_Sell]):
                     new_order['action'] = "STC"
+                    new_order["xQty"]  = parse_sell_amount(msg, asset)
 
         if len(list(new_order.values())):
             symbol, _ = parse_Symbol(msg, parse_action(msg))
@@ -437,6 +447,8 @@ def get_symb_prev_msg(df_hist, msg_ix, author):
     for n in range(1,3):
         inx = indexes[msg_inx_auth - n]
         msg, = df_hist_auth.loc[inx, 'Content'].values
+        if pd.isnull(msg):
+            continue
         symbol, _ = parse_Symbol(msg, parse_action(msg))
         if symbol is not None:
             return symbol, inx
@@ -446,7 +458,7 @@ def get_symb_prev_msg(df_hist, msg_ix, author):
 
 def combine_new_old_orders(msg, order_old, pars, author, asset="option"):
 
-    order_author = auhtor_parser(msg, author)
+    order_author = auhtor_parser(msg, author, asset)
     if order_author is None:
         return order_old, pars
 

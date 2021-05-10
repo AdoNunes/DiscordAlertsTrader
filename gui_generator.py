@@ -175,7 +175,10 @@ def get_pos(acc_inf):
             last = round(pos["marketValue"] / uQty, 2)/100
 
         pnl_t = round(val - cost, 2)
-        pnl_p_t = round((val -cost)*100 / cost, 2)
+        if  cost == 0:
+            pnl_p_t = 0
+        else:
+            pnl_p_t = round((val -cost)*100 / cost, 2)
 
         pos_vals = [sym, last, price, pnl_p_t ,pnl_t, uQty, val , cost]
         pos_tab.append(pos_vals)

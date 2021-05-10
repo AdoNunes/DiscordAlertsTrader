@@ -169,7 +169,7 @@ def null_print(*args, **kwargs):
 
 class AlertsListner():
 
-    def __init__(self, queue_prints=queue.Queue(maxsize=10)):
+    def __init__(self, queue_prints=queue.Queue(maxsize=10), threaded=True):
 
         self.UPDATE_PERIOD = cfg.UPDATE_PERIOD
         self.CHN_NAMES = cfg.CHN_NAMES
@@ -189,9 +189,9 @@ class AlertsListner():
         self.chn_hist = {c: pd.read_csv( self.chn_hist_f[c])
                          for c in self.CHN_NAMES}
 
-
-        self.thread =  threading.Thread(target=self.listent_trade_alerts)
-        self.thread.start()
+        if threaded:
+            self.thread =  threading.Thread(target=self.listent_trade_alerts)
+            self.thread.start()
 
 
     def close(self):

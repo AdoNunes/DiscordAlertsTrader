@@ -546,6 +546,16 @@ class AlertTrader():
                 return
 
             qty_sold = np.nansum([position[f"STC{i}-uQty"] for i in range(1,4)])
+            if position["uQty"] - qty_sold == 0:
+                self.portfolio.loc[open_trade, "isOpen"] = 0
+                print(Back.GREEN + "Already sold")
+                self.queue_prints.put(["Already sold", "", "green"])
+
+                log_alert['action'] = f"{STC}-DoneBefore"
+                log_alert["portfolio_idx"] = open_trade
+                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.save_logs(["alert"])
+                return
 
             if order['xQty'] == 1:
                 # Stop updater to avoid overlapping

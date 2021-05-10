@@ -17,7 +17,7 @@ def get_author_alerts():
     alerts.drop(labels=['Attachments', 'Reactions'], axis=1, inplace=True)
 
     authors = alerts["Author"].unique()
-    author = 'Xtrades Option Guru'
+    # author = 'Xtrades Option Guru'
 
     # author = "Kevin Wan#0083"
 
@@ -27,7 +27,7 @@ def get_author_alerts():
     alerts_author = alerts#_author.dropna(subset=["Content"])
     alerts_author.reset_index(drop=True, inplace=True)
 
-    return alerts_author, author
+    return alerts_author#, author
 
 def get_date():
     time_strf = "%Y-%m-%d %H:%M:%S.%f"
@@ -159,7 +159,7 @@ class Trades_Tracker():
              "exit_plan" : str(exit_plan),
              "Trader" : order['Trader'],
              "Risk" : order['risk'],
-             "SL_mental" : order["SL_mental"]
+             "SL_mental" : order.get("SL_mental")
              }
         self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
 
@@ -201,11 +201,11 @@ class Trades_Tracker():
 
     def make_STC(self, order, openTrade):
 
-        if np.isnan(self.portfolio.loc[openTrade, "STC1-Alerted"]):
+        if pd.isnull(self.portfolio.loc[openTrade, "STC1-PnL"]):
             STC = "STC1"
-        elif np.isnan(self.portfolio.loc[openTrade, "STC1-Alerted"]):
+        elif pd.isnull(self.portfolio.loc[openTrade, "STC2-PnL"]):
             STC = "STC2"
-        elif np.isnan(self.portfolio.loc[openTrade, "STC1-Alerted"]):
+        elif pd.isnull(self.portfolio.loc[openTrade, "STC3-PnL"]):
             STC = "STC3"
         else:
             str_STC = "How many STC already?"
@@ -230,7 +230,7 @@ class Trades_Tracker():
                 order['xQty'] = 1 - left
 
         self.portfolio.loc[openTrade, f"{STC}-Price"] = order.get("price")
-        self.portfolio.loc[openTrade, f"{STC}-Alerted"] = order.get("price_current")
+        self.portfolio.loc[openTrade, f"{STC}-Alerted"] = order.get("price_current", "-")
         self.portfolio.loc[openTrade, f"{STC}-Date"] = order["Date"]
         self.portfolio.loc[openTrade, f"{STC}-xQty"] = order['xQty']
         self.portfolio.loc[openTrade, f"{STC}-PnL"] = stc_price
@@ -263,7 +263,8 @@ class Trades_Tracker():
 
 if 0:
     tt = Trades_Tracker()
-    alerts_author, author = get_author_alerts()
+    # alerts_author, author = get_author_alerts()
+    alerts_author = get_author_alerts()
     asset = "option"# order.get("asset")
     bad_msg = []
     not_msg = pd.DataFrame(columns=["MSG"])
@@ -271,6 +272,9 @@ if 0:
     for i in range(len(alerts_author)):
 
         msg = alerts_author["Content"].iloc[i]
+        if pd.isnull(msg):
+            continue
+
         date = alerts_author["Date"].iloc[i]
         author = alerts_author["Author"].iloc[i]#.split("#")[0]
 
@@ -302,7 +306,7 @@ if 0:
 #     #     order["Symbol"] = symbol
 #     # else:
 
-
+# tt.portfolio.to_csv(tt.portfolio_fname, index=False)
 #     if symbol is not None:
 #         print("NEW: ", new_order)
 #         print(f"Symb {symbol} from: ", alerts_author.loc[prev_msg_inx, "Content"])
