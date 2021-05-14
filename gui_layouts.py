@@ -67,6 +67,9 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
                   # col_widths=[30,300, 1300],
                   # row_height=20,
                   # num_rows=30,
+                  # enable_events = False,
+                  # bind_return_key = True,
+                  tooltip = "Selecting row and pressing enter will parse message",
                   key=f"{chn}_table")]])]
         ]
     return layout

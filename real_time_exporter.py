@@ -167,9 +167,20 @@ def disc_json_time_corr(time_json):
 def null_print(*args, **kwargs):
     pass
 
+class my_queue():
+    def __init__(self, maxsize=10):
+        self.maxsize = maxsize
+        self.queue = []
+
+    def put(self, item):
+        if len(self.queue) >= self.maxsize:
+            self.queue.pop(0)
+        self.queue.append(item)
+
+
 class AlertsListner():
 
-    def __init__(self, queue_prints=queue.Queue(maxsize=10), threaded=True):
+    def __init__(self, queue_prints=my_queue(maxsize=10), threaded=True):
 
         self.UPDATE_PERIOD = cfg.UPDATE_PERIOD
         self.CHN_NAMES = cfg.CHN_NAMES
@@ -371,8 +382,9 @@ def short_date(dateobj, frm="%m/%d %H:%M:%S"):
 
 
 if 0:
-    alistner = AlertsListner()
+    alistner = AlertsListner(threaded=False)
     alistner.listent_trade_alerts()
+
 
 
     alistner.close()

@@ -212,6 +212,11 @@ class AlertTrader():
                         return "no", order, False
 
             if cfg.auto_trade is True:
+                if cfg.do_BTO is False:
+                    print(Back.GREEN + f"BTO not accepted by config options")
+                    self.queue_prints.put([f"BTO not accepted by config options", "", "green"])
+                    return "no", order, False
+
                 if 'uQty' not in order.keys():
                     price = order['price']
                     price = price*100 if order["asset"] == "option" else price
@@ -398,7 +403,7 @@ class AlertTrader():
                          "exit_plan" : str(exit_plan),
                          "Trader" : order['Trader'],
                          "Risk" : order['risk'],
-                         "SL_mental" : order["SL_mental"]
+                         "SL_mental" : order.get("SL_mental")
                          }
 
             self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
@@ -436,6 +441,12 @@ class AlertTrader():
 
         elif order["action"] == "STC" and isOpen == 0:
             open_trade, _ = find_last_trade(order, self.portfolio, open_only=False)
+            if open_trade is None:
+                log_alert['action'] = f"STC-alerted without position"
+                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.save_logs()
+                return
+
             position = self.portfolio.iloc[open_trade]
             # Check if closed position was not alerted
             for i in range(1,4):

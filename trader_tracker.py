@@ -1,37 +1,29 @@
 import pandas as pd
-import re
 import numpy as np
 import os.path as op
-from message_parser import parser_alerts, auhtor_parser, get_symb_prev_msg, combine_new_old_orders, parse_exit_plan
-from place_order import make_optionID
-from disc_trader import  find_last_trade
-from config import (data_dir, CHN_NAMES, chn_IDS, UPDATE_PERIOD)
+from message_parser import parser_alerts, get_symb_prev_msg, combine_new_old_orders, parse_exit_plan
+from disc_trader import find_last_trade
+from config import data_dir
 from datetime import datetime
-from td.exceptions import NotFndError
 
 
-def get_author_alerts():
-    file = 'data/option_alerts_message_history.csv'
-
+def get_author_alerts(asset='option', author=None):
+    file = f'data/{asset}_alerts_message_history.csv'
     alerts = pd.read_csv(file)
     alerts.drop(labels=['Attachments', 'Reactions'], axis=1, inplace=True)
 
-    authors = alerts["Author"].unique()
-    # author = 'Xtrades Option Guru'
+    if author is not None:
+        alerts = alerts[alerts["Author"].str.contains(author)]
 
-    # author = "Kevin Wan#0083"
+    alerts = alerts.dropna(subset=["Content"])
+    alerts.reset_index(drop=True, inplace=True)
+    return alerts
 
-    # alerts_author = alerts[alerts["Author"].str.contains(author)]
-
-
-    alerts_author = alerts#_author.dropna(subset=["Content"])
-    alerts_author.reset_index(drop=True, inplace=True)
-
-    return alerts_author#, author
 
 def get_date():
     time_strf = "%Y-%m-%d %H:%M:%S.%f"
     date = datetime.now().strftime(time_strf)
+    return date
 
 
 class Trades_Tracker():
@@ -47,35 +39,36 @@ class Trades_Tracker():
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
             self.portfolio = pd.DataFrame(columns=[
-                "Date", "Symbol", "Trader", "isOpen","Total PnL", "Asset", "Type", "Price", "Alert-Price",
+                "Date", "Symbol", "Trader", "isOpen", "Total PnL", "Asset", "Type", "Price", "Alert-Price",
                 "Avged", "exit_plan", "Risk", "SL_mental"] + [
-                    "STC%d-%s"% (i, v) for v in
-                    ["Alerted", "xQty", "Price", "PnL","Date"]
+                    "STC%d-%s" % (i, v) for v in
+                    ["Alerted", "xQty", "Price", "PnL", "Date"]
                     for i in range(1,4)] )
 
         if op.exists(self.alerts_log_fname):
             self.alerts_log = pd.read_csv(self.alerts_log_fname)
         else:
             self.alerts_log = pd.DataFrame(columns=["Date", "Symbol", "Trader",
-                                                "action", "parsed", "msg", "portfolio_idx"])
+                                                    "action", "parsed", "msg", "portfolio_idx"])
         self.TDSession = TDSession
 
 
-    def price_now(self, Symbol, price_type="BTO"):
-        if self.TDsession is None:
+    def price_now(self, symbol, price_type="BTO"):
+        if self.TDSession is None:
             return None
 
         if price_type in ["BTO", "BTC"]:
             ptype = 'askPrice'
         else:
-            ptype= 'bidPrice'
+            ptype = 'bidPrice'
+
         try:
-            quote = self.TDsession.get_quotes(
-                instruments=[Symbol])[Symbol][ptype]
+            quote = self.TDSession.get_quotes(instruments=[symbol]).get(symbol)
+            if quote is not None:
+                quote = quote[ptype]
         except KeyError as e:
-                print (Back.RED + f"tracker price_now ERROR: {e}.\n Trying again later")
-                quote = self.TDsession.get_quotes(
-                instruments=[Symbol])[Symbol][ptype]
+            print(e)
+            quote = None
 
         return quote
 
@@ -111,7 +104,7 @@ class Trades_Tracker():
             old_plan = self.portfolio.loc[openTrade, "exit_plan"]
             new_plan = parse_exit_plan(order)
 
-            # Update PT if alraedy STCn
+            # Update PT if already STCn
             istc = None
             for i in range(1,4):
                 if self.portfolio.loc[openTrade, f"STC{i}-Alerted"] is not None:
@@ -132,7 +125,7 @@ class Trades_Tracker():
                 renew_plan = new_plan
 
             self.portfolio.loc[openTrade, "exit_plan"] = str(renew_plan)
-            symbol =  self.portfolio.loc[openTrade, "Symbol"]
+            symbol = self.portfolio.loc[openTrade, "Symbol"]
             str_act = f"Updated {symbol} exit plan from :{old_plan} to {renew_plan}"
 
         else:
@@ -150,17 +143,17 @@ class Trades_Tracker():
         date = order.get("Date", get_date())
 
         new_trade = {"Date": date,
-             "Symbol": order['Symbol'],
-             'isOpen': 1,
-             "Asset" : order["asset"],
-             "Type" : "BTO",
-             "Price" : order["price"],
-             "Alert-Price" : order.get("price_current"),
-             "exit_plan" : str(exit_plan),
-             "Trader" : order['Trader'],
-             "Risk" : order['risk'],
-             "SL_mental" : order.get("SL_mental")
-             }
+                     "Symbol": order['Symbol'],
+                     'isOpen': 1,
+                     "Asset": order["asset"],
+                     "Type": "BTO",
+                     "Price": order["price"],
+                     "Alert-Price": order.get("price_current"),
+                     "exit_plan": str(exit_plan),
+                     "Trader": order['Trader'],
+                     "Risk": order['risk'],
+                     "SL_mental": order.get("SL_mental")
+                     }
         self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
 
         str_act = f"BTO {order['Symbol']} {order['price']}, Plan PT:{order['PT1']}, SL:{order['SL']}"
@@ -173,18 +166,18 @@ class Trades_Tracker():
         current_Avg = self.portfolio.loc[openTrade, "Avged"]
         if np.isnan(current_Avg):
             current_Avg = 1
-            self.portfolio.loc[openTrade, "Avged"] = current_Avg
         else:
             current_Avg = int(current_Avg + 1)
-            self.portfolio.loc[openTrade, "Avged"] = current_Avg
+        self.portfolio.loc[openTrade, "Avged"] = current_Avg
 
-        str_act =f"BTO {order['Symbol']} {current_Avg}th averging down @ {order['price']}"
+        str_act = f"BTO {order['Symbol']} {current_Avg}th averging down @ {order['price']}"
         old_price = self.portfolio.loc[openTrade, "Price"]
-        self.portfolio.loc[openTrade, "Price"] = f"{old_price}/{order['avg']}"
+        self.portfolio.loc[openTrade, "Price"] = f"{old_price}/{order['price']}"
 
         price_old = self.portfolio.loc[openTrade, "Alert-Price"]
         alert_price = order.get("price_current")
-        self.portfolio.loc[openTrade, "Alert-Price"]= f"{price_old}/{alert_price}"
+        avgs_prices = f"{price_old}/{alert_price}".replace("None/None", "").replace("None", "")
+        self.portfolio.loc[openTrade, "Alert-Price"] = avgs_prices
 
         planned = eval(self.portfolio.loc[openTrade, "exit_plan"])
 
@@ -214,8 +207,8 @@ class Trades_Tracker():
 
         bto_price = self.portfolio.loc[openTrade, "Price"]
         if isinstance(bto_price, str):
-            bto_price = float(bto_price.split("/")[-1])
-        if order.get("price") is None:
+            bto_price =  np.mean(eval(bto_price.replace("/", ",")))
+        if order.get("price") is None or bto_price is None:
             stc_price = "none"
         else:
             stc_price = float((order.get("price") - bto_price)/bto_price) *100
@@ -223,9 +216,9 @@ class Trades_Tracker():
         if order.get("amnt_left"):
             left = order["amnt_left"]
             if left == "few":
-                order['xQty'] =   1- .1
+                order['xQty'] = 1 - .1
             elif left > .99:  # unit left
-                order['xQty'] =  1 - (.02 * left)
+                order['xQty'] = 1 - (.02 * left)
             elif left < .99:  # percentage left
                 order['xQty'] = 1 - left
 
@@ -235,14 +228,13 @@ class Trades_Tracker():
         self.portfolio.loc[openTrade, f"{STC}-xQty"] = order['xQty']
         self.portfolio.loc[openTrade, f"{STC}-PnL"] = stc_price
 
-        if order.get("price") is None:
-            str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), no price provided%"
+        if stc_price == "none":
+            str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), no price provided"
         else:
             str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), {stc_price:.2f}%"
 
-        Qty_sold = self.portfolio.loc[openTrade,[f"STC{i}-xQty" for i in range(1,4)]].sum()
+        Qty_sold = self.portfolio.loc[openTrade,[f"STC{i}-xQty" for i in range(1, 4)]].sum()
         if order['xQty'] == 1 or Qty_sold > .99:
-            self.portfolio.loc[openTrade, "Open"] = 0
             str_STC = str_STC + " Closed"
             self.portfolio.loc[openTrade, "isOpen"] = 0
 
@@ -263,44 +255,45 @@ class Trades_Tracker():
 
 if 0:
     tt = Trades_Tracker()
-    # alerts_author, author = get_author_alerts()
-    alerts_author = get_author_alerts()
-    asset = "option"# order.get("asset")
-    bad_msg = []
-    not_msg = pd.DataFrame(columns=["MSG"])
 
-    for i in range(len(alerts_author)):
+    for asset in [ "option", "stock"]:
+        alerts_author = get_author_alerts(asset)
 
-        msg = alerts_author["Content"].iloc[i]
-        if pd.isnull(msg):
-            continue
+        bad_msg = []
+        not_msg = pd.DataFrame(columns=["MSG"])
 
-        date = alerts_author["Date"].iloc[i]
-        author = alerts_author["Author"].iloc[i]#.split("#")[0]
+        for i in range(len(alerts_author)):
 
-        pars, order =  parser_alerts(msg, asset)
+            msg = alerts_author["Content"].iloc[i]
+            if pd.isnull(msg):
+                continue
 
-        symbol, prev_msg_inx = None, None
+            date = alerts_author["Date"].iloc[i]
+            author = alerts_author["Author"].iloc[i]
 
-        order, pars = combine_new_old_orders(msg, order, pars, author, asset)
-        if order is not None and order.get("Symbol") is None:
-            msg_ix, = alerts_author[alerts_author['Content'] == msg].index.values
-            sym, inxf = get_symb_prev_msg(alerts_author, i, author)
-            if sym is not None:
-                order["Symbol"] = sym
-                print(f"Got {sym} symbol from previous msg {inxf}, author: {author}")
-            else:
-                pars = None
+            pars, order =  parser_alerts(msg, asset)
 
-        if order is None:
-            continue
+            order, pars = combine_new_old_orders(msg, order, pars, author, asset)
+            if order is not None and order.get("Symbol") is None:
+                msg_ix, = alerts_author[alerts_author['Content'] == msg].index.values
+                sym, inxf = get_symb_prev_msg(alerts_author, i, author)
+                if sym is not None:
+                    order["Symbol"] = sym
+                    print(f"Got {sym} symbol from previous msg {inxf}, author: {author}")
+                else:
+                    pars = None
 
-        order["Date"] = date
-        order["Trader"] = author
-        if order.get("asset"):
-            assert order.get("asset") == asset
-        order['asset'] = asset
-        tt.trade_alert(order, live_alert=False)
+            if order is None:
+                continue
+
+            order["Date"] = date
+            order["Trader"] = author
+            if order.get("asset"):
+                assert order.get("asset") == asset
+            order['asset'] = asset
+            tt.trade_alert(order, live_alert=False)
+
+    tt.portfolio.to_csv(tt.portfolio_fname, index=False)
         # if new_order.get("Symbol") ==  None:
 #     #     symbol, prev_msg_inx = get_symb_prev_msg(alerts_author, i, author)
 #     #     order["Symbol"] = symbol
