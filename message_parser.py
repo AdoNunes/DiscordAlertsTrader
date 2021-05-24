@@ -169,7 +169,7 @@ def parse_Symbol(msg, act):
 
 
 def parse_mark_stock(msg, Symbol, act):
-    re_mark = re.compile("\@[ ]*[$]*[ ]*(\d+(?:\.\d+)?)")
+    re_mark = re.compile("\@[ ]*[$]*[ ]*(\d+(?:\.\d+)?|\.\d+)")
     mark_inf = re_mark.search(msg)
     if mark_inf is None:
         re_mark = re.compile(f"{act} "+ "([\*])?([\*])?" + f"{Symbol}" +"([\*])?([\*])? (\d+(?:\.\d+)?)")
@@ -279,7 +279,6 @@ def parse_sell_amount(msg, asset):
     if amnt_inf is not None:
         return round(eval(amnt_inf.groups()[0].replace(" of ", "/")), 2)
 
-
     exprs = "(?:sold|sell) (\d{1,2})%"
     re_comp= re.compile(exprs, re.IGNORECASE)
     amnt_inf = re_comp.search(msg)
@@ -291,7 +290,6 @@ def parse_sell_amount(msg, asset):
 
     if any(subs in msg.lower() for subs in ["sold half", "sold another half", "half"]):
         return 0.5
-
 
     exprs = "\((\d(?:\/| of )\d)\)"
     re_comp= re.compile(exprs)

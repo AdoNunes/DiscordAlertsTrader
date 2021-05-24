@@ -324,10 +324,8 @@ class AlertsListner():
                         pars = None
 
             if pars is None:
-                if msg['Author'] == "Kevin (Momentum)#8888":
-                    msg['Author'] = msg['Author'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
                 # Check if msg alerting exitUpdate in prev msg
-                if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
+                if msg['Author'] in cfg.authors_subscribed:
                     re_upd = re.compile("(?:T|t)rade plan[a-zA-Z\s\,\.]*\*{2}([A-Z]*?)\*{2}[a-zA-Z\s\,\.]* updated")
                     upd_inf = re_upd.search(msg['Content'])
                     if upd_inf:
@@ -353,8 +351,8 @@ class AlertsListner():
                     self.queue_prints.put([alert[2], "green"])
                     print(Fore.GREEN + alert[2])
                     pars, order, msg_str = alert
-                    order['Trader'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
-                    if order['Trader'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
+
+                    if order['Trader'] in cfg.authors_subscribed:
                         self.Altrader.new_trade_alert(order, pars, msg_str)
 
             elif pars == 'not an alert':
@@ -365,10 +363,10 @@ class AlertsListner():
                 self.queue_prints.put([f"\t \t {pars}", "green"])
                 print(Fore.GREEN + f"\t \t {pars}")
 
-                if msg['Author'] == "Kevin (Momentum)#8888":
-                    msg['Author'] = msg['Author'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
+                # if msg['Author'] == "Kevin (Momentum)#8888":
+                #     msg['Author'] = msg['Author'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
 
-                if msg['Author'] in [ "ScaredShirtless#0001", "Kevin (Momentum)#4441"]:
+                if msg['Author'] in cfg.authors_subscribed:
                     order["Trader"] = msg['Author']
                     self.Altrader.new_trade_alert(order, pars,\
                           msg['Content'])
@@ -381,12 +379,12 @@ def short_date(dateobj, frm="%m/%d %H:%M:%S"):
 
 
 
-if 0:
+if 1:
     alistner = AlertsListner(threaded=False)
     alistner.listent_trade_alerts()
 
 
 
-    alistner.close()
-    self = alistner
+    # alistner.close()
+    # self = alistner
 # SL_2buyprice = ['Move SL to buy price',]

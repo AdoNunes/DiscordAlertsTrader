@@ -65,7 +65,8 @@ class AlertTrader():
 
     def __init__(self,
                  portfolio_fname=cfg.portfolio_fname,
-                 alerts_log_fname=cfg.alerts_log_fname, queue_prints=queue.Queue(maxsize=10),
+                 alerts_log_fname=cfg.alerts_log_fname,
+                 queue_prints=queue.Queue(maxsize=10),
                  test_TDsession=None, update_portfolio=True):
 
         self.portfolio_fname = portfolio_fname
@@ -131,7 +132,7 @@ class AlertTrader():
                     self.queue_prints.put(["General error raised, trying again", "", "red"])
             time.sleep(refresh_rate)
         print(Back.GREEN + "Closing portfolio updater")
-        self.queue_prints.put(["Closing portfolio updater", "", "green"])
+        self.queue_prints.put(["Closed portfolio updater", "", "green"])
 
     def save_logs(self, csvs=["port", "alert"]):
         if "port" in csvs:
@@ -212,7 +213,7 @@ class AlertTrader():
                         return "no", order, False
 
             if cfg.auto_trade is True:
-                if cfg.do_BTO is False:
+                if cfg.do_BTO is False and order['action'] == "BTO":
                     print(Back.GREEN + f"BTO not accepted by config options")
                     self.queue_prints.put([f"BTO not accepted by config options", "", "green"])
                     return "no", order, False
@@ -221,6 +222,11 @@ class AlertTrader():
                     price = order['price']
                     price = price*100 if order["asset"] == "option" else price
                     order['uQty'] =  max(round(cfg.trade_capital/price), 1)
+
+                    if price * order['uQty'] > cfg.trade_capital_max:
+                        print(Back.GREEN + f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}")
+                        self.queue_prints.put([f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}", "", "green"])
+                        return "no", order, False
                 return "yes", order, False
 
 
@@ -291,8 +297,8 @@ class AlertTrader():
         try:
             order_info = self.TDsession.get_orders(account=self.accountId,
                                               order_id=order_id)
-        except ServerError as e:
-            print("Caught TD Server Error, skipping order info retr.")
+        except:
+            print("Caught Error, skipping order info retr.")
             self.queue_prints.put(["Caught TD Server Error, skipping order info retr.", "", "red"])
             return None, None
 
@@ -300,7 +306,9 @@ class AlertTrader():
             order_status = [
                 order_info['childOrderStrategies'][0]['status'],
                 order_info['childOrderStrategies'][1]['status']]
-            assert(order_status[0]==order_status[1])
+            if not order_status[0]==order_status[1]:
+                print("OCO order status are different: ",
+                      f"{order_status[0]} vs {order_status[1]}")
             order_status = order_status[0]
         elif order_info['orderStrategyType'] == 'SINGLE':
             order_status = order_info['status']
@@ -709,7 +717,7 @@ class AlertTrader():
             if  exit_plan != {}:
                 # If strings in exit values, stock price for option
                 if any([isinstance(e, str) for e in exit_plan.values()]):
-                    self.check_opt_stock_price(i, exit_plan)
+                    self.check_opt_stock_price(i, exit_plan, "STC")
                 else:
                     self.make_exit_orders(i, exit_plan)
 
@@ -744,7 +752,7 @@ class AlertTrader():
 
                 self.save_logs("port")
 
-    def check_opt_stock_price(self, open_trade, exit_plan):
+    def check_opt_stock_price(self, open_trade, exit_plan, act="STC"):
         "Option exits in stock price"
         i = open_trade
         exit_plan_ori = exit_plan.copy()

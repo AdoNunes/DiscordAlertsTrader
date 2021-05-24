@@ -48,7 +48,7 @@ class Trades_Tracker():
         if op.exists(self.alerts_log_fname):
             self.alerts_log = pd.read_csv(self.alerts_log_fname)
         else:
-            self.alerts_log = pd.DataFrame(columns=["Date", "Symbol", "Trader",
+            self.alerts_log = pd.DataFrame(columns=["Date","Trader", "Symbol",
                                                     "action", "parsed", "msg", "portfolio_idx"])
         self.TDSession = TDSession
 
@@ -73,9 +73,17 @@ class Trades_Tracker():
         return quote
 
 
-    def trade_alert(self, order, live_alert=True):
+    def trade_alert(self, order, pars, live_alert=True):
 
         openTrade, isOpen = find_last_trade(order, self.portfolio, open_only=True)
+
+        date = order.get("Date", get_date())
+        log_alert = {"Date": date,
+                     "Symbol": order['Symbol'],
+                     "Trader" : order['Trader'],
+                     "parsed" : pars,
+                     "msg": msg
+                     }
 
         if order["action"] in ["BTO", "STC"] and live_alert:
             try:
@@ -87,6 +95,7 @@ class Trades_Tracker():
         if openTrade is None and order["action"] == "BTO":
             str_act = self.make_BTO(order)
             openTrade, isOpen = find_last_trade(order, self.portfolio)
+
 
         elif order["action"] == "BTO" and order['avg'] is not None:
             str_act = self.make_BTO_Avg(order, openTrade)
@@ -131,6 +140,9 @@ class Trades_Tracker():
         else:
             str_act = "Nothing"
 
+        log_alert["portfolio_idx"] = openTrade
+        log_alert["action"] = str_act
+        self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
         return  str_act
 
 
@@ -201,9 +213,9 @@ class Trades_Tracker():
         elif pd.isnull(self.portfolio.loc[openTrade, "STC3-PnL"]):
             STC = "STC3"
         else:
-            str_STC = "How many STC already?"
+            str_STC = f"How many STC already?, {order}"
             print (str_STC)
-            return self.portfolio, str_STC
+            return str_STC
 
         bto_price = self.portfolio.loc[openTrade, "Price"]
         if isinstance(bto_price, str):
@@ -234,7 +246,7 @@ class Trades_Tracker():
             str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), {stc_price:.2f}%"
 
         Qty_sold = self.portfolio.loc[openTrade,[f"STC{i}-xQty" for i in range(1, 4)]].sum()
-        if order['xQty'] == 1 or Qty_sold > .99:
+        if order['xQty'] == 1 or Qty_sold > .98:
             str_STC = str_STC + " Closed"
             self.portfolio.loc[openTrade, "isOpen"] = 0
 
@@ -256,7 +268,7 @@ class Trades_Tracker():
 if 0:
     tt = Trades_Tracker()
 
-    for asset in [ "option", "stock"]:
+    for asset in ["stock"]:#[ "option", "stock"]:
         alerts_author = get_author_alerts(asset)
 
         bad_msg = []
@@ -291,9 +303,16 @@ if 0:
             if order.get("asset"):
                 assert order.get("asset") == asset
             order['asset'] = asset
-            tt.trade_alert(order, live_alert=False)
+            res_out = tt.trade_alert(order, pars, live_alert=False)
+            if "How many STC already?" in res_out:
+                tt.portfolio.to_csv(tt.portfolio_fname, index=False)
+                tt.alerts_log.to_csv(tt.alerts_log_fname, index=False)
+                resp = input("Continue? yes or no")
+                if resp == "no":
+                    break
 
     tt.portfolio.to_csv(tt.portfolio_fname, index=False)
+    tt.alerts_log.to_csv(tt.alerts_log_fname, index=False)
         # if new_order.get("Symbol") ==  None:
 #     #     symbol, prev_msg_inx = get_symb_prev_msg(alerts_author, i, author)
 #     #     order["Symbol"] = symbol
