@@ -379,7 +379,7 @@ def short_date(dateobj, frm="%m/%d %H:%M:%S"):
 
 
 
-if 1:
+if __name__ == '__main__':
     alistner = AlertsListner(threaded=False)
     alistner.listent_trade_alerts()
 

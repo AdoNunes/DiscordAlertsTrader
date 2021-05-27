@@ -343,7 +343,7 @@ def auhtor_parser(msg, author, asset):
         def stc_amount(msg):
             ######### Leave N untis
             units = ["one", "two", "three"]
-            units_left = f'(?:leaving|leave)[ ]*(?:only )?[ ]*({"|".join(units)})'
+            units_left = f'(?:(?:L|l)eaving|leave)[ ]*(?:only|just)?[ ]*({"|".join(units)})'
             mtch = re.compile(units_left, re.IGNORECASE)
             mtch = mtch.search(msg)
             if mtch is not None:
@@ -352,14 +352,14 @@ def auhtor_parser(msg, author, asset):
                 return qty_left
 
             ######### Leave a few untis
-            left_few = '(?:leaving|leave)[ ]*(?:only|just)?[ ]*[a]? (few)'
+            left_few = '(?:(?:L|l)eaving|leave)[ ]*(?:only|just)?[ ]*[a]? (few)'
             mtch = re.compile(left_few, re.IGNORECASE)
             mtch = mtch.search(msg)
             if mtch is not None:
                 return "few"
 
             ######### Leave % amount
-            left_perc = '(?:leaving|leave) (?:about|only) (\d{1,2})%'
+            left_perc = '(?:(?:L|l)eaving|leave) (?:about|only)?[ ]*(\d{1,2})%'
             mtch = re.compile(left_perc, re.IGNORECASE)
             mtch = mtch.search(msg)
             if mtch is not None:

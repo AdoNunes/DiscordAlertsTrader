@@ -244,7 +244,7 @@ def make_optionID(Symbol:str, expDate:str, strike=str, **kwarg):
         date_frm = date_frm + f"{int(date_elms[2][-2:]):02d}"
 
     # Strike in interger if no decimals
-    if strike / int(strike) == 1:
+    if strike == int(strike):
         return f"{Symbol}_{date_frm}{opt_type}{int(strike)}"
     return f"{Symbol}_{date_frm}{opt_type}{strike}"
 

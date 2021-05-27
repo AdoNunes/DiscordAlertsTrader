@@ -127,7 +127,7 @@ class AlertTrader():
             if self.update_paused is False:
                 try:
                     self.update_orders()
-                except (GeneralError, ConnectionError, KeyError):
+                except: # (GeneralError, ConnectionError, KeyError):
                     print(Back.RED + "General error raised, trying again")
                     self.queue_prints.put(["General error raised, trying again", "", "red"])
             time.sleep(refresh_rate)
@@ -767,13 +767,13 @@ class AlertTrader():
 
         for v, pt in exit_plan.items():
             if not isinstance(pt, str): continue
-            if v[:2] == "PT" and float(pt[:-1]) >= quote:
+            if v[:2] == "PT" and float(pt) <= quote:
                 exit_plan[v] = quote_opt
                 # Add another exit plan for x2
                 STCn = int(v[2])
                 if STCn < 3 and exit_plan[f"PT{STCn+1}"] is None:
                     exit_plan[f"PT{STCn+1}"] = quote_opt * 2
-            elif v[:2] == "SL" and float(pt[:-1]) >= quote:
+            elif v[:2] == "SL" and float(pt) >= quote:
                  exit_plan[v] = quote
 
         if exit_plan_ori != exit_plan:
