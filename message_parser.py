@@ -19,6 +19,13 @@ def parser_alerts(msg, asset=None):
 
     act = parse_action(msg)
     if act is None:
+        if "ExitUpdate" in msg:
+            order = {}
+            order['action'] = "ExitUpdate"
+            order['Symbol'], _ = parse_Symbol(msg, "ExitUpdate")
+            pars = f"ExitUpdate: "
+            order, str_prt = make_order_exits(order, msg, pars, asset)
+            return pars, order
         return None, None
 
     Symbol, Symbol_info = parse_Symbol(msg, act)
@@ -71,23 +78,7 @@ def parser_alerts(msg, asset=None):
         pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
         n_pts = 3 if pt3_v else 2 if pt2_v else 1 if pt1_v else 0
         pts_qty = set_pt_qts(n_pts)
-
-        sl_mental = True if "mental" in msg.lower() else False
-        if sl_mental: order["SL_mental"] = True
-
-        if asset == "option":
-            order["PT1"] =  set_exit_price_type(pt1_v, order)
-            order["PT2"] = set_exit_price_type(pt2_v, order)
-            order["PT3"] = set_exit_price_type(pt3_v, order)
-            order["SL"] = set_exit_price_type(sl_v, order)
-            str_prt = str_prt + f' PT1:{order["PT1"]}, PT2:{order["PT2"]}, PT3:{order["PT3"]}, SL:{order["SL"] }'
-
-        elif asset == "stock":
-            order["PT1"] = pt1_v
-            order["PT2"] = pt2_v
-            order["PT3"] = pt3_v
-            order["SL"] = sl_v
-            str_prt = str_prt + f"PT1:{pt1_v}, PT2:{pt2_v}, PT3:{pt3_v}, SL:{sl_v}"
+        order, str_prt = make_order_exits(order, msg, str_prt, asset)
 
         order["n_PTs"] = n_pts
         order["PTs_Qty"] = pts_qty
@@ -98,6 +89,26 @@ def parser_alerts(msg, asset=None):
         order["xQty"] = amnt
 
     return str_prt, order
+
+def make_order_exits(order, msg, str_prt, asset):
+    pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
+    sl_mental = True if "mental" in msg.lower() else False
+    if sl_mental: order["SL_mental"] = True
+
+    if asset == "option":
+        order["PT1"] =  set_exit_price_type(pt1_v, order)
+        order["PT2"] = set_exit_price_type(pt2_v, order)
+        order["PT3"] = set_exit_price_type(pt3_v, order)
+        order["SL"] = set_exit_price_type(sl_v, order)
+        str_prt = str_prt + f' PT1:{order["PT1"]}, PT2:{order["PT2"]}, PT3:{order["PT3"]}, SL:{order["SL"] }'
+
+    elif asset == "stock":
+        order["PT1"] = pt1_v
+        order["PT2"] = pt2_v
+        order["PT3"] = pt3_v
+        order["SL"] = sl_v
+        str_prt = str_prt + f"PT1:{pt1_v}, PT2:{pt2_v}, PT3:{pt3_v}, SL:{sl_v}"
+    return order, str_prt
 
 
 def set_exit_price_type(exit_price, order):
@@ -111,7 +122,7 @@ def set_exit_price_type(exit_price, order):
     rtio_option = abs(order['price'] - exit_price)
 
     if rtio_stock < rtio_option:
-        exit_price = str(exit_price) + 's'
+        exit_price = str(exit_price)
     elif rtio_stock > rtio_option:
         exit_price = exit_price
     else:
@@ -243,7 +254,7 @@ def parse_exits(msg):
     return pt1_v, pt2_v, pt3_v, sl_v
 
 def parse_avg(msg):
-    re_avg = re.compile("(?:avg|new average)[ ]*[$]*(\d+(?:\.\d+)?)", re.IGNORECASE)
+    re_avg = re.compile("(?:avg[.]?|new average)[ ]*[$]*(\d+(?:\.\d+)?)", re.IGNORECASE)
     avg_inf = re_avg.search(msg.lower())
     if avg_inf is None:
         return None, None

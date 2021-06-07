@@ -92,6 +92,7 @@ for chn in chns:
     # table.setSectionResizeMode(2, QHeaderView.ResizeToContents)
     window[f"{chn}_table"].Widget.scrollToBottom()
 
+event, values = window.read(.5)
 
 trade_events = queue.Queue(maxsize=20)
 alistner = AlertsListner(trade_events)
@@ -144,5 +145,5 @@ while True:
 
 
 window.close()
-# alistner.close()
+alistner.close()
 

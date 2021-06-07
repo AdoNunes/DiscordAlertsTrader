@@ -10,7 +10,7 @@ import re
 import os.path as op
 import numpy as np
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 import time
 import config as cfg
 import threading
@@ -21,7 +21,7 @@ from place_order import (get_TDsession, make_BTO_lim_order, send_order,
                          make_Lim_SL_order, make_STC_SL)
 # import dateutil.parser.parse as date_parser
 from colorama import Fore, Back, Style
-from message_parser import parse_exit_plan
+from message_parser import parse_exit_plan, set_exit_price_type
 import queue
 
 def find_last_trade(order, trades_log, open_only=True):
@@ -77,7 +77,7 @@ class AlertTrader():
         else:
             self.portfolio = pd.DataFrame(columns=[
                 "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Alert-Price",
-                "uQty", "filledQty", "Avged", "exit_plan", "ordID", "Risk", "SL_mental"] + [
+                "uQty", "filledQty", "Avged", "Avged-prices" "exit_plan", "ordID", "Risk", "SL_mental"] + [
                     "STC%d-%s"% (i, v) for v in
                     ["Alerted", "Status", "xQty", "uQty", "Price", "PnL","Date", "ordID"]
                     for i in range(1,4)] )
@@ -161,8 +161,14 @@ class AlertTrader():
         else:
             ptype= 'bidPrice'
         try:
-            quote = self.TDsession.get_quotes(
-                instruments=[Symbol])[Symbol][ptype]
+            resp = self.TDsession.get_quotes(
+                instruments=[Symbol])
+            if resp[Symbol].get('description' ) == 'Symbol not found':
+                print (Back.RED + f"{Symbol} not found during price quote")
+                self.queue_prints.put([f"{Symbol} not found during price quote", "", "red"])
+                quote = -1
+            else:
+                quote = resp[Symbol][ptype]
         except KeyError as e:
                 print (Back.RED + f"price_now ERROR: {e}.\n Trying again")
                 self.queue_prints.put([f"price_now ERROR: {e}.\n Trying again", "", "red"])
@@ -197,6 +203,9 @@ class AlertTrader():
 
         while True:
             question = f"{pars_ori} {price_now(symb, act)}"
+            # If symbol not found, quote val returned is -1
+            if price_now(symb, act, 1 ) == -1:
+                return "no", order, False
 
             pdiff = (price_now(symb, act, 1 ) - ord_ori['price'])/ord_ori['price']
             pdiff = round(pdiff*100,1)
@@ -208,9 +217,10 @@ class AlertTrader():
                     question += f"\n new price: {pars}"
                 else:
                     if cfg.auto_trade is True and order['action'] == "BTO":
+
                         print(Back.GREEN + f"BTO alert price diff too high: {pdiff}")
-                        self.queue_prints.put([f"BTO alert price diff too high: {pdiff}", "", "green"])
-                        return "no", order, False
+                        self.queue_prints.put([f"BTO alert price diff too high: {pdiff}, keeping original price", "", "green"])
+                        # return "no", order, False
 
             if cfg.auto_trade is True:
                 if cfg.do_BTO is False and order['action'] == "BTO":
@@ -345,6 +355,19 @@ class AlertTrader():
             old_plan = self.portfolio.loc[open_trade, "exit_plan"]
             new_plan = parse_exit_plan(order)
 
+            # check if asset if price stock or contract
+            if self.portfolio.loc[open_trade, "Asset"] == "option":
+                new_plan["price"] = self.portfolio.loc[open_trade, "Price"]
+                sym_inf = self.portfolio.loc[open_trade, "Symbol"].split("_")[1]
+                strike = re.split("C|P", sym_inf)[1]
+                new_plan["strike"] = strike + "C"
+                for i in range(1,4):
+                    exit_price = new_plan.get(f"PT{i}")
+                    if exit_price is not None:
+                        new_plan[f"PT{i}"] = set_exit_price_type(eval(exit_price), new_plan)
+                    if new_plan.get("SL"):
+                        new_plan[f"SL"] = set_exit_price_type(eval(new_plan.get("SL")), new_plan)
+
             # Update PT is already STCn
             istc = None
             for i in range(1,3):
@@ -421,7 +444,7 @@ class AlertTrader():
                 self.portfolio.loc[ot, "Price"] = order_info['price']
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
 
-            print(Back.GREEN + f"BTO {order['Symbol']} executed. Status: {order_status}")
+            print(Back.GREEN + f"BTO {order['Symbol']} executed @ {order_info['price']}. Status: {order_status}")
             self.queue_prints.put([f"BTO {order['Symbol']} executed. Status: {order_status}", "", "green"])
 
             #Log portfolio, trades_log
@@ -434,9 +457,54 @@ class AlertTrader():
         elif order["action"] == "BTO" and order['avg'] is not None:
             # if PT in order: cancel previous and make_BTO_PT_SL_order
             # else : BTO
-            print(Back.BLUE + "BTO AVG not implemented yet")
-            self.queue_prints.put(["BTO AVG not implemented yet""BTO AVG not implemented yet", "", "blue"])
+            alert_price = order['price']
+            order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
+                                                       make_BTO_lim_order)
+            # TODO: uQty should be the same
+            self.save_logs("port")
+            if order_response is None:  #Assume trade not accepted
+                log_alert['action'] = "BTO-Avg-notAccepted"
+                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.save_logs(["alert"])
+                print(Back.GREEN + "BTO avg not accepted by user")
+                self.queue_prints.put(["BTO avg not accepted by user", "", "green"])
+                return
+
+            order_status, order_info = self.get_order_info(order_id)
+            self.portfolio.loc[open_trade,'BTO-avg-Status'] = order_status
+            self.portfolio.loc[open_trade,"ordID"] += f',{order_id}'
+
+            if pd.isnull(self.portfolio.loc[open_trade, "Avged"]):
+                self.portfolio.loc[open_trade, "Avged"] = 1
+                self.portfolio.loc[open_trade, "Avged-prices-alert"] = alert_price
+                self.portfolio.loc[open_trade, "Avged-prices"] = order_info["price"]
+                self.portfolio.loc[open_trade, "Avged-uQty"] = order_info['quantity']
+
+            else:
+                self.portfolio.loc[open_trade, "Avged"] += 1
+                al_pr = self.portfolio.loc[open_trade, "Avged-prices-alert"]
+                av_pr = self.portfolio.loc[open_trade, "Avged-prices"]
+                av_qt = self.portfolio.loc[open_trade, "Avged-Qty"]
+                self.portfolio.loc[open_trade, "Avged-prices-alert"] = f"{al_pr},{alert_price}"
+                self.portfolio.loc[open_trade, "Avged-prices"] = f"{av_pr},{order_info['price']}"
+                self.portfolio.loc[open_trade, "Avged-uQty"] = f"{av_qt},{order_info['quantity']}"
+
+            avg = self.portfolio.loc[open_trade, "Avged"]
+            price = order_info['price']
+
+            self.portfolio.loc[open_trade, "uQty"] += order_info['quantity']
+            if order_status == "FILLED":
+                self.portfolio.loc[open_trade, "filledQty"] += order_info['filledQuantity']
+                self.close_open_exit_orders(open_trade)
+
+            print(Back.GREEN + f"BTO {avg} th AVG, {order['Symbol']} executed. Status: {order_status}")
+            self.queue_prints.put([f"BTO {avg} th AVG, {order['Symbol']} executed. Status: {order_status}", "", "green"])
+
             #Log portfolio, trades_log
+            log_alert['action'] = "BTO-avg"
+            log_alert["portfolio_idx"] = len(self.portfolio) - 1
+            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+            self.save_logs()
 
         elif order["action"] == "BTO":
             str_act = "Repeated BTO"
@@ -685,6 +753,7 @@ class AlertTrader():
     def update_orders(self):
 
         for i in range(len(self.portfolio)):
+            self.close_expired(i)
             trade = self.portfolio.iloc[i]
             redo_orders = False
 
@@ -709,6 +778,16 @@ class AlertTrader():
 
             if pd.isnull(trade["filledQty"]) or trade["filledQty"] == 0:
                 continue
+
+            if trade["BTO-avg-Status"] in ["QUEUED", "WORKING"]:
+                ordID = trade['ordID'].split(",")[-1]
+                _, order_info = self.get_order_info(ordID)
+                if order_info['status'] == 'FILLED' :
+                    self.portfolio.loc[i, "BTO-avg-Status"] = order_info['status']
+                    self.portfolio.loc[i, "filledQty"] += order_info['filledQuantity']
+                    redo_orders = True
+                    trade = self.portfolio.iloc[i]
+                    self.save_logs("port")
 
             if redo_orders:
                 self.close_open_exit_orders(i)
@@ -893,6 +972,44 @@ class AlertTrader():
                     self.save_logs("port")
                 else:
                     break
+
+    def close_expired(self, open_trade):
+        i = open_trade
+        trade = self.portfolio.iloc[i]
+        if trade["Asset"] != "option" or trade["isOpen"] == 0:
+            return
+        optdate = option_date(trade['Symbol'])
+        if optdate.date() < date.today():
+            expdate = date.today().strftime("%Y-%m-%dT%H:%M:%S+0000")
+            usold = np.nansum([trade[f"STC{i}-uQty"] for i in range(1,4)])
+            for stci in range(1,4):
+                if pd.isnull(trade[f"STC{stci}-uQty"]):
+                    STC = f"STC{stci}"
+                    break
+
+            #Log portfolio
+            self.portfolio.loc[open_trade, STC + "-Status"] = 'EXPIRED'
+            self.portfolio.loc[open_trade, STC + "-Price"] = 0
+            self.portfolio.loc[open_trade, STC + "-Date"] = expdate
+            self.portfolio.loc[open_trade, STC + "-xQty"] = 1
+            self.portfolio.loc[open_trade, STC + "-uQty"] = trade['filledQty'] - usold
+            self.portfolio.loc[open_trade, STC + "-PnL"] = -100
+            self.portfolio.loc[open_trade, "isOpen"] = 0
+
+            str_prt = f"{trade['Symbol']} option expired -100% uQty: {trade['filledQty']}"
+            print(Back.GREEN + str_prt)
+            self.queue_prints.put([str_prt,"", "green"])
+
+
+
+
+
+def option_date(opt_symbol):
+    sym_inf = opt_symbol.split("_")[1]
+    opt_date = re.split("C|P", sym_inf)[0]
+    return datetime.strptime(opt_date, "%m%d%y")
+
+
 
 
 def amnt_left(order, position):

@@ -48,7 +48,7 @@ def update_edited_msg(df_hist, json_msg):
         if df_hist.loc[inx, 'Content'].values == jmsg['content']:
             continue
 
-        msg_old.append((inx, df_hist.loc[inx, 'Content'].values))
+        msg_old.append((inx, df_hist.loc[inx, 'Content'].values[0]))
         df_hist.loc[inx, 'Content']  = jmsg['content']
 
     return df_hist, msg_old
@@ -77,8 +77,8 @@ def msg_update_alert(df_hist, json_msg, asset):
             new_alerts.append([pars,order_upd, msg_content])
             continue
 
-        ex_old = [order_old[f"PT{i}"] for i in range(1,4)]
-        ex_upd = [order_upd[f"PT{i}"] for i in range(1,4)]
+        ex_old = [order_old[f"PT{i}"] for i in range(1,4)] + [order_old['SL']]
+        ex_upd = [order_upd[f"PT{i}"] for i in range(1,4)] + [order_upd['SL']]
 
         if ex_old != ex_upd:
             order_upd['action'] = "ExitUpdate"
@@ -388,3 +388,7 @@ if __name__ == '__main__':
     # alistner.close()
     # self = alistner
 # SL_2buyprice = ['Move SL to buy price',]
+
+if 0:
+    self = AlertsListner(threaded=False)
+    self.close()
