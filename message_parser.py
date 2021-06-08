@@ -24,7 +24,13 @@ def parser_alerts(msg, asset=None):
             order['action'] = "ExitUpdate"
             order['Symbol'], _ = parse_Symbol(msg, "ExitUpdate")
             pars = f"ExitUpdate: "
-            order, str_prt = make_order_exits(order, msg, pars, asset)
+            if asset == "option":
+                if "_" not in  order['Symbol']:
+                    strike, optType = parse_strike(msg)
+                    order["expDate"] = parse_date(msg)
+                    order["strike"] = strike + optType
+                    order['Symbol'] = make_optionID(**order)
+            order, str_prt = make_order_exits(order, msg, pars, "stock") # price type dealt in disc_trader
             return pars, order
         return None, None
 
@@ -79,7 +85,8 @@ def parser_alerts(msg, asset=None):
         n_pts = 3 if pt3_v else 2 if pt2_v else 1 if pt1_v else 0
         pts_qty = set_pt_qts(n_pts)
         order, str_prt = make_order_exits(order, msg, str_prt, asset)
-
+        sl_mental = True if "mental" in msg.lower() else False
+        if sl_mental: order["SL_mental"] = True
         order["n_PTs"] = n_pts
         order["PTs_Qty"] = pts_qty
 
@@ -92,8 +99,6 @@ def parser_alerts(msg, asset=None):
 
 def make_order_exits(order, msg, str_prt, asset):
     pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
-    sl_mental = True if "mental" in msg.lower() else False
-    if sl_mental: order["SL_mental"] = True
 
     if asset == "option":
         order["PT1"] =  set_exit_price_type(pt1_v, order)
@@ -117,9 +122,9 @@ def set_exit_price_type(exit_price, order):
         return exit_price
 
     price_strk = float(order['strike'][:-1])
-
+    order_price = order.get('price', exit_price )  # IF NO ORDER PRICE TAKE EXIT!
     rtio_stock = abs(price_strk - exit_price)
-    rtio_option = abs(order['price'] - exit_price)
+    rtio_option = abs(order_price - exit_price)
 
     if rtio_stock < rtio_option:
         exit_price = str(exit_price)

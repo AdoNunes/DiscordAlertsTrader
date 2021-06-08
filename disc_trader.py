@@ -364,9 +364,10 @@ class AlertTrader():
                 for i in range(1,4):
                     exit_price = new_plan.get(f"PT{i}")
                     if exit_price is not None:
-                        new_plan[f"PT{i}"] = set_exit_price_type(eval(exit_price), new_plan)
+                        new_plan[f"PT{i}"] = set_exit_price_type(exit_price, new_plan)
                     if new_plan.get("SL"):
-                        new_plan[f"SL"] = set_exit_price_type(eval(new_plan.get("SL")), new_plan)
+                        new_plan[f"SL"] = set_exit_price_type(new_plan.get("SL"), new_plan)
+                _ = [new_plan.pop(k) for k in ['price', 'strike']]
 
             # Update PT is already STCn
             istc = None
