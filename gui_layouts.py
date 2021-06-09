@@ -26,7 +26,13 @@ def layout_console():
 
 def layout_portfolio(data_n_headers, font_body, font_header):
     layout = [
-         [sg.Column([[sg.Button("Update", button_color=('white', 'black'), key="_upd-portfolio_")]])],
+         [sg.Column([[sg.Text("Exclude: "),
+                      sg.Checkbox("Closed", key="-port-Closed", enable_events=True),
+                      sg.Checkbox("Cancelled", key="-port-Cancelled", enable_events=True),
+                      sg.Checkbox("Neg PnL", key="-port-NegPnL", enable_events=True),
+                      sg.Checkbox("Pos PnL", key="-port-PosPnL", enable_events=True),
+                      ],
+             [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-portfolio_")]])],
          [sg.Column([[sg.Table(values=data_n_headers[0],
                         headings=data_n_headers[1],
                         display_row_numbers=True,

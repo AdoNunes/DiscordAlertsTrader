@@ -96,10 +96,15 @@ event, values = window.read(.5)
 
 trade_events = queue.Queue(maxsize=20)
 alistner = AlertsListner(trade_events)
-# alistner = AlertsListner()
+alistner = AlertsListner()
 
 
-# event, values = window.read(.5)
+event, values = window.read(.5)
+port_exc = {"Cancelled":False,
+            "Closed":False,
+            "NegPnL":False,
+            "PosPnL":False}
+
 while True:
     event, values = window.read(.1)
 
@@ -108,9 +113,16 @@ while True:
     # print(event)
 
     if event == "_upd-portfolio_":
-        print("Updateing!")
-        dt, hdr = gg.get_portf_data()
-        # window.Element('_portfolio_').expand(expand_x=True)
+        # print("Updateing!")
+        dt, hdr = gg.get_portf_data(port_exc)
+        window.Element('_portfolio_').Update(values=dt)
+
+    elif event[:6] == "-port-":
+        key =  event[6:]
+        state = window.Element(event).get()
+        port_exc[key] = state
+
+        dt, hdr = gg.get_portf_data(port_exc)
         window.Element('_portfolio_').Update(values=dt)
 
     elif event[-3:] == "UPD":

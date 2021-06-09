@@ -63,7 +63,7 @@ def format_exitplan(plan):
 
     return plan
 
-def get_portf_data():
+def get_portf_data(exclude={}):
     data = pd.read_csv("data/trader_portfolio.csv")
     cols_out = ['Asset', 'Type', 'Avged', 'STC1-uQty', 'STC2-uQty', 'STC3-uQty',
                 'STC1-Price', 'STC2-Price', 'STC3-Price','STC1-Date', 'STC2-Date',
@@ -109,6 +109,19 @@ def get_portf_data():
     data.fillna("", inplace=True)
     header_list = data.columns.tolist()
     header_list = [d.replace('STC', '') for d in header_list]
+
+    if len(exclude):
+        for k, v in exclude.items():
+            if k == "Cancelled" and v:
+                data = data[data["BTO-Status"] !="CANCELED"]
+            elif k == "Closed" and v:
+                data = data[data["isOpen"] !="No"]
+            elif k == "NegPnL" and v:
+                pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
+                data = data[pnl < 0 ]
+            elif k == "PosPnL" and v:
+                pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
+                data = data[pnl > 0 ]
 
     data = data.values.tolist()
     # tpnl = [[i] for i in data["PnL"].values.tolist()]
