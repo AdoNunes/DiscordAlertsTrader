@@ -116,12 +116,14 @@ def get_portf_data(exclude={}):
                 data = data[data["BTO-Status"] !="CANCELED"]
             elif k == "Closed" and v:
                 data = data[data["isOpen"] !="No"]
+            elif k == "Open" and v:
+                data = data[data["isOpen"] !="Yes"]
             elif k == "NegPnL" and v:
                 pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
-                data = data[pnl < 0 ]
+                data = data[pnl > 0 ]
             elif k == "PosPnL" and v:
                 pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
-                data = data[pnl > 0 ]
+                data = data[pnl < 0 ]
 
     data = data.values.tolist()
     # tpnl = [[i] for i in data["PnL"].values.tolist()]

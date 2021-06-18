@@ -84,8 +84,7 @@ def msg_update_alert(df_hist, json_msg, asset):
             order_upd['action'] = "ExitUpdate"
             pars.replace("BTO", "ExitUpdate")
             new_alerts.append([pars,order_upd, msg_content])
-        else:
-            raise NotImplementedError ("Check what to do with msg update")
+
 
     return new_alerts, msg_old
 
@@ -312,16 +311,15 @@ class AlertsListner():
             author = msg['Author']
             order, pars = combine_new_old_orders(msg['Content'], order, pars, author, asset)
             if order is not None and order.get("Symbol") is None:
-                if author == 'Xtrades Option Guru#8905':
-                    df_hist = self.chn_hist[chn]
-                    msg_ix, = df_hist[df_hist['Content'] == msg['Content']].index.values
-                    sym, inxf = get_symb_prev_msg(df_hist, msg_ix, author)
-                    if sym is not None:
-                        order["Symbol"] = sym
-                        self.queue_prints.put([f"Got {sym} symbol from previous msg {inxf}, author: {author}", "green"])
-                        print(Fore.GREEN + f"Got {sym} symbol from previous msg {inxf}, author: {author}")
-                    else:
-                        pars = None
+                df_hist = self.chn_hist[chn]
+                msg_ix, = df_hist[df_hist['Content'] == msg['Content']].index.values
+                sym, inxf = get_symb_prev_msg(df_hist, msg_ix, author)
+                if sym is not None:
+                    order["Symbol"] = sym
+                    self.queue_prints.put([f"Got {sym} symbol from previous msg {inxf}, author: {author}", "green"])
+                    print(Fore.GREEN + f"Got {sym} symbol from previous msg {inxf}, author: {author}")
+                else:
+                    pars = None
 
             if pars is None:
                 # Check if msg alerting exitUpdate in prev msg
@@ -329,8 +327,8 @@ class AlertsListner():
                     re_upd = re.compile("(?:T|t)rade plan[a-zA-Z\s\,\.]*\*{2}([A-Z]*?)\*{2}[a-zA-Z\s\,\.]* updated")
                     upd_inf = re_upd.search(msg['Content'])
                     if upd_inf:
-                        self.queue_prints.put([f"Updating trade plan msg:", "green"])
-                        print(Fore.GREEN + f"Updating trade plan msg:")
+                        self.queue_prints.put(["Updating trade plan msg:", "green"])
+                        print(Fore.GREEN + "Updating trade plan msg:")
 
                 time_after = self.chn_hist[chn]['Date'].max()
                 json_msg = self.get_edited_msgs(chn_IDS[chn], time_after,
@@ -362,9 +360,6 @@ class AlertsListner():
             else:
                 self.queue_prints.put([f"\t \t {pars}", "green"])
                 print(Fore.GREEN + f"\t \t {pars}")
-
-                # if msg['Author'] == "Kevin (Momentum)#8888":
-                #     msg['Author'] = msg['Author'].replace("Kevin (Momentum)#8888", "Kevin (Momentum)#4441")
 
                 if msg['Author'] in cfg.authors_subscribed:
                     order["Trader"] = msg['Author']

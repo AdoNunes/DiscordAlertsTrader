@@ -29,6 +29,11 @@ ly_cons, MLINE_KEY = gl.layout_console()
 def mprint(*args, **kwargs):
     window[MLINE_KEY].print(*args, **kwargs)
 
+def send_alert(subm_msg):
+    user_s, ass_s, msg =subm_msg.split(", ")
+    trader = user_s.split(":")[-1]
+    asset = ass_s.split(":")[-1]
+
 
 gui_data = {}
 gui_data['port'] = gg.get_portf_data()
@@ -48,7 +53,12 @@ layout = [[sg.TabGroup([[sg.Tab("Console", ly_cons)],
                         [sg.Tab('Portfolio', ly_port)],
                         [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],
                         [sg.Tab("Account", ly_accnt)]
-                        ])]]
+                        ])],
+          [sg.Input(default_text="User:Me, Asset:stock, STC AAA @2.5 partial",
+                    size= (140,1.5), key="-subm-msg",
+                    tooltip="User: any, Asset: {stock, option}"),
+
+           sg.Button("Submit alert", key="-subm-alert", size= (20,1))]]
 
 window = sg.Window('Xtrader', layout,size=(1000, 500), # force_toplevel=True,
                     auto_size_text=False, resizable=True, finalize=True)
@@ -96,21 +106,23 @@ event, values = window.read(.5)
 
 trade_events = queue.Queue(maxsize=20)
 alistner = AlertsListner(trade_events)
-alistner = AlertsListner()
+
 
 
 event, values = window.read(.5)
 port_exc = {"Cancelled":False,
             "Closed":False,
+            "Open":False,
             "NegPnL":False,
             "PosPnL":False}
 
 while True:
-    event, values = window.read(.1)
+    event, values = window.read(.2)#.1)
 
     if event == sg.WINDOW_CLOSED:
         break
     # print(event)
+    # print(values)
 
     if event == "_upd-portfolio_":
         # print("Updateing!")
@@ -147,6 +159,8 @@ while True:
     elif event == 'acc_updt':
         gl.update_acct_ly(TDSession, window)
 
+    elif event == "-subm-alert":
+        print(values['-subm-msg'])
 
     try:
         event_feedb = trade_events.get(False)

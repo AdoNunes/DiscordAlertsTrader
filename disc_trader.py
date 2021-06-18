@@ -127,9 +127,9 @@ class AlertTrader():
             if self.update_paused is False:
                 try:
                     self.update_orders()
-                except: # (GeneralError, ConnectionError, KeyError):
-                    print(Back.RED + "General error raised, trying again")
-                    self.queue_prints.put(["General error raised, trying again", "", "red"])
+                except Exception as ex: # (GeneralError, ConnectionError, KeyError):
+                    print(Back.RED + f"Error raised, trying again later. Error: {ex}")
+                    self.queue_prints.put([f"Error raised, trying again later. Error: {ex}", "", "red"])
             time.sleep(refresh_rate)
         print(Back.GREEN + "Closing portfolio updater")
         self.queue_prints.put(["Closed portfolio updater", "", "green"])
@@ -170,8 +170,8 @@ class AlertTrader():
             else:
                 quote = resp[Symbol][ptype]
         except KeyError as e:
-                print (Back.RED + f"price_now ERROR: {e}.\n Trying again")
-                self.queue_prints.put([f"price_now ERROR: {e}.\n Trying again", "", "red"])
+                print (Back.RED + f"price_now ERROR: {e} for symbol {Symbol}.\n Try again later")
+                self.queue_prints.put([f"price_now ERROR: {e} for symbol {Symbol}.\n Try again later", "", "red"])
                 quote = self.TDsession.get_quotes(
                 instruments=[Symbol])[Symbol][ptype]
         if pflag:
@@ -307,9 +307,9 @@ class AlertTrader():
         try:
             order_info = self.TDsession.get_orders(account=self.accountId,
                                               order_id=order_id)
-        except:
-            print("Caught Error, skipping order info retr.")
-            self.queue_prints.put(["Caught TD Server Error, skipping order info retr.", "", "red"])
+        except Exception as ex:
+            print(f"Caught Error, skipping order info retr. Error: {ex}")
+            self.queue_prints.put([f"Caught Error, skipping order info retr. Error: {ex}", "", "red"])
             return None, None
 
         if order_info['orderStrategyType'] == "OCO":
@@ -485,7 +485,7 @@ class AlertTrader():
                 self.portfolio.loc[open_trade, "Avged"] += 1
                 al_pr = self.portfolio.loc[open_trade, "Avged-prices-alert"]
                 av_pr = self.portfolio.loc[open_trade, "Avged-prices"]
-                av_qt = self.portfolio.loc[open_trade, "Avged-Qty"]
+                av_qt = self.portfolio.loc[open_trade, "Avged-uQty"]
                 self.portfolio.loc[open_trade, "Avged-prices-alert"] = f"{al_pr},{alert_price}"
                 self.portfolio.loc[open_trade, "Avged-prices"] = f"{av_pr},{order_info['price']}"
                 self.portfolio.loc[open_trade, "Avged-uQty"] = f"{av_qt},{order_info['quantity']}"
@@ -916,8 +916,11 @@ class AlertTrader():
                     if uleft == 0:
                         break
                     nPts = len(uQty) - ii
-                    uQty = uQty[:ii] + [round(uleft/nPts)]*nPts
-                    uQty[-1] = int(uQty_bought - sum(uQty[:-1]))
+                    if nPts !=0:
+                        uQty = uQty[:ii] + [round(uleft/nPts)]*nPts
+                        uQty[-1] = int(uQty_bought - sum(uQty[:-1]))
+                    else:
+                        uQty[-1] = int(uleft)
                     xQty = [round(u/uQty_bought,1) for u in uQty]
 
             else:

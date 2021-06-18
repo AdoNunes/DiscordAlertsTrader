@@ -74,7 +74,7 @@ def parser_alerts(msg, asset=None):
 
 
     if act == "BTO":
-        if "avg" in msg or "average" in msg:
+        if "avg" in msg.lower() or "average" in msg.lower():
             avg_price, _ = parse_avg(msg)
             str_prt = str_prt + f"AVG to {avg_price} "
             order["avg"] = avg_price
@@ -120,6 +120,7 @@ def set_exit_price_type(exit_price, order):
     """Option or stock price decided with smallest distance"""
     if exit_price is None:
         return exit_price
+    if isinstance(exit_price, str): exit_price = eval(exit_price)
 
     price_strk = float(order['strike'][:-1])
     order_price = order.get('price', exit_price )  # IF NO ORDER PRICE TAKE EXIT!
@@ -251,10 +252,10 @@ def parse_date(msg):
     return date
 
 def parse_exits(msg):
-    pt1_v = parse_exits_vals(msg, "PT[1]?:")
-    pt2_v = parse_exits_vals(msg, "PT2:")
-    pt3_v = parse_exits_vals(msg, "PT3:")
-    sl_v = parse_exits_vals(msg, "SL:")
+    pt1_v = parse_exits_vals(msg, "PT[1]?")
+    pt2_v = parse_exits_vals(msg, "PT2")
+    pt3_v = parse_exits_vals(msg, "PT3")
+    sl_v = parse_exits_vals(msg, "SL(?: below)?")
 
     return pt1_v, pt2_v, pt3_v, sl_v
 

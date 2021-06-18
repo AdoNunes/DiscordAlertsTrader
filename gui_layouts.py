@@ -28,6 +28,7 @@ def layout_portfolio(data_n_headers, font_body, font_header):
     layout = [
          [sg.Column([[sg.Text("Exclude: "),
                       sg.Checkbox("Closed", key="-port-Closed", enable_events=True),
+                      sg.Checkbox("Open", key="-port-Open", enable_events=True),
                       sg.Checkbox("Cancelled", key="-port-Cancelled", enable_events=True),
                       sg.Checkbox("Neg PnL", key="-port-NegPnL", enable_events=True),
                       sg.Checkbox("Pos PnL", key="-port-PosPnL", enable_events=True),
