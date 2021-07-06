@@ -317,7 +317,7 @@ class AlertTrader():
                 order_info['childOrderStrategies'][0]['status'],
                 order_info['childOrderStrategies'][1]['status']]
             if not order_status[0]==order_status[1]:
-                print("OCO order status are different: ",
+                print("OCO order status are different in ordID {order_id}: ",
                       f"{order_status[0]} vs {order_status[1]}")
             order_status = order_status[0]
         elif order_info['orderStrategyType'] == 'SINGLE':
@@ -417,7 +417,6 @@ class AlertTrader():
 
                 return
 
-            ordered = eval(order_response['request_body'])
             order_status, order_info = self.get_order_info(order_id)
 
             exit_plan = parse_exit_plan(order)

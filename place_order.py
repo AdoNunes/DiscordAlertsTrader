@@ -96,7 +96,7 @@ def make_BTO_lim_order(Symbol:str, uQty:int, price:float, strike=None, **kwarg):
     new_order.order_type("LIMIT")
     new_order.order_session('NORMAL')
     new_order.order_duration('GOOD_TILL_CANCEL')
-    new_order.order_price(price)
+    new_order.order_price(float(price))
 
     order_leg = OrderLeg()
 
