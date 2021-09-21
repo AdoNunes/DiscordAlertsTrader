@@ -9,6 +9,7 @@ import pandas as pd
 import os.path as op
 import sys
 import queue
+
 # from pathlib import Path
 # file = Path(__file__).resolve()
 # parent, top = file.parent, file.parents[3]
@@ -46,6 +47,7 @@ class TDSession_test():
 
     def get_quotes(self, instruments):
         if isinstance(instruments, str): instruments = [instruments]
+
         quotes = {}
         for sym in instruments:
             sqt = self.quotes[self.quotes["symbol"] == sym]
@@ -56,7 +58,7 @@ class TDSession_test():
         return quotes
 
 
-    def cancel_order(accountId, order_id):
+    def cancel_order(self, accountId, order_id):
         order_bool =  self.order_log['ordID'] == order_id
         assert sum(order_bool)==1
 
