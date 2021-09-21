@@ -192,6 +192,7 @@ class AlertsListner():
         self.queue_prints = queue_prints
 
         self.Altrader = AlertTrader(queue_prints=self.queue_prints)
+        self.tracker = Trades_Tracker(TDSession=self.Altrader.TDsession)
         self.listening = False
 
         self.chn_hist_f = {c:f"{data_dir}/{c}_message_history.csv"
@@ -272,7 +273,7 @@ class AlertsListner():
 
             # wait UPDATE_PERIOD
             if tictoc < self.UPDATE_PERIOD:
-                time.sleep(min(self.UPDATE_PERIOD-tictoc, self.UPDATE_PERIOD))
+                 time.sleep(min(self.UPDATE_PERIOD-tictoc, self.UPDATE_PERIOD))
 
 
     def new_msg_acts(self, new_msg, chn, out_file):
@@ -350,6 +351,8 @@ class AlertsListner():
                     print(Fore.GREEN + alert[2])
                     pars, order, msg_str = alert
 
+                    self.tracker.trade_alert(order, pars, msg_str, live_alert=True)
+
                     if order['Trader'] in cfg.authors_subscribed:
                         self.Altrader.new_trade_alert(order, pars, msg_str)
 
@@ -360,7 +363,13 @@ class AlertsListner():
             else:
                 self.queue_prints.put([f"\t \t {pars}", "green"])
                 print(Fore.GREEN + f"\t \t {pars}")
-
+                order['Trader'] = msg['Author']
+                order["Date"] = msg["Date"]
+                order_date = datetime.strptime(order["Date"], "%Y-%m-%d %H:%M:%S.%f")
+                date_diff = order_date - datetime.now()
+                live_alert = True if date_diff.seconds < 60 else False
+                self.tracker.trade_alert(order, pars, msg['Content'],
+                                         live_alert=live_alert)
                 if msg['Author'] in cfg.authors_subscribed:
                     order["Trader"] = msg['Author']
                     self.Altrader.new_trade_alert(order, pars,\

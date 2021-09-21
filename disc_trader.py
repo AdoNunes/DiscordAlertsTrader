@@ -657,7 +657,7 @@ class AlertTrader():
                 # Stop updater to avoid overlapping
                 self.update_paused = True
                 self.close_open_exit_orders(open_trade)
-                order['uQty'] = max(round(qty_bought * order['xQty']), 1)
+                order['uQty'] = round(max(qty_bought * order['xQty'], 1))
 
             if order['uQty'] + qty_sold > qty_bought:
                 order['uQty'] = qty_bought - qty_sold

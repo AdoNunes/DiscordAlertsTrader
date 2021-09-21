@@ -4,7 +4,8 @@ import os.path as op
 from message_parser import parser_alerts, get_symb_prev_msg, combine_new_old_orders, parse_exit_plan
 from disc_trader import find_last_trade
 from config import data_dir
-from datetime import datetime
+from datetime import datetime, date
+import re
 
 
 def get_author_alerts(asset='option', author=None):
@@ -73,9 +74,9 @@ class Trades_Tracker():
         return quote
 
 
-    def trade_alert(self, order, pars, live_alert=True):
+    def trade_alert(self, order, pars, msg, live_alert=True):
 
-        openTrade, isOpen = find_last_trade(order, self.portfolio, open_only=True)
+        open_trade, isOpen = find_last_trade(order, self.portfolio, open_only=True)
 
         date = order.get("Date", get_date())
         log_alert = {"Date": date,
@@ -92,31 +93,31 @@ class Trades_Tracker():
                 print(f"{order['Symbol']} quote not available for trade tracker")
                 order["price_current"] = None
 
-        if openTrade is None and order["action"] == "BTO":
+        if open_trade is None and order["action"] == "BTO":
             str_act = self.make_BTO(order)
-            openTrade, isOpen = find_last_trade(order, self.portfolio)
+            open_trade, isOpen = find_last_trade(order, self.portfolio)
 
 
         elif order["action"] == "BTO" and order['avg'] is not None:
-            str_act = self.make_BTO_Avg(order, openTrade)
+            str_act = self.make_BTO_Avg(order, open_trade)
 
         elif order["action"] == "BTO":
             str_act = "Repeated BTO"
 
-        elif order["action"] == "STC" and openTrade is None:
+        elif order["action"] == "STC" and open_trade is None:
             str_act = "STC without BTO"
 
         elif order["action"] == "STC":
-            str_act = self.make_STC(order, openTrade)
+            str_act = self.make_STC(order, open_trade)
 
         elif order['action'] == "ExitUpdate" and isOpen:
-            old_plan = self.portfolio.loc[openTrade, "exit_plan"]
+            old_plan = self.portfolio.loc[open_trade, "exit_plan"]
             new_plan = parse_exit_plan(order)
 
             # Update PT if already STCn
             istc = None
             for i in range(1,4):
-                if self.portfolio.loc[openTrade, f"STC{i}-Alerted"] is not None:
+                if self.portfolio.loc[open_trade, f"STC{i}-Alerted"] is not None:
                     istc = i
             if istc is not None and any(["PT" in k for k in new_plan.keys()]):
                 new_plan_c = new_plan.copy()
@@ -133,16 +134,18 @@ class Trades_Tracker():
             else:
                 renew_plan = new_plan
 
-            self.portfolio.loc[openTrade, "exit_plan"] = str(renew_plan)
-            symbol = self.portfolio.loc[openTrade, "Symbol"]
+            self.portfolio.loc[open_trade, "exit_plan"] = str(renew_plan)
+            symbol = self.portfolio.loc[open_trade, "Symbol"]
             str_act = f"Updated {symbol} exit plan from :{old_plan} to {renew_plan}"
 
         else:
-            str_act = "Nothing"
+            return "Nothing"
 
-        log_alert["portfolio_idx"] = openTrade
+        self.close_expired(open_trade)
+        log_alert["portfolio_idx"] = open_trade
         log_alert["action"] = str_act
         self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+        self.portfolio.to_csv(self.portfolio_fname, index=False)
         return  str_act
 
 
@@ -173,25 +176,25 @@ class Trades_Tracker():
         return str_act
 
 
-    def make_BTO_Avg(self, order, openTrade):
+    def make_BTO_Avg(self, order, open_trade):
 
-        current_Avg = self.portfolio.loc[openTrade, "Avged"]
+        current_Avg = self.portfolio.loc[open_trade, "Avged"]
         if np.isnan(current_Avg):
             current_Avg = 1
         else:
             current_Avg = int(current_Avg + 1)
-        self.portfolio.loc[openTrade, "Avged"] = current_Avg
+        self.portfolio.loc[open_trade, "Avged"] = current_Avg
 
         str_act = f"BTO {order['Symbol']} {current_Avg}th averging down @ {order['price']}"
-        old_price = self.portfolio.loc[openTrade, "Price"]
-        self.portfolio.loc[openTrade, "Price"] = f"{old_price}/{order['price']}"
+        old_price = self.portfolio.loc[open_trade, "Price"]
+        self.portfolio.loc[open_trade, "Price"] = f"{old_price}/{order['price']}"
 
-        price_old = self.portfolio.loc[openTrade, "Alert-Price"]
+        price_old = self.portfolio.loc[open_trade, "Alert-Price"]
         alert_price = order.get("price_current")
         avgs_prices = f"{price_old}/{alert_price}".replace("None/None", "").replace("None", "")
-        self.portfolio.loc[openTrade, "Alert-Price"] = avgs_prices
+        self.portfolio.loc[open_trade, "Alert-Price"] = avgs_prices
 
-        planned = eval(self.portfolio.loc[openTrade, "exit_plan"])
+        planned = eval(self.portfolio.loc[open_trade, "exit_plan"])
 
         exit_plan = parse_exit_plan(order)
         for k in exit_plan.keys():
@@ -199,25 +202,25 @@ class Trades_Tracker():
                 planned[k] = exit_plan[k]
 
         if len(planned):
-            self.portfolio.loc[openTrade, "exit_plan"] = str(planned)
+            self.portfolio.loc[open_trade, "exit_plan"] = str(planned)
 
         return str_act
 
 
-    def make_STC(self, order, openTrade):
+    def make_STC(self, order, open_trade):
 
-        if pd.isnull(self.portfolio.loc[openTrade, "STC1-PnL"]):
+        if pd.isnull(self.portfolio.loc[open_trade, "STC1-PnL"]):
             STC = "STC1"
-        elif pd.isnull(self.portfolio.loc[openTrade, "STC2-PnL"]):
+        elif pd.isnull(self.portfolio.loc[open_trade, "STC2-PnL"]):
             STC = "STC2"
-        elif pd.isnull(self.portfolio.loc[openTrade, "STC3-PnL"]):
+        elif pd.isnull(self.portfolio.loc[open_trade, "STC3-PnL"]):
             STC = "STC3"
         else:
             str_STC = f"How many STC already?, {order}"
             print (str_STC)
             return str_STC
 
-        bto_price = self.portfolio.loc[openTrade, "Price"]
+        bto_price = self.portfolio.loc[open_trade, "Price"]
         if isinstance(bto_price, str):
             bto_price =  np.mean(eval(bto_price.replace("/", ",")))
         if order.get("price") is None or bto_price is None:
@@ -234,28 +237,28 @@ class Trades_Tracker():
             elif left < .99:  # percentage left
                 order['xQty'] = 1 - left
 
-        self.portfolio.loc[openTrade, f"{STC}-Price"] = order.get("price")
-        self.portfolio.loc[openTrade, f"{STC}-Alerted"] = order.get("price_current", "-")
-        self.portfolio.loc[openTrade, f"{STC}-Date"] = order["Date"]
-        self.portfolio.loc[openTrade, f"{STC}-xQty"] = order['xQty']
-        self.portfolio.loc[openTrade, f"{STC}-PnL"] = stc_price
+        self.portfolio.loc[open_trade, f"{STC}-Price"] = order.get("price")
+        self.portfolio.loc[open_trade, f"{STC}-Alerted"] = order.get("price_current", "-")
+        self.portfolio.loc[open_trade, f"{STC}-Date"] = order["Date"]
+        self.portfolio.loc[open_trade, f"{STC}-xQty"] = order['xQty']
+        self.portfolio.loc[open_trade, f"{STC}-PnL"] = stc_price
 
         if stc_price == "none":
             str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), no price provided"
         else:
             str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), {stc_price:.2f}%"
 
-        Qty_sold = self.portfolio.loc[openTrade,[f"STC{i}-xQty" for i in range(1, 4)]].sum()
+        Qty_sold = self.portfolio.loc[open_trade,[f"STC{i}-xQty" for i in range(1, 4)]].sum()
         if order['xQty'] == 1 or Qty_sold > .98:
             str_STC = str_STC + " Closed"
-            self.portfolio.loc[openTrade, "isOpen"] = 0
+            self.portfolio.loc[open_trade, "isOpen"] = 0
 
         return str_STC
 
 
-    def check_repeat_STC(self, order, openTrade, STC):
+    def check_repeat_STC(self, order, open_trade, STC):
 
-        STC_prev = [self.portfolio.loc[openTrade, f"STC{i}"] for i in range(1, 4)]
+        STC_prev = [self.portfolio.loc[open_trade, f"STC{i}"] for i in range(1, 4)]
 
         if order["price"] in STC_prev:
             rep_ix = [i for i, v in enumerate(STC_prev) if v == order["price"]]
@@ -265,10 +268,52 @@ class Trades_Tracker():
             return False, None
 
 
+    def close_expired(self, open_trade):
+        if open_trade == 0 or pd.isnull(open_trade):
+            return
+
+        current_trade = self.portfolio.iloc[open_trade]
+        current_date = current_trade["Date"]
+        current_date = datetime.strptime(current_date, "%Y-%m-%d %H:%M:%S.%f")
+
+        for trade_inx in range(open_trade):
+            trade = self.portfolio.iloc[trade_inx]
+            if trade["Asset"] != "option" or trade["isOpen"] == 0:
+                continue
+
+            optdate = option_date(trade['Symbol'])
+            if optdate.date() < current_date.date():
+                for stci in range(1,4):
+                    if pd.isnull(trade[f"STC{stci}-xQty"]):
+                        STC = f"STC{stci}"
+                        break
+
+                #Log portfolio
+                self.portfolio.loc[trade_inx, STC + "-Status"] = 'EXPIRED'
+                self.portfolio.loc[trade_inx, STC + "-Price"] = 0
+                self.portfolio.loc[trade_inx, STC + "-Date"] = current_date
+                self.portfolio.loc[trade_inx, STC + "-xQty"] = 1
+                self.portfolio.loc[trade_inx, STC + "-PnL"] = -100
+                self.portfolio.loc[trade_inx, "isOpen"] = 0
+
+                str_prt = f"{trade['Symbol']} option expired -100%"
+                print(str_prt)
+
+
+
+
+def option_date(opt_symbol):
+    sym_inf = opt_symbol.split("_")[1]
+    opt_date = re.split("C|P", sym_inf)[0]
+    return datetime.strptime(opt_date, "%m%d%y")
+
+
+
+
 if 0:
     tt = Trades_Tracker()
 
-    for asset in ["stock"]:#[ "option", "stock"]:
+    for asset in ["stock"]:# [ "option", "stock"]:#
         alerts_author = get_author_alerts(asset)
 
         bad_msg = []
@@ -295,7 +340,7 @@ if 0:
                 else:
                     pars = None
 
-            if order is None:
+            if order is None or order.get('action') is None:
                 continue
 
             order["Date"] = date
@@ -303,13 +348,13 @@ if 0:
             if order.get("asset"):
                 assert order.get("asset") == asset
             order['asset'] = asset
-            res_out = tt.trade_alert(order, pars, live_alert=False)
+            res_out = tt.trade_alert(order, pars, msg, live_alert=False)
             if "How many STC already?" in res_out:
                 tt.portfolio.to_csv(tt.portfolio_fname, index=False)
                 tt.alerts_log.to_csv(tt.alerts_log_fname, index=False)
-                resp = input("Continue? yes or no")
-                if resp == "no":
-                    break
+                # resp = input("Continue? yes or no")
+                # if resp == "no":
+                #     break
 
     tt.portfolio.to_csv(tt.portfolio_fname, index=False)
     tt.alerts_log.to_csv(tt.alerts_log_fname, index=False)

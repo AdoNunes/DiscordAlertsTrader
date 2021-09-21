@@ -90,7 +90,7 @@ class TDSession_test():
                       "closeTime" : date}
 
         if not pd.isnull(self.order_log.loc[inx, "OCO"]):
-            order_info['orderStrategyType'] == "OCO"
+            order_info['orderStrategyType'] = "OCO"
             order_info['childOrderStrategies'] = [{"status": order_info['status']},
                                                   {"status": order_info['status']}]
         else:
@@ -150,7 +150,7 @@ class TDSession_test():
                     "strategyType" : chld['orderStrategyType'],
                     "OCO" : oco_inx
                    }
-                print(ord_info)
+                # print(ord_info)
                 self.order_log = self.order_log.append(ord_info, ignore_index=True)
                 order_id += 1
             order_response["order_id"] = order_id_ret
@@ -179,7 +179,7 @@ class TDSession_test():
             "strategyType" : order.template['orderStrategyType'],
             "OCO" : None
            }
-        print(ord_info)
+        # print(ord_info)
 
         self.order_log = self.order_log.append(ord_info, ignore_index=True)
         order_response["order_id"] = order_id
@@ -228,11 +228,14 @@ if 0:
                 test_TDsession=tdt, update_portfolio=False)
 
     Altrader.price_now(sym, pflag=1)
-    msg = "BTO TSLA @ 698"
+    msg = "BTO TSLA @ 698 PT1 700 SL 690"
     pars, order =  parser_alerts(msg, "stock")
     order["Trader"] = "tester1"
     Altrader.new_trade_alert(order, pars,msg)
 
+    tdt.make_quote('TSLA', 698, 699)
+    tdt.execute_orders()
+    Altrader.update_orders()
 
     order = {"Symbol" : "TSLA",
              "uQty" : 3,

@@ -278,7 +278,7 @@ def parse_exits_vals(msg, expr):
         if exit_inf is None:
             return None
 
-    exit_v = float(exit_inf.groups()[-1])
+    exit_v = float(exit_inf.groups()[-1].replace("..", ""))
     return exit_v
 
 
@@ -433,7 +433,7 @@ def auhtor_parser(msg, author, asset):
                 new_order["amnt_left"] = amnt_left
 
             if "STC" not in msg:
-                stc = "([^a-z]selling|[^a-z]sold|all out|(:?(out|took)[a-zA-Z\s]*last)|sell here)"
+                stc = "([^a-z]selling|[^a-z]sold|all out|(:?(out|took)[a-zA-Z\s]*last)|sell here|took some off)"
                 mtch = re.compile(stc, re.IGNORECASE)
                 mtch = mtch.search(msg)
                 no_Sell = ["not selling yet", "Over Sold", "contracts sold", "How many sold it?"]
@@ -459,7 +459,7 @@ def get_symb_prev_msg(df_hist, msg_ix, author):
     msg_inx_auth, = np.nonzero(df_hist_auth.index == msg_ix)
     indexes = df_hist_auth.index.values
 
-    for n in range(1,3):
+    for n in range(1,6):
         inx = indexes[msg_inx_auth - n]
         msg, = df_hist_auth.loc[inx, 'Content'].values
         if pd.isnull(msg):
