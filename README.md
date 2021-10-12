@@ -81,10 +81,10 @@ Once downloaded the package, open a termina, cd to the folder directory and type
 
 ```
 python table_portfolio_qt.py
-
+```
 
 ## WARNING
 _________
 
-This is still a Work in Progress project. I get good results using the package, If you plan to use it, USE AT YOUR OWN RISK.
+This is still a Work in Progress project. I get good results using the package, If you plan to use it, **USE AT YOUR OWN RISK**.
 
