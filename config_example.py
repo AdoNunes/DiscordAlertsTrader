@@ -12,7 +12,6 @@ path_dll = "DiscordExtractor/DiscordChatExporter.Cli.dll"
 data_dir = "data/"
 
 discord_token = "token0Y03e..."
-# token = "ODA5MjEzMzE3MjM0Njg4MDcy.YCR00Q.Zoab0QF6YLyB69b0tQWEVqfmgoc"
 
 channel_IDS = {"stock_alerts": 6666,
                "option_alerts": 4444,
