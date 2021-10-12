@@ -1,4 +1,4 @@
-Discord Alerts Trader Bot
+# DiscordAlertsTrader: *Discord Alerts Trader Bot*
 ________________________
 
 DiscordAlertsTrader is a python package to get messages from a subscribed discord channel where buy
@@ -13,11 +13,12 @@ What this package does:
 - Track trading signals and performance of traders using message history and realtime price
 - Execute and cancel orders, check order status, account status and current ticker prices
 
-Currently, the package is for parsing signals of the discord group Xtrades. 
+**Currently, the package is for parsing signals of the discord group Xtrades.** 
+
 Invite link to Xtrades: https://discord.gg/fMANuG8tR9
 
 
- DiscordChatExporter dependency
+ ## DiscordChatExporter dependency
  ______________________________
 
  It requires DiscordChatExporter CLI version (tested in Linux and Windows). 
@@ -49,7 +50,7 @@ Channels from wich actually get trading alerts:
 CHN_NAMES = ["stock_alerts","option_alerts"] 
 ```
 
-TDAmeritrade
+## TDAmeritrade
 _______________
 
 To access the TDAmeritrade account for trading and info is necessary to install 
@@ -71,4 +72,19 @@ auth = {
 'refresh_token' : 'avXRhfPjEhO'
 }
 ```
+
+## Setup and Run
+______
+
+
+Once downloaded the package, open a termina, cd to the folder directory and type:
+
+```
+python table_portfolio_qt.py
+
+
+## WARNING
+_________
+
+This is still a Work in Progress project. I get good results using the package, If you plan to use it, USE AT YOUR OWN RISK.
 
