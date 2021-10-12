@@ -9,7 +9,7 @@ Trades are done through TDAmeritrade API.
 
 What this package does:
 
-- Read messages and parse trading singals, e.g. BTO (Buy to Open), STC (Sell to Close), partial STC
+- Read messages and parse trading singals, e.g. BTO (Buy to Open), STC (Sell to Close), partial STC, SL (Stop Limits), PT (Profit Taking)
 - Track trading signals and performance of traders using message history and realtime price
 - Execute and cancel orders, check order status, account status and current ticker prices
 
