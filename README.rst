@@ -1,4 +1,4 @@
-Discord Alerts Trader Bot
+## Discord Alerts Trader Bot
 ________________________
 
 DiscordAlertsTrader is a python package to get messages from a subscribed discord channel where buy
@@ -17,7 +17,7 @@ Currently, the package is for parsing signals of the discord group Xtrades.
 Invite link to Xtrades: https://discord.gg/fMANuG8tR9
 
 
- DiscordChatExporter dependency
+ ## DiscordChatExporter dependency
  ______________________________
 
  It requires DiscordChatExporter CLI version (tested in Linux and Windows). 
