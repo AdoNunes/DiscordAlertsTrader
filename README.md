@@ -77,7 +77,7 @@ auth = {
 ______
 
 
-Once downloaded the package, open a termina, cd to the folder directory and type:
+Once downloaded the package, install the dependencies listed in requirements.txt. Then open a terminal, cd to the folder directory of the package and type:
 
 ```
 python table_portfolio_qt.py
