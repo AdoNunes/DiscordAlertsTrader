@@ -1,0 +1,7 @@
+PySimpleGUIQt
+pandas
+numpy
+json
+colorama
+td-ameritrade-python-api
+pprint
