@@ -1,7 +1,6 @@
+td-ameritrade-python-api
 PySimpleGUIQt
 pandas
 numpy
-json
 colorama
-td-ameritrade-python-api
-pprint
+pprintpp

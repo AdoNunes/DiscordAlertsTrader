@@ -184,8 +184,7 @@ class AlertsListner():
         self.UPDATE_PERIOD = cfg.UPDATE_PERIOD
         self.CHN_NAMES = cfg.CHN_NAMES
 
-        self.cmd = f'dotnet {path_dll} export' + ' -c {} ' + \
-            f'  -t {discord_token}' + \
+        self.cmd = f'dotnet {path_dll} export' + ' -c {} -t {discord_token}' + \
                 ' -f Csv --after "{}" --dateformat "yyyy-MM-dd HH:mm:ss.ffffff" -o {}'
 
         self.time_strf = "%Y-%m-%d %H:%M:%S.%f"
@@ -195,14 +194,23 @@ class AlertsListner():
         self.tracker = Trades_Tracker(TDSession=self.Altrader.TDsession)
         self.listening = False
 
-        self.chn_hist_f = {c:f"{data_dir}/{c}_message_history.csv"
-                           for c in self.CHN_NAMES}
-        self.chn_hist = {c: pd.read_csv( self.chn_hist_f[c])
-                         for c in self.CHN_NAMES}
-
         if threaded:
             self.thread =  threading.Thread(target=self.listent_trade_alerts)
             self.thread.start()
+
+    def load_data(self):
+        
+        self.chn_hist= []
+        for ch in cfg.CHN_NAMES:
+            dt_fname = f"{data_dir}/{ch}_message_history.csv"
+            if not os.path.exists(dt_fname):
+                ch_dt = pd.DataFrame(columns=['AuthorID', 'Author', 'Date', 'Content', 'Attachments', 'Reactions'])
+                ch_dt.to_csv(dt_fname)
+                ch_dt.to_csv(f"{data_dir}/{ch}_message_history_temp.csv")
+            else:
+                ch_dt = pd.read_csv(dt_fname)
+
+            self.chn_hist.append(ch_dt)
 
 
     def close(self):
@@ -256,8 +264,7 @@ class AlertsListner():
                 if not new_msgs:
                     continue
 
-                df_update, new_msg = updt_chan_hist(self.chn_hist[chn],
-                                           out_file, self.chn_hist_f[chn])
+                df_update, new_msg = updt_chan_hist(self.chn_hist[chn], out_file, self.chn_hist_f[chn])
                 self.chn_hist[chn] = df_update
 
                 nmsg = len(new_msg)

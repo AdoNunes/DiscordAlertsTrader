@@ -31,7 +31,7 @@ def get_TDsession(account_n=0, accountId=None):
     TDSession = TDClient(
         client_id=auth['client_id'],
         redirect_uri=auth['redirect_url'],
-        credentials_path='secrets_td.json'
+        credentials_path=auth['credentials_path']
     )
 
     # Login to the session

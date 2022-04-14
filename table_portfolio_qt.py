@@ -19,7 +19,7 @@ import queue
 TDSession = get_TDsession()
 
 # sg.SetOptions(font=("Courier New", -13))#, background_color="whitesmoke",
-               # element_padding=(0, 0), margins=(1, 1))
+                # element_padding=(0, 0), margins=(1, 1))
 
 fnt_b = ("Helvitica", "11")
 fnt_h = ("Helvitica", "10")
@@ -30,7 +30,7 @@ def mprint(*args, **kwargs):
     window[MLINE_KEY].print(*args, **kwargs)
 
 def send_alert(subm_msg):
-    user_s, ass_s, msg =subm_msg.split(", ")
+    user_s, ass_s, msg = subm_msg.split(", ")
     trader = user_s.split(":")[-1]
     asset = ass_s.split(":")[-1]
 
