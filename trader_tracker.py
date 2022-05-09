@@ -45,6 +45,7 @@ class Trades_Tracker():
                     "STC%d-%s" % (i, v) for v in
                     ["Alerted", "xQty", "Price", "PnL", "Date"]
                     for i in range(1,4)] )
+            self.portfolio.to_csv(self.portfolio_fname, index=False)
 
         if op.exists(self.alerts_log_fname):
             self.alerts_log = pd.read_csv(self.alerts_log_fname)
@@ -144,7 +145,12 @@ class Trades_Tracker():
         self.close_expired(open_trade)
         log_alert["portfolio_idx"] = open_trade
         log_alert["action"] = str_act
-        self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+        # reformat dict to dataframe as per new pandas and concat
+        log_alert.update({'index':[0]})
+        new_dt = pd.DataFrame.from_dict(log_alert)
+        new_dt.drop('index', axis=1, inplace=True)
+        
+        self.alerts_log = pd.concat((self.alerts_log,new_dt), axis=0, ignore_index=True)
         self.portfolio.to_csv(self.portfolio_fname, index=False)
         return  str_act
 
@@ -169,7 +175,12 @@ class Trades_Tracker():
                      "Risk": order['risk'],
                      "SL_mental": order.get("SL_mental")
                      }
-        self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
+        
+        # reformat dict to dataframe as per new pandas and concat
+        new_trade.update({'index':[0]})
+        new_dt = pd.DataFrame.from_dict(new_trade)
+        new_dt.drop('index', axis=1, inplace=True)
+        self.portfolio = pd.concat((self.portfolio,new_dt), axis=0, ignore_index=True)
 
         str_act = f"BTO {order['Symbol']} {order['price']}, Plan PT:{order['PT1']}, SL:{order['SL']}"
 

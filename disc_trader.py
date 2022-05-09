@@ -77,16 +77,18 @@ class AlertTrader():
         else:
             self.portfolio = pd.DataFrame(columns=[
                 "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Alert-Price",
-                "uQty", "filledQty", "Avged", "Avged-prices" "exit_plan", "ordID", "Risk", "SL_mental"] + [
+                "uQty", "filledQty", "Avged", "Avged-prices", "exit_plan", "ordID", "Risk", "SL_mental"] + [
                     "STC%d-%s"% (i, v) for v in
                     ["Alerted", "Status", "xQty", "uQty", "Price", "PnL","Date", "ordID"]
                     for i in range(1,4)] )
+            self.portfolio.to_csv(self.portfolio_fname, index=False)
 
         if op.exists(self.alerts_log_fname):
             self.alerts_log = pd.read_csv(self.alerts_log_fname)
         else:
             self.alerts_log = pd.DataFrame(columns=["Date", "Symbol", "Trader",
                                                 "action", "parsed", "msg", "portfolio_idx"])
+            self.alerts_log.to_csv(self.alerts_log_fname, index=False)
 
         # For testing a fake TDsession is created
         if test_TDsession is not None:

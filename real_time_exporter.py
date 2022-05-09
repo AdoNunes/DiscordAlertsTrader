@@ -35,9 +35,10 @@ def updt_chan_hist(df_hist, path_update, path_hist):
     last_date = df_hist['Date'].max()
 
     new_msg = pd.read_csv(path_update)
-    new_msg = new_msg.loc[new_msg['Date']>last_date]
+    if not pd.isna(last_date):
+        new_msg = new_msg.loc[new_msg['Date']>last_date]
 
-    df_hist = df_hist.append(new_msg, ignore_index=True)
+    df_hist = pd.concat([df_hist, new_msg],axis=0, ignore_index=True)
     df_hist.to_csv(path_hist, index=False)
     return df_hist, new_msg
 
@@ -86,7 +87,6 @@ def msg_update_alert(df_hist, json_msg, asset):
             order_upd['action'] = "ExitUpdate"
             pars.replace("BTO", "ExitUpdate")
             new_alerts.append([pars,order_upd, msg_content])
-
 
     return new_alerts, msg_old
 
@@ -140,14 +140,17 @@ def dm_message(msg, names_all):
 
 def send_sh_cmd(cmd):
     "takes command string, returns true if no error"
-    env = {"PATH": os.getenv('PATH')[:-1]+ f"{path_dotnet};"}
+    env = os.environ
+    env["PATH"] =  env["PATH"][:-1]+ f"{path_dotnet};."
     spro = subprocess.Popen(cmd, shell=True, cwd=os.getcwd(), env=env, 
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE
                             )
     # Capture if read new messages
     spro_err = str(spro.communicate()[1])
-    if len(spro_err):
+    if len(spro_err)>3:
+        if spro_err == "b'Export failed.\\r\\n'":
+            return False
         print(spro_err)
     return False if "ERROR" in spro_err else True
 
@@ -320,7 +323,7 @@ class AlertsListner():
                 msg['Author'] = author
                 msg["Content"] = content
 
-            shrt_date = datetime.strptime(msg["Date"], self.time_strf).strftime('%H:%M:%S')
+            shrt_date = datetime.strptime(msg["Date"], self.time_strf).strftime('%Y-%m-%d %H:%M:%S')
             self.queue_prints.put([f"{shrt_date} \t {msg['Author']}: {msg['Content']} ", "blue"])
             print(Fore.BLUE + f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
 
@@ -391,7 +394,7 @@ class AlertsListner():
 
 
 
-def short_date(dateobj, frm="%m/%d %H:%M:%S"):
+def short_date(dateobj, frm="%Y/%m/%d %H:%M:%S"):
     return dateobj.strftime(frm)
 
 
@@ -403,10 +406,3 @@ if __name__ == '__main__':
 
 
 
-    # alistner.close()
-    # self = alistner
-# SL_2buyprice = ['Move SL to buy price',]
-
-if 0:
-    self = AlertsListner(threaded=False)
-    self.close()
