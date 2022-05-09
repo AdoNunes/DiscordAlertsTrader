@@ -36,7 +36,6 @@ else:
     alerts_log_fname = "./tests/trader_logger_simulated.csv"
 
 
-
 not_subscribed = []
 # ORDER DEFAULS
 do_BTO = False
