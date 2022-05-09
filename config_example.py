@@ -7,7 +7,7 @@ Created on Thu Feb 11 12:16:45 2021
 """
 
 
-
+path_dotnet = 'C:\\Program Files\\dotnet'
 path_dll = "DiscordExtractor/DiscordChatExporter.Cli.dll"
 data_dir = "data/"
 
@@ -20,8 +20,9 @@ channel_IDS = {"stock_alerts": 6666,
 
 CHN_NAMES = ["stock_alerts","option_alerts"] 
 
-UPDATE_PERIOD = 20  # how often will check for new Discord messages
+authors_subscribed = ["ScaredShirtless#0001"]
 
+UPDATE_PERIOD = 20  # how often will check for new Discord messages
 
 
 SIMULATE = False
@@ -34,8 +35,6 @@ else:
     portfolio_fname = "./tests/trader_portfolio_simulated.csv"
     alerts_log_fname = "./tests/trader_logger_simulated.csv"
 
-# authors_subscribed = ['Xtrades Option Guru#8905', "ScaredShirtless#0001", "Kevin (Momentum)#8888"]
-authors_subscribed = ["ScaredShirtless#0001"]
 
 not_subscribed = []
 # ORDER DEFAULS

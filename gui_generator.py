@@ -27,8 +27,10 @@ def formt_num_2str(x, decim=2, str_len=6, remove_zero=True):
 def max_dig_len(values, decim=2):
     # Gives interger and decimal lengths in an array-like values
     values_s = [str(round(v, decim)) if v %1 else str(round(v)) for v in values]
-    len_int = max([len(v.split('.')[0]) for v in values_s])
-    len_dig = max([len(v.split('.')[-1]) if "." in v else 0 for v in values_s])
+    tmp_int = [len(v.split('.')[0]) for v in values_s]
+    len_int = max(tmp_int) if tmp_int else 1
+    tmp_dig = [len(v.split('.')[-1]) if "." in v else 0 for v in values_s]
+    len_dig = max(tmp_dig) if tmp_dig else 1
     len_tot = len_int + len_dig + 1 if len_dig else  len_int + len_dig
     return len_tot, len_int, len_dig
 

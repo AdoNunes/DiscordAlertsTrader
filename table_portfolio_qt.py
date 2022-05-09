@@ -14,12 +14,13 @@ import gui_layouts as gl
 from PySide2.QtGui import QPainter, QPixmap, QPen, QColor
 from PySide2.QtWidgets import QHeaderView
 from real_time_exporter import AlertsListner
+import config as cfg
 import queue
 
 TDSession = get_TDsession()
 
 # sg.SetOptions(font=("Courier New", -13))#, background_color="whitesmoke",
-               # element_padding=(0, 0), margins=(1, 1))
+                # element_padding=(0, 0), margins=(1, 1))
 
 fnt_b = ("Helvitica", "11")
 fnt_h = ("Helvitica", "10")
@@ -30,7 +31,7 @@ def mprint(*args, **kwargs):
     window[MLINE_KEY].print(*args, **kwargs)
 
 def send_alert(subm_msg):
-    user_s, ass_s, msg =subm_msg.split(", ")
+    user_s, ass_s, msg = subm_msg.split(", ")
     trader = user_s.split(":")[-1]
     asset = ass_s.split(":")[-1]
 
@@ -39,8 +40,7 @@ gui_data = {}
 gui_data['port'] = gg.get_portf_data()
 ly_port = gl.layout_portfolio(gui_data['port'], fnt_b, fnt_h)
 
-chns = ["stock_alerts", "option_alerts"]
-# chns = ["option_alerts"]#, ""]
+chns = cfg.CHN_NAMES
 ly_chns = []
 for chn in chns:
     gui_data[chn] = gg.get_hist_msgs(chan_name=chn)
@@ -58,12 +58,13 @@ layout = [[sg.TabGroup([[sg.Tab("Console", ly_cons)],
                     size= (140,1.5), key="-subm-msg",
                     tooltip="User: any, Asset: {stock, option}"),
 
-           sg.Button("Submit alert", key="-subm-alert", size= (20,1))]]
+           sg.Button("Submit alert", key="-subm-alert", size= (20,1))]
+        ]
 
 window = sg.Window('Xtrader', layout,size=(1000, 500), # force_toplevel=True,
-                    auto_size_text=False, resizable=True, finalize=True)
+                    auto_size_text=False, resizable=True)
 
-window[MLINE_KEY].update(readonly=True)
+# window[MLINE_KEY].update(readonly=True)
 
 def mprint_queue(queue_item_list):
     # queue_item_list = [string, text_color, background_color]
@@ -94,13 +95,19 @@ def fit_table_elms(Widget_element):
 # window.GetScreenDimensions()
 els = ['_portfolio_', '_orders_', '_positions_'] + [f"{chn}_table" for chn in chns]
 for el in els:
-    fit_table_elms(window.Element(el).Widget)
+    try:
+        fit_table_elms(window.Element(el).Widget)
+    except:
+        pass
 
 for chn in chns:
-    table = window[f"{chn}_table"].Widget.horizontalHeader()
-    table.setSectionResizeMode(2, QHeaderView.Stretch)
-    # table.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-    window[f"{chn}_table"].Widget.scrollToBottom()
+    try:
+        table = window[f"{chn}_table"].Widget.horizontalHeader()
+        table.setSectionResizeMode(2, QHeaderView.Stretch)
+        # table.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        window[f"{chn}_table"].Widget.scrollToBottom()
+    except:
+        continue
 
 event, values = window.read(.5)
 
