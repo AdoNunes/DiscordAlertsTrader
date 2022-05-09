@@ -68,10 +68,10 @@ Once installed, edit secrets_api_example.py and save it as secrets_api.py. There
 auth = {
 'client_id':'AADDAD',
 'redirect_url':'https://127.0.0.1',
-'access_token' : 'XRhfXRhf...',
-'refresh_token' : 'avXRhfPjEhO'
+'credentials_path':'secrets_td.json',
 }
 ```
+
 
 ## Setup and Run
 ______
@@ -79,9 +79,16 @@ ______
 
 Once downloaded the package, install the dependencies listed in requirements.txt. Then open a terminal, cd to the folder directory of the package and type:
 
-```
-python table_portfolio_qt.py
-```
+```python setup.py```
+
+This will provide an URL link where to login into TD ameritrade developer API in order to get the credentials:
+
+Run the Command Line Interface:
+
+```python real_time_exporter.py```
+
+Currently, the GUI is not available as it needs to be updated with current external package versions.
+
 
 ## WARNING
 _________
