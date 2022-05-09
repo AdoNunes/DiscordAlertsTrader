@@ -1,3 +1,4 @@
+python=3.9
 td-ameritrade-python-api=0.3.5
 PySimpleGUIQt=0.35
 pandas=1.4.2
