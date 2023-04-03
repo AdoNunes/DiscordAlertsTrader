@@ -325,10 +325,10 @@ class AlertTrader():
                 print("OCO order status are different in ordID {order_id}: ",
                       f"{order_status[0]} vs {order_status[1]}")
             order_status = order_status[0]
-        elif order_info['orderStrategyType'] == 'SINGLE':
+        elif order_info['orderStrategyType'] in ['SINGLE', 'TRIGGER']:
             order_status = order_info['status']
         else:
-            raise("Not sure type order. Check")
+            raise TypeError("Not sure type order. Check")
 
         return order_status, order_info
 
@@ -783,7 +783,7 @@ class AlertTrader():
             if pd.isnull(trade["filledQty"]) or trade["filledQty"] == 0:
                 continue
 
-            if trade["BTO-avg-Status"] in ["QUEUED", "WORKING"]:
+            if trade.get("BTO-avg-Status") in ["QUEUED", "WORKING"]:
                 ordID = trade['ordID'].split(",")[-1]
                 _, order_info = self.get_order_info(ordID)
                 if order_info['status'] == 'FILLED' :

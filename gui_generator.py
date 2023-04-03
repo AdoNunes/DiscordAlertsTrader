@@ -52,7 +52,7 @@ def round_int_flt(x, n=1):
 
 def format_exitplan(plan):
 
-    if plan in ["", "{}"] or np.isnan(plan):
+    if plan in ["", "{}"] or plan is None:
         return "None"
     plan = eval(plan)
 

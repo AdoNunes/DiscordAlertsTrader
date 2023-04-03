@@ -63,10 +63,12 @@ def parser_alerts(msg, asset=None):
     str_prt = f"{act} {Symbol} @{mark} amount: {amnt}"
 
     if asset == "option":
+        if Symbol == "SPX": 
+            order['Symbol'] = "SPXW"
         optType = optType.upper()
         order["expDate"] = expDate
         order["strike"] = strike + optType
-        str_prt = f"{act} {Symbol} {expDate} {strike + optType} @{mark} amount: {amnt}"
+        str_prt = f"{act} {order['Symbol']} {expDate} {strike + optType} @{mark} amount: {amnt}"
         order['Symbol'] = make_optionID(**order)
 
     if act == "BTO":
@@ -204,9 +206,13 @@ def parse_mark_option(msg):
 
 
 def parse_strike(msg):
-    re_strike = re.compile(" [$]?(\d+(?:\.\d+)?)[ ]?(C|c|P|p)")
+    re_strike = re.compile(" [$]?(\d+(?:\.\d+)?)(C|c|P|p)")
     strike_inf = re_strike.search(msg)
-    if strike_inf is None and "BTO" in msg:
+    # avoid "BTO 1 COIN 73c" detected 1C
+    if strike_inf is None:
+        re_strike = re.compile(" [$]?(\d+(?:\.\d+)?)[ ]?(C|c|P|p)")
+        strike_inf = re_strike.search(msg)
+    elif strike_inf is None and "BTO" in msg:
         sym = parse_Symbol(msg, "BTO")[0]
         re_strike = re.compile(f"{sym} (\d+(?:\.\d+)?)")
         strike_inf = re_strike.search(msg)

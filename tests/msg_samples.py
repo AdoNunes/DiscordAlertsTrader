@@ -10,7 +10,8 @@ Created on Wed Jun  9 09:36:51 2021
 exit_examples = [("BTO AEHL @ 7 (risky scalp. PT 8.39, SL below 6.45) @everyone", (8.39, None, None, 6.45)),
                  ("BTO CPB @ 45.95 (SL $43, PT 49, posted this in watchlist on monday", (49.0, None, None, 43.0))
                  ("Price Target: 185 Stop: 200", (185, None,None, 200)),
-                 ("SL around 388.5 PT 380")
+                 ("SL around 388.5 PT 380"),
+                 ("BTO 1 COIN 73c 04/06 @ 1.03 @here (Swing) @Cblast Alert")
                  
 ]
 
