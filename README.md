@@ -62,7 +62,7 @@ Follow the instructions from the github repository to set up an API developer ac
 tocken:
 https://github.com/areed1192/td-ameritrade-python-api
 
-Once installed, edit secrets_api_example.py and save it as secrets_api.py. There needs to be:
+once you have your TDA client id, edit secrets_api_example.py and save it as secrets_api.py. There needs to be:
 
 ```
 auth = {
@@ -71,6 +71,17 @@ auth = {
 'credentials_path':'secrets_td.json',
 }
 ```
+
+then, run the script:
+```python setup.py```
+it will prompt to:
+
+```
+$ Please go to URL provided authorize your account: https://auth.tdameritrade.com/auth?response_type=code&redirect_uri=.......OAUTHAP
+$ Paste the full URL redirect here:
+```
+
+In your browser go to the link, accept TD ameritrade pop-up and copy the link you get re-directed. Once entered you will have your secrets_td.json
 
 
 ## Setup and Run
