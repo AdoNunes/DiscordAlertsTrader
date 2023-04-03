@@ -12,11 +12,6 @@ import numpy as np
 
 
 def parser_alerts(msg, asset=None):
-    # if not '@everyone' in msg:
-    #     str_prt = "not an alert"
-    #     print(str_prt)
-    #     return str_prt, None
-
     act = parse_action(msg)
     if act is None:
         if "ExitUpdate" in msg:
@@ -55,23 +50,24 @@ def parser_alerts(msg, asset=None):
     elif asset == "stock":
         mark  = parse_mark_stock(msg, Symbol, act)
 
+    amnt = parse_unit_amount(msg)
     risk_level = parse_risk(msg)
 
     order = {"action": act,
              "Symbol": Symbol,
              "price": mark,
              "asset": asset,
+             "uQty": amnt,
              "risk": risk_level}
 
-    str_prt = f"{act} {Symbol} @{mark} "
+    str_prt = f"{act} {Symbol} @{mark} amount: {amnt}"
 
     if asset == "option":
         optType = optType.upper()
         order["expDate"] = expDate
         order["strike"] = strike + optType
-        str_prt = f"{act} {Symbol} {expDate} {strike + optType} @{mark}"
+        str_prt = f"{act} {Symbol} {expDate} {strike + optType} @{mark} amount: {amnt}"
         order['Symbol'] = make_optionID(**order)
-
 
     if act == "BTO":
         if "avg" in msg.lower() or "average" in msg.lower():
@@ -91,28 +87,31 @@ def parser_alerts(msg, asset=None):
         order["PTs_Qty"] = pts_qty
 
     elif act == "STC":
-        amnt = parse_sell_amount(msg, asset)
-        str_prt = str_prt + f" amount: {amnt}"
-        order["xQty"] = amnt
+        xamnt = parse_sell_ratio_amount(msg, asset)
+        if order["uQty"] is None:
+            str_prt = str_prt + f" xamount: {xamnt}"
+        order["xQty"] = xamnt
 
     return str_prt, order
 
+
 def make_order_exits(order, msg, str_prt, asset):
     pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
-
     if asset == "option":
         order["PT1"] =  set_exit_price_type(pt1_v, order)
         order["PT2"] = set_exit_price_type(pt2_v, order)
         order["PT3"] = set_exit_price_type(pt3_v, order)
         order["SL"] = set_exit_price_type(sl_v, order)
-        str_prt = str_prt + f' PT1:{order["PT1"]}, PT2:{order["PT2"]}, PT3:{order["PT3"]}, SL:{order["SL"] }'
-
     elif asset == "stock":
         order["PT1"] = pt1_v
         order["PT2"] = pt2_v
         order["PT3"] = pt3_v
         order["SL"] = sl_v
-        str_prt = str_prt + f"PT1:{pt1_v}, PT2:{pt2_v}, PT3:{pt3_v}, SL:{sl_v}"
+
+    exits = ["PT1","PT2","PT3","SL"]
+    for ext in exits:
+            if order["PT1"] is not None:
+                str_prt = str_prt + f', {ext}:{order[ext]}'
     return order, str_prt
 
 
@@ -146,11 +145,6 @@ def set_pt_qts(n_pts):
     return amnts
 
 
-# def parse_sl_up(msg):
-
-#     if "stop loss up" in msg or "SL" in msg:
-#         Symbol, Symbol_info = parse_Symbol(msg)
-
 def parse_action(msg):
     if pd.isnull(msg):
         return None
@@ -178,7 +172,6 @@ def parse_Symbol(msg, act):
             if Symbol_info is None:
                 return None, None
             Symbol = Symbol_info.groups()[-1].replace(" ",'')
-
 
     Symbol = Symbol_info.groups()[-1]
     # print ("Symbol: ", Symbol)
@@ -256,7 +249,6 @@ def parse_exits(msg):
     pt2_v = parse_exits_vals(msg, "PT2")
     pt3_v = parse_exits_vals(msg, "PT3")
     sl_v = parse_exits_vals(msg, "SL(?: below)?")
-
     return pt1_v, pt2_v, pt3_v, sl_v
 
 def parse_avg(msg):
@@ -282,8 +274,19 @@ def parse_exits_vals(msg, expr):
     return exit_v
 
 
-def parse_sell_amount(msg, asset):
 
+def parse_unit_amount(msg):    
+    act = parse_action(msg)
+    Symbol, _ = parse_Symbol(msg, act)
+    
+    exprs = f"{act}\s+(\d+) {Symbol}"
+    re_comp= re.compile(exprs, re.IGNORECASE)
+    amnt_inf = re_comp.search(msg)
+    if amnt_inf is not None:
+        return round(eval(amnt_inf.groups()[0]), 2)
+    return
+
+def parse_sell_ratio_amount(msg, asset):    
     exprs = "(?:sold|sell) (\d\/\d)"
     re_comp= re.compile(exprs, re.IGNORECASE)
     amnt_inf = re_comp.search(msg)
@@ -335,6 +338,7 @@ def parse_risk(msg):
             'very risky':"very high",
             'risk high': "high",
             'high risk': "high",
+            'lotto': "very high",
             'risky': "medium",
             'yolo':"yolo"}
     risk_level = None
@@ -394,7 +398,7 @@ def auhtor_parser(msg, author, asset):
 
         # in STC target might not be PT2
         if "STC" not in msg:
-            pt1_exps = ['target[a-zA-Z\s\,\.]*(\d+[\.]*[\d]*)',
+            pt1_exps = ['Target: (\d+[\.]*[\d]*)', 'target: (\d+[\.]*[\d]*)', 'target[a-zA-Z\s\,\.]*(\d+[\.]*[\d]*)',
                    '(\d+[\.]*[\d]*)[a-zA-Z\s\,\.]*target',
                    'looking for (\d+[\.]*[\d]*)']
             for exp in pt1_exps:
@@ -418,7 +422,7 @@ def auhtor_parser(msg, author, asset):
                 new_order["PT2"] = pt2
                 msg = msg.replace(pt2, " ")
 
-        sl_exps = ['(\d+[\.]*[\d]*)[a-zA-Z\s\,\.]*stop',
+        sl_exps = ['Stop: (\d+[\.]*[\d]*)', 'stop: (\d+[\.]*[\d]*)', '(\d+[\.]*[\d]*)[a-zA-Z\s\,\.]*stop',
                    'stop[a-zA-Z\s\,\.]*(\d+[\.]*[\d]*)']
         for exp in sl_exps:
             sl = match_exp(exp, msg)
@@ -436,10 +440,10 @@ def auhtor_parser(msg, author, asset):
                 stc = "([^a-z]selling|[^a-z]sold|all out|(:?(out|took)[a-zA-Z\s]*last)|sell here|took some off)"
                 mtch = re.compile(stc, re.IGNORECASE)
                 mtch = mtch.search(msg)
-                no_Sell = ["not selling yet", "Over Sold", "contracts sold", "How many sold it?"]
+                no_Sell = ["not selling yet", "Over Sold", "contracts sold", "How many sold it?", 'No need to ask me if I’m selling']
                 if mtch is not None and not any([True if s in msg else False for s  in no_Sell]):
                     new_order['action'] = "STC"
-                    new_order["xQty"]  = parse_sell_amount(msg, asset)
+                    new_order["xQty"]  = parse_sell_ratio_amount(msg, asset)
 
         if len(list(new_order.values())):
             symbol, _ = parse_Symbol(msg, parse_action(msg))

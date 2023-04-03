@@ -19,7 +19,7 @@ from place_order import (make_BTO_lim_order, send_order,
                          make_STC_lim, make_Lim_SL_order, make_STC_SL)
 from disc_trader import AlertTrader
 from message_parser import parser_alerts, get_symb_prev_msg, combine_new_old_orders
-import config as cfg
+import config_example as cfg
 
 
 
@@ -192,6 +192,7 @@ class TDSession_test():
             self.order_log.loc[ix, "status"] = "FILLED"
             self.order_log.loc[ix, "filledQuantity"] = order["quantity"]
             close_OCO(ix)
+            
         def close_OCO(ix):
             if not pd.isnull(self.order_log.loc[ix, "OCO"]):
                 inx_oco = self.order_log.loc[ix, "OCO"]

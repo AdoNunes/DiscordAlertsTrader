@@ -204,7 +204,6 @@ class AlertTrader():
         act = order['action']
 
         while True:
-            question = f"{pars_ori} {price_now(symb, act)}"
             # If symbol not found, quote val returned is -1
             if price_now(symb, act, 1 ) == -1:
                 return "no", order, False
@@ -212,6 +211,7 @@ class AlertTrader():
             pdiff = (price_now(symb, act, 1 ) - ord_ori['price'])/ord_ori['price']
             pdiff = round(pdiff*100,1)
 
+            question = f"{pars_ori} {price_now(symb, act)}"
             if cfg.sell_current_price:
                 if pdiff < cfg.max_price_diff[order["asset"]]:
                     order['price'] = price_now(symb, act, 1)
@@ -219,26 +219,29 @@ class AlertTrader():
                     question += f"\n new price: {pars}"
                 else:
                     if cfg.auto_trade is True and order['action'] == "BTO":
-
                         print(Back.GREEN + f"BTO alert price diff too high: {pdiff}")
                         self.queue_prints.put([f"BTO alert price diff too high: {pdiff}, keeping original price", "", "green"])
                         # return "no", order, False
 
             if cfg.auto_trade is True:
                 if cfg.do_BTO is False and order['action'] == "BTO":
-                    print(Back.GREEN + f"BTO not accepted by config options")
-                    self.queue_prints.put([f"BTO not accepted by config options", "", "green"])
+                    print(Back.GREEN + f"BTO not accepted by config options: do_BTO = False")
+                    self.queue_prints.put([f"BTO not accepted by config options: do_BTO = False", "", "green"])
                     return "no", order, False
 
-                if 'uQty' not in order.keys():
-                    price = order['price']
-                    price = price*100 if order["asset"] == "option" else price
-                    order['uQty'] =  max(round(cfg.trade_capital/price), 1)
+                price = order['price']
+                price = price*100 if order["asset"] == "option" else price
 
-                    if price * order['uQty'] > cfg.trade_capital_max:
-                        print(Back.GREEN + f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}")
-                        self.queue_prints.put([f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}", "", "green"])
-                        return "no", order, False
+                if 'uQty' not in order.keys():
+                    if cfg.if_no_btc_qnty == "buy_one":
+                        order['uQty'] = 1                    
+                    elif cfg.if_no_btc_qnty == "trade_capital":
+                        order['uQty'] =  max(round(cfg.trade_capital/price), 1)
+
+                if price * order['uQty'] > cfg.trade_capital_max:
+                    print(Back.GREEN + f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}")
+                    self.queue_prints.put([f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}", "", "green"])
+                    return "no", order, False
                 return "yes", order, False
 
 
@@ -411,12 +414,11 @@ class AlertTrader():
                                                        make_BTO_lim_order)
             self.save_logs("port")
             if order_response is None:  #Assume trade not accepted
-                log_alert['action'] = "BTO-notAccepted"
-                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                log_alert['action'] = "BTO-notAccepted"                
+                self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
-                print(Back.GREEN + "BTO not accepted by user")
-                self.queue_prints.put(["BTO not accepted by user", "", "green"])
-
+                print(Back.GREEN + "BTO not accepted by user, order response is none")
+                self.queue_prints.put(["BTO not accepted by user, order response is none", "", "green"])
                 return
 
             order_status, order_info = self.get_order_info(order_id)
@@ -439,8 +441,8 @@ class AlertTrader():
                          "SL_mental" : order.get("SL_mental")
                          }
 
-            self.portfolio = self.portfolio.append(new_trade, ignore_index=True)
-
+            self.portfolio = pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)
+            
             if order_status == "FILLED":
                 ot, _ = find_last_trade(order, self.portfolio)
                 self.portfolio.loc[ot, "Price"] = order_info['price']
@@ -452,7 +454,7 @@ class AlertTrader():
             #Log portfolio, trades_log
             log_alert['action'] = "BTO"
             log_alert["portfolio_idx"] = len(self.portfolio) - 1
-            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+            self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
             self.save_logs()
 
 
@@ -466,7 +468,7 @@ class AlertTrader():
             self.save_logs("port")
             if order_response is None:  #Assume trade not accepted
                 log_alert['action'] = "BTO-Avg-notAccepted"
-                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
                 print(Back.GREEN + "BTO avg not accepted by user")
                 self.queue_prints.put(["BTO avg not accepted by user", "", "green"])
@@ -505,13 +507,13 @@ class AlertTrader():
             #Log portfolio, trades_log
             log_alert['action'] = "BTO-avg"
             log_alert["portfolio_idx"] = len(self.portfolio) - 1
-            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+            self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
             self.save_logs()
 
         elif order["action"] == "BTO":
             str_act = "Repeated BTO"
             log_alert['action'] = "BTO-Null-Repeated"
-            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+            self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
             self.save_logs(["alert"])
             print(Back.RED + str_act)
             self.queue_prints.put([str_act, "", "red"])
@@ -521,7 +523,7 @@ class AlertTrader():
             open_trade, _ = find_last_trade(order, self.portfolio, open_only=False)
             if open_trade is None:
                 log_alert['action'] = f"STC-alerted without position"
-                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs()
                 return
 
@@ -538,13 +540,13 @@ class AlertTrader():
 
                         log_alert['action'] = f"{STC}-alerterdAfterClose"
                         log_alert["portfolio_idx"] = open_trade
-                        self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                        self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                         self.save_logs()
                     return
 
             str_act = "STC without BTO, maybe alredy sold"
             log_alert['action'] = "STC-Null-notOpen"
-            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+            self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
             self.save_logs(["alert"])
             print(Back.RED + str_act)
             self.queue_prints.put([str_act, "", "red"])
@@ -574,7 +576,7 @@ class AlertTrader():
 
                         log_alert['action'] = f"{STC}-DoneBefore"
                         log_alert["portfolio_idx"] = open_trade
-                        self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                        self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                         self.save_logs(["alert"])
 
                         if order['xQty'] != 1:  # if partial and sold, leave
@@ -590,7 +592,7 @@ class AlertTrader():
                 self.queue_prints.put([str_STC, "", "red"])
                 log_alert['action'] = "STC-TooMany"
                 log_alert["portfolio_idx"] = open_trade
-                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
                 return
 
@@ -599,7 +601,7 @@ class AlertTrader():
             if position["BTO-Status"] == "CANCELED":
                 log_alert['action'] = "STC-already cancelled"
                 log_alert["portfolio_idx"] = open_trade
-                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
                 return
 
@@ -642,11 +644,11 @@ class AlertTrader():
 
                 log_alert['action'] = f"{STC}-DoneBefore"
                 log_alert["portfolio_idx"] = open_trade
-                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
                 return
 
-            if order['xQty'] == 1:
+            if order['xQty'] == 1 and order['uQty'] is None:
                 # Stop updater to avoid overlapping
                 self.update_paused = True
                 # Sell all and close waiting stc orders
@@ -676,10 +678,10 @@ class AlertTrader():
 
             if order_response is None:  # Assume trade rejected by user
                 log_alert['action'] = "STC-notAccepted"
-                self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+                self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
-                print(Back.GREEN + "STC not accepted by user")
-                self.queue_prints.put(["STC not accepted by user", "", "green"])
+                print(Back.GREEN + "STC not accepted by user, order response null")
+                self.queue_prints.put(["STC not accepted by user, order response null", "", "green"])
                 self.update_paused = False
                 return
 
@@ -696,7 +698,7 @@ class AlertTrader():
 
             #Log trades_log
             log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL"
-            self.alerts_log = self.alerts_log.append(log_alert, ignore_index=True)
+            self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
             self.save_logs()
 
             self.update_paused = False

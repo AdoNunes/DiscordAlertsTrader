@@ -6,12 +6,12 @@ Created on Fri Apr  9 09:53:44 2021
 @author: adonay
 """
 
-
+import os.path as op
 import pandas as pd
 from datetime import datetime
 import numpy as np
 from place_order import get_TDsession
-
+import config as cfg
 
 def short_date(datestr, infrm="%Y-%m-%d %H:%M:%S.%f", outfrm="%m/%d %H:%M"):
     return datetime.strptime(datestr, infrm).strftime(outfrm)
@@ -52,7 +52,7 @@ def round_int_flt(x, n=1):
 
 def format_exitplan(plan):
 
-    if plan == "" or plan == "{}":
+    if plan in ["", "{}"] or np.isnan(plan):
         return "None"
     plan = eval(plan)
 
@@ -66,7 +66,7 @@ def format_exitplan(plan):
     return plan
 
 def get_portf_data(exclude={}):
-    data = pd.read_csv("data/trader_portfolio.csv")
+    data = pd.read_csv(op.join(cfg.data_dir, "trader_portfolio.csv"))
     cols_out = ['Asset', 'Type', 'Avged', 'STC1-uQty', 'STC2-uQty', 'STC3-uQty',
                 'STC1-Price', 'STC2-Price', 'STC3-Price','STC1-Date', 'STC2-Date',
                 'STC3-Date', 'STC1-ordID', 'STC2-ordID', 'STC3-ordID', 'ordID']
@@ -139,8 +139,8 @@ def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
                   filt_cont='', chan_name="option_alerts", **kwargs):
     # Provide arguments to filter
 
-    data = pd.read_csv(f"data/{chan_name}_message_history.csv")
-    cols = ['Author', 'Date', 'Content']
+    data = pd.read_csv(op.join(cfg.data_dir , f"{chan_name}_message_history.csv"))
+    cols = ['Author', 'Date', 'Content', 'Parsed']
     data = data[cols]
 
     data = data[~data['Author'].str.contains('Xcapture')]
@@ -237,7 +237,7 @@ def order_info_pars(ord_dic, ord_list):
     qty_fll = f"{qty}/{fill}" if fill else f"{qty}"
     sing_ord.append(qty_fll)
     sing_ord.append(ord_dic['status'])
-    sing_ord.append(ord_dic['orderId'])
+    sing_ord.append(str(ord_dic['orderId']))
 
     for leg in ord_dic['orderLegCollection']:
         sing_ord_c = sing_ord.copy()

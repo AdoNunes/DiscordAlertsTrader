@@ -40,10 +40,10 @@ class Trades_Tracker():
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
             self.portfolio = pd.DataFrame(columns=[
-                "Date", "Symbol", "Trader", "isOpen", "Total PnL", "Asset", "Type", "Price", "Alert-Price",
+                "Date", "Symbol", "Trader", "isOpen", "Total PnL", "Asset", "Type", "Price", "Amount", "Alert-Price",
                 "Avged", "exit_plan", "Risk", "SL_mental"] + [
                     "STC%d-%s" % (i, v) for v in
-                    ["Alerted", "xQty", "Price", "PnL", "Date"]
+                    ["Alerted", "xQty", "uQty", "Price", "PnL", "Date"]
                     for i in range(1,4)] )
             self.portfolio.to_csv(self.portfolio_fname, index=False)
 
@@ -98,7 +98,6 @@ class Trades_Tracker():
             str_act = self.make_BTO(order)
             open_trade, isOpen = find_last_trade(order, self.portfolio)
 
-
         elif order["action"] == "BTO" and order['avg'] is not None:
             str_act = self.make_BTO_Avg(order, open_trade)
 
@@ -145,13 +144,11 @@ class Trades_Tracker():
         self.close_expired(open_trade)
         log_alert["portfolio_idx"] = open_trade
         log_alert["action"] = str_act
-        # reformat dict to dataframe as per new pandas and concat
-        log_alert.update({'index':[0]})
-        new_dt = pd.DataFrame.from_dict(log_alert)
-        new_dt.drop('index', axis=1, inplace=True)
-        
-        self.alerts_log = pd.concat((self.alerts_log,new_dt), axis=0, ignore_index=True)
+        self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
+
+        #save to csv
         self.portfolio.to_csv(self.portfolio_fname, index=False)
+        self.alerts_log.to_csv(self.alerts_log_fname, index=False)        
         return  str_act
 
 
@@ -169,20 +166,21 @@ class Trades_Tracker():
                      "Asset": order["asset"],
                      "Type": "BTO",
                      "Price": order["price"],
+                     "Amount": order['uQty'],
                      "Alert-Price": order.get("price_current"),
                      "exit_plan": str(exit_plan),
                      "Trader": order['Trader'],
                      "Risk": order['risk'],
-                     "SL_mental": order.get("SL_mental")
+                      "SL_mental": order.get("SL_mental")
                      }
         
-        # reformat dict to dataframe as per new pandas and concat
-        new_trade.update({'index':[0]})
-        new_dt = pd.DataFrame.from_dict(new_trade)
-        new_dt.drop('index', axis=1, inplace=True)
-        self.portfolio = pd.concat((self.portfolio,new_dt), axis=0, ignore_index=True)
+        self.portfolio =pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)
 
-        str_act = f"BTO {order['Symbol']} {order['price']}, Plan PT:{order['PT1']}, SL:{order['SL']}"
+        str_act = f"BTO {order['Symbol']} {order['price']}"
+        if order['PT1'] is not None:
+            str_act += f", Plan PT:{order['PT1']}"
+        if order['SL'] is not None:
+            str_act += f", SL:{order['SL']}"
 
         return str_act
 
@@ -251,16 +249,24 @@ class Trades_Tracker():
         self.portfolio.loc[open_trade, f"{STC}-Price"] = order.get("price")
         self.portfolio.loc[open_trade, f"{STC}-Alerted"] = order.get("price_current", "-")
         self.portfolio.loc[open_trade, f"{STC}-Date"] = order["Date"]
+        self.portfolio.loc[open_trade, f"{STC}-uQty"] = order['uQty']
         self.portfolio.loc[open_trade, f"{STC}-xQty"] = order['xQty']
         self.portfolio.loc[open_trade, f"{STC}-PnL"] = stc_price
 
         if stc_price == "none":
-            str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), no price provided"
+            str_STC = f"{STC} {order['Symbol']}  ({order['uQty']}), no price provided"
         else:
-            str_STC = f"{STC} {order['Symbol']}  ({order['xQty']}), {stc_price:.2f}%"
+            str_STC = f"{STC} {order['Symbol']}  ({order['uQty']}), {stc_price:.2f}%"
 
-        Qty_sold = self.portfolio.loc[open_trade,[f"STC{i}-xQty" for i in range(1, 4)]].sum()
-        if order['xQty'] == 1 or Qty_sold > .98:
+        # Qty_sold = self.portfolio.loc[open_trade,[f"STC{i}-xQty" for i in range(1, 4)]].sum()
+        # if order['xQty'] == 1 or Qty_sold > .98:
+        if self.portfolio.loc[open_trade, 'Amount'] is not None:
+            Qty_sold = self.portfolio.loc[open_trade,[f"STC{i}-uQty" for i in range(1, 4)]].sum()
+            Qty_bougt = self.portfolio.loc[open_trade, 'Amount']
+        else:
+            Qty_sold = self.portfolio.loc[open_trade,[f"STC{i}-xQty" for i in range(1, 4)]].sum()
+            Qty_bougt = 1
+        if Qty_sold >= Qty_bougt:
             str_STC = str_STC + " Closed"
             self.portfolio.loc[open_trade, "isOpen"] = 0
 
@@ -298,12 +304,14 @@ class Trades_Tracker():
                     if pd.isnull(trade[f"STC{stci}-xQty"]):
                         STC = f"STC{stci}"
                         break
-
+                    
+                uQty = trade["Amount"] - trade[[f"STC{i}-xQty" for i in range(1, stci)]].sum()                
                 #Log portfolio
                 self.portfolio.loc[trade_inx, STC + "-Status"] = 'EXPIRED'
                 self.portfolio.loc[trade_inx, STC + "-Price"] = 0
                 self.portfolio.loc[trade_inx, STC + "-Date"] = current_date
                 self.portfolio.loc[trade_inx, STC + "-xQty"] = 1
+                self.portfolio.loc[trade_inx, STC + "-uQty"] = uQty
                 self.portfolio.loc[trade_inx, STC + "-PnL"] = -100
                 self.portfolio.loc[trade_inx, "isOpen"] = 0
 

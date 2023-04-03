@@ -5,24 +5,26 @@ Created on Sat Apr  3 18:18:43 2021
 
 @author: adonay
 """
-import PySimpleGUIQt as sg
+
 import pandas as pd
+import numpy as np
 from datetime import datetime
 from place_order import get_TDsession
 import gui_generator as gg
 import gui_layouts as gl
-from PySide2.QtGui import QPainter, QPixmap, QPen, QColor
 from PySide2.QtWidgets import QHeaderView
 from real_time_exporter import AlertsListner
 import config as cfg
 import queue
+import PySimpleGUIQt as sg
 
 TDSession = get_TDsession()
 
-# sg.SetOptions(font=("Courier New", -13))#, background_color="whitesmoke",
+# sg.theme('Dark Blue 3')
+# sg.SetOptions(font=("Helvitica", "11"),  background_color="whitesmoke")#,,
                 # element_padding=(0, 0), margins=(1, 1))
 
-fnt_b = ("Helvitica", "11")
+fnt_b = ("Helvitica", "9")
 fnt_h = ("Helvitica", "10")
 
 ly_cons, MLINE_KEY = gl.layout_console()
@@ -37,7 +39,7 @@ def send_alert(subm_msg):
 
 
 gui_data = {}
-gui_data['port'] = gg.get_portf_data()
+gui_data['port'] = gg.get_portf_data()  # gui_data['port'] [0] can't be empty
 ly_port = gl.layout_portfolio(gui_data['port'], fnt_b, fnt_h)
 
 chns = cfg.CHN_NAMES
@@ -49,12 +51,13 @@ for chn in chns:
 
 ly_accnt = gl.layout_account(TDSession, fnt_b, fnt_h)
 
-layout = [[sg.TabGroup([[sg.Tab("Console", ly_cons)],
+layout = [[sg.TabGroup([
+                        [sg.Tab("Console", ly_cons)],
                         [sg.Tab('Portfolio', ly_port)],
                         [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],
                         [sg.Tab("Account", ly_accnt)]
-                        ])],
-          [sg.Input(default_text="User:Me, Asset:stock, STC AAA @2.5 partial",
+                        ],title_color='black')],
+          [sg.Input(default_text="Author, STC AAA @2.5 partial",
                     size= (140,1.5), key="-subm-msg",
                     tooltip="User: any, Asset: {stock, option}"),
 
@@ -167,7 +170,12 @@ while True:
         gl.update_acct_ly(TDSession, window)
 
     elif event == "-subm-alert":
-        print(values['-subm-msg'])
+        print(values['-subm-msg'])        
+        author, msg = values['-subm-msg'].split(', ')
+        date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        vals = np.array([date, author, msg]).reshape(1,-1)
+        new_msg = pd.DataFrame(vals, columns=["Date", 'Author', "Content"])
+        alistner.new_msg_acts(new_msg, "gui_msg", "None")
 
     try:
         event_feedb = trade_events.get(False)

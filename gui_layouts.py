@@ -25,6 +25,12 @@ def layout_console():
 
 
 def layout_portfolio(data_n_headers, font_body, font_header):
+    
+    if data_n_headers[0] == []: 
+        values = [""*21 ]
+    else:
+        values=data_n_headers[0]
+    
     layout = [
          [sg.Column([[sg.Text("Exclude: "),
                       sg.Checkbox("Closed", key="-port-Closed", enable_events=True),
@@ -34,7 +40,7 @@ def layout_portfolio(data_n_headers, font_body, font_header):
                       sg.Checkbox("Pos PnL", key="-port-PosPnL", enable_events=True),
                       ],
              [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-portfolio_")]])],
-         [sg.Column([[sg.Table(values=data_n_headers[0],
+         [sg.Column([[sg.Table(values=values,
                         headings=data_n_headers[1],
                         display_row_numbers=True,
                         auto_size_columns=True,

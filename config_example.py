@@ -11,18 +11,18 @@ path_dotnet = 'C:\\Program Files\\dotnet'
 path_dll = "DiscordExtractor/DiscordChatExporter.Cli.dll"
 data_dir = "data/"
 
-discord_token = "token0Y03e..."
+discord_token = "NDMzMzMzMzA3NTM5ODQ5MjQ2.GH1zuZ.DdpeddUKUoEm7R9fUWtBIr66EjkQvAnibie-mU"
 
-channel_IDS = {"stock_alerts": 6666,
-               "option_alerts": 4444,
-               "options_chat": 5555}
+channel_IDS = {"1k-group": 961100794403373106,
+               "spx": 1089662076735201306,
+               "500_challenge": 1058040359038492712}
 
 
-CHN_NAMES = ["stock_alerts","option_alerts"] 
+CHN_NAMES = ["1k-group","spx", "500_challenge"] 
 
 authors_subscribed = ["ScaredShirtless#0001"]
 
-UPDATE_PERIOD = 20  # how often will check for new Discord messages
+UPDATE_PERIOD = 20  # how often will check for new Discord messages in sec
 
 
 SIMULATE = False
@@ -46,14 +46,17 @@ price_as_mark = True
 max_price_diff = {"stock": 5, "option":6} # percent
 
 # All stop loss have a % stop lim
-default_stop_lim = 3 # percent
+default_stop_lim = 10 # percent Not implemented
 
 #
-auto_trade = True
+auto_trade = False
+if_no_btc_qnty = "buy_one" # or "trade_capital"
 trade_capital = 300
-trade_capital_max = 800
+trade_capital_max = 1000  # max allowed per one trade
+
 
 ## Rules
 
 # Create STC lim with extended hours
 STC_anytime = True
+

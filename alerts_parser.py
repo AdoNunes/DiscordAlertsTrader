@@ -79,6 +79,7 @@ def make_BTO(order, trades_log):
         "BTO-Date": order['date'],
         "Symbol" : order['Symbol'],
         "BTO": order['price'],
+        "Amount" : order.get("xQty"),
         "Planned_PTs": planned,
         "Planned_SL": order['SL']
         }, ignore_index=True)
@@ -169,7 +170,7 @@ trade_log_file = "data/trade_history.csv"
 # if op.exists(trade_log_file):
 #     trades_log = pd.read_csv(trade_log_file)
 # else:
-trades_log = pd.DataFrame(columns = ["BTO-Date", "Symbol", "Open", "BTO", "BTO-avg",
+trades_log = pd.DataFrame(columns = ["BTO-Date", "Symbol", "Open", "BTO", "Amount", "BTO-avg",
                                          "Planned_PTs", "Planned_SL",
                                          "STC1", "STC1-Qty", "STC1-PnL","STC1-Date",
                                          "STC2", "STC2-Qty", "STC2-PnL","STC2-Date",

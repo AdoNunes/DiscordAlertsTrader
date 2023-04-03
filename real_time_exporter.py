@@ -17,7 +17,7 @@ import queue
 import pandas as pd
 from datetime import datetime, timedelta
 from message_parser import parser_alerts, get_symb_prev_msg, combine_new_old_orders
-from config import (path_dll, data_dir, CHN_NAMES, chn_IDS, discord_token, UPDATE_PERIOD, path_dotnet)
+from config import (path_dll, data_dir, CHN_NAMES, channel_IDS, discord_token, UPDATE_PERIOD, path_dotnet)
 import config as cfg
 from disc_trader import AlertTrader
 import threading
@@ -27,10 +27,12 @@ import json
 from trader_tracker import Trades_Tracker
 
 
+if not os.path.exists(data_dir):
+    os.mkdir(data_dir)
 
 init(autoreset=True)
 
-def updt_chan_hist(df_hist, path_update, path_hist):
+def updt_chan_hist(df_hist, path_update):
 
     last_date = df_hist['Date'].max()
 
@@ -38,8 +40,8 @@ def updt_chan_hist(df_hist, path_update, path_hist):
     if not pd.isna(last_date):
         new_msg = new_msg.loc[new_msg['Date']>last_date]
 
+    
     df_hist = pd.concat([df_hist, new_msg],axis=0, ignore_index=True)
-    df_hist.to_csv(path_hist, index=False)
     return df_hist, new_msg
 
 
@@ -116,16 +118,11 @@ def dm_message(msg, names_all):
     if "author:" in msg or "A:" in msg:
         re_author = re.compile("(?:author|A):[ ]?(\w+)")
         auth_inf = re_author.search(msg)
-
         author = closest_fullname_match(auth_inf.groups(), names_all)
-
         re_author = re.compile("ms:[ ]?(\w+)")
-
         content = msg[auth_inf.span()[1]+1:]
-
     else:
         author = "Me"
-
         content = msg
 
     if "asset:" in msg or "AS:" in msg:
@@ -141,21 +138,28 @@ def dm_message(msg, names_all):
 def send_sh_cmd(cmd):
     "takes command string, returns true if no error"
     env = os.environ
-    env["PATH"] =  env["PATH"][:-1]+ f"{path_dotnet};."
-    spro = subprocess.Popen(cmd, shell=True, cwd=os.getcwd(), env=env, 
+    if path_dotnet not in env["PATH"] :
+        env["PATH"] =  env["PATH"]+ f"{path_dotnet};."
+    try:
+        spro = subprocess.Popen(cmd, shell=True, cwd=os.getcwd(), env=env, 
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE
                             )
+    except OSError as e:
+        print(e)
+        return False
     # Capture if read new messages
     spro_err = str(spro.communicate()[1])
     if len(spro_err)>3:
         if spro_err == "b'Export failed.\\r\\n'":
             return False
+        if "'dotnet' is not recognized" in spro_err:
+            return False
         print(spro_err)
     return False if "ERROR" in spro_err else True
 
 def read_json(file_path):
-    with open(file_path, "r") as f:
+    with open(file_path, "r", errors='ignore') as f:
         data = json.load(f)
     return data
 
@@ -202,6 +206,12 @@ class AlertsListner():
         self.listening = False
         self.load_data()
         
+        self.logger_fname = f"{data_dir}/log_parsed_messages.csv"
+        if os.path.exists(self.logger_fname):
+            self.logger = pd.read_csv(self.logger_fname)
+        else:  
+            self.logger = pd.DataFrame(columns=['AuthorID', 'Author', 'Date', "Message", "Parsed"])
+        
         if threaded:
             self.thread =  threading.Thread(target=self.listent_trade_alerts)
             self.thread.start()
@@ -212,11 +222,13 @@ class AlertsListner():
         for ch in cfg.CHN_NAMES:
             dt_fname = f"{data_dir}/{ch}_message_history.csv"
             if not os.path.exists(dt_fname):
-                ch_dt = pd.DataFrame(columns=['AuthorID', 'Author', 'Date', 'Content', 'Attachments', 'Reactions'])
+                ch_dt = pd.DataFrame(columns=['AuthorID', 'Author', 'Date', 'Content', 'Attachments', 'Reactions', 'Parsed'])
                 ch_dt.to_csv(dt_fname, index=False)
                 ch_dt.to_csv(f"{data_dir}/{ch}_message_history_temp.csv", index=False)
             else:
                 ch_dt = pd.read_csv(dt_fname)
+                if "Parsed" not in ch_dt.columns:
+                    ch_dt['Parsed'] = pd.Series(dtype='str')
 
             self.chn_hist_fname[ch] = dt_fname
             self.chn_hist[ch]= ch_dt
@@ -255,30 +267,28 @@ class AlertsListner():
     def listent_trade_alerts(self):
 
         self.listening = True
-
         while self.listening:
-
             tic = datetime.now()
             for chn_i in range(len(self.CHN_NAMES)):
                 chn = self.CHN_NAMES[chn_i]
 
-                out_file = self.chn_hist_fname[chn].replace('.cvs', "temp.csv")
+                out_file = self.chn_hist_fname[chn].replace('.csv', "_temp.csv")
                 
                 # Decide from when read alerts 
                 time_after = self.chn_hist[chn]['Date'].max()
                 if pd.isna(time_after):
-                    time_after = (datetime.now() - timedelta(weeks=2)).strftime(self.time_strf)
+                    time_after = (datetime.now() - timedelta(weeks=20)).strftime(self.time_strf)
                 else:
                     new_t = min(59.99, float(time_after[-9:]) + .1)
                     time_after = time_after[:-9] + f"{new_t:.6f}"
                 
-                cmd_sh = self.cmd.format(chn_IDS[chn], time_after, out_file)
+                cmd_sh = self.cmd.format(channel_IDS[chn], time_after, out_file)
                 new_msgs = send_sh_cmd(cmd_sh)
 
                 if not new_msgs:
                     continue
 
-                df_update, new_msg = updt_chan_hist(self.chn_hist[chn], out_file, self.chn_hist_fname[chn])
+                df_update, new_msg = updt_chan_hist(self.chn_hist[chn], out_file )
                 self.chn_hist[chn] = df_update
 
                 nmsg = len(new_msg)
@@ -287,8 +297,11 @@ class AlertsListner():
                     self.queue_prints.put([f"{dnow} | {chn}: got {nmsg} new msgs:", "gray"])
                     print(Style.DIM + f"{dnow} | {chn}: got {nmsg} new msgs:")
 
-                    self.new_msg_acts(new_msg, chn, out_file)
+                    self.new_msg_acts(new_msg, chn, self.chn_hist_fname[chn])
 
+                # save new_msg
+                self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
+                
             toc = datetime.now()
             tictoc = (toc-tic).total_seconds()
 
@@ -351,10 +364,10 @@ class AlertsListner():
                         print(Fore.GREEN + "Updating trade plan msg:")
 
                 time_after = self.chn_hist[chn]['Date'].max()
-                json_msg = self.get_edited_msgs(chn_IDS[chn], time_after, out_file)
+                # json_msg = self.get_edited_msgs(channel_IDS[chn], time_after, out_file)
 
-                new_alerts, _ = msg_update_alert(self.chn_hist[chn], json_msg, asset)
-
+                # new_alerts, _ = msg_update_alert(self.chn_hist[chn], json_msg, asset)
+                new_alerts = []
                 if new_alerts == []:
                     self.queue_prints.put(["\t \t MSG NOT UNDERSTOOD", "grey"])
                     print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
@@ -368,6 +381,9 @@ class AlertsListner():
                     print(Fore.GREEN + alert[2])
                     pars, order, msg_str = alert
 
+                    order_date = datetime.strptime(order["Date"], "%Y-%m-%d %H:%M:%S.%f")
+                    date_diff = order_date - datetime.now()
+                    live_alert = True if date_diff.seconds < 60 else False
                     self.tracker.trade_alert(order, pars, msg_str, live_alert=True)
 
                     if order['Trader'] in cfg.authors_subscribed:
@@ -391,6 +407,9 @@ class AlertsListner():
                     order["Trader"] = msg['Author']
                     self.Altrader.new_trade_alert(order, pars,\
                           msg['Content'])
+            if self.chn_hist.get(chn) is not None:
+                self.chn_hist[chn]['Parsed'].iloc[ix] = pars
+        
 
 
 
