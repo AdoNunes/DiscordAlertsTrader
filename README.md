@@ -36,6 +36,7 @@ Discord token to access discord message chats:
 ```
 discord_token = "token0Y03e..."
 ```
+to get discord token and channels IDs follow the instructions in: https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Token-and-IDs.md
 
 Channel ID of the channel were trading alers are messaged:
 ```
