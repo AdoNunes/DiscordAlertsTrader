@@ -7,13 +7,8 @@ Created on Tue Apr 27 11:54:36 2021
 """
 
 import PySimpleGUIQt as sg
-import pandas as pd
-from datetime import datetime
-from gui_generator import (get_portf_data, get_hist_msgs)
-from place_order import get_TDsession
 import gui_generator as gg
-from PySide2.QtGui import QPainter, QPixmap, QPen, QColor
-from PySide2.QtWidgets import QHeaderView
+
 
 
 def layout_console():
@@ -109,7 +104,7 @@ def layout_account(TDSession, font_body, font_header):
 
     acc_inf, ainf = gg.get_acc_bals(TDSession)
     pos_tab, pos_headings = gg.get_pos(acc_inf)
-    ord_tab, ord_headings, cols= gg.get_orders(acc_inf)
+    ord_tab, ord_headings, _= gg.get_orders(acc_inf)
 
     layout = [[sg.Column([
         [tt_acnt("Account ID:"), tt_acnt(ainf["id"], font_body[1], 0, 0, font_body[0]),
@@ -142,8 +137,8 @@ def layout_account(TDSession, font_body, font_header):
 def update_acct_ly(TDSession, window):
 
     acc_inf, ainf = gg.get_acc_bals(TDSession)
-    pos_tab, pos_headings = gg.get_pos(acc_inf)
-    ord_tab, ord_headings, cols= gg.get_orders(acc_inf)
+    pos_tab, _ = gg.get_pos(acc_inf)
+    ord_tab, _, _= gg.get_orders(acc_inf)
 
     window.Element("acc_b").update(ainf["balance"])
     window.Element("acc_c").update(ainf["cash"])

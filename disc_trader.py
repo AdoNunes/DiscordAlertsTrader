@@ -14,13 +14,11 @@ from datetime import datetime, date
 import time
 import config as cfg
 import threading
-from pprint import pprint
-from td.exceptions import GeneralError, ServerError
 from place_order import (get_TDsession, make_BTO_lim_order, send_order,
                          make_STC_lim,
                          make_Lim_SL_order, make_STC_SL)
 # import dateutil.parser.parse as date_parser
-from colorama import Fore, Back, Style
+from colorama import Fore, Back
 from message_parser import parse_exit_plan, set_exit_price_type
 import queue
 
@@ -230,6 +228,9 @@ class AlertTrader():
                     return "no", order, False
 
                 price = order['price']
+                if price == 0:
+                    print(Back.GREEN + f"Order not accepted price is 0")
+                    return "no", order, False
                 price = price*100 if order["asset"] == "option" else price
 
                 if 'uQty' not in order.keys():

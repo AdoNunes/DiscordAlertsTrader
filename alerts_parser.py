@@ -1,7 +1,5 @@
 import pandas as pd
-import re
 import numpy as np
-import os.path as op
 from message_parser import parser_alerts
 
 def get_author_alerts():

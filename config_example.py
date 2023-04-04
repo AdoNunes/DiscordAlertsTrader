@@ -11,11 +11,11 @@ path_dotnet = 'C:\\Program Files\\dotnet'
 path_dll = "DiscordExtractor/DiscordChatExporter.Cli.dll"
 data_dir = "data/"
 
-discord_token = "NDMzMzMzMzA3NTM5ODQ5MjQ2.GH1zuZ.DdpeddUKUoEm7R9fUWtBIr66EjkQvAnibie-mU"
+discord_token = "NDMzM..."
 
-channel_IDS = {"1k-group": 961100794403373106,
-               "spx": 1089662076735201306,
-               "500_challenge": 1058040359038492712}
+channel_IDS = {"1k-group": 96110...,
+               "spx": 1089662076...,
+               "500_challenge": 105804...}
 
 
 CHN_NAMES = ["1k-group","spx", "500_challenge"] 

@@ -1,6 +1,6 @@
-td-ameritrade-python-api==0.3.5
-PySimpleGUIQt==0.35
-pandas==1.4.2
-numpy==1.22
-colorama=0.4.4
-pprintpp=0.4
+td-ameritrade-python-api
+PySimpleGUIQt
+pandas
+numpy
+colorama
+pprintpp

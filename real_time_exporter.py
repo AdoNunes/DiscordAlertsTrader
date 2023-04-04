@@ -6,14 +6,11 @@ Created on Wed Feb 10 17:47:06 2021
 @author: adonay
 """
 
-from calendar import month
 import os
-import ssl
 import numpy as np
 import subprocess
 import time
 import re
-import queue
 import pandas as pd
 from datetime import datetime, timedelta
 from message_parser import parser_alerts, get_symb_prev_msg, combine_new_old_orders

@@ -10,7 +10,6 @@ import os.path as op
 import pandas as pd
 from datetime import datetime
 import numpy as np
-from place_order import get_TDsession
 import config as cfg
 
 def short_date(datestr, infrm="%Y-%m-%d %H:%M:%S.%f", outfrm="%m/%d %H:%M"):
