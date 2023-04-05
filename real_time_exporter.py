@@ -364,6 +364,8 @@ class AlertsListner():
                 if new_alerts == []:
                     self.queue_prints.put(["\t \t MSG NOT UNDERSTOOD", "grey"])
                     print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
+                    msg['Parsed'] = ""
+                    self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
                     continue
 
                 self.queue_prints.put(["Updating edited msgs", "green"])
