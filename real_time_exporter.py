@@ -36,10 +36,7 @@ def updt_chan_hist(df_hist, path_update):
     new_msg = pd.read_csv(path_update)
     if not pd.isna(last_date):
         new_msg = new_msg.loc[new_msg['Date']>last_date]
-
-    
-    df_hist = pd.concat([df_hist, new_msg],axis=0, ignore_index=True)
-    return df_hist, new_msg
+    return  new_msg
 
 
 def update_edited_msg(df_hist, json_msg):
@@ -285,8 +282,7 @@ class AlertsListner():
                 if not new_msgs:
                     continue
 
-                df_update, new_msg = updt_chan_hist(self.chn_hist[chn], out_file )
-                self.chn_hist[chn] = df_update
+                new_msg = updt_chan_hist(self.chn_hist[chn], out_file )
 
                 nmsg = len(new_msg)
                 if nmsg:
@@ -379,8 +375,9 @@ class AlertsListner():
                     pars, order, msg_str = alert
 
                     order_date = datetime.strptime(order["Date"], "%Y-%m-%d %H:%M:%S.%f")
-                    date_diff = order_date - datetime.now()
-                    live_alert = True if date_diff.seconds < 60 else False
+                    date_diff = datetime.now() - order_date
+                    print(f"time difference is {date_diff.seconds}")
+                    live_alert = True if date_diff.seconds < 90 else False
                     self.tracker.trade_alert(order, pars, msg_str, live_alert=True)
 
                     if order['Trader'] in cfg.authors_subscribed:
@@ -396,16 +393,17 @@ class AlertsListner():
                 order['Trader'] = msg['Author']
                 order["Date"] = msg["Date"]
                 order_date = datetime.strptime(order["Date"], "%Y-%m-%d %H:%M:%S.%f")
-                date_diff = order_date - datetime.now()
-                live_alert = True if date_diff.seconds < 60 else False
-                self.tracker.trade_alert(order, pars, msg['Content'],
-                                         live_alert=live_alert)
+                date_diff = datetime.now() - order_date
+                print(f"time difference is {date_diff.seconds}")
+                live_alert = True if date_diff.seconds < 90 else False
+                self.tracker.trade_alert(order, pars, msg['Content'], live_alert=live_alert)
                 if msg['Author'] in cfg.authors_subscribed:
                     order["Trader"] = msg['Author']
-                    self.Altrader.new_trade_alert(order, pars,\
-                          msg['Content'])
+                    self.Altrader.new_trade_alert(order, pars, msg['Content'])
             if self.chn_hist.get(chn) is not None:
-                self.chn_hist[chn]['Parsed'].iloc[ix] = pars
+                msg['Parsed'] = pars
+                self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
+
         
 
 

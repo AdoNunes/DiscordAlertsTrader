@@ -206,7 +206,8 @@ class AlertTrader():
             if price_now(symb, act, 1 ) == -1:
                 return "no", order, False
 
-            pdiff = (price_now(symb, act, 1 ) - ord_ori['price'])/ord_ori['price']
+            current_price = price_now(symb, act, 1 )
+            pdiff = (current_price - ord_ori['price'])/ord_ori['price']
             pdiff = round(pdiff*100,1)
 
             question = f"{pars_ori} {price_now(symb, act)}"
@@ -217,8 +218,9 @@ class AlertTrader():
                     question += f"\n new price: {pars}"
                 else:
                     if cfg.auto_trade is True and order['action'] == "BTO":
-                        print(Back.GREEN + f"BTO alert price diff too high: {pdiff}")
-                        self.queue_prints.put([f"BTO alert price diff too high: {pdiff}, keeping original price", "", "green"])
+                        str_pars = f"BTO alert price diff too high: {pdiff}% at {current_price}, keeping original price of {ord_ori['price']}"
+                        print(Back.GREEN + str_pars)
+                        self.queue_prints.put([str_pars, "", "green"])
                         # return "no", order, False
 
             if cfg.auto_trade is True:
@@ -423,9 +425,15 @@ class AlertTrader():
                 return
 
             order_status, order_info = self.get_order_info(order_id)
-
+            if order_status == 'REJECTED':                
+                log_alert['action'] = "REJECTED"
+                self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
+                self.save_logs(["alert"])
+                print(Back.GREEN + "BTO REJECTED")
+                self.queue_prints.put(["BTO REJECTED", "", "green"])
+                return
+            
             exit_plan = parse_exit_plan(order)
-
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
                          'isOpen': 1,
@@ -448,7 +456,6 @@ class AlertTrader():
                 ot, _ = find_last_trade(order, self.portfolio)
                 self.portfolio.loc[ot, "Price"] = order_info['price']
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
-
             print(Back.GREEN + f"BTO {order['Symbol']} executed @ {order_info['price']}. Status: {order_status}")
             self.queue_prints.put([f"BTO {order['Symbol']} executed. Status: {order_status}", "", "green"])
 
