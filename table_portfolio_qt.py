@@ -127,7 +127,7 @@ port_exc = {"Cancelled":False,
             "PosPnL":False}
 
 while True:
-    event, values = window.read(.2)#.1)
+    event, values = window.read(1)#.1)
 
     if event == sg.WINDOW_CLOSED:
         break

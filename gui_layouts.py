@@ -118,7 +118,8 @@ def layout_account(TDSession, font_body, font_header):
              [sg.T("Positions", font=(font_header[0], font_header[1], 'bold', "underline"),size=(20,1.5))],
              [sg.Table(values=pos_tab, headings=pos_headings,justification='left',
               display_row_numbers=False, text_color='black', font=font_body,
-               auto_size_columns=True,header_font=font_header,
+               auto_size_columns=True,
+               header_font=font_header,
               alternating_row_color='grey',
               # col_widths=[30,300, 1300],
               # row_height=20,
@@ -128,7 +129,8 @@ def layout_account(TDSession, font_body, font_header):
              [sg.T("Orders",font=(font_header[0], font_header[1], 'bold', "underline"),size=(20,1.5))],
              [sg.Table(values=ord_tab, headings=ord_headings,justification='left',
               display_row_numbers=False, text_color='black', font=font_body,
-              auto_size_columns=True, header_font=font_header,
+              auto_size_columns=True, 
+              header_font=font_header,
               key='_orders_')]])
             ]]
     return layout

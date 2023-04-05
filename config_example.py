@@ -13,9 +13,9 @@ data_dir = "data/"
 
 discord_token = "NDMzM..."
 
-channel_IDS = {"1k-group": 96110...,
-               "spx": 1089662076...,
-               "500_challenge": 105804...}
+channel_IDS = {"1k-group": 96110,
+               "spx": 1089662076,
+               "500_challenge": 105804}
 
 
 CHN_NAMES = ["1k-group","spx", "500_challenge"] 
