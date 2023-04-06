@@ -228,7 +228,8 @@ def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
 
 def get_acc_bals(TDSession):
     acc_inf = TDSession.get_accounts(TDSession.accountId, ['orders','positions'])
-
+    if acc_inf is None:  # if grabes new access token return None, try again
+        acc_inf = TDSession.get_accounts(TDSession.accountId, ['orders','positions'])
     accnt= {"id" : acc_inf['securitiesAccount']['accountId'],
         "balance": acc_inf['securitiesAccount']['currentBalances']['liquidationValue'],
         "cash": acc_inf['securitiesAccount']['currentBalances']['cashBalance'],

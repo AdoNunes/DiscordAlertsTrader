@@ -118,8 +118,8 @@ for chn in chns:
 
 event, values = window.read(.5)
 
-# trade_events = queue.Queue(maxsize=20)
-# alistner = AlertsListner(trade_events)
+trade_events = queue.Queue(maxsize=20)
+alistner = AlertsListner(trade_events)
 
 
 
@@ -196,16 +196,16 @@ while True:
         date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
         vals = np.array([date, author, msg]).reshape(1,-1)
         new_msg = pd.DataFrame(vals, columns=["Date", 'Author', "Content"])
-        # alistner.new_msg_acts(new_msg, "gui_msg", "None")
+        alistner.new_msg_acts(new_msg, "gui_msg", "None")
 
-    # try:
-    #     event_feedb = trade_events.get(False)
-    #     mprint_queue(event_feedb)
+    try:
+        event_feedb = trade_events.get(False)
+        mprint_queue(event_feedb)
 
-    # except queue.Empty:
-    #    pass
+    except queue.Empty:
+       pass
 
 
 window.close()
-# alistner.close()
+alistner.close()
 
