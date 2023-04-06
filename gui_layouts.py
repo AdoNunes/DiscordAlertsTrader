@@ -50,6 +50,38 @@ def layout_portfolio(data_n_headers, font_body, font_header):
     return layout
 
 
+def layout_traders(data_n_headers, font_body, font_header):
+    
+    if data_n_headers[0] == []: 
+        values = [""*21 ]
+    else:
+        values=data_n_headers[0]
+    
+    layout = [
+         [sg.Column([[sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'track_filt_author', size=(20, 1))],
+                     [sg.Text("Exclude: "),
+                      sg.Checkbox("Closed", key="-track-Closed", enable_events=True),
+                      sg.Checkbox("Open", key="-track-Open", enable_events=True),
+                      sg.Checkbox("Neg PnL", key="-track-NegPnL", enable_events=True),
+                      sg.Checkbox("Pos PnL", key="-track-PosPnL", enable_events=True),
+                      ],
+             [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-track_")]])
+                    ],
+         [sg.Column([[sg.Table(values=values,
+                        headings=data_n_headers[1],
+                        display_row_numbers=True,
+                        auto_size_columns=True,
+                        header_font=font_header,
+                        text_color='black',
+                        font=font_body,
+                        justification='left',
+                        alternating_row_color='grey',
+                        # num_rows=30, #len(data_n_headers[0]),
+                        key='_track_'), sg.Stretch()]])]
+         ]
+    return layout
+
+
 def layout_chan_msg(chn, data_n_headers, font_body, font_header):
     layout = [
         [sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'{chn}_filt_author', size=(20, 1)),

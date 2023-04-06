@@ -132,7 +132,72 @@ def get_portf_data(exclude={}):
     return data, header_list#, tpnl, isopen
 
 
-hists = ['option_alerts_message_history.csv']
+def get_tracker_data(exclude={}):
+    data = pd.read_csv(op.join(cfg.data_dir, "trade_tracker_portfolio.csv"))
+    cols_out = ['Asset', 'Type', 'Avged', 'STC1-xQty', 'STC2-xQty', 'STC3-xQty',
+                ]
+
+    cols = [c for c in data.columns if c not in cols_out]
+
+    data = data[cols]
+
+    data['Date'] = data['Date'].apply(lambda x: short_date(x))
+
+    data['exit_plan']= data['exit_plan'].apply(lambda x: format_exitplan(x))
+    data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
+    alerts =  (~data[['STC1-Alerted', 'STC2-Alerted', 'STC3-Alerted']].isna()).sum(1)
+    data["Alerted"]= alerts.astype(int)
+
+    usold = np.nansum([data[f"STC{i}-uQty"] for i in range(1,4)], 0)
+    pnl =  np.nansum([(data[f"STC{i}-PnL"]*data[f"STC{i}-uQty"])/usold for i in range(1,4)], 0)
+    data["PnL"]  = pnl
+    data["PnL"] = pd_col_str_frmt(data["PnL"], 1)
+
+    for i in range(1,4):
+        # Get xQty relative PnL
+        data[f"STC{i}-$PnL"] = data[f'STC{i}-PnL']* (data[f'STC{i}-uQty'] - data['Price'])
+        data[f"STC{i}-$PnL-alert"] = data[f'STC{i}-PnL']* (data[f'STC{i}-uQty'] - data['Alert-Price'])
+        data[f"STC{i}-qPnL"] = data[f'STC{i}-PnL']* data[f'STC{i}-uQty']
+        # Format nums to str for left centered col
+        data[f'STC{i}-PnL'] = pd_col_str_frmt(data[f'STC{i}-PnL'])
+        data[f'STC{i}-uQty'] = pd_col_str_frmt(data[f'STC{i}-uQty'])
+
+
+    data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
+
+    frm_cols = ['Price', 'Alert-Price', 'Amount', 'Alerted']
+    for cfrm in frm_cols:
+        data[cfrm] = pd_col_str_frmt(data[cfrm])
+
+    cols = ['isOpen', "PnL", 'Date', 'Symbol', 'Trader', 'Price', 'Alert-Price', 'Amount', 'Alerted', 
+        'STC1-Alerted','STC2-Alerted', 'STC3-Alerted', 'STC1-uQty', 'STC2-uQty', 'STC3-uQty',
+       'STC1-Price', 'STC2-Price', 'STC3-Price', 'STC1-PnL', 'STC2-PnL',
+       'STC3-PnL', 'STC1-Date', 'STC2-Date', 'STC3-Date',
+        ]
+    data = data[cols]
+    data.fillna("", inplace=True)
+    header_list = data.columns.tolist()
+    header_list = [d.replace('STC', '') for d in header_list]
+
+    if len(exclude):
+        for k, v in exclude.items():
+            if k == "Closed" and v:
+                data = data[data["isOpen"] !="No"]
+            elif k == "Open" and v:
+                data = data[data["isOpen"] !="Yes"]
+            elif k == "NegPnL" and v:
+                pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
+                data = data[pnl > 0 ]
+            elif k == "PosPnL" and v:
+                pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
+                data = data[pnl < 0 ]
+
+    data = data.values.tolist()
+    # tpnl = [[i] for i in data["PnL"].values.tolist()]
+    # isopen = [[i] for i in isopen.values.tolist()]
+    return data, header_list#, tpnl, isopen
+
+
 
 def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
                   filt_cont='', chan_name="option_alerts", **kwargs):

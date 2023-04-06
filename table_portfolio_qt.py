@@ -42,6 +42,9 @@ gui_data = {}
 gui_data['port'] = gg.get_portf_data()  # gui_data['port'] [0] can't be empty
 ly_port = gl.layout_portfolio(gui_data['port'], fnt_b, fnt_h)
 
+gui_data['trades'] = gg.get_tracker_data()  # gui_data['port'] [0] can't be empty
+ly_track = gl.layout_traders(gui_data['trades'], fnt_b, fnt_h)
+
 chns = cfg.CHN_NAMES
 ly_chns = []
 for chn in chns:
@@ -55,6 +58,7 @@ layout = [[sg.TabGroup([
                         [sg.Tab("Console", ly_cons)],
                         [sg.Tab('Portfolio', ly_port)],
                         [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],
+                        [sg.Tab('Traders alerts', ly_track)],
                         [sg.Tab("Account", ly_accnt)]
                         ],title_color='black')],
           [sg.Input(default_text="Author, STC AAA @2.5 partial",
@@ -96,7 +100,7 @@ def fit_table_elms(Widget_element):
 
 # event, values = window.read(.1)
 # window.GetScreenDimensions()
-els = ['_portfolio_', '_orders_', '_positions_'] + [f"{chn}_table" for chn in chns]
+els = ['_portfolio_', '_track_', '_orders_', '_positions_'] + [f"{chn}_table" for chn in chns]
 for el in els:
     try:
         fit_table_elms(window.Element(el).Widget)
@@ -114,13 +118,19 @@ for chn in chns:
 
 event, values = window.read(.5)
 
-trade_events = queue.Queue(maxsize=20)
-alistner = AlertsListner(trade_events)
+# trade_events = queue.Queue(maxsize=20)
+# alistner = AlertsListner(trade_events)
 
 
 
 event, values = window.read(.5)
 port_exc = {"Cancelled":False,
+            "Closed":False,
+            "Open":False,
+            "NegPnL":False,
+            "PosPnL":False}
+
+track_exc = {"Cancelled":False,
             "Closed":False,
             "Open":False,
             "NegPnL":False,
@@ -139,14 +149,25 @@ while True:
         dt, hdr = gg.get_portf_data(port_exc)
         window.Element('_portfolio_').Update(values=dt)
 
+    elif event == "_upd-track_":
+        # print("Updateing!")
+        dt, hdr = gg.get_tracker_data(track_exc)
+        window.Element('_track_').Update(values=dt)
+        
     elif event[:6] == "-port-":
         key =  event[6:]
         state = window.Element(event).get()
         port_exc[key] = state
-
         dt, hdr = gg.get_portf_data(port_exc)
         window.Element('_portfolio_').Update(values=dt)
 
+    elif event[:7] == "-track-":
+        key =  event[7:]
+        state = window.Element(event).get()
+        track_exc[key] = state
+        dt, hdr = gg.get_portf_data(track_exc)
+        window.Element('_track_').Update(values=dt)
+        
     elif event[-3:] == "UPD":
         chn = event[:-4]
         print(f"Updating {chn}!", values)
@@ -175,16 +196,16 @@ while True:
         date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
         vals = np.array([date, author, msg]).reshape(1,-1)
         new_msg = pd.DataFrame(vals, columns=["Date", 'Author', "Content"])
-        alistner.new_msg_acts(new_msg, "gui_msg", "None")
+        # alistner.new_msg_acts(new_msg, "gui_msg", "None")
 
-    try:
-        event_feedb = trade_events.get(False)
-        mprint_queue(event_feedb)
+    # try:
+    #     event_feedb = trade_events.get(False)
+    #     mprint_queue(event_feedb)
 
-    except queue.Empty:
-       pass
+    # except queue.Empty:
+    #    pass
 
 
 window.close()
-alistner.close()
+# alistner.close()
 
