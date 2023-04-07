@@ -428,7 +428,7 @@ def auhtor_parser(msg, author, asset):
                 new_order["PT2"] = pt2
                 msg = msg.replace(pt2, " ")
 
-        sl_exps = ['Stop: (\d+[\.]*[\d]*)', 'stop: (\d+[\.]*[\d]*)', '(\d+[\.]*[\d]*)[a-zA-Z\s\,\.]*stop',
+        sl_exps = ['Stop: (\d+[\.]*[\d]*)', 'stop: (\d+[\.]*[\d]*)', '(\d+[\.]*[\d]*)[a-zA-Z\s\,\.]{0,5}?stop',
                    'stop[a-zA-Z\s\,\.]*(\d+[\.]*[\d]*)']
         for exp in sl_exps:
             sl = match_exp(exp, msg)

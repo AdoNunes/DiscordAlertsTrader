@@ -291,9 +291,6 @@ class AlertsListner():
                     print(Style.DIM + f"{dnow} | {chn}: got {nmsg} new msgs:")
 
                     self.new_msg_acts(new_msg, chn, self.chn_hist_fname[chn])
-
-                # save new_msg
-                self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
                 
             toc = datetime.now()
             tictoc = (toc-tic).total_seconds()
@@ -307,9 +304,14 @@ class AlertsListner():
         # Loop over new msg and take action
         for ix, msg in new_msg.iterrows():
 
-            if msg['Author'] == "Xcapture#0190" or pd.isnull(msg['Content']):
+            if msg['Author'] == "Xcapture#0190":
                 continue
-
+            
+            if pd.isnull(msg['Content']) and self.chn_hist.get(chn) is not None:
+                self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
+                self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
+                continue
+                
             if chn.split("_")[0] == "stock":
                 asset = "stock"
             elif chn.split("_")[0] == "option":
@@ -337,9 +339,10 @@ class AlertsListner():
             author = msg['Author']
             order, pars = combine_new_old_orders(msg['Content'], order, pars, author, asset)
             if order is not None and order.get("Symbol") is None:
-                df_hist = self.chn_hist[chn]
-                msg_ix, = df_hist[df_hist['Content'] == msg['Content']].index.values
-                sym, inxf = get_symb_prev_msg(df_hist, msg_ix, author)
+                # legacy compat, add last message
+                df_hist_lastmsg = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
+                msg_ix = df_hist_lastmsg[df_hist_lastmsg['Content'] == msg['Content']].index.values[-1]
+                sym, inxf = get_symb_prev_msg(df_hist_lastmsg, msg_ix, author)
                 if sym is not None:
                     order["Symbol"] = sym
                     self.queue_prints.put([f"Got {sym} symbol from previous msg {inxf}, author: {author}", "green"])
@@ -366,6 +369,7 @@ class AlertsListner():
                     print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
                     msg['Parsed'] = ""
                     self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
+                    self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
                     continue
 
                 self.queue_prints.put(["Updating edited msgs", "green"])
@@ -380,7 +384,7 @@ class AlertsListner():
                     date_diff = datetime.now() - order_date
                     print(f"time difference is {date_diff.seconds}")
                     live_alert = True if date_diff.seconds < 90 else False
-                    self.tracker.trade_alert(order, pars, msg_str, live_alert=True)
+                    self.tracker.trade_alert(order, pars, msg_str, live_alert=True, channel=chn)
 
                     if order['Trader'] in cfg.authors_subscribed:
                         self.Altrader.new_trade_alert(order, pars, msg_str)
@@ -405,6 +409,7 @@ class AlertsListner():
             if self.chn_hist.get(chn) is not None:
                 msg['Parsed'] = pars
                 self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
+                self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
 
         
 

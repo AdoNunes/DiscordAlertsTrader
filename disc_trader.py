@@ -163,7 +163,7 @@ class AlertTrader():
         try:
             resp = self.TDsession.get_quotes(
                 instruments=[Symbol])
-            if resp[Symbol].get('description' ) == 'Symbol not found':
+            if len(resp) == 0  or resp[Symbol].get('description' ) == 'Symbol not found':
                 print (Back.RED + f"{Symbol} not found during price quote")
                 self.queue_prints.put([f"{Symbol} not found during price quote", "", "red"])
                 quote = -1
@@ -172,8 +172,7 @@ class AlertTrader():
         except KeyError as e:
                 print (Back.RED + f"price_now ERROR: {e} for symbol {Symbol}.\n Try again later")
                 self.queue_prints.put([f"price_now ERROR: {e} for symbol {Symbol}.\n Try again later", "", "red"])
-                quote = self.TDsession.get_quotes(
-                instruments=[Symbol])[Symbol][ptype]
+                quote = self.TDsession.get_quotes(instruments=[Symbol])[Symbol][ptype]
         if pflag:
             return quote
         else:

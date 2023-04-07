@@ -40,7 +40,7 @@ class Trades_Tracker():
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
             self.portfolio = pd.DataFrame(columns=[
-                "Date", "Symbol", "Trader", "isOpen", "Total PnL", "Asset", "Type", "Price", "Amount", "Alert-Price",
+                "Date", "Symbol", "Channel", "Trader", "isOpen", "Total PnL", "Asset", "Type", "Price", "Amount", "Alert-Price",
                 "Avged", "exit_plan", "Risk", "SL_mental"] + [
                     "STC%d-%s" % (i, v) for v in
                     ["Alerted", "xQty", "uQty", "Price", "PnL", "Date"]
@@ -75,7 +75,7 @@ class Trades_Tracker():
         return quote
 
 
-    def trade_alert(self, order, pars, msg, live_alert=True):
+    def trade_alert(self, order, pars, msg, live_alert=True, channel=None):
 
         open_trade, isOpen = find_last_trade(order, self.portfolio, open_only=True)
 
@@ -95,7 +95,7 @@ class Trades_Tracker():
                 order["price_current"] = None
 
         if open_trade is None and order["action"] == "BTO":
-            str_act = self.make_BTO(order)
+            str_act = self.make_BTO(order, channel)
             open_trade, isOpen = find_last_trade(order, self.portfolio)
 
         elif order["action"] == "BTO" and order['avg'] is not None:
@@ -152,7 +152,7 @@ class Trades_Tracker():
         return  str_act
 
 
-    def make_BTO(self, order):
+    def make_BTO(self, order, chan=None):
 
         PTs = [order["PT1"], order["PT2"], order["PT3"]]
         Qts = order["PTs_Qty"]
@@ -171,7 +171,8 @@ class Trades_Tracker():
                      "exit_plan": str(exit_plan),
                      "Trader": order['Trader'],
                      "Risk": order['risk'],
-                      "SL_mental": order.get("SL_mental")
+                      "SL_mental": order.get("SL_mental"),
+                      "Channel" : chan
                      }
         
         self.portfolio =pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)
@@ -304,7 +305,9 @@ class Trades_Tracker():
                     if pd.isnull(trade[f"STC{stci}-xQty"]):
                         STC = f"STC{stci}"
                         break
-                    
+                else:
+                    stci = 4
+                    STC = f"STC{stci}"
                 uQty = trade["Amount"] - trade[[f"STC{i}-xQty" for i in range(1, stci)]].sum()                
                 #Log portfolio
                 self.portfolio.loc[trade_inx, STC + "-Status"] = 'EXPIRED'
