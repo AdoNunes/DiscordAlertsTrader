@@ -187,6 +187,7 @@ class AlertsListner():
     def __init__(self, queue_prints=my_queue(maxsize=10), threaded=True):
 
         self.UPDATE_PERIOD = cfg.UPDATE_PERIOD
+        self.UPDATE_PERIOD_offtradeing = cfg.UPDATE_PERIOD_nontrade_hs
         self.CHN_NAMES = cfg.CHN_NAMES
 
         self.cmd = f'dotnet {path_dll} export' + ' -c {} -t ' + discord_token  + \
@@ -296,8 +297,12 @@ class AlertsListner():
             tictoc = (toc-tic).total_seconds()
 
             # wait UPDATE_PERIOD
-            if tictoc < self.UPDATE_PERIOD:
-                time.sleep(min(self.UPDATE_PERIOD-tictoc, self.UPDATE_PERIOD))
+            if toc.hour < 9 or toc.hour > 16:
+                update_time = self.UPDATE_PERIOD_offtradeing
+            else:
+                update_time = self.UPDATE_PERIOD
+            if tictoc < update_time:
+                time.sleep(min(update_time-tictoc, update_time))
 
 
     def new_msg_acts(self, new_msg, chn, out_file):
