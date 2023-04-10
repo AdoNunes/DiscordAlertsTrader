@@ -241,9 +241,15 @@ class AlertTrader():
                         order['uQty'] =  max(round(cfg.trade_capital/price), 1)
 
                 if price * order['uQty'] > cfg.trade_capital_max:
-                    print(Back.GREEN + f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}")
-                    self.queue_prints.put([f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}", "", "green"])
-                    return "no", order, False
+                    uQty_ori = order['uQty']
+                    order['uQty'] =  max(round(cfg.trade_capital/price), 1)
+                    if price * order['uQty'] > cfg.trade_capital_max:
+                        print(Back.GREEN + f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}, order quantity reduced to {order['uQty']} from {uQty_ori}")
+                        self.queue_prints.put([f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}, order quantity reduced to {order['uQty']} from {uQty_ori}", "", "green"])
+                    else:
+                        print(Back.GREEN + f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}")
+                        self.queue_prints.put([f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}", "", "green"])
+                        return "no", order, False
                 return "yes", order, False
 
 

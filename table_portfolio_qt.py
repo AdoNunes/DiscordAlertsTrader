@@ -37,7 +37,6 @@ def send_alert(subm_msg):
     trader = user_s.split(":")[-1]
     asset = ass_s.split(":")[-1]
 
-
 gui_data = {}
 gui_data['port'] = gg.get_portf_data()  # gui_data['port'] [0] can't be empty
 ly_port = gl.layout_portfolio(gui_data['port'], fnt_b, fnt_h)

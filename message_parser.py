@@ -227,6 +227,15 @@ def parse_strike(msg):
     return strike, optType
 
 def parse_date(msg):
+    # deal with 4 digit year
+    re_date = re.compile("((\d{1,2}\/\d{1,2})\/(20\d{2}))")
+    date_inf = re_date.search(msg)
+    if date_inf is not None:
+            dt_1 = date_inf.groups()[1]
+            dt_2 = date_inf.groups()[2]
+            date = f"{dt_1}/{dt_2[2:]}"
+            return date
+        
     re_date = re.compile("(\d{1,2}\/\d{1,2}(?:\/\d{1,2})?)")
     date_inf = re_date.search(msg)
     if date_inf is None:

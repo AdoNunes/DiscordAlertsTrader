@@ -149,13 +149,18 @@ def get_tracker_data(exclude={}):
     data["Alerted"]= alerts.astype(int)
 
     usold = np.nansum([data[f"STC{i}-uQty"] for i in range(1,4)], 0)
+    for i in range(1,4):
+        data.loc[data[f"STC{i}-PnL"] == 'none',f"STC{i}-PnL"] = np.nan
+        data[f"STC{i}-PnL"] = data[f"STC{i}-PnL"].astype(float)
     pnl =  np.nansum([(data[f"STC{i}-PnL"]*data[f"STC{i}-uQty"])/usold for i in range(1,4)], 0)
     data["PnL"]  = pnl
     data["PnL"] = pd_col_str_frmt(data["PnL"], 1)
 
     for i in range(1,4):
         # Get xQty relative PnL
+        data['Price'] = data['Price'].apply(lambda x: np.mean(eval(x.replace("/", ","))) if isinstance(x,str) else x)
         data[f"STC{i}-$PnL"] = data[f'STC{i}-PnL']* (data[f'STC{i}-uQty'] - data['Price'])
+        data['Alert-Price'] = data['Alert-Price'].apply(lambda x: np.mean(eval(x.replace("/", ",").replace('nan', 'np.nan'))) if isinstance(x,str) else x)
         data[f"STC{i}-$PnL-alert"] = data[f'STC{i}-PnL']* (data[f'STC{i}-uQty'] - data['Alert-Price'])
         data[f"STC{i}-qPnL"] = data[f'STC{i}-PnL']* data[f'STC{i}-uQty']
         # Format nums to str for left centered col
