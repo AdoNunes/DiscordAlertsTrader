@@ -105,7 +105,7 @@ def make_BTO_lim_order(Symbol:str, uQty:int, price:float, strike=None, **kwarg):
         order_leg.order_leg_instruction(instruction="BUY")
         order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
 
-    order_leg.order_leg_quantity(quantity=uQty)
+    order_leg.order_leg_quantity(quantity=int(uQty))
     new_order.add_order_leg(order_leg=order_leg)
 
     return new_order

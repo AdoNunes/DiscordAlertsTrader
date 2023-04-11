@@ -238,11 +238,11 @@ class AlertTrader():
                         if cfg.if_no_btc_qnty == "buy_one":
                             order['uQty'] = 1                    
                         elif cfg.if_no_btc_qnty == "trade_capital":
-                            order['uQty'] =  max(round(cfg.trade_capital/price), 1)
+                            order['uQty'] =  int(max(round(cfg.trade_capital/price), 1))
 
                     if price * order['uQty'] > cfg.trade_capital_max:
                         uQty_ori = order['uQty']
-                        order['uQty'] =  max(cfg.trade_capital//price, 1)
+                        order['uQty'] =  int(max(cfg.trade_capital//price, 1))
                         if price * order['uQty'] <= cfg.trade_capital_max:
                             print(Back.GREEN + f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}, order quantity reduced to {order['uQty']} from {uQty_ori}")
                             self.queue_prints.put([f"BTO trade exeedes trade_capital_max of ${cfg.trade_capital_max}, order quantity reduced to {order['uQty']} from {uQty_ori}", "", "green"])
