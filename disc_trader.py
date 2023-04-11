@@ -234,7 +234,7 @@ class AlertTrader():
                         return "no", order, False
                     price = price*100 if order["asset"] == "option" else price
 
-                    if 'uQty' not in order.keys():
+                    if 'uQty' not in order.keys() or order['uQty'] is None:
                         if cfg.if_no_btc_qnty == "buy_one":
                             order['uQty'] = 1                    
                         elif cfg.if_no_btc_qnty == "trade_capital":

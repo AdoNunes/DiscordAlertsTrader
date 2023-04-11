@@ -147,7 +147,7 @@ class Trades_Tracker():
         self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
 
         #save to csv
-        self.portfolio.to_csv(self.portfolio_fname, index=False)
+        self.portfolio.to_csv(self.portfolio_fname, index=False) # try except PermissionError
         self.alerts_log.to_csv(self.alerts_log_fname, index=False)        
         return  str_act
 
@@ -160,6 +160,8 @@ class Trades_Tracker():
         exit_plan = parse_exit_plan(order)
         date = order.get("Date", get_date())
 
+        if order['uQty'] is None:
+            order['uQty'] = 1
         new_trade = {"Date": date,
                      "Symbol": order['Symbol'],
                      'isOpen': 1,
@@ -246,7 +248,10 @@ class Trades_Tracker():
                 order['xQty'] = 1 - (.02 * left)
             elif left < .99:  # percentage left
                 order['xQty'] = 1 - left
-
+        
+        if order['uQty'] is None:
+            order['uQty'] = 1
+        
         self.portfolio.loc[open_trade, f"{STC}-Price"] = order.get("price")
         self.portfolio.loc[open_trade, f"{STC}-Alerted"] = order.get("price_current", "-")
         self.portfolio.loc[open_trade, f"{STC}-Date"] = order["Date"]
