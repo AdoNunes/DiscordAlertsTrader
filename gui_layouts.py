@@ -58,7 +58,11 @@ def layout_traders(data_n_headers, font_body, font_header):
         values=data_n_headers[0]
     
     layout = [
-         [sg.Column([[sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'track_filt_author', size=(20, 1))],
+         [sg.Column([[sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'track_filt_author', size=(20, 1)),
+         sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'track_filt_date_frm', size=(15, 1), default_text='02/09/23'),
+         sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'track_filt_date_to', size=(15, 1)),
+         sg.Text('   Contains symbol: ', size=(20, 1)), sg.Input(key=f'track_filt_sym', size=(20, 1)),
+                      ],
                      [sg.Text("Exclude: "),
                       sg.Checkbox("Closed", key="-track-Closed", enable_events=True),
                       sg.Checkbox("Open", key="-track-Open", enable_events=True),
@@ -97,10 +101,11 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
                   headings=data_n_headers[1],
                   justification='left',
                   display_row_numbers=False,
-                  max_col_width=300, text_color='black',
+                  text_color='black',
                   font=font_body,
                   # col_widths=[30,200, 300],
                   header_font=font_header,
+                  auto_size_columns =True, max_col_width=50,
                   # auto_size_columns=True,
                   # vertical_scroll_only=False,
                    alternating_row_color='grey',
@@ -139,20 +144,21 @@ def layout_account(TDSession, font_body, font_header):
     ord_tab, ord_headings, _= gg.get_orders(acc_inf)
 
     layout = [[sg.Column([
-        [tt_acnt("Account ID:"), tt_acnt(ainf["id"], font_body[1], 0, 0, font_body[0]),
-         tt_acnt("Balance:"), tt_acnt("$" + str(ainf["balance"]), font_body[1], 0, 0, font_body[0], k="acc_b"),
-         tt_acnt("Cash:"), tt_acnt("$" + str(ainf["cash"]), font_body[1], 0, 0, font_body[0], k="acc_c"),
-         tt_acnt("Funds:"), tt_acnt("$" + str(ainf["funds"]), font_body[1], 0, 0, font_body[0], k="acc_f")
+        [tt_acnt("Account ID:", font_body[1]), tt_acnt(ainf["id"], font_body[1], 0, 0, font_body[0]),
+         tt_acnt("Balance:", font_body[1]), tt_acnt("$" + str(ainf["balance"]), font_body[1], 0, 0, font_body[0], k="acc_b"),
+         tt_acnt("Cash:", font_body[1]), tt_acnt("$" + str(ainf["cash"]), font_body[1], 0, 0, font_body[0], k="acc_c"),
+         tt_acnt("Funds:", font_body[1]), tt_acnt("$" + str(ainf["funds"]), font_body[1], 0, 0, font_body[0], k="acc_f")
          ],[sg.ReadFormButton("Update", button_color=('white', 'black'), key='acc_updt', bind_return_key=True)]
              ])],
         [sg.Column(
             [
-             [sg.T("Positions", font=(font_header[0], font_header[1], 'bold', "underline"),size=(20,1.5))],
+             [sg.T("Positions", font=(font_body[0], font_body[1], 'bold', "underline"),size=(20,1.5))],
              [sg.Table(values=pos_tab, headings=pos_headings,justification='left',
               display_row_numbers=False, text_color='black', font=font_body,
                auto_size_columns=True,
                header_font=font_header,
               alternating_row_color='grey',
+               max_col_width=30,
               # col_widths=[30,300, 1300],
               # row_height=20,
               key='_positions_')]]),
@@ -180,6 +186,11 @@ def update_acct_ly(TDSession, window):
 
     window.Element("_positions_").update(pos_tab)
     window.Element("_orders_").update(ord_tab)
+    
+    for el in ["_positions_", "_orders_"]:
+        window.Element(el).Widget.resizeRowsToContents()
+        window.Element(el).Widget.resizeColumnsToContents()
+
 
 
 

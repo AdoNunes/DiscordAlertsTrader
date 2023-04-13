@@ -139,6 +139,7 @@ def send_sh_cmd(cmd):
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE
                             )
+        spro.wait()
     except OSError as e:
         print(e)
         return False
@@ -265,8 +266,12 @@ class AlertsListner():
         while self.listening:
             tic = datetime.now()
             for chn_i in range(len(self.CHN_NAMES)):
+                if chn_i >0: 
+                    if datetime.now()-tic < timedelta(seconds=3)* (1+chn_i): 
+                        time.sleep(3)  #sleep so doesn't hog
+                
                 chn = self.CHN_NAMES[chn_i]
-
+                tic0 =  datetime.now()
                 out_file = self.chn_hist_fname[chn].replace('.csv', "_temp.csv")
                 
                 # Decide from when read alerts 
@@ -276,10 +281,12 @@ class AlertsListner():
                 else:
                     new_t = min(59.99, float(time_after[-9:]) + .1)
                     time_after = time_after[:-9] + f"{new_t:.6f}"
-                
+                tic1 = datetime.now()
                 cmd_sh = self.cmd.format(channel_IDS[chn], time_after, out_file)
                 new_msgs = send_sh_cmd(cmd_sh)
-
+                tic2 = datetime.now()
+                if  tic2-tic1 >timedelta(seconds=3):
+                    print(chn, 'before cmd', tic1-tic0, "after", tic2-tic1)
                 if not new_msgs:
                     continue
 
@@ -301,6 +308,7 @@ class AlertsListner():
                 update_time = self.UPDATE_PERIOD_offtradeing
             else:
                 update_time = self.UPDATE_PERIOD
+            print('tdiff ', tictoc, "update time", update_time)
             if tictoc < update_time:
                 time.sleep(min(update_time-tictoc, update_time))
 

@@ -25,7 +25,7 @@ TDSession = get_TDsession()
                 # element_padding=(0, 0), margins=(1, 1))
 
 fnt_b = ("Helvitica", "9")
-fnt_h = ("Helvitica", "10")
+fnt_h = ("Helvitica", "5")
 
 ly_cons, MLINE_KEY = gl.layout_console()
 
@@ -67,8 +67,8 @@ layout = [[sg.TabGroup([
            sg.Button("Submit alert", key="-subm-alert", size= (20,1))]
         ]
 
-window = sg.Window('Xtrader', layout,size=(1000, 500), # force_toplevel=True,
-                    auto_size_text=False, resizable=True)
+window = sg.Window('BullTrader', layout,size=(1000, 500), # force_toplevel=True,
+                    auto_size_text=True, resizable=True)
 
 # window[MLINE_KEY].update(readonly=True)
 
@@ -97,7 +97,7 @@ def fit_table_elms(Widget_element):
     Widget_element.resizeRowsToContents()
     Widget_element.resizeColumnsToContents()
 
-# event, values = window.read(.1)
+event, values = window.read(.1)
 # window.GetScreenDimensions()
 els = ['_portfolio_', '_track_', '_orders_', '_positions_'] + [f"{chn}_table" for chn in chns]
 for el in els:
@@ -147,12 +147,15 @@ while True:
         # print("Updateing!")
         dt, hdr = gg.get_portf_data(port_exc)
         window.Element('_portfolio_').Update(values=dt)
+        fit_table_elms(window.Element("_portfolio_").Widget)
 
-    elif event == "_upd-track_":
-        # print("Updateing!")
-        dt, hdr = gg.get_tracker_data(track_exc)
+    elif event == "_upd-track_": # update button in traders alerts
+        # change button color
+        dt, _  = gg.get_tracker_data(track_exc, **values)
         window.Element('_track_').Update(values=dt)
-        
+        fit_table_elms(window.Element("_track_").Widget)
+        # change button color
+
     elif event[:6] == "-port-":
         key =  event[6:]
         state = window.Element(event).get()
@@ -164,9 +167,9 @@ while True:
         key =  event[7:]
         state = window.Element(event).get()
         track_exc[key] = state
-        dt, hdr = gg.get_portf_data(track_exc)
+        dt, hdr = gg.get_tracker_data(track_exc)
         window.Element('_track_').Update(values=dt)
-        
+
     elif event[-3:] == "UPD":
         chn = event[:-4]
         print(f"Updating {chn}!", values)
@@ -188,10 +191,12 @@ while True:
 
     elif event == 'acc_updt':
         gl.update_acct_ly(TDSession, window)
+        fit_table_elms(window.Element(f"{chn}_table").Widget)
 
     elif event == "-subm-alert":
         print(values['-subm-msg'])        
         author, msg = values['-subm-msg'].split(', ')
+        if author.startswith(" "): author = author.replace(" ","")
         date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
         vals = np.array([date, author, msg]).reshape(1,-1)
         new_msg = pd.DataFrame(vals, columns=["Date", 'Author', "Content"])
@@ -200,7 +205,6 @@ while True:
     try:
         event_feedb = trade_events.get(False)
         mprint_queue(event_feedb)
-
     except queue.Empty:
        pass
 

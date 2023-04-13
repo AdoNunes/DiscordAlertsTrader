@@ -12,7 +12,7 @@ from datetime import datetime
 import numpy as np
 import config as cfg
 
-def short_date(datestr, infrm="%Y-%m-%d %H:%M:%S.%f", outfrm="%m/%d %H:%M"):
+def short_date(datestr, infrm="%Y-%m-%d %H:%M:%S.%f", outfrm="%m/%d/%Y %H:%M"):
     return datetime.strptime(datestr, infrm).strftime(outfrm)
 
 def formt_num_2str(x, decim=2, str_len=6, remove_zero=True):
@@ -66,50 +66,33 @@ def format_exitplan(plan):
 
 def get_portf_data(exclude={}):
     data = pd.read_csv(op.join(cfg.data_dir, "trader_portfolio.csv"))
-    cols_out = ['Asset', 'Type', 'Avged', 'STC1-uQty', 'STC2-uQty', 'STC3-uQty',
-                'STC1-Price', 'STC2-Price', 'STC3-Price','STC1-Date', 'STC2-Date',
-                'STC3-Date', 'STC1-ordID', 'STC2-ordID', 'STC3-ordID', 'ordID']
-
-    cols = [c for c in data.columns if c not in cols_out]
-
-    data = data[cols]
 
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
-
     data['exit_plan']= data['exit_plan'].apply(lambda x: format_exitplan(x))
     data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
     alerts = data[['STC1-Alerted', 'STC2-Alerted', 'STC3-Alerted']].sum(1)
-    data["Alerted"]= alerts.astype(int)
-
-    cols_pnl = ['STC1-PnL', 'STC2-PnL', 'STC3-PnL']
-    for i in range(1,4):
-        # Get xQty relative PnL
-        data[f"STC{i}-qPnL"] = data[f'STC{i}-PnL']* data[f'STC{i}-xQty']
-        # Format nums to str for left centered col
-        data[f'STC{i}-PnL'] = pd_col_str_frmt(data[f'STC{i}-PnL'])
-        data[f'STC{i}-xQty'] = pd_col_str_frmt(data[f'STC{i}-xQty'])
-
-    data["PnL"]  = data[f"STC1-qPnL"].fillna(0) + \
-        data["STC2-qPnL"].fillna(0) + \
-            data["STC3-qPnL"].fillna(0)
-    data["PnL"] = pd_col_str_frmt(data["PnL"], 1)
-
-    isopen = data['isOpen']
+    data["N Alerts"]= alerts.astype(int)
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
 
-    frm_cols = ['Price', 'Alert-Price', 'uQty', 'filledQty', 'Alerted']
+    for i in range(1,4):
+        data[f'STC{i}-PnL'] = pd_col_str_frmt(data[f'STC{i}-PnL'])
+        data[f'STC{i}-uQty'] = pd_col_str_frmt(data[f'STC{i}-uQty'])
+
+    frm_cols = ['Price', 'Price-Alert', "Price-Current", 'uQty', 'filledQty', 'N Alerts', 
+                "PnL", "$PnL","PnL-Alert", "$PnL-Alert","PnL-Current","$PnL-Current"]
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
 
-    cols = ['isOpen', "PnL", 'Date', 'Symbol', 'Trader', 'BTO-Status',
-       'Price', 'Alert-Price', 'uQty', 'filledQty',
-        'Alerted', 'STC1-PnL', 'STC2-PnL', 'STC3-PnL', 'STC1-Status',
-       'STC2-Status', 'STC3-Status', 'STC1-xQty', 'STC2-xQty', 'STC3-xQty', 'exit_plan'
+    cols = ['isOpen', "PnL", "$PnL", 'Date', 'Symbol', 'Trader', 'BTO-Status', 'Price',
+            'Price-Alert', "Price-Current", 'uQty', 'filledQty', 'N Alerts',"PnL-Alert",
+            "$PnL-Alert","PnL-Current","$PnL-Current", "STC1-Price", "STC1-Price-Alerted", "STC1-Price-Current",
+            'STC1-PnL', 'STC1-Status','STC1-uQty','STC2-PnL',
+            'STC2-Status', 'STC2-uQty', 'STC3-PnL', 'STC3-Status',  'STC3-uQty'
         ]
     data = data[cols]
     data.fillna("", inplace=True)
     header_list = data.columns.tolist()
-    header_list = [d.replace('STC', '') for d in header_list]
+    header_list = [d.replace('STC', '').replace("Price", "$") for d in header_list]
 
     if len(exclude):
         for k, v in exclude.items():
@@ -126,13 +109,23 @@ def get_portf_data(exclude={}):
                 pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
                 data = data[pnl < 0 ]
 
+    if len(data):
+        sumtotal = {c:None for c in data.columns}
+        for sumcol in ["PnL","PnL-Alert","PnL-Current",'STC1-PnL']:
+            sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).mean():.2f}'
+        for sumcol in [  "$PnL","$PnL-Alert","$PnL-Current"]:
+            sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).sum():.2f}'
+        sumtotal['Date'] = data.iloc[len(data)-1]['Date']
+        sumtotal['Symbol'] = "Total Average"
+        sumtotal['Trader'] = "Average"
+        data = pd.concat([data, pd.DataFrame.from_records(sumtotal, index=[0])], ignore_index=True)
+    
     data = data.values.tolist()
-    # tpnl = [[i] for i in data["PnL"].values.tolist()]
-    # isopen = [[i] for i in isopen.values.tolist()]
-    return data, header_list#, tpnl, isopen
+    return data, header_list
 
 
-def get_tracker_data(exclude={}):
+def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
+                     track_filt_date_to='', track_filt_sym='', **kwargs ):
     data = pd.read_csv(op.join(cfg.data_dir, "trade_tracker_portfolio.csv"))
     cols_out = ['Asset', 'Type', 'Avged', 'STC1-xQty', 'STC2-xQty', 'STC3-xQty',
                 ]
@@ -155,27 +148,36 @@ def get_tracker_data(exclude={}):
     pnl =  np.nansum([(data[f"STC{i}-PnL"]*data[f"STC{i}-uQty"])/usold for i in range(1,4)], 0)
     data["PnL"]  = pnl
     data["PnL"] = pd_col_str_frmt(data["PnL"], 1)
+    data['Alert-Price'] = data['Alert-Price'].apply(lambda x: np.mean(eval(x.replace("/", ",").replace('nan', 'np.nan'))) if isinstance(x,str) else x)
 
     for i in range(1,4):
         # Get xQty relative PnL
         data['Price'] = data['Price'].apply(lambda x: np.mean(eval(x.replace("/", ","))) if isinstance(x,str) else x)
         data[f"STC{i}-$PnL"] = data[f'STC{i}-PnL']* (data[f'STC{i}-uQty'] - data['Price'])
-        data['Alert-Price'] = data['Alert-Price'].apply(lambda x: np.mean(eval(x.replace("/", ",").replace('nan', 'np.nan'))) if isinstance(x,str) else x)
-        data[f"STC{i}-$PnL-alert"] = data[f'STC{i}-PnL']* (data[f'STC{i}-uQty'] - data['Alert-Price'])
-        data[f"STC{i}-qPnL"] = data[f'STC{i}-PnL']* data[f'STC{i}-uQty']
+        stc_alert_price = data[f'STC{i}-Alerted'].apply(lambda x: eval(x.replace('-', "np.nan")) if isinstance(x, str) else x )
+        data[f"STC{i}-$PnL-alert"] = (stc_alert_price - data['Alert-Price']) * data[f'STC{i}-uQty'] 
+        data[f"STC{i}-PnL-alert"] = (stc_alert_price - data['Alert-Price'])/ data['Alert-Price']
+        data[f"STC{i}-$PnL"] = data[f'STC{i}-PnL']* data[f'STC{i}-uQty']
         # Format nums to str for left centered col
+
+    data["$PnL"]  = np.nansum([data[f"STC{i}-$PnL"] for i in range(1,4)], 0)
+    data["$PnL-alert"]= np.nansum([data[f"STC{i}-$PnL-alert"] for i in range(1,4)], 0)
+    data["PnL-alert"]= np.nansum([data[f"STC{i}-PnL-alert"] for i in range(1,4)], 0)
+    
+    for i in range(1,4):
+        data[f"STC{i}-$PnL"] =  pd_col_str_frmt(data[f"STC{i}-$PnL"])
         data[f'STC{i}-PnL'] = pd_col_str_frmt(data[f'STC{i}-PnL'])
         data[f'STC{i}-uQty'] = pd_col_str_frmt(data[f'STC{i}-uQty'])
-
-
+        
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
 
-    frm_cols = ['Price', 'Alert-Price', 'Amount', 'Alerted']
+    frm_cols = ['Price', 'Alert-Price', 'Amount', 'Alerted', "$PnL", "$PnL-alert", "PnL-alert"]
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
 
-    cols = ['isOpen', "PnL", 'Date', 'Symbol', 'Trader', 'Price', 'Alert-Price', 'Amount', 'Alerted', 
-        'STC1-Alerted','STC2-Alerted', 'STC3-Alerted', 'STC1-uQty', 'STC2-uQty', 'STC3-uQty',
+    cols = ['isOpen', "PnL", "$PnL", "PnL-alert", "$PnL-alert", 'Date', 'Symbol', 'Trader', 'Price', 'Alert-Price', 'Amount', 'Alerted', 
+        'STC1-Alerted','STC2-Alerted', 'STC3-Alerted']+ [f"STC{i}-$PnL" for i in range(1,4)] + \
+        [f"STC{i}-$PnL-alert" for i in range(1,3)] +['STC1-uQty', 'STC2-uQty', 'STC3-uQty',
        'STC1-Price', 'STC2-Price', 'STC3-Price', 'STC1-PnL', 'STC2-PnL',
        'STC3-PnL', 'STC1-Date', 'STC2-Date', 'STC3-Date',
         ]
@@ -197,6 +199,23 @@ def get_tracker_data(exclude={}):
                 pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
                 data = data[pnl < 0 ]
 
+
+    if track_filt_author:
+        data = data[data['Trader'].str.contains(track_filt_author, case=False)]
+    if track_filt_date_frm:
+        data = data[data['Date'] > track_filt_date_frm]
+    if track_filt_date_to:
+        data = data[data['Date'] < track_filt_date_to]
+    if track_filt_sym:
+        data = data[data['Symbol'].str.contains(track_filt_sym, case=False)]
+
+    sumtotal = {c:None for c in data.columns}
+    for sumcol in ["PnL", "STC1-PnL", "STC2-PnL", "STC3-PnL"]:
+        sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).mean():.2f}'
+    sumtotal['Date'] = data.iloc[len(data)-1]['Date']
+    sumtotal['Symbol'] = "Total Average"
+    sumtotal['Trader'] = track_filt_author if len(track_filt_author) else "Average"
+    data = pd.concat([data, pd.DataFrame.from_records(sumtotal, index=[0])], ignore_index=True)
     data = data.values.tolist()
     # tpnl = [[i] for i in data["PnL"].values.tolist()]
     # isopen = [[i] for i in isopen.values.tolist()]
@@ -312,7 +331,7 @@ def order_info_pars(ord_dic, ord_list):
     for leg in ord_dic['orderLegCollection']:
         sing_ord_c = sing_ord.copy()
         sing_ord_c.insert(0, leg['instrument']['symbol'])
-        sing_ord_c.insert(1, leg["instruction"])
+        sing_ord_c.insert(1, leg["instruction"].replace('BUY_TO_OPEN', "BUY").replace('SELL_TO_CLOSE', "SELL"))
         ord_list.append(sing_ord_c)
 
     return ord_list, ord_headings
@@ -320,7 +339,6 @@ def order_info_pars(ord_dic, ord_list):
 
 def get_orders(acc_inf):
     orders =acc_inf['securitiesAccount']['orderStrategies']
-
     ord_tab, cols = [], []
     col = 0
     for ordr in orders:

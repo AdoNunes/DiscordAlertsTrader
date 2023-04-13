@@ -74,10 +74,12 @@ class AlertTrader():
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
             self.portfolio = pd.DataFrame(columns=[
-                "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Alert-Price",
-                "uQty", "filledQty", "Avged", "Avged-prices", "exit_plan", "ordID", "Risk", "SL_mental"] + [
+                "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Price-Alert", "Price-real",
+                "uQty", "filledQty", "Avged", "Avged-prices", "exit_plan", "ordID", "Risk", "SL_mental","PnL", "$PnL",
+                "PnL-Alert", "$PnL-Alert","PnL-Current","$PnL-Current"
+                ] + [
                     "STC%d-%s"% (i, v) for v in
-                    ["Alerted", "Status", "xQty", "uQty", "Price", "PnL","Date", "ordID"]
+                    ["Alerted", "Status", "xQty", "uQty", "Price", "Price-Alerted", "Price-Current", "PnL","Date", "ordID"]
                     for i in range(1,4)] )
             self.portfolio.to_csv(self.portfolio_fname, index=False)
 
@@ -206,6 +208,7 @@ class AlertTrader():
                 return "no", order, False
 
             current_price = price_now(symb, act, 1 )
+            order["price_current"] = current_price
             pdiff = (current_price - ord_ori['price'])/ord_ori['price']
             pdiff = round(pdiff*100,1)
 
@@ -418,8 +421,7 @@ class AlertTrader():
         if not isOpen and order["action"] == "BTO":
             alert_price = order['price']
 
-            order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
-                                                       make_BTO_lim_order)
+            order_response, order_id, order, _ = self.confirm_and_send(order, pars, make_BTO_lim_order)
             self.save_logs("port")
             if order_response is None:  #Assume trade not accepted
                 log_alert['action'] = "BTO-notAccepted"                
@@ -447,7 +449,8 @@ class AlertTrader():
                          "Asset" : order["asset"],
                          "Type" : "BTO",
                          "Price" : order_info["price"],
-                         "Alert-Price" : alert_price,
+                         "Price-Alert" : alert_price,
+                         "Price-Current": order["price_current"],
                          "ordID" : order_id,
                          "exit_plan" : str(exit_plan),
                          "Trader" : order['Trader'],
@@ -580,8 +583,8 @@ class AlertTrader():
 
                 # If not alerted, mark it
                 if pd.isnull(position[f"{STC}-Alerted"]):
-                    self.portfolio.loc[open_trade, f"{STC}-Alerted"] = 1  # TODO: put current price
-
+                    self.portfolio.loc[open_trade, f"{STC}-Alerted"] = 1 
+                    self.portfolio.loc[open_trade, STC + "-Price-Alerted"] = order["price"]
                     # If alerted and already sold
                     if not pd.isnull(position[ f"{STC}-Price"]):
                         print(Back.GREEN + "Already sold")
@@ -683,9 +686,8 @@ class AlertTrader():
                 self.queue_prints.put([f"Order {order['Symbol']} Qty exceeded, changed to {order['uQty']}",
                                 "", "red"])
 
-
-            order_response, order_id, order, _ = self.confirm_and_send(order, pars,
-                           make_STC_lim)
+            price_alerted = order['price']
+            order_response, order_id, order, _ = self.confirm_and_send(order, pars, make_STC_lim)
 
             log_alert["portfolio_idx"] = open_trade
 
@@ -700,6 +702,8 @@ class AlertTrader():
 
             order_status, order_info = self.get_order_info(order_id)
             self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
+            self.portfolio.loc[open_trade, STC + "-Price-Current"] = order["price_current"]
+
 
             # Check if STC price changed
             if order_status == "FILLED":
@@ -724,18 +728,18 @@ class AlertTrader():
 
         if 'price' in order_info.keys():
             stc_price = order_info['price']
-
         elif 'stopPrice' in order_info.keys():
             stc_price = order_info['stopPrice']
-
         elif "orderActivityCollection" in order_info.keys():
             prics = []
             for ind in order_info["orderActivityCollection"]:
                 prics.append([ind['quantity'], ind['executionLegs'][0]['price']])
                 n_tot= sum([i[0] for i in prics])
-                stc_price =  sum([i[0]*i[1] for i in prics])/ n_tot
+            stc_price =  sum([i[0]*i[1] for i in prics])/ n_tot
 
         bto_price = self.portfolio.loc[open_trade, "Price"]
+        bto_price_alert = self.portfolio.loc[open_trade, "Price-Alert"]
+        bto_price_current = self.portfolio.loc[open_trade, "Price-Current"]
         stc_PnL = float((stc_price - bto_price)/bto_price) *100
 
         xQty = sold_unts/ self.portfolio.loc[open_trade, "uQty"]
@@ -745,11 +749,26 @@ class AlertTrader():
         self.portfolio.loc[open_trade, STC + "-Status"] = order_status
         self.portfolio.loc[open_trade, STC + "-Price"] = stc_price
         self.portfolio.loc[open_trade, STC + "-Date"] = date
-        self.portfolio.loc[open_trade, STC + "-xQty"] =xQty
+        self.portfolio.loc[open_trade, STC + "-xQty"] = xQty
         self.portfolio.loc[open_trade, STC + "-uQty"] = sold_unts
         self.portfolio.loc[open_trade, STC + "-PnL"] = stc_PnL
         self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
 
+        trade = self.portfolio.loc[open_trade]
+        sold_tot = np.nansum([trade[f"STC{i}-uQty"] for i in range(1,4)])
+        stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+        self.portfolio.loc[open_trade, "PnL"] = stc_PnL_all
+        stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-Alerted"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+        stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-Current"] - bto_price_current)/bto_price_current) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+        self.portfolio.loc[open_trade, "PnL-Alert"] = stc_PnL_all_alert
+        self.portfolio.loc[open_trade, "PnL-Current"] = stc_PnL_all_curr
+        
+        mutipl = 1 if trade['Asset'] == "option" else .01  # pnl already in %
+        self.portfolio.loc[open_trade, "$PnL"] =  stc_PnL_all* bto_price *mutipl*sold_tot
+        self.portfolio.loc[open_trade, "$PnL-Alert"] =  stc_PnL_all_alert* bto_price_alert *mutipl*sold_tot
+        self.portfolio.loc[open_trade, "$PnL-Current"] =  stc_PnL_all_curr* bto_price_current *mutipl*sold_tot
+        
+        
         symb = self.portfolio.loc[open_trade, 'Symbol']
 
         sold_Qty =  self.portfolio.loc[open_trade, [f"STC{i}-xQty" for i in range(1,4)]].sum()
