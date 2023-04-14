@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 import os.path as op
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
-from disc_trader import find_last_trade
+from disc_trader import find_last_trade, option_date
 from real_time_exporter import send_sh_cmd
 from message_parser import parser_alerts
 from config import (path_dll, data_dir,  discord_token,  analyst_logs)
@@ -43,9 +43,9 @@ class Bot_bulltrades_Tracker():
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
             self.portfolio = pd.DataFrame(columns=[
-                "Date", "Symbol", "Trader", "isOpen", "Total PnL", "Asset", "Type", "Price", "Amount", "Alert-Price", "Avged"
+                "Date", "Symbol", "Trader", "isOpen", "Asset", "Type", "Price", "Amount", "Price-current", "Avged"
                 ] + [ f"STC-{v}" for v in
-                    ["Amount", "Price", "Alert-Price", "PnL", "Alert-PnL","PnL$", "Alert-PnL$", "Date"]
+                    ["Amount", "Price", "Price-current", "PnL", "PnL-current","PnL$", "PnL$-current", "Date"]
                     for i in range(1,2)] )
             self.portfolio.to_csv(self.portfolio_fname, index=False)
         self.TDSession = TDSession
@@ -118,11 +118,12 @@ class Bot_bulltrades_Tracker():
                 live_alert = True if date_diff.seconds < 90 else False
                 msg_track = self.trade_alert(order, live_alert, author)
                 print(msg_track)
+            self.close_expired()
         self.portfolio = self.portfolio.sort_values("Date")
         self.portfolio.to_csv(self.portfolio_fname, index=False) 
-    
-    def trade_alert(self, order, live_alert=True, channel=None):
 
+
+    def trade_alert(self, order, live_alert=True, channel=None):
         open_trade, _ = find_last_trade(order, self.portfolio, open_only=True)
 
         if order["action"] in ["BTO", "STC"] and live_alert:
@@ -131,13 +132,10 @@ class Bot_bulltrades_Tracker():
 
         if open_trade is None and order["action"] == "BTO":
             str_act = self.make_BTO(order, channel)
-
         elif order["action"] == "BTO":
             str_act = self.make_BTO_Avg(order, open_trade)
-
         elif order["action"] == "STC" and open_trade is None:
             str_act = "STC without BTO"
-
         elif order["action"] == "STC":
             str_act = self.make_STC(order, open_trade)
 
@@ -147,9 +145,9 @@ class Bot_bulltrades_Tracker():
 
 
     def make_BTO(self, order, chan=None):
-
         date = order.get("Date", get_date())
-
+        if order['uQty'] is None:
+            order['uQty'] = 1
         new_trade = {"Date": date,
                      "Symbol": order['Symbol'],
                      'isOpen': 1,
@@ -157,7 +155,7 @@ class Bot_bulltrades_Tracker():
                      "Type": "BTO",
                      "Price": order["price"],
                      "Amount": order['uQty'],
-                     "Alert-Price": order.get("Actual Cost"),
+                     "Price-current": order.get("Actual Cost"),
                      "Trader": order['Trader'],
                       "SL": order.get("SL"),
                       "Channel" : chan
@@ -172,7 +170,6 @@ class Bot_bulltrades_Tracker():
 
 
     def make_BTO_Avg(self, order, open_trade):
-
         current_Avg = self.portfolio.loc[open_trade, "Avged"]
         if np.isnan(current_Avg):
             current_Avg = 1
@@ -180,7 +177,7 @@ class Bot_bulltrades_Tracker():
             current_Avg = int(current_Avg + 1)
         
         old_price = self.portfolio.loc[open_trade, "Price"]
-        alert_price_old = self.portfolio.loc[open_trade, "Alert-Price"]
+        alert_price_old = self.portfolio.loc[open_trade, "Price-current"]
         alert_price_old = None if pd.isnull(alert_price_old) else alert_price_old
         alert_price = order.get("Actual Cost")
         avgs_prices_al = f"{alert_price_old}/{alert_price}".replace("None/None", "").replace("None", "")
@@ -190,7 +187,7 @@ class Bot_bulltrades_Tracker():
         self.portfolio.loc[open_trade, "Avged"] = current_Avg
         self.portfolio.loc[open_trade, "Amount"] += order['uQty']
         self.portfolio.loc[open_trade, "Price"] = f"{old_price}/{order['price']}"
-        self.portfolio.loc[open_trade, "Alert-Price"] = avgs_prices_al
+        self.portfolio.loc[open_trade, "Price-current"] = avgs_prices_al
         if order.get("SL"):
             self.portfolio.loc[open_trade, "SL"] =  order.get("SL")
         
@@ -199,10 +196,11 @@ class Bot_bulltrades_Tracker():
 
 
     def make_STC(self, order, open_trade):
-        
         trade = self.portfolio.loc[open_trade]
         bto_price = trade["Price"]
-        bto_price_al = trade["Alert-Price"]
+        bto_price_al = trade["Price-current"]
+        if order['uQty'] is None:
+            order['uQty'] = 1
         if isinstance(bto_price, str):
             bto_price =  np.mean(eval(bto_price.replace("/", ",")))
         if isinstance(bto_price_al, str):
@@ -213,10 +211,10 @@ class Bot_bulltrades_Tracker():
             stc_utotal = trade["STC-Amount"] + order['uQty']            
             stc_price = (order.get("price") * order['uQty'] +  stc_wprice)/stc_utotal      
             
-            if pd.isnull(trade["STC-Alert-Price"]) or pd.isnull(order.get("Actual Cost")):
+            if pd.isnull(trade["STC-Price-current"]) or pd.isnull(order.get("Actual Cost")):
                 stc_price_al = None
             else:
-                stc_wprice = trade["STC-Alert-Price"] * trade["STC-Amount"]
+                stc_wprice = trade["STC-Price-current"] * trade["STC-Amount"]
                 stc_price_al = (order.get("Actual Cost") * order['uQty'] +  stc_wprice)/stc_utotal
         else:
             stc_price = order.get("price")
@@ -240,14 +238,14 @@ class Bot_bulltrades_Tracker():
 
             
         self.portfolio.loc[open_trade, "STC-Price"] = stc_price
-        self.portfolio.loc[open_trade, "STC-Alert-Price"] = stc_price_al
+        self.portfolio.loc[open_trade, "STC-Price-current"] = stc_price_al
         self.portfolio.loc[open_trade, "STC-Date"] = order["Date"]
         self.portfolio.loc[open_trade, "STC-Amount"] = stc_utotal
 
         self.portfolio.loc[open_trade, "STC-PnL"] = stc_pnl
         self.portfolio.loc[open_trade, "STC-PnL$"] = stc_pnl_u
-        self.portfolio.loc[open_trade, "STC-Alert-PnL"] = stc_pnl_al
-        self.portfolio.loc[open_trade, "STC-Alert-PnL$"] = stc_pnl_al_u
+        self.portfolio.loc[open_trade, "STC-PnL-current"] = stc_pnl_al
+        self.portfolio.loc[open_trade, "STC-PnL$-current"] = stc_pnl_al_u
         
         if stc_price == "none":
             str_STC = f"STC {order['Symbol']}  ({order['uQty']}), no price provided"
@@ -255,7 +253,7 @@ class Bot_bulltrades_Tracker():
             str_STC = f"STC {order['Symbol']}  ({order['uQty']}), {stc_price:.2f}%"
 
         if stc_utotal >= trade['Amount']:
-            str_STC = str_STC + " Closed"
+            str_STC = str_STC +" Closed"
             self.portfolio.loc[open_trade, "isOpen"] = 0
         if eval(order['# Closed'])==1 :
             assert(self.portfolio.loc[open_trade, "isOpen"]==0)
@@ -263,4 +261,67 @@ class Bot_bulltrades_Tracker():
         return str_STC
 
 
+    def close_expired(self):
+        for i, trade in  self.portfolio.iterrows():
+            if trade["Asset"] != "option" or trade["isOpen"] == 0:
+                continue
+            optdate = option_date(trade['Symbol'])
+            if optdate.date() < date.today():
+                expdate = date.today().strftime("%Y-%m-%dT%H:%M:%S+0000")
+                if pd.isnull(trade["STC-Amount"]):
+                    uQty = trade['Amount'] 
+                else:
+                    uQty = trade['Amount'] - trade["STC-Amount"]
+                bto_price = eval(trade["Price"]) if isinstance(trade["Price"], str) else trade["Price"]
+                bto_price_al = trade["Price-current"]
+                
+                if not pd.isnull(trade["STC-Price"]):
+                    stc_wprice = trade["STC-Price"] * trade["STC-Amount"]
+                    stc_utotal = trade["STC-Amount"] + uQty            
+                    stc_price = (0 +  stc_wprice)/stc_utotal      
+                    
+                    if pd.isnull(trade["STC-Price-current"]):
+                        stc_price_al = 0
+                    else:
+                        stc_wprice = trade["STC-Price-current"] * trade["STC-Amount"]
+                        stc_price_al = (0 +  stc_wprice)/stc_utotal
+                else:
+                    stc_price = 0
+                    stc_price_al = 0
+                    stc_utotal = uQty
+                
+                if trade['Asset'] == "option":
+                    option_multi = 100
+                else:
+                    option_multi = 1
+                    
+                stc_pnl = float((stc_price - bto_price)/bto_price) *100
+                stc_pnl_u = ((stc_price - bto_price)*stc_utotal)*option_multi
+                
+                if stc_price_al is None or pd.isnull(bto_price_al):
+                    stc_pnl_al = -100
+                    stc_pnl_al_u = None
+                else:
+                    stc_pnl_al = -100
+                    stc_pnl_al_u = (stc_price_al - bto_price_al)*stc_utotal*option_multi
+                    
+                #Log portfolio
+                self.portfolio.loc[i, "STC-Price"] = 0
+                self.portfolio.loc[i, "STC-Price-current"] = 0
+                self.portfolio.loc[i, "STC-Date"] = expdate
+                self.portfolio.loc[i, "STC-xQty"] = 1
+                self.portfolio.loc[i, "STC-Amount"] = uQty
+                self.portfolio.loc[i, "STC-PnL"] = stc_pnl
+                self.portfolio.loc[i, "STC-PnL-current"] = stc_pnl_al
+                self.portfolio.loc[i, "STC-$PnL"] = stc_pnl_u
+                self.portfolio.loc[i, "STC-$PnL-current"] = stc_pnl_al_u
+                
+                self.portfolio.loc[i, "isOpen"] = 0
 
+                str_prt = f"{trade['Symbol']} option expired -100% uQty: {uQty}"
+                print(str_prt)
+
+
+if __name__ == "__main__":
+    tracker = Bot_bulltrades_Tracker()
+    tracker.update_msgs()
