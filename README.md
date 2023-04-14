@@ -102,8 +102,12 @@ Run the Command Line Interface:
 Currently, the GUI is not available as it needs to be updated with current external package versions.
 
 
-## WARNING
+## Disclaimer
 _________
 
-This is still a Work in Progress project. I get good results using the package, If you plan to use it, **USE AT YOUR OWN RISK**.
+This is still a Work in Progress project. I get good results using the package, If you plan to use it, **USE AT YOUR OWN RISK**. 
+
+The code and package provided in this repository is provided "as is" and without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement. In no event shall the author or contributors be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the code or package or the use or other dealings in the code or package.
+
+Please use this code and package at your own risk. The author and contributors disclaim all liability and responsibility for any errors or issues that may arise from its use. It is your responsibility to test and validate the code and package for your particular use case.
 
