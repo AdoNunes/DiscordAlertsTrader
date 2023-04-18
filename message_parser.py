@@ -164,7 +164,7 @@ def parse_Symbol(msg, act):
         Symbol_info = re_Symbol.search(msg)
 
         if Symbol_info is None:
-            for wrd in ["I", "ATH", "BTO", "STC"]:
+            for wrd in ["I", "ATH", "BTO", "STC", "ITM"]:
                 msg = msg.replace(wrd+" ", " ")
             msg = msg.replace('VWAP', " ")
             msg = msg.replace("I'", "i'")
@@ -193,15 +193,19 @@ def parse_mark_stock(msg, Symbol, act):
 
 
 def parse_mark_option(msg):
-    re_mark = re.compile("(?:@|at)[ ]*[$]?[ ]*([.]?\d+(?:\.\d+)?)")
+    re_mark = re.compile("(?:@|at)[a-zA-Z]?[ ]*[$]?[ ]*([.]?\d+(?:\.\d+)?)")
     mark_inf = re_mark.search(msg)
+    if mark_inf is None:
+        re_mark = re.compile("(?:@|at)[a-zA-Z]?[ ]*[$]?[ ]*([,]?\d+(?:\.\d+)?)")
+        mark_inf = re_mark.search(msg)
+        
     if mark_inf is None:
         date = parse_date(msg)
         re_mark = re.compile(f"{date}[ ]*[$]?[ ]*([.]?\d+(?:\.\d+)?)")
         mark_inf = re_mark.search(msg)
         if mark_inf is None:
             return None
-    mark = float(mark_inf.groups()[-1])
+    mark = float(mark_inf.groups()[-1].replace(",","."))
     return mark
 
 

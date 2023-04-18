@@ -65,6 +65,8 @@ def format_exitplan(plan):
     return plan
 
 def get_portf_data(exclude={}):
+    if not op.exists(op.join(cfg.data_dir, "trader_portfolio.csv")):
+        return [],[]
     data = pd.read_csv(op.join(cfg.data_dir, "trader_portfolio.csv"))
 
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
@@ -127,64 +129,31 @@ def get_portf_data(exclude={}):
 def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
                      track_filt_date_to='', track_filt_sym='', **kwargs ):
     data = pd.read_csv(op.join(cfg.data_dir, "trade_tracker_portfolio.csv"))
-    cols_out = ['Asset', 'Type', 'Avged', 'STC1-xQty', 'STC2-xQty', 'STC3-xQty',
-                ]
 
-    cols = [c for c in data.columns if c not in cols_out]
-
-    data = data[cols]
 
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
-
-    data['exit_plan']= data['exit_plan'].apply(lambda x: format_exitplan(x))
     data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
-    alerts =  (~data[['STC1-Alerted', 'STC2-Alerted', 'STC3-Alerted']].isna()).sum(1)
-    data["Alerted"]= alerts.astype(int)
-
-    usold = np.nansum([data[f"STC{i}-uQty"] for i in range(1,4)], 0)
-    for i in range(1,4):
-        data.loc[data[f"STC{i}-PnL"] == 'none',f"STC{i}-PnL"] = np.nan
-        data[f"STC{i}-PnL"] = data[f"STC{i}-PnL"].astype(float)
-    pnl =  np.nansum([(data[f"STC{i}-PnL"]*data[f"STC{i}-uQty"])/usold for i in range(1,4)], 0)
-    data["PnL"]  = pnl
-    data["PnL"] = pd_col_str_frmt(data["PnL"], 1)
-    data['Alert-Price'] = data['Alert-Price'].apply(lambda x: np.mean(eval(x.replace("/", ",").replace('nan', 'np.nan'))) if isinstance(x,str) else x)
-
-    for i in range(1,4):
-        # Get xQty relative PnL
-        data['Price'] = data['Price'].apply(lambda x: np.mean(eval(x.replace("/", ","))) if isinstance(x,str) else x)
-        data[f"STC{i}-$PnL"] = data[f'STC{i}-PnL']* (data[f'STC{i}-uQty'] - data['Price'])
-        stc_alert_price = data[f'STC{i}-Alerted'].apply(lambda x: eval(x.replace('-', "np.nan")) if isinstance(x, str) else x )
-        data[f"STC{i}-$PnL-alert"] = (stc_alert_price - data['Alert-Price']) * data[f'STC{i}-uQty'] 
-        data[f"STC{i}-PnL-alert"] = (stc_alert_price - data['Alert-Price'])/ data['Alert-Price']
-        data[f"STC{i}-$PnL"] = data[f'STC{i}-PnL']* data[f'STC{i}-uQty']
-        # Format nums to str for left centered col
-
-    data["$PnL"]  = np.nansum([data[f"STC{i}-$PnL"] for i in range(1,4)], 0)
-    data["$PnL-alert"]= np.nansum([data[f"STC{i}-$PnL-alert"] for i in range(1,4)], 0)
-    data["PnL-alert"]= np.nansum([data[f"STC{i}-PnL-alert"] for i in range(1,4)], 0)
-    
-    for i in range(1,4):
-        data[f"STC{i}-$PnL"] =  pd_col_str_frmt(data[f"STC{i}-$PnL"])
-        data[f'STC{i}-PnL'] = pd_col_str_frmt(data[f'STC{i}-PnL'])
-        data[f'STC{i}-uQty'] = pd_col_str_frmt(data[f'STC{i}-uQty'])
-        
+    data["N Alerts"]= data['Avged']
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
+    
 
-    frm_cols = ['Price', 'Alert-Price', 'Amount', 'Alerted', "$PnL", "$PnL-alert", "PnL-alert"]
+    frm_cols = ["Price-current", 'Amount', 'N Alerts', 
+                'STC-Amount','STC-Price','STC-Price-current','STC-PnL','STC-PnL-current',
+                'STC-PnL$','STC-PnL$-current']
+
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
 
-    cols = ['isOpen', "PnL", "$PnL", "PnL-alert", "$PnL-alert", 'Date', 'Symbol', 'Trader', 'Price', 'Alert-Price', 'Amount', 'Alerted', 
-        'STC1-Alerted','STC2-Alerted', 'STC3-Alerted']+ [f"STC{i}-$PnL" for i in range(1,4)] + \
-        [f"STC{i}-$PnL-alert" for i in range(1,3)] +['STC1-uQty', 'STC2-uQty', 'STC3-uQty',
-       'STC1-Price', 'STC2-Price', 'STC3-Price', 'STC1-PnL', 'STC2-PnL',
-       'STC3-PnL', 'STC1-Date', 'STC2-Date', 'STC3-Date',
+    cols = ['isOpen','STC-PnL','STC-PnL-current', 'STC-PnL$','STC-PnL$-current', 'Date', 'Symbol', 'Trader', 'Price',
+            "Price-current", 'Amount', 'N Alerts','STC-Amount','STC-Price','STC-Price-current','STC-Date','Channel'
         ]
+
+    # data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
+
     data = data[cols]
     data.fillna("", inplace=True)
     header_list = data.columns.tolist()
-    header_list = [d.replace('STC', '') for d in header_list]
+    header_list = [d.replace('STC', 'S') for d in header_list]
 
     if len(exclude):
         for k, v in exclude.items():
@@ -210,8 +179,10 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
         data = data[data['Symbol'].str.contains(track_filt_sym, case=False)]
 
     sumtotal = {c:None for c in data.columns}
-    for sumcol in ["PnL", "STC1-PnL", "STC2-PnL", "STC3-PnL"]:
+    for sumcol in ['STC-PnL','STC-PnL-current']:
         sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).mean():.2f}'
+    for sumcol in ['STC-PnL$','STC-PnL$-current']:
+        sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).sum():.2f}'
     sumtotal['Date'] = data.iloc[len(data)-1]['Date']
     sumtotal['Symbol'] = "Total Average"
     sumtotal['Trader'] = track_filt_author if len(track_filt_author) else "Average"

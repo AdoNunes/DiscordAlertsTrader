@@ -22,7 +22,7 @@ from colorama import Fore, Back, Style, init
 import itertools
 import json
 from trader_tracker import Trades_Tracker
-
+from trader_tracker_bot_alerts import Bot_bulltrades_Tracker
 
 if not os.path.exists(data_dir):
     os.mkdir(data_dir)
@@ -198,7 +198,8 @@ class AlertsListner():
         self.queue_prints = queue_prints
 
         self.Altrader = AlertTrader(queue_prints=self.queue_prints)
-        self.tracker = Trades_Tracker(TDSession=self.Altrader.TDsession)
+        # self.tracker = Trades_Tracker(TDSession=self.Altrader.TDsession)        
+        self.tracker = Bot_bulltrades_Tracker(TDSession=self.Altrader.TDsession, portfolio_fname=data_dir + "/trade_tracker_portfolio.csv")
         self.listening = False
         self.load_data()
         
@@ -397,9 +398,10 @@ class AlertsListner():
                     date_diff = datetime.now() - order_date
                     print(f"time difference is {date_diff.seconds}")
                     live_alert = True if date_diff.seconds < 90 else False
-                    self.tracker.trade_alert(order, pars, msg_str, live_alert=True, channel=chn)
+                    # self.tracker.trade_alert(order, pars, msg_str, live_alert=live_alert, channel=chn)
+                    self.tracker.trade_alert(order, live_alert=live_alert, channel=chn)
 
-                    if order['Trader'] in cfg.authors_subscribed:
+                    if order['Trader'] in cfg.authors_subscribed: 
                         self.Altrader.new_trade_alert(order, pars, msg_str)
 
             elif pars == 'not an alert':
@@ -415,7 +417,9 @@ class AlertsListner():
                 date_diff = datetime.now() - order_date
                 print(f"time difference is {date_diff.seconds}")
                 live_alert = True if date_diff.seconds < 90 else False
-                self.tracker.trade_alert(order, pars, msg['Content'], live_alert=live_alert)
+                # self.tracker.trade_alert(order, pars, msg['Content'], live_alert=live_alert)
+                self.tracker.trade_alert(order, live_alert, chn)
+                self.tracker.close_expired()
                 if msg['Author'] in cfg.authors_subscribed:
                     order["Trader"] = msg['Author']
                     self.Altrader.new_trade_alert(order, pars, msg['Content'])
@@ -423,8 +427,6 @@ class AlertsListner():
                 msg['Parsed'] = pars
                 self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
                 self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
-
-        
 
 
 

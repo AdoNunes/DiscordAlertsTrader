@@ -5,7 +5,6 @@ import json
 from datetime import datetime, timedelta, date
 
 from disc_trader import find_last_trade, option_date
-from real_time_exporter import send_sh_cmd
 from message_parser import parser_alerts
 from config import (path_dll, data_dir,  discord_token,  analyst_logs)
 
@@ -68,7 +67,9 @@ class Bot_bulltrades_Tracker():
             quote = quote[ptype]
         return quote
 
-    def update_msgs(self):        
+
+    def update_msgs(self): 
+        from real_time_exporter import send_sh_cmd       
         for author, chan_ID in analyst_logs.items():
             out_file = op.join(data_dir, f"alert_chan_logs_{author}.json")
             
@@ -125,9 +126,11 @@ class Bot_bulltrades_Tracker():
 
     def trade_alert(self, order, live_alert=True, channel=None):
         open_trade, _ = find_last_trade(order, self.portfolio, open_only=True)
-
+        if order.get('uQty') is None:
+            order['uQty'] = 1
+        
         if order["action"] in ["BTO", "STC"] and live_alert:
-            if order.get('Actual Cost') == 'None':
+            if order.get('Actual Cost', 'None') == 'None':
                 order["Actual Cost"] = self.price_now(order["Symbol"], order["action"])
 
         if open_trade is None and order["action"] == "BTO":
@@ -138,6 +141,10 @@ class Bot_bulltrades_Tracker():
             str_act = "STC without BTO"
         elif order["action"] == "STC":
             str_act = self.make_STC(order, open_trade)
+        elif order["action"] == "ExitUpdate":
+            if open_trade is not None:
+                self.portfolio.loc[open_trade, "SL"] = order.get('SL')
+            return 
 
         #save to csv
         self.portfolio.to_csv(self.portfolio_fname, index=False)      
@@ -145,6 +152,8 @@ class Bot_bulltrades_Tracker():
 
 
     def make_BTO(self, order, chan=None):
+        if order["price"] is None:
+            return
         date = order.get("Date", get_date())
         if order['uQty'] is None:
             order['uQty'] = 1
@@ -197,37 +206,79 @@ class Bot_bulltrades_Tracker():
 
     def make_STC(self, order, open_trade):
         trade = self.portfolio.loc[open_trade]
+        stc_info = self.calc_stc_prices(trade)
+        #Log portfolio
+        for k, v in stc_info.items():
+            self.portfolio.loc[open_trade, k] = v
+        self.portfolio.loc[open_trade, "STC-Date"] = order["Date"]
+        stc_price =  self.portfolio.loc[open_trade,"STC-Price"]
+        stc_utotal = self.portfolio.loc[open_trade,"STC-Amount"]
+        
+        if stc_price == "none" or stc_price is None:
+            str_STC = f"STC {order['Symbol']}  ({order['uQty']}), no price provided"
+        else:
+            str_STC = f"STC {order['Symbol']}  ({order['uQty']}), {stc_price:.2f}%"
+
+        if stc_utotal >= trade['Amount']:
+            str_STC = str_STC +" Closed"
+            self.portfolio.loc[open_trade, "isOpen"] = 0
+        if eval(order.get('# Closed', "0"))==1 :
+            assert(self.portfolio.loc[open_trade, "isOpen"]==0)
+        return str_STC
+
+
+    def calc_stc_prices(self, trade, order=None ):
+        # if order is None = expired option
+        if order is None:
+            order = {
+                "price":0,
+                "Actual Cost":0,
+                "expired": True
+                }
         bto_price = trade["Price"]
         bto_price_al = trade["Price-current"]
-        if order['uQty'] is None:
-            order['uQty'] = 1
+        
+        if not order.get('expired', False):
+            if order['uQty'] is None:
+                uQty = 1
+        else: 
+            if pd.isnull(trade["STC-Amount"]):
+                uQty = trade['Amount'] 
+            else:
+                uQty = trade['Amount'] - trade["STC-Amount"]
+        
         if isinstance(bto_price, str):
             bto_price =  np.mean(eval(bto_price.replace("/", ",")))
         if isinstance(bto_price_al, str):
             bto_price_al =  np.mean(eval(bto_price_al.replace("/", ",")))
-            
-        if not pd.isnull(trade["STC-Price"]):
+        
+        if not pd.isnull(trade["STC-Price"]):  # previous stcs            
             stc_wprice = trade["STC-Price"] * trade["STC-Amount"]
-            stc_utotal = trade["STC-Amount"] + order['uQty']            
-            stc_price = (order.get("price") * order['uQty'] +  stc_wprice)/stc_utotal      
+            stc_utotal = trade["STC-Amount"] + uQty
+            stc_price = (order.get("price") * uQty +  stc_wprice)/stc_utotal      
+            prices = "/".join([str(trade["STC-Price"]), str(order.get("Actual Cost"))])
             
             if pd.isnull(trade["STC-Price-current"]) or pd.isnull(order.get("Actual Cost")):
-                stc_price_al = None
+                prices_curr = "" if order.get('expired', False) else 0
+                stc_price_al = None if order.get('expired', False) else 0
             else:
                 stc_wprice = trade["STC-Price-current"] * trade["STC-Amount"]
-                stc_price_al = (order.get("Actual Cost") * order['uQty'] +  stc_wprice)/stc_utotal
-        else:
+                stc_price_al = (order.get("Actual Cost") * uQty +  stc_wprice)/stc_utotal
+                prices_curr = "/".join([str(trade["STC-Prices-curr"]), str(order.get("Actual Cost"))])
+        else:  # non-previous stcs   
             stc_price = order.get("price")
             stc_price_al = order.get("Actual Cost")
-            stc_utotal = order['uQty']
+            stc_utotal = uQty
+            prices = order.get("price")
+            prices_curr = order.get("Actual Cost")
         
-        if trade['Asset'] == "option":
-            option_multi = 100
+        option_multi = 100 if trade['Asset'] == "option" else 1
+        if stc_price is not None: 
+            stc_pnl = float((stc_price - bto_price)/bto_price) *100
+            stc_pnl_u = ((stc_price - bto_price)*stc_utotal)*option_multi
         else:
-            option_multi = 1
-            
-        stc_pnl = float((stc_price - bto_price)/bto_price) *100
-        stc_pnl_u = ((stc_price - bto_price)*stc_utotal)*option_multi
+            stc_pnl = None
+            stc_pnl_u = None
         
         if stc_price_al is None or pd.isnull(bto_price_al):
             stc_pnl_al = None
@@ -236,30 +287,17 @@ class Bot_bulltrades_Tracker():
             stc_pnl_al = float((stc_price_al - bto_price_al)/bto_price_al) *100
             stc_pnl_al_u = (stc_price_al - bto_price_al)*stc_utotal*option_multi
 
-            
-        self.portfolio.loc[open_trade, "STC-Price"] = stc_price
-        self.portfolio.loc[open_trade, "STC-Price-current"] = stc_price_al
-        self.portfolio.loc[open_trade, "STC-Date"] = order["Date"]
-        self.portfolio.loc[open_trade, "STC-Amount"] = stc_utotal
-
-        self.portfolio.loc[open_trade, "STC-PnL"] = stc_pnl
-        self.portfolio.loc[open_trade, "STC-PnL$"] = stc_pnl_u
-        self.portfolio.loc[open_trade, "STC-PnL-current"] = stc_pnl_al
-        self.portfolio.loc[open_trade, "STC-PnL$-current"] = stc_pnl_al_u
-        
-        if stc_price == "none":
-            str_STC = f"STC {order['Symbol']}  ({order['uQty']}), no price provided"
-        else:
-            str_STC = f"STC {order['Symbol']}  ({order['uQty']}), {stc_price:.2f}%"
-
-        if stc_utotal >= trade['Amount']:
-            str_STC = str_STC +" Closed"
-            self.portfolio.loc[open_trade, "isOpen"] = 0
-        if eval(order['# Closed'])==1 :
-            assert(self.portfolio.loc[open_trade, "isOpen"]==0)
-
-        return str_STC
-
+        stc_info = {"STC-Prices":prices,
+                    "STC-Prices-current": prices_curr,
+                    "STC-Price": stc_price,
+                    "STC-Price-current": stc_price_al,
+                    "STC-Amount": uQty,
+                    "STC-PnL": stc_pnl,
+                    "STC-PnL-current": stc_pnl_al,
+                    "STC-$PnL": stc_pnl_u,
+                    "STC-$PnL-current": stc_pnl_al_u,
+                    }
+        return stc_info
 
     def close_expired(self):
         for i, trade in  self.portfolio.iterrows():
@@ -268,57 +306,16 @@ class Bot_bulltrades_Tracker():
             optdate = option_date(trade['Symbol'])
             if optdate.date() < date.today():
                 expdate = date.today().strftime("%Y-%m-%dT%H:%M:%S+0000")
-                if pd.isnull(trade["STC-Amount"]):
-                    uQty = trade['Amount'] 
-                else:
-                    uQty = trade['Amount'] - trade["STC-Amount"]
-                bto_price = eval(trade["Price"]) if isinstance(trade["Price"], str) else trade["Price"]
-                bto_price_al = trade["Price-current"]
                 
-                if not pd.isnull(trade["STC-Price"]):
-                    stc_wprice = trade["STC-Price"] * trade["STC-Amount"]
-                    stc_utotal = trade["STC-Amount"] + uQty            
-                    stc_price = (0 +  stc_wprice)/stc_utotal      
-                    
-                    if pd.isnull(trade["STC-Price-current"]):
-                        stc_price_al = 0
-                    else:
-                        stc_wprice = trade["STC-Price-current"] * trade["STC-Amount"]
-                        stc_price_al = (0 +  stc_wprice)/stc_utotal
-                else:
-                    stc_price = 0
-                    stc_price_al = 0
-                    stc_utotal = uQty
-                
-                if trade['Asset'] == "option":
-                    option_multi = 100
-                else:
-                    option_multi = 1
-                    
-                stc_pnl = float((stc_price - bto_price)/bto_price) *100
-                stc_pnl_u = ((stc_price - bto_price)*stc_utotal)*option_multi
-                
-                if stc_price_al is None or pd.isnull(bto_price_al):
-                    stc_pnl_al = -100
-                    stc_pnl_al_u = None
-                else:
-                    stc_pnl_al = -100
-                    stc_pnl_al_u = (stc_price_al - bto_price_al)*stc_utotal*option_multi
-                    
+                stc_info = self.calc_stc_prices(trade)
                 #Log portfolio
-                self.portfolio.loc[i, "STC-Price"] = 0
-                self.portfolio.loc[i, "STC-Price-current"] = 0
                 self.portfolio.loc[i, "STC-Date"] = expdate
                 self.portfolio.loc[i, "STC-xQty"] = 1
-                self.portfolio.loc[i, "STC-Amount"] = uQty
-                self.portfolio.loc[i, "STC-PnL"] = stc_pnl
-                self.portfolio.loc[i, "STC-PnL-current"] = stc_pnl_al
-                self.portfolio.loc[i, "STC-$PnL"] = stc_pnl_u
-                self.portfolio.loc[i, "STC-$PnL-current"] = stc_pnl_al_u
+                for k, v in stc_info.items():
+                    self.portfolio.loc[i, k] = v
                 
                 self.portfolio.loc[i, "isOpen"] = 0
-
-                str_prt = f"{trade['Symbol']} option expired -100% uQty: {uQty}"
+                str_prt = f"{trade['Symbol']} option expired -100%"
                 print(str_prt)
 
 
