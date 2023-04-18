@@ -183,13 +183,19 @@ class AlertTrader():
     def confirm_and_send(self, order, pars, order_funct):
             resp, order, ord_chngd = self.notify_alert(order, pars)
             if resp in ["yes", "y"]:
-
-                ord_resp, ord_id = send_order(order_funct(**order), self.TDsession)
+                try:
+                    ord_resp, ord_id = send_order(order_funct(**order), self.TDsession)
+                except Exception as e:
+                    print(Back.GREEN + f"Error in order {e}")
+                    self.queue_prints.put([f"Error in order {e}", "", "red"])
+                    return None, None, order, None
+                
                 if ord_resp is None:
                     raise("Something wrong with order response")
 
                 print(Back.GREEN + f"Sent order {pars}")
-                self.queue_prints.put([f"Sent order {pars}", "", "green"])
+                color = "green" if order['action'] == "BTO" else "yellow"
+                self.queue_prints.put([f"Sent order {pars}", "", color])
                 return ord_resp, ord_id, order, ord_chngd
 
             elif resp in ["no", "n"]:
@@ -865,7 +871,7 @@ class AlertTrader():
                 if order_status == "FILLED" and np.isnan(trade[STC+"-xQty"]):
                     self.log_filled_STC(STC_ordID, i, STC)
 
-                self.save_logs("port")
+        self.save_logs("port")
 
     def check_opt_stock_price(self, open_trade, exit_plan, act="STC"):
         "Option exits in stock price"
@@ -1034,10 +1040,29 @@ class AlertTrader():
             self.portfolio.loc[open_trade, STC + "-uQty"] = trade['filledQty'] - usold
             self.portfolio.loc[open_trade, STC + "-PnL"] = -100
             self.portfolio.loc[open_trade, "isOpen"] = 0
-
+            
+            bto_price = self.portfolio.loc[open_trade, "Price"]
+            bto_price_alert = self.portfolio.loc[open_trade, "Price-Alert"]
+            bto_price_current = self.portfolio.loc[open_trade, "Price-Current"]
+            
+            trade = self.portfolio.loc[open_trade]
+            sold_tot = np.nansum([trade[f"STC{i}-uQty"] for i in range(1,4)])
+            stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+            self.portfolio.loc[open_trade, "PnL"] = stc_PnL_all
+            stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-Alerted"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+            stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-Current"] - bto_price_current)/bto_price_current) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+            self.portfolio.loc[open_trade, "PnL-Alert"] = stc_PnL_all_alert
+            self.portfolio.loc[open_trade, "PnL-Current"] = stc_PnL_all_curr
+            
+            mutipl = 1 if trade['Asset'] == "option" else .01  # pnl already in %
+            self.portfolio.loc[open_trade, "$PnL"] =  stc_PnL_all* bto_price *mutipl*sold_tot
+            self.portfolio.loc[open_trade, "$PnL-Alert"] =  stc_PnL_all_alert* bto_price_alert *mutipl*sold_tot
+            self.portfolio.loc[open_trade, "$PnL-Current"] =  stc_PnL_all_curr* bto_price_current *mutipl*sold_tot
+        
             str_prt = f"{trade['Symbol']} option expired -100% uQty: {trade['filledQty']}"
             print(Back.GREEN + str_prt)
             self.queue_prints.put([str_prt,"", "green"])
+            self.save_logs("port")
 
 
 
