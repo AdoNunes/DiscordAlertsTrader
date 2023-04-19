@@ -137,7 +137,7 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
     
 
-    frm_cols = ["Price-current", 'Amount', 'N Alerts', 
+    frm_cols = ['Amount', 'N Alerts', 
                 'STC-Amount','STC-Price','STC-Price-current','STC-PnL','STC-PnL-current',
                 'STC-PnL$','STC-PnL$-current']
 

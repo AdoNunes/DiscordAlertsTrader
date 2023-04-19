@@ -62,9 +62,12 @@ class Bot_bulltrades_Tracker():
         else:
             ptype = 'bidPrice'
 
-        quote = self.TDSession.get_quotes(instruments=[symbol]).get(symbol)
-        if quote is not None:
-            quote = quote[ptype]
+        quote = self.TDSession.get_quotes(instruments=[symbol])
+        if quote is None:
+            quote = self.TDSession.get_quotes(instruments=[symbol])
+            
+        if quote is not None and len(quote):
+            quote = quote.get(symbol)[ptype]
         return quote
 
 
@@ -206,7 +209,7 @@ class Bot_bulltrades_Tracker():
 
     def make_STC(self, order, open_trade):
         trade = self.portfolio.loc[open_trade]
-        stc_info = self.calc_stc_prices(trade)
+        stc_info = self.calc_stc_prices(trade, order)
         #Log portfolio
         for k, v in stc_info.items():
             self.portfolio.loc[open_trade, k] = v
@@ -241,6 +244,8 @@ class Bot_bulltrades_Tracker():
         if not order.get('expired', False):
             if order['uQty'] is None:
                 uQty = 1
+            else:
+                uQty = order['uQty']
         else: 
             if pd.isnull(trade["STC-Amount"]):
                 uQty = trade['Amount'] 
@@ -294,8 +299,8 @@ class Bot_bulltrades_Tracker():
                     "STC-Amount": uQty,
                     "STC-PnL": stc_pnl,
                     "STC-PnL-current": stc_pnl_al,
-                    "STC-$PnL": stc_pnl_u,
-                    "STC-$PnL-current": stc_pnl_al_u,
+                    "STC-PnL$": stc_pnl_u,
+                    "STC-PnL$-current": stc_pnl_al_u,
                     }
         return stc_info
 
