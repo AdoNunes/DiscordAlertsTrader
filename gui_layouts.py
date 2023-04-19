@@ -27,12 +27,19 @@ def layout_portfolio(data_n_headers, font_body, font_header):
         values=data_n_headers[0]
     
     layout = [
-         [sg.Column([[sg.Text("Exclude: "),
+         [sg.Column([[sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'port_filt_author', size=(20, 1)),
+                      sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'port_filt_date_frm', size=(18, 1), default_text='04/09/2023'),
+                      sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'port_filt_date_to', size=(15, 1)),
+                      sg.Text('   Contains symbol: ', size=(20, 1)), sg.Input(key=f'port_filt_sym', size=(20, 1)),
+                      ],
+                     [sg.Text("Exclude: "),
                       sg.Checkbox("Closed", key="-port-Closed", enable_events=True),
                       sg.Checkbox("Open", key="-port-Open", enable_events=True),
-                      sg.Checkbox("Cancelled", key="-port-Cancelled", enable_events=True),
+                      sg.Checkbox("Cancelled", key="-port-Cancelled", default=True, enable_events=True),
                       sg.Checkbox("Neg PnL", key="-port-NegPnL", enable_events=True),
                       sg.Checkbox("Pos PnL", key="-port-PosPnL", enable_events=True),
+                      sg.Checkbox("Stocks", key="-port-stocks", default=True, enable_events=True),
+                      sg.Checkbox("Options", key="-port-options", enable_events=True),
                       ],
              [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-portfolio_")]])],
          [sg.Column([[sg.Table(values=values,
@@ -58,18 +65,20 @@ def layout_traders(data_n_headers, font_body, font_header):
         values=data_n_headers[0]
     
     layout = [
-         [sg.Column([[sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'track_filt_author', size=(20, 1)),
-         sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'track_filt_date_frm', size=(15, 1), default_text='02/09/23'),
-         sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'track_filt_date_to', size=(15, 1)),
-         sg.Text('   Contains symbol: ', size=(20, 1)), sg.Input(key=f'track_filt_sym', size=(20, 1)),
-                      ],
+        [sg.Column([[sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'track_filt_author', size=(20, 1)),
+                     sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'track_filt_date_frm', size=(18, 1), default_text='04/09/2023'),
+                     sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'track_filt_date_to', size=(18, 1)),
+                     sg.Text('   Contains symbol: ', size=(20, 1)), sg.Input(key=f'track_filt_sym', size=(20, 1)),
+                     ],
                      [sg.Text("Exclude: "),
                       sg.Checkbox("Closed", key="-track-Closed", enable_events=True),
                       sg.Checkbox("Open", key="-track-Open", enable_events=True),
                       sg.Checkbox("Neg PnL", key="-track-NegPnL", enable_events=True),
-                      sg.Checkbox("Pos PnL", key="-track-PosPnL", enable_events=True),
+                      sg.Checkbox("Pos PnL", key="-track-PosPnL", enable_events=True),                      
+                      sg.Checkbox("Stocks", key="-track-stocks", default=True, enable_events=True),
+                      sg.Checkbox("Options", key="-track-options", enable_events=True)
                       ],
-             [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-track_")]])
+                     [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-track_")]])
                     ],
          [sg.Column([[sg.Table(values=values,
                         headings=data_n_headers[1],

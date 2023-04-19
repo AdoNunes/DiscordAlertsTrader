@@ -118,24 +118,39 @@ for chn in chns:
 event, values = window.read(.5)
 
 trade_events = queue.Queue(maxsize=20)
-alistner = AlertsListner(trade_events)
+# alistner = AlertsListner(trade_events)
 
 
 
 event, values = window.read(.5)
-port_exc = {"Cancelled":False,
+
+port_exc = {"Cancelled":True,
             "Closed":False,
             "Open":False,
             "NegPnL":False,
-            "PosPnL":False}
+            "PosPnL":False,
+            "stocks":True,
+            "options":False,
+            }
 
 track_exc = {"Cancelled":False,
             "Closed":False,
             "Open":False,
             "NegPnL":False,
-            "PosPnL":False}
+            "PosPnL":False,
+            "stocks":True,
+            "options":False,
+            }
+
+dt, _  = gg.get_tracker_data(track_exc, **values)
+window.Element('_track_').Update(values=dt)
+fit_table_elms(window.Element("_track_").Widget)
+dt, hdr = gg.get_portf_data(port_exc)
+window.Element('_portfolio_').Update(values=dt)
+fit_table_elms(window.Element("_portfolio_").Widget)
 
 while True:
+    
     event, values = window.read(1)#.1)
 
     if event == sg.WINDOW_CLOSED:
@@ -210,5 +225,5 @@ while True:
 
 
 window.close()
-alistner.close()
+# alistner.close()
 

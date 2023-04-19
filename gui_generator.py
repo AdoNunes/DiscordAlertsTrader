@@ -64,7 +64,8 @@ def format_exitplan(plan):
 
     return plan
 
-def get_portf_data(exclude={}):
+def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
+                     port_filt_date_to='', port_filt_sym='', **kwargs ):
     if not op.exists(op.join(cfg.data_dir, "trader_portfolio.csv")):
         return [],[]
     data = pd.read_csv(op.join(cfg.data_dir, "trader_portfolio.csv"))
@@ -87,35 +88,22 @@ def get_portf_data(exclude={}):
 
     cols = ['isOpen', "PnL", "$PnL", 'Date', 'Symbol', 'Trader', 'BTO-Status', 'Price',
             'Price-Alert', "Price-Current", 'uQty', 'filledQty', 'N Alerts',"PnL-Alert",
-            "$PnL-Alert","PnL-Current","$PnL-Current", "STC1-Price", "STC1-Price-Alerted", "STC1-Price-Current",
-            'STC1-PnL', 'STC1-Status','STC1-uQty','STC2-PnL',
+            "$PnL-Alert","PnL-Current","$PnL-Current", "STC1-Price", "STC1-Price-Alerted",
+            "STC1-Price-Current", 'STC1-PnL', 'STC1-Status','STC1-uQty','STC2-PnL',
             'STC2-Status', 'STC2-uQty', 'STC3-PnL', 'STC3-Status',  'STC3-uQty'
-        ]
+            ]
     data = data[cols]
     data.fillna("", inplace=True)
     header_list = data.columns.tolist()
     header_list = [d.replace('STC', '').replace("Price", "$") for d in header_list]
 
-    if len(exclude):
-        for k, v in exclude.items():
-            if k == "Cancelled" and v:
-                data = data[data["BTO-Status"] !="CANCELED"]
-            elif k == "Closed" and v:
-                data = data[data["isOpen"] !="No"]
-            elif k == "Open" and v:
-                data = data[data["isOpen"] !="Yes"]
-            elif k == "NegPnL" and v:
-                pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
-                data = data[pnl > 0 ]
-            elif k == "PosPnL" and v:
-                pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
-                data = data[pnl < 0 ]
-
+    data = filter_data(data,exclude, port_filt_author, port_filt_date_frm,
+                        port_filt_date_to, port_filt_sym)
     if len(data):
         sumtotal = {c:None for c in data.columns}
         for sumcol in ["PnL","PnL-Alert","PnL-Current",'STC1-PnL']:
             sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).mean():.2f}'
-        for sumcol in [  "$PnL","$PnL-Alert","$PnL-Current"]:
+        for sumcol in [ "$PnL","$PnL-Alert","$PnL-Current"]:
             sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).sum():.2f}'
         sumtotal['Date'] = data.iloc[len(data)-1]['Date']
         sumtotal['Symbol'] = "Total Average"
@@ -130,34 +118,49 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
                      track_filt_date_to='', track_filt_sym='', **kwargs ):
     data = pd.read_csv(op.join(cfg.data_dir, "trade_tracker_portfolio.csv"))
 
-
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
     data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
     data["N Alerts"]= data['Avged']
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
     
-
-    frm_cols = ['Amount', 'N Alerts', 
-                'STC-Amount','STC-Price','STC-Price-current','STC-PnL','STC-PnL-current',
+    frm_cols = ['Amount', 'N Alerts', 'STC-Amount','STC-Price','STC-Price-current','STC-PnL','STC-PnL-current',
                 'STC-PnL$','STC-PnL$-current']
 
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
 
+    data = filter_data(data,exclude, track_filt_author, track_filt_date_frm,
+                        track_filt_date_to, track_filt_sym )
+
     cols = ['isOpen','STC-PnL','STC-PnL-current', 'STC-PnL$','STC-PnL$-current', 'Date', 'Symbol', 'Trader', 'Price',
             "Price-current", 'Amount', 'N Alerts','STC-Amount','STC-Price','STC-Price-current','STC-Date','Channel'
-        ]
-
+            ]
     # data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
-
     data = data[cols]
     data.fillna("", inplace=True)
     header_list = data.columns.tolist()
     header_list = [d.replace('STC', 'S') for d in header_list]
+    if len(data):
+        sumtotal = {c:None for c in data.columns}
+        for sumcol in ['STC-PnL','STC-PnL-current']:
+            sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).mean():.2f}'
+        for sumcol in ['STC-PnL$','STC-PnL$-current']:
+            sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).sum():.2f}'
+        sumtotal['Date'] = data.iloc[len(data)-1]['Date']
+        sumtotal['Symbol'] = "Total Average"
+        sumtotal['Trader'] = track_filt_author if len(track_filt_author) else "Average"
+        data = pd.concat([data, pd.DataFrame.from_records(sumtotal, index=[0])], ignore_index=True)
+    data = data.values.tolist()
+    return data, header_list
 
+
+def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
+                track_filt_date_to='', track_filt_sym=''):
     if len(exclude):
         for k, v in exclude.items():
-            if k == "Closed" and v:
+            if k == "Cancelled" and v:
+                data = data[data["BTO-Status"] !="CANCELED"]
+            elif k == "Closed" and v:
                 data = data[data["isOpen"] !="No"]
             elif k == "Open" and v:
                 data = data[data["isOpen"] !="Yes"]
@@ -167,7 +170,10 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
             elif k == "PosPnL" and v:
                 pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
                 data = data[pnl < 0 ]
-
+            elif k == "stocks" and v:
+                data = data[data["Asset"] !="stock"]
+            elif k == "options" and v:
+                data = data[data["Asset"] !="option"]
 
     if track_filt_author:
         data = data[data['Trader'].str.contains(track_filt_author, case=False)]
@@ -177,21 +183,7 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
         data = data[data['Date'] < track_filt_date_to]
     if track_filt_sym:
         data = data[data['Symbol'].str.contains(track_filt_sym, case=False)]
-
-    sumtotal = {c:None for c in data.columns}
-    for sumcol in ['STC-PnL','STC-PnL-current']:
-        sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).mean():.2f}'
-    for sumcol in ['STC-PnL$','STC-PnL$-current']:
-        sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).sum():.2f}'
-    sumtotal['Date'] = data.iloc[len(data)-1]['Date']
-    sumtotal['Symbol'] = "Total Average"
-    sumtotal['Trader'] = track_filt_author if len(track_filt_author) else "Average"
-    data = pd.concat([data, pd.DataFrame.from_records(sumtotal, index=[0])], ignore_index=True)
-    data = data.values.tolist()
-    # tpnl = [[i] for i in data["PnL"].values.tolist()]
-    # isopen = [[i] for i in isopen.values.tolist()]
-    return data, header_list#, tpnl, isopen
-
+    return data
 
 
 def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
