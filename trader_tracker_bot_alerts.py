@@ -68,7 +68,7 @@ class Bot_bulltrades_Tracker():
             
         if quote is not None and len(quote):
             quote = quote.get(symbol)[ptype]
-        return quote
+            return quote
 
 
     def update_msgs(self): 
@@ -269,7 +269,7 @@ class Bot_bulltrades_Tracker():
             else:
                 stc_wprice = trade["STC-Price-current"] * trade["STC-Amount"]
                 stc_price_al = (order.get("Actual Cost") * uQty +  stc_wprice)/stc_utotal
-                prices_curr = "/".join([str(trade["STC-Prices-curr"]), str(order.get("Actual Cost"))])
+                prices_curr = "/".join([str(trade["STC-Prices-current"]), str(order.get("Actual Cost"))])
         else:  # non-previous stcs   
             stc_price = order.get("price")
             stc_price_al = order.get("Actual Cost")
