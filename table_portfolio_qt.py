@@ -115,14 +115,14 @@ for chn in chns:
     except:
         continue
 
-event, values = window.read(.5)
+event, values = window.read(.1)
 
 trade_events = queue.Queue(maxsize=20)
-# alistner = AlertsListner(trade_events)
+alistner = AlertsListner(trade_events)
 
 
 
-event, values = window.read(.5)
+event, values = window.read(.1)
 
 port_exc = {"Cancelled":True,
             "Closed":False,
@@ -149,8 +149,7 @@ dt, hdr = gg.get_portf_data(port_exc)
 window.Element('_portfolio_').Update(values=dt)
 fit_table_elms(window.Element("_portfolio_").Widget)
 
-while True:
-    
+while True:    
     event, values = window.read(1)#.1)
 
     if event == sg.WINDOW_CLOSED:
@@ -160,7 +159,7 @@ while True:
 
     if event == "_upd-portfolio_":
         # print("Updateing!")
-        dt, hdr = gg.get_portf_data(port_exc)
+        dt, hdr = gg.get_portf_data(port_exc, **values)
         window.Element('_portfolio_').Update(values=dt)
         fit_table_elms(window.Element("_portfolio_").Widget)
 
@@ -175,14 +174,14 @@ while True:
         key =  event[6:]
         state = window.Element(event).get()
         port_exc[key] = state
-        dt, hdr = gg.get_portf_data(port_exc)
+        dt, hdr = gg.get_portf_data(port_exc, **values)
         window.Element('_portfolio_').Update(values=dt)
 
     elif event[:7] == "-track-":
         key =  event[7:]
         state = window.Element(event).get()
         track_exc[key] = state
-        dt, hdr = gg.get_tracker_data(track_exc)
+        dt, hdr = gg.get_tracker_data(track_exc, **values)
         window.Element('_track_').Update(values=dt)
 
     elif event[-3:] == "UPD":
@@ -209,8 +208,12 @@ while True:
         fit_table_elms(window.Element(f"{chn}_table").Widget)
 
     elif event == "-subm-alert":
-        print(values['-subm-msg'])        
-        author, msg = values['-subm-msg'].split(', ')
+        print(values['-subm-msg'])   
+        try:        
+            author, msg = values['-subm-msg'].split(', ')
+        except ValueError:
+            author, msg = values['-subm-msg'].split(': ')
+            
         if author.startswith(" "): author = author.replace(" ","")
         date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
         vals = np.array([date, author, msg]).reshape(1,-1)
@@ -225,5 +228,5 @@ while True:
 
 
 window.close()
-# alistner.close()
+alistner.close()
 

@@ -255,13 +255,15 @@ class Bot_bulltrades_Tracker():
         if isinstance(bto_price, str):
             bto_price =  np.mean(eval(bto_price.replace("/", ",")))
         if isinstance(bto_price_al, str):
+            if bto_price_al[0] == '/':
+                bto_price_al = bto_price_al[1:]
             bto_price_al =  np.mean(eval(bto_price_al.replace("/", ",")))
         
         if not pd.isnull(trade["STC-Price"]):  # previous stcs            
             stc_wprice = trade["STC-Price"] * trade["STC-Amount"]
             stc_utotal = trade["STC-Amount"] + uQty
             stc_price = (order.get("price") * uQty +  stc_wprice)/stc_utotal      
-            prices = "/".join([str(trade["STC-Price"]), str(order.get("Actual Cost"))])
+            prices = "/".join([str(trade["STC-Prices"]), str(order.get("Actual Cost"))])
             
             if pd.isnull(trade["STC-Price-current"]) or pd.isnull(order.get("Actual Cost")):
                 prices_curr = "" if order.get('expired', False) else 0
@@ -296,7 +298,7 @@ class Bot_bulltrades_Tracker():
                     "STC-Prices-current": prices_curr,
                     "STC-Price": stc_price,
                     "STC-Price-current": stc_price_al,
-                    "STC-Amount": uQty,
+                    "STC-Amount": stc_utotal,
                     "STC-PnL": stc_pnl,
                     "STC-PnL-current": stc_pnl_al,
                     "STC-PnL$": stc_pnl_u,
