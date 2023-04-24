@@ -309,7 +309,7 @@ class AlertsListner():
                 update_time = self.UPDATE_PERIOD_offtradeing
             else:
                 update_time = self.UPDATE_PERIOD
-            print('tdiff ', tictoc, "update time", update_time)
+            # print('tdiff ', tictoc, "update time", update_time)
             if tictoc < update_time:
                 time.sleep(min(update_time-tictoc, update_time))
 

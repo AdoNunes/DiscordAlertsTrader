@@ -261,6 +261,8 @@ class Bot_bulltrades_Tracker():
         if isinstance(bto_price, str):
             bto_price =  np.mean(eval(bto_price.replace("/", ",")))
         if isinstance(bto_price_al, str):
+            if bto_price_al[0] == '/':
+                bto_price_al = bto_price_al[1:]
             bto_price_al =  np.mean(eval(bto_price_al.replace("/", ",")))
         
         if not pd.isnull(trade["STC-Price"]):  # previous stcs            

@@ -86,6 +86,8 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
 
+    data = filter_data(data,exclude, port_filt_author, port_filt_date_frm,
+                        port_filt_date_to, port_filt_sym)
     cols = ['isOpen', "PnL", "$PnL", 'Date', 'Symbol', 'Trader', 'BTO-Status', 'Price',
             'Price-Alert', "Price-Current", 'uQty', 'filledQty', 'N Alerts',"PnL-Alert",
             "$PnL-Alert","PnL-Current","$PnL-Current", "STC1-Price", "STC1-Price-Alerted",
@@ -96,11 +98,9 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     data.fillna("", inplace=True)
     header_list = data.columns.tolist()
     header_list = [d.replace('STC', '').replace("Price", "$") for d in header_list]
-
-    data = filter_data(data,exclude, port_filt_author, port_filt_date_frm,
-                        port_filt_date_to, port_filt_sym)
+    
     if len(data):
-        sumtotal = {c:None for c in data.columns}
+        sumtotal = {c:"" for c in data.columns}
         for sumcol in ["PnL","PnL-Alert","PnL-Current",'STC1-PnL']:
             sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).mean():.2f}'
         for sumcol in [ "$PnL","$PnL-Alert","$PnL-Current"]:
