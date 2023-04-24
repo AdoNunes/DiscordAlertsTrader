@@ -6,14 +6,12 @@ Created on Tue Feb 16 17:52:31 2021
 @author: adonay
 """
 
-import td
-import json
 import pandas as pd
 from datetime import datetime
 from secrets_api import auth
 from td.client import TDClient
 from td.orders import Order, OrderLeg
-
+import config as cfg
 
 
 def get_TDsession(account_n=0, accountId=None):
@@ -25,8 +23,6 @@ def get_TDsession(account_n=0, accountId=None):
 
     auth is a dict with login info loaded from config.py
     """
-
-
     # Create a new session, credentials path is required.
     TDSession = TDClient(
         client_id=auth['client_id'],
@@ -45,12 +41,6 @@ def get_TDsession(account_n=0, accountId=None):
         TDSession.accountId = accounts_info['securitiesAccount']['accountId']
 
     return TDSession
-
-
-
-# TDSession = get_TDsession()
-
-# acc_inf = TDSession.get_accounts(TDSession.accountId, ['orders','positions'])
 
 
 def get_positions_orders(TDSession):
@@ -73,7 +63,6 @@ def get_positions_orders(TDSession):
         pos_inf["PnL %"] = pos_inf["PnL"]/(pos_inf["Avg Price"]*pos_inf["Qty"])
         df_pos =pd.concat([df_pos, pd.DataFrame.from_records(pos_inf, index=[0])], ignore_index=True)
 
-
     df_ordr = pd.DataFrame(columns=["symbol", "asset", "type", "Qty",
                                     "Price", "action"])
     if 'orderStrategies' not in acc_inf['securitiesAccount'].keys():
@@ -83,7 +72,6 @@ def get_positions_orders(TDSession):
         pass
 
     return df_pos, df_ordr
-
 
 
 
@@ -108,6 +96,27 @@ def make_BTO_lim_order(Symbol:str, uQty:int, price:float, strike=None, **kwarg):
     order_leg.order_leg_quantity(quantity=int(uQty))
     new_order.add_order_leg(order_leg=order_leg)
 
+    if cfg.default_stop_lim is not None:
+        new_child_order = new_order.create_child_order_strategy()
+        new_child_order.order_strategy_type("SINGLE")
+        new_child_order.order_type("TRAILING_STOP")
+        new_child_order.order_session('NORMAL')
+        new_child_order.order_duration('GOOD_TILL_CANCEL')
+        new_child_order.stop_price_offset(cfg.default_stop_lim)
+        new_child_order.stop_price_link_type('PERCENT')
+        new_child_order.stop_price_link_basis('BID')
+        
+        child_order_leg = OrderLeg()
+        child_order_leg.order_leg_quantity(quantity=uQty)
+        if strike is not None:
+            child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+            child_order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
+        else:
+            child_order_leg.order_leg_instruction(instruction="SELL")
+            child_order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
+        new_child_order.add_order_leg(order_leg=child_order_leg)
+    new_order.add_child_order_strategy(child_order_strategy=new_child_order)
+        
     return new_order
 
 
