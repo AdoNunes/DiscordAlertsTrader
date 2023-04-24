@@ -189,11 +189,12 @@ class Bot_bulltrades_Tracker():
             current_Avg = int(current_Avg + 1)
         
         old_price = self.portfolio.loc[open_trade, "Price"]
+        old_price = eval(old_price) if isinstance(old_price, str) else old_price
         old_qty = self.portfolio.loc[open_trade, "Amount"]
         alert_price_old = self.portfolio.loc[open_trade, "Price-current"]
         alert_price_old = None if pd.isnull(alert_price_old) else alert_price_old
         alert_price = order.get("Actual Cost", "None")
-        avgs_prices_al = f"{alert_price_old}/{alert_price}".replace("None/", "").replace("/None", "")
+        avgs_prices_al = f"{alert_price_old}/{alert_price}".replace("None/", "").replace("/None", "").replace("None", "")
         if not len(avgs_prices_al):
             avgs_prices_al = None
     
@@ -201,7 +202,7 @@ class Bot_bulltrades_Tracker():
         self.portfolio.loc[open_trade, "Amount"] += order['uQty']
         self.portfolio.loc[open_trade, "Price"] = ((old_price*old_qty) + (order['price']*order['uQty']))/(old_qty+order['uQty'])
         self.portfolio.loc[open_trade, "Prices"] = f"{old_price}/{order['price']}"
-        if alert_price == 'None':
+        if alert_price == 'None' or alert_price is None or alert_price_old is None:
             self.portfolio.loc[open_trade, "Price-current"] = alert_price_old
         else:
             self.portfolio.loc[open_trade, "Price-current"] = ((alert_price_old*old_qty) + (alert_price*order['uQty']))/(old_qty+order['uQty'])
@@ -293,7 +294,7 @@ class Bot_bulltrades_Tracker():
             stc_pnl = None
             stc_pnl_u = None
         
-        if stc_price_al is None or pd.isnull(bto_price_al):
+        if stc_price_al is None or pd.isnull(bto_price_al) or bto_price_al == 0:
             stc_pnl_al = None
             stc_pnl_al_u = None
         else:
