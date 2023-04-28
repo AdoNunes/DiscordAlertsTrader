@@ -15,7 +15,7 @@ import time
 import config as cfg
 import threading
 from place_order import (get_TDsession, make_BTO_lim_order, send_order,
-                         make_STC_lim,
+                         make_STC_lim, make_STC_SL_trailstop,
                          make_Lim_SL_order, make_STC_SL)
 # import dateutil.parser.parse as date_parser
 from colorama import Fore, Back
@@ -835,9 +835,8 @@ class AlertTrader():
                 self.close_open_exit_orders(i)
 
             exit_plan = eval(trade["exit_plan"])
-            if  exit_plan != {}:
-                # If strings in exit values, stock price for option, exclude trainling stop with %
-                if any([isinstance(e, str) and "%" not in e for e in exit_plan.values()]):
+            if  exit_plan != {}:                
+                if any([isinstance(e, str) for e in exit_plan.values()]):
                     self.check_opt_stock_price(i, exit_plan, "STC")
                 else:
                     self.make_exit_orders(i, exit_plan)
@@ -894,7 +893,7 @@ class AlertTrader():
                 STCn = int(v[2])
                 if STCn < 3 and exit_plan[f"PT{STCn+1}"] is None:
                     exit_plan[f"PT{STCn+1}"] = quote_opt * 2
-            elif v[:2] == "SL" and float(pt) >= quote:
+            elif v[:2] == "SL" and "%" not in pt and float(pt) >= quote:
                  exit_plan[v] = quote
 
         if exit_plan_ori != exit_plan:
@@ -1022,6 +1021,18 @@ class AlertTrader():
                     self.save_logs("port")
                 else:
                     break
+        # no PTs but trailing stop
+        if nPTs == 0 and "%" in order.get("SL") and pd.isnull(trade["STC1-ordID"]):
+            order["price"] = float(exit_plan["SL"].replace("%", ""))      
+            order['uQty'] = int(trade['uQty'])
+            order['xQty'] = 1
+            _, STC_ordID = send_order(make_STC_SL_trailstop(**order), self.TDsession)
+            str_prt = f"STC1 {order['Symbol']} Trailing stop of {order['price']}% sent during order update"            
+            print(Back.GREEN + str_prt)
+            self.queue_prints.put([str_prt,"", "green"])
+            self.portfolio.loc[i, "STC1-ordID"] = STC_ordID
+            trade = self.portfolio.iloc[i]
+            self.save_logs("port")
 
     def close_expired(self, open_trade):
         i = open_trade

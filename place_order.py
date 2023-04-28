@@ -46,8 +46,7 @@ def get_TDsession(account_n=0, accountId=None):
 def get_positions_orders(TDSession):
     acc_inf = TDSession.get_accounts(TDSession.accountId, ['orders','positions'])
 
-    df_pos = pd.DataFrame(columns=["symbol", "asset", "type", "Qty",
-                                    "Avg Price", "PnL", "PnL %"])
+    df_pos = pd.DataFrame(columns=["symbol", "asset", "type", "Qty", "Avg Price", "PnL", "PnL %"])
 
     for pos in acc_inf['securitiesAccount']['positions']:
         long = True if pos["longQuantity"]>0 else False
@@ -96,27 +95,6 @@ def make_BTO_lim_order(Symbol:str, uQty:int, price:float, strike=None, **kwarg):
     order_leg.order_leg_quantity(quantity=int(uQty))
     new_order.add_order_leg(order_leg=order_leg)
 
-    if cfg.default_stop_lim is not None:
-        make_STC_SL_trailstop = []
-        new_child_order = new_order.create_child_order_strategy()
-        new_child_order.order_strategy_type("SINGLE")
-        new_child_order.order_type("TRAILING_STOP")
-        new_child_order.order_session('NORMAL')
-        new_child_order.order_duration('GOOD_TILL_CANCEL')
-        new_child_order.stop_price_offset(cfg.default_stop_lim)
-        new_child_order.stop_price_link_type('PERCENT')
-        new_child_order.stop_price_link_basis('BID')
-        
-        child_order_leg = OrderLeg()
-        child_order_leg.order_leg_quantity(quantity=uQty)
-        if strike is not None:
-            child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
-            child_order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
-        else:
-            child_order_leg.order_leg_instruction(instruction="SELL")
-            child_order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
-        new_child_order.add_order_leg(order_leg=child_order_leg)
-        new_order.add_child_order_strategy(child_order_strategy=new_child_order)
         
     return new_order
 
@@ -131,12 +109,10 @@ def make_BTO_PT_SL_order(Symbol:str, uQty:int, price:float, PTs:list=None,
         return new_order
 
     PTs_Qty = [ round(uQty * pqty) for pqty in PTs_Qty]
-
     for PT, pqty in zip(PTs, PTs_Qty):
         new_child_order = new_order.create_child_order_strategy()
         new_child_order = make_Lim_SL_order(Symbol, pqty, PT, SL, SL_stop, new_child_order)
         new_order.add_child_order_strategy(child_order_strategy=new_child_order)
-
     return new_order
 
 
@@ -236,6 +212,34 @@ def make_STC_SL(Symbol:str, uQty:int, SL:float, strike=None,
     new_order.add_order_leg(order_leg=order_leg)
 
     return new_order
+
+
+
+def make_STC_SL_trailstop(Symbol:str, uQty:int,  tail_stop_percent:float, new_order=None, strike=None, **kwarg):
+
+    if new_order is None:
+        new_order = Order()
+        
+    new_order.order_strategy_type("SINGLE")
+    new_order.order_strategy_type("SINGLE")
+    new_order.order_type("TRAILING_STOP")
+    new_order.order_session('NORMAL')
+    new_order.order_duration('GOOD_TILL_CANCEL')
+    new_order.stop_price_offset(tail_stop_percent)
+    new_order.stop_price_link_type('PERCENT')
+    new_order.stop_price_link_basis('BID')
+    
+    child_order_leg = OrderLeg()
+    child_order_leg.order_leg_quantity(quantity=uQty)
+    if strike is not None:
+        child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+        child_order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
+    else:
+        child_order_leg.order_leg_instruction(instruction="SELL")
+        child_order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
+    new_order.add_order_leg(order_leg=child_order_leg)
+    return new_order
+
 
 
 def make_optionID(Symbol:str, expDate:str, strike=str, **kwarg):
