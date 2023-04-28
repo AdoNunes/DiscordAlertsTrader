@@ -97,6 +97,7 @@ def make_BTO_lim_order(Symbol:str, uQty:int, price:float, strike=None, **kwarg):
     new_order.add_order_leg(order_leg=order_leg)
 
     if cfg.default_stop_lim is not None:
+        make_STC_SL_trailstop = []
         new_child_order = new_order.create_child_order_strategy()
         new_child_order.order_strategy_type("SINGLE")
         new_child_order.order_type("TRAILING_STOP")
@@ -115,7 +116,7 @@ def make_BTO_lim_order(Symbol:str, uQty:int, price:float, strike=None, **kwarg):
             child_order_leg.order_leg_instruction(instruction="SELL")
             child_order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
         new_child_order.add_order_leg(order_leg=child_order_leg)
-    new_order.add_child_order_strategy(child_order_strategy=new_child_order)
+        new_order.add_child_order_strategy(child_order_strategy=new_child_order)
         
     return new_order
 

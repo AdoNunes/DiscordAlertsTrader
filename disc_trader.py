@@ -836,8 +836,8 @@ class AlertTrader():
 
             exit_plan = eval(trade["exit_plan"])
             if  exit_plan != {}:
-                # If strings in exit values, stock price for option
-                if any([isinstance(e, str) for e in exit_plan.values()]):
+                # If strings in exit values, stock price for option, exclude trainling stop with %
+                if any([isinstance(e, str) and "%" not in e for e in exit_plan.values()]):
                     self.check_opt_stock_price(i, exit_plan, "STC")
                 else:
                     self.make_exit_orders(i, exit_plan)
@@ -967,7 +967,7 @@ class AlertTrader():
             else:
                 SL = exit_plan["SL"]
                 # Check if exit prices are strings (stock price for option)
-                if isinstance(SL, str): SL = None
+                if isinstance(SL, str) and "%" not in SL: SL = None
                 if isinstance(exit_plan[f"PT{ii}"], str): exit_plan[f"PT{ii}"] = None
 
                 ord_func = None
@@ -989,8 +989,13 @@ class AlertTrader():
 
                 # SL order
                 elif ii == 1 and SL is not None:
-                    ord_func = make_STC_SL
-                    order["price"] = exit_plan["SL"]
+                    if "%" in SL:
+                        ord_func = make_STC_SL_trailstop
+                        order["price"] = float(exit_plan["SL"].replace("%", ""))
+                    else:
+                        ord_func = make_STC_SL
+                        order["price"] = exit_plan["SL"]
+                    
                     order['uQty'] = int(trade['uQty'])
                     order['xQty'] = 1
 
@@ -1001,7 +1006,7 @@ class AlertTrader():
                     raise("Case not caught")
 
                 # Check that is below current price
-                if order.get("SL") is not None:
+                if order.get("SL") is not None and "%" not in order.get("SL"):
                     order = self.SL_below_market(order)
 
                 if ord_func is not None and order['uQty'] > 0:

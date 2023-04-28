@@ -205,6 +205,9 @@ def parse_mark_option(msg):
         mark_inf = re_mark.search(msg)
         if mark_inf is None:
             return None
+    if mark_inf.groups()[-1].count(".") > 1:
+        if mark_inf.groups()[-1].startswith("."):
+            return float(mark_inf.groups()[-1][1:].replace(",","."))
     mark = float(mark_inf.groups()[-1].replace(",","."))
     return mark
 

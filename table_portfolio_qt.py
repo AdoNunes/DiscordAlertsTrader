@@ -154,21 +154,24 @@ while True:
 
     if event == sg.WINDOW_CLOSED:
         break
-    # print(event)
-    # print(values)
 
     if event == "_upd-portfolio_":
-        # print("Updateing!")
+        ori_col = window.Element("_upd-portfolio_").ButtonColor
+        window.Element("_upd-portfolio_").Update(button_color=("black", "white"))
+        event, values = window.read(1)
         dt, hdr = gg.get_portf_data(port_exc, **values)
         window.Element('_portfolio_').Update(values=dt)
         fit_table_elms(window.Element("_portfolio_").Widget)
+        window.Element("_upd-portfolio_").Update(button_color=ori_col)
 
     elif event == "_upd-track_": # update button in traders alerts
-        # change button color
+        ori_col = window.Element(f'_upd-track_').ButtonColor
+        window.Element("_upd-track_").Update(button_color=("black", "white"))
+        event, values = window.read(1)
         dt, _  = gg.get_tracker_data(track_exc, **values)
         window.Element('_track_').Update(values=dt)
         fit_table_elms(window.Element("_track_").Widget)
-        # change button color
+        window.Element("_upd-track_").Update(button_color=ori_col)
 
     elif event[:6] == "-port-":
         key =  event[6:]
@@ -186,8 +189,9 @@ while True:
 
     elif event[-3:] == "UPD":
         chn = event[:-4]
-        print(f"Updating {chn}!", values)
-        # window[f"{chn}_table"].AutoSizeText=True
+        ori_col = window.Element(f'{chn}_UPD').ButtonColor
+        window.Element(f'{chn}_UPD').Update(button_color=("black", "white"))
+        event, values = window.read(1)
 
         args = {}
         for k, v in values.items():
@@ -202,23 +206,30 @@ while True:
             window.Element(f"{chn}_table").Update(values=dt)
 
         fit_table_elms(window.Element(f"{chn}_table").Widget)
+        window.Element(f'{chn}_UPD').Update(button_color=ori_col)
 
     elif event == 'acc_updt':
+        ori_col = window.Element("acc_updt").ButtonColor
+        window.Element("acc_updt").Update(button_color=("black", "white"))
+        event, values = window.read(1)
         gl.update_acct_ly(TDSession, window)
         fit_table_elms(window.Element(f"{chn}_table").Widget)
+        window.Element("acc_updt").Update(button_color=ori_col)
 
     elif event == "-subm-alert":
-        print(values['-subm-msg'])   
+        ori_col = window.Element("-subm-alert").ButtonColor
+        window.Element("-subm-alert").Update(button_color=("black", "white"))
+        event, values = window.read(1)
         try:        
             author, msg = values['-subm-msg'].split(', ')
         except ValueError:
             author, msg = values['-subm-msg'].split(': ')
-            
         if author.startswith(" "): author = author.replace(" ","")
         date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
         vals = np.array([date, author, msg]).reshape(1,-1)
         new_msg = pd.DataFrame(vals, columns=["Date", 'Author', "Content"])
         alistner.new_msg_acts(new_msg, "gui_msg", "None")
+        window.Element("-subm-alert").Update(button_color=ori_col)
 
     try:
         event_feedb = trade_events.get(False)
