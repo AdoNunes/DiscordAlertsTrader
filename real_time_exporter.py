@@ -307,6 +307,7 @@ class AlertsListner():
             # wait UPDATE_PERIOD
             if toc.hour < 9 or toc.hour > 16:
                 update_time = self.UPDATE_PERIOD_offtradeing
+                self.tracker.close_expired()
             else:
                 update_time = self.UPDATE_PERIOD
             # print('tdiff ', tictoc, "update time", update_time)
@@ -402,6 +403,8 @@ class AlertsListner():
                     self.tracker.trade_alert(order, live_alert=live_alert, channel=chn)
 
                     if order['Trader'] in cfg.authors_subscribed: 
+                        if cfg.default_stop_lim is not None:
+                            order['SL'] = cfg.default_stop_lim
                         self.Altrader.new_trade_alert(order, pars, msg_str)
 
             elif pars == 'not an alert':
@@ -419,9 +422,11 @@ class AlertsListner():
                 live_alert = True if date_diff.seconds < 90 else False
                 # self.tracker.trade_alert(order, pars, msg['Content'], live_alert=live_alert)
                 self.tracker.trade_alert(order, live_alert, chn)
-                self.tracker.close_expired()
+                
                 if msg['Author'] in cfg.authors_subscribed:
                     order["Trader"] = msg['Author']
+                    if cfg.default_stop_lim is not None:
+                        order['SL'] = cfg.default_stop_lim
                     self.Altrader.new_trade_alert(order, pars, msg['Content'])
             if self.chn_hist.get(chn) is not None:
                 msg['Parsed'] = pars

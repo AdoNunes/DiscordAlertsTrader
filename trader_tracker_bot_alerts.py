@@ -68,7 +68,10 @@ class Bot_bulltrades_Tracker():
             
         if quote is not None and len(quote):
             quote = quote.get(symbol)[ptype]
-            return quote
+            if quote != 0:
+                return quote
+            else:
+                print("quote 0 for", symbol, price_type)
 
 
     def update_msgs(self): 
@@ -192,6 +195,7 @@ class Bot_bulltrades_Tracker():
         old_price = eval(old_price) if isinstance(old_price, str) else old_price
         old_qty = self.portfolio.loc[open_trade, "Amount"]
         alert_price_old = self.portfolio.loc[open_trade, "Price-current"]
+        alert_price_old = eval(alert_price_old) if isinstance(alert_price_old, str) else alert_price_old
         alert_price_old = None if pd.isnull(alert_price_old) else alert_price_old
         alert_price = order.get("Actual Cost", "None")
         avgs_prices_al = f"{alert_price_old}/{alert_price}".replace("None/", "").replace("/None", "").replace("None", "")
