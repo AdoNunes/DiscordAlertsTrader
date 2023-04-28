@@ -233,7 +233,7 @@ class Bot_bulltrades_Tracker():
             str_STC = str_STC +" Closed"
             self.portfolio.loc[open_trade, "isOpen"] = 0
         if eval(order.get('# Closed', "0"))==1 :
-            assert(self.portfolio.loc[open_trade, "isOpen"]==0)
+            self.portfolio.loc[open_trade, "isOpen"]=0
         return str_STC
 
 
