@@ -215,7 +215,7 @@ def make_STC_SL(Symbol:str, uQty:int, SL:float, strike=None,
 
 
 
-def make_STC_SL_trailstop(Symbol:str, uQty:int,  tail_stop_percent:float, new_order=None, strike=None, **kwarg):
+def make_STC_SL_trailstop(Symbol:str, uQty:int,  trail_stop_percent:float, new_order=None, strike=None, **kwarg):
 
     if new_order is None:
         new_order = Order()
@@ -225,7 +225,7 @@ def make_STC_SL_trailstop(Symbol:str, uQty:int,  tail_stop_percent:float, new_or
     new_order.order_type("TRAILING_STOP")
     new_order.order_session('NORMAL')
     new_order.order_duration('GOOD_TILL_CANCEL')
-    new_order.stop_price_offset(tail_stop_percent)
+    new_order.stop_price_offset(trail_stop_percent)
     new_order.stop_price_link_type('PERCENT')
     new_order.stop_price_link_basis('BID')
     
