@@ -237,7 +237,6 @@ class AlertsListner():
 
 
     def get_edited_msgs(self, chn_id, time_after_last, out_file, hours=1):
-
         out_json = out_file.replace("csv", "json")
 
         date_obj = datetime.strptime(time_after_last, self.time_strf)
@@ -261,6 +260,40 @@ class AlertsListner():
         return msg_edit
 
 
+    def track_live_quotes(self):
+        dir_quotes = cfg.data_dir + '/live_quotes'
+        os.makedirs(dir_quotes, exist_ok=True)
+
+        while self.listening:
+            now = datetime.now()
+            weekday, hour = now.weekday(), now.hour
+            
+            if  weekday >= 5 or (hour < 7 and hour >= 20):  # not Monday to Friday and closed market
+                time.sleep(60)
+
+            # get unique symbols from portfolios
+            track_symb = set(self.tracker.portfolio.loc[self.tracker.portfolio['isOpen']==1, 'Symbol'].to_list() + \
+                self.Altrader.portfolio.loc[self.Altrader.portfolio['isOpen']==1, 'Symbol'].to_list())
+            # save quotes to file
+            quote = self.Altrader.TDsession.get_quotes(instruments=track_symb)
+            for q in quote: 
+                if quote[q]['description'] == 'Symbol not found':
+                    continue
+                timestamp = quote[q]['quoteTimeInLong']//1000  # in ms
+                quote_date = datetime.fromtimestamp(timestamp)
+                if (datetime.now() - quote_date).total_seconds() > 10:
+                    continue
+                with open(f"{dir_quotes}/{quote[q]['symbol']}.csv", "a+") as f:
+                    if not len(f.readlines()):
+                        f.write(f"timestamp, quote\n")
+                    f.write(f"{timestamp}, {quote[q]['bidPrice']}")
+            
+            # Sleep for up to 5 secs    
+            toc = (datetime.now() - now).total_seconds()
+            if toc < 5:
+                time.sleep(toc-5)
+
+
     def listent_trade_alerts(self):
 
         self.listening = True
@@ -278,7 +311,7 @@ class AlertsListner():
                 # Decide from when read alerts 
                 time_after = self.chn_hist[chn]['Date'].max()
                 if pd.isna(time_after):
-                    time_after = (datetime.now() - timedelta(weeks=20)).strftime(self.time_strf)
+                    time_after = (datetime.now() - timedelta(weeks=2)).strftime(self.time_strf)
                 else:
                     new_t = min(59.99, float(time_after[-9:]) + .1)
                     time_after = time_after[:-9] + f"{new_t:.6f}"
@@ -374,9 +407,8 @@ class AlertsListner():
                         self.queue_prints.put(["Updating trade plan msg:", "green"])
                         print(Fore.GREEN + "Updating trade plan msg:")
 
-                time_after = self.chn_hist[chn]['Date'].max()
+                # time_after = self.chn_hist[chn]['Date'].max()
                 # json_msg = self.get_edited_msgs(channel_IDS[chn], time_after, out_file)
-
                 # new_alerts, _ = msg_update_alert(self.chn_hist[chn], json_msg, asset)
                 new_alerts = []
                 if new_alerts == []:
