@@ -653,7 +653,6 @@ class AlertTrader():
                 self.portfolio.loc[open_trade, "exit_plan"] = str(exit_plan)
                 print(Back.GREEN + f"Exit Plan {order['Symbol']} updated, with PT{STC[-1]}: {order['price']}")
                 self.queue_prints.put([f"Exit Plan {order['Symbol']} updated, with PT{STC[-1]}: {order['price']}","", "green"])
-
                 log_alert['action'] = "STC-partial-BeforeFill-ExUp"
                 log_alert["portfolio_idx"] = open_trade
                 return
@@ -687,10 +686,8 @@ class AlertTrader():
 
             if order['uQty'] + qty_sold > qty_bought:
                 order['uQty'] = qty_bought - qty_sold
-                print(Back.RED + Fore.BLACK +
-                      f"Order {order['Symbol']} Qty exceeded, changed to {order['uQty']}")
-                self.queue_prints.put([f"Order {order['Symbol']} Qty exceeded, changed to {order['uQty']}",
-                                "", "red"])
+                print(Back.RED + Fore.BLACK + f"Order {order['Symbol']} Qty exceeded, changed to {order['uQty']}")
+                self.queue_prints.put([f"Order {order['Symbol']} Qty exceeded, changed to {order['uQty']}", "", "red"])
 
             price_alerted = order['price']
             order_response, order_id, order, _ = self.confirm_and_send(order, pars, make_STC_lim)
@@ -710,7 +707,6 @@ class AlertTrader():
             self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
             self.portfolio.loc[open_trade, STC + "-Price-Current"] = order["price_current"]
 
-
             # Check if STC price changed
             if order_status == "FILLED":
                 self.log_filled_STC(order_id, open_trade, STC)
@@ -725,6 +721,7 @@ class AlertTrader():
             self.save_logs()
 
             self.update_paused = False
+
 
     def log_filled_STC(self, order_id, open_trade, STC):
 
@@ -791,7 +788,6 @@ class AlertTrader():
         self.save_logs()
 
 
-
     def update_orders(self):
 
         for i in range(len(self.portfolio)):
@@ -841,7 +837,6 @@ class AlertTrader():
                 else:
                     self.make_exit_orders(i, exit_plan)
 
-
             # Go over STC orders and check status
             for ii in range(1, 4):
                 STC = f"STC{ii}"
@@ -871,6 +866,7 @@ class AlertTrader():
                     self.log_filled_STC(STC_ordID, i, STC)
 
         self.save_logs("port")
+
 
     def check_opt_stock_price(self, open_trade, exit_plan, act="STC"):
         "Option exits in stock price"
@@ -1034,6 +1030,7 @@ class AlertTrader():
             trade = self.portfolio.iloc[i]
             self.save_logs("port")
 
+
     def close_expired(self, open_trade):
         i = open_trade
         trade = self.portfolio.iloc[i]
@@ -1082,13 +1079,10 @@ class AlertTrader():
 
 
 
-
-
 def option_date(opt_symbol):
     sym_inf = opt_symbol.split("_")[1]
     opt_date = re.split("C|P", sym_inf)[0]
     return datetime.strptime(opt_date, "%m%d%y")
-
 
 
 
