@@ -42,7 +42,7 @@ class Bot_bulltrades_Tracker():
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
             self.portfolio = pd.DataFrame(columns=[
-                "Date", "Symbol", "Trader", "isOpen", "Asset", "Type", "Price", "Amount", "Price-current", "Prices", "Prices-current", "Avged"
+                "Date", "Symbol", "Trader", 'Channel', "isOpen", "Asset", "Type", "Price", "Amount", "Price-current", "Prices", "Prices-current", "Avged"
                 ] + [ f"STC-{v}" for v in
                     ["Amount", "Price", "Price-current", "Prices", "Prices-current", "PnL", "PnL-current","PnL$", "PnL$-current", "Date"]
                     for i in range(1,2)] )

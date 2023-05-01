@@ -141,11 +141,6 @@ def tt_acnt(text, fsize=12, bold=True, underline=True, font_name="Arial", size=N
         return sg.T(text,font=font,size=size)
 
 
-def row_cols(cols, vals=("Grey", "Brown")):
-    # cols = bool x n rows
-    return list(map(lambda a: (a[0], vals[0]) if a[1] else (a[0], vals[1]), enumerate(cols)))
-
-
 def layout_account(TDSession, font_body, font_header):
 
     acc_inf, ainf = gg.get_acc_bals(TDSession)
@@ -168,8 +163,6 @@ def layout_account(TDSession, font_body, font_header):
                header_font=font_header,
               alternating_row_color='grey',
                max_col_width=30,
-              # col_widths=[30,300, 1300],
-              # row_height=20,
               key='_positions_')]]),
         sg.Column(
             [
@@ -199,27 +192,5 @@ def update_acct_ly(TDSession, window):
     for el in ["_positions_", "_orders_"]:
         window.Element(el).Widget.resizeRowsToContents()
         window.Element(el).Widget.resizeColumnsToContents()
-
-
-
-
-# window['_HIST_'].set_vscroll_position(1)
-
-# window['_orders_'].Widget.config(width=8)
-
-# sg.Print('This text is white on a green background', text_color='white', background_color='green', font='Courier 10')
-# sg.Print('The first call sets some window settings like font that cannot be changed')
-
-
-#sg.popup_scrolled('your_table = [ ', ',\n'.join([str(table[i]) for i in range(MAX_ROWS)]) + '  ]', title='Copy your data from here', font='fixedsys', keep_on_top=True)
-
-
-
-
-
-
-
-
-
 
 

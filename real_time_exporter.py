@@ -21,7 +21,6 @@ import threading
 from colorama import Fore, Back, Style, init
 import itertools
 import json
-from trader_tracker import Trades_Tracker
 from trader_tracker_bot_alerts import Bot_bulltrades_Tracker
 
 if not os.path.exists(data_dir):
@@ -30,7 +29,6 @@ if not os.path.exists(data_dir):
 init(autoreset=True)
 
 def updt_chan_hist(df_hist, path_update):
-
     last_date = df_hist['Date'].max()
 
     new_msg = pd.read_csv(path_update)
@@ -40,7 +38,6 @@ def updt_chan_hist(df_hist, path_update):
 
 
 def update_edited_msg(df_hist, json_msg):
-
     msg_old = []
     for jmsg in json_msg:
         inx, = np.where(df_hist['Date']== jmsg['timestamp'])
@@ -54,7 +51,6 @@ def update_edited_msg(df_hist, json_msg):
 
 
 def msg_update_alert(df_hist, json_msg, asset):
-
     df_hist, msg_old = update_edited_msg(df_hist, json_msg)
 
     if msg_old == []:
@@ -78,7 +74,6 @@ def msg_update_alert(df_hist, json_msg, asset):
 
         ex_old = [order_old[f"PT{i}"] for i in range(1,4)] + [order_old['SL']]
         ex_upd = [order_upd[f"PT{i}"] for i in range(1,4)] + [order_upd['SL']]
-
         if ex_old != ex_upd:
             order_upd['action'] = "ExitUpdate"
             pars.replace("BTO", "ExitUpdate")
@@ -87,46 +82,19 @@ def msg_update_alert(df_hist, json_msg, asset):
     return new_alerts, msg_old
 
 
-
 def closest_fullname_match(name, names_all):
     """Match first substring in a list from a list of strings,
     eg, name = ["Name"]
     """
-
     if name is None:
         return name
-
     candidate = [n for n in names_all if name[0].lower() in n.lower()]
-
     if candidate == []:
         print ("name not matched")
         return None
-
     # df unique returned in order of appearence
     # if candidate > 1, return last most recent
     return candidate[-1]
-
-
-def dm_message(msg, names_all):
-
-    if "author:" in msg or "A:" in msg:
-        re_author = re.compile("(?:author|A):[ ]?(\w+)")
-        auth_inf = re_author.search(msg)
-        author = closest_fullname_match(auth_inf.groups(), names_all)
-        re_author = re.compile("ms:[ ]?(\w+)")
-        content = msg[auth_inf.span()[1]+1:]
-    else:
-        author = "Me"
-        content = msg
-
-    if "asset:" in msg or "AS:" in msg:
-        re_ass = re.compile("(?:asset|AS):[ ]?(\w+)")
-        ass_inf = re_ass.search(msg)
-        asset = ass_inf.groups()[0]
-    else:
-        asset = None
-
-    return author, asset, content
 
 
 def send_sh_cmd(cmd):
@@ -153,6 +121,7 @@ def send_sh_cmd(cmd):
         print(spro_err)
     return False if "ERROR" in spro_err else True
 
+
 def read_json(file_path):
     with open(file_path, "r", errors='ignore') as f:
         data = json.load(f)
@@ -169,8 +138,6 @@ def disc_json_time_corr(time_json):
 
     return  date + timedelta(hours=-4)
 
-def null_print(*args, **kwargs):
-    pass
 
 class my_queue():
     def __init__(self, maxsize=10):
@@ -190,28 +157,23 @@ class AlertsListner():
         self.UPDATE_PERIOD = cfg.UPDATE_PERIOD
         self.UPDATE_PERIOD_offtradeing = cfg.UPDATE_PERIOD_nontrade_hs
         self.CHN_NAMES = cfg.CHN_NAMES
-
         self.cmd = f'dotnet {path_dll} export' + ' -c {} -t ' + discord_token  + \
                 ' -f Csv --after "{}" --dateformat "yyyy-MM-dd HH:mm:ss.ffffff" -o {}'
-
         self.time_strf = "%Y-%m-%d %H:%M:%S.%f"
         self.queue_prints = queue_prints
 
-        self.Altrader = AlertTrader(queue_prints=self.queue_prints)
-        # self.tracker = Trades_Tracker(TDSession=self.Altrader.TDsession)        
+        self.Altrader = AlertTrader(queue_prints=self.queue_prints)       
         self.tracker = Bot_bulltrades_Tracker(TDSession=self.Altrader.TDsession, portfolio_fname=data_dir + "/trade_tracker_portfolio.csv")
         self.listening = False
         self.load_data()
         
-        self.logger_fname = f"{data_dir}/log_parsed_messages.csv"
-        if os.path.exists(self.logger_fname):
-            self.logger = pd.read_csv(self.logger_fname)
-        else:  
-            self.logger = pd.DataFrame(columns=['AuthorID', 'Author', 'Date', "Message", "Parsed"])
-        
         if threaded:
             self.thread =  threading.Thread(target=self.listent_trade_alerts)
             self.thread.start()
+        
+        self.thread_liveq =  threading.Thread(target=self.track_live_quotes)
+        self.thread_liveq.start()
+
 
     def load_data(self):
         self.chn_hist= {}
@@ -256,7 +218,6 @@ class AlertsListner():
                 aux = disc_json_time_corr(msg['timestamp'])
                 msg['timestamp'] = aux.strftime(self.time_strf)
                 msg_edit.append(msg)
-
         return msg_edit
 
 
@@ -265,11 +226,12 @@ class AlertsListner():
         os.makedirs(dir_quotes, exist_ok=True)
 
         while self.listening:
+            # Skip closed market
             now = datetime.now()
             weekday, hour = now.weekday(), now.hour
-            
-            if  weekday >= 5 or (hour < 7 and hour >= 20):  # not Monday to Friday and closed market
+            if  weekday >= 5 or (hour < 7 and hour >= 20):  
                 time.sleep(60)
+                continue
 
             # get unique symbols from portfolios
             track_symb = set(self.tracker.portfolio.loc[self.tracker.portfolio['isOpen']==1, 'Symbol'].to_list() + \
@@ -290,7 +252,7 @@ class AlertsListner():
             
             # Sleep for up to 5 secs    
             toc = (datetime.now() - now).total_seconds()
-            if toc < 5:
+            if toc > 5:
                 time.sleep(toc-5)
 
 
@@ -308,7 +270,7 @@ class AlertsListner():
                 tic0 =  datetime.now()
                 out_file = self.chn_hist_fname[chn].replace('.csv', "_temp.csv")
                 
-                # Decide from when read alerts 
+                # Decide from when to read alerts 
                 time_after = self.chn_hist[chn]['Date'].max()
                 if pd.isna(time_after):
                     time_after = (datetime.now() - timedelta(weeks=2)).strftime(self.time_strf)
@@ -343,7 +305,6 @@ class AlertsListner():
                 self.tracker.close_expired()
             else:
                 update_time = self.UPDATE_PERIOD
-            # print('tdiff ', tictoc, "update time", update_time)
             if tictoc < update_time:
                 time.sleep(min(update_time-tictoc, update_time))
 
@@ -359,25 +320,13 @@ class AlertsListner():
                 self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
                 self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
                 continue
-                
+
             if chn.split("_")[0] == "stock":
                 asset = "stock"
             elif chn.split("_")[0] == "option":
                 asset = "option"
             else:
                 asset = None
-
-            # Private DM message
-            if chn == 'DM_xcapture':
-                # Get authors names from non-DM servers
-                names_all = [self.chn_hist[n]['Author'].unique() for n in self.CHN_NAMES if n[:2] != "DM"]
-                names_all = list(itertools.chain(*names_all))
-
-                author, asset, content = dm_message(msg["Content"], names_all)
-                self.queue_prints.put([f"DM: {author}, {asset}, {content},", "blue"])
-                print("DM: ", author, asset, content)
-                msg['Author'] = author
-                msg["Content"] = content
 
             shrt_date = datetime.strptime(msg["Date"], self.time_strf).strftime('%Y-%m-%d %H:%M:%S')
             self.queue_prints.put([f"{shrt_date} \t {msg['Author']}: {msg['Content']} ", "blue"])
@@ -399,62 +348,28 @@ class AlertsListner():
                     pars = None
 
             if pars is None:
-                # Check if msg alerting exitUpdate in prev msg
-                if msg['Author'] in cfg.authors_subscribed:
-                    re_upd = re.compile("(?:T|t)rade plan[a-zA-Z\s\,\.]*\*{2}([A-Z]*?)\*{2}[a-zA-Z\s\,\.]* updated")
-                    upd_inf = re_upd.search(msg['Content'])
-                    if upd_inf:
-                        self.queue_prints.put(["Updating trade plan msg:", "green"])
-                        print(Fore.GREEN + "Updating trade plan msg:")
-
-                # time_after = self.chn_hist[chn]['Date'].max()
-                # json_msg = self.get_edited_msgs(channel_IDS[chn], time_after, out_file)
-                # new_alerts, _ = msg_update_alert(self.chn_hist[chn], json_msg, asset)
-                new_alerts = []
-                if new_alerts == []:
-                    self.queue_prints.put(["\t \t MSG NOT UNDERSTOOD", "grey"])
-                    print(Style.DIM + "\t \t MSG NOT UNDERSTOOD")
-                    msg['Parsed'] = ""
-                    self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
-                    self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
-                    continue
-
-                self.queue_prints.put(["Updating edited msgs", "green"])
-                print(Fore.GREEN + "Updating edited msgs")
-
-                for alert in new_alerts:
-                    self.queue_prints.put([alert[2], "green"])
-                    print(Fore.GREEN + alert[2])
-                    pars, order, msg_str = alert
-
-                    order_date = datetime.strptime(order["Date"], "%Y-%m-%d %H:%M:%S.%f")
-                    date_diff = datetime.now() - order_date
-                    print(f"time difference is {date_diff.seconds}")
-                    live_alert = True if date_diff.seconds < 90 else False
-                    # self.tracker.trade_alert(order, pars, msg_str, live_alert=live_alert, channel=chn)
-                    self.tracker.trade_alert(order, live_alert=live_alert, channel=chn)
-
-                    if order['Trader'] in cfg.authors_subscribed: 
-                        if cfg.default_stop_lim is not None:
-                            order['SL'] = cfg.default_stop_lim
-                        self.Altrader.new_trade_alert(order, pars, msg_str)
-
-            elif pars == 'not an alert':
-                self.queue_prints.put(["\t \tnot for @everyone", "grey"])
-                print(Style.DIM + "\t \tnot for @everyone")
+                str_msg = "\t \t MSG NOT UNDERSTOOD"
+                self.queue_prints.put([str_msg, "grey"])
+                print(Style.DIM + str_msg)
+                msg['Parsed'] = ""
+                self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
+                self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
+                continue
 
             else:
-                self.queue_prints.put([f"\t \t {pars}", "green"])
-                print(Fore.GREEN + f"\t \t {pars}")
-                order['Trader'] = msg['Author']
-                order["Date"] = msg["Date"]
+                order['Trader'], order["Date"] = msg['Author'], msg["Date"]
                 order_date = datetime.strptime(order["Date"], "%Y-%m-%d %H:%M:%S.%f")
                 date_diff = datetime.now() - order_date
-                print(f"time difference is {date_diff.seconds}")
+                print(f"time difference is {date_diff.total_seconds()}")
+
                 live_alert = True if date_diff.seconds < 90 else False
-                # self.tracker.trade_alert(order, pars, msg['Content'], live_alert=live_alert)
-                self.tracker.trade_alert(order, live_alert, chn)
+                str_msg = pars
+                if live_alert:
+                    str_msg += " " + self.Altrader.price_now(order['Symbol'], order["action"], pflag=0)
+                self.queue_prints.put([f"\t \t {str_msg}", "green"])
+                print(Fore.GREEN + f"\t \t {str_msg}")
                 
+                self.tracker.trade_alert(order, live_alert, chn)
                 if msg['Author'] in cfg.authors_subscribed:
                     order["Trader"] = msg['Author']
                     if cfg.default_stop_lim is not None:
@@ -466,11 +381,8 @@ class AlertsListner():
                 self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
 
 
-
 def short_date(dateobj, frm="%Y/%m/%d %H:%M:%S"):
     return dateobj.strftime(frm)
-
-
 
 
 if __name__ == '__main__':

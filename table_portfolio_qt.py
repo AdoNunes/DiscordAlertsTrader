@@ -25,17 +25,12 @@ TDSession = get_TDsession()
                 # element_padding=(0, 0), margins=(1, 1))
 
 fnt_b = ("Helvitica", "9")
-fnt_h = ("Helvitica", "5")
+fnt_h = ("Helvitica", "10")
 
 ly_cons, MLINE_KEY = gl.layout_console()
 
 def mprint(*args, **kwargs):
     window[MLINE_KEY].print(*args, **kwargs)
-
-def send_alert(subm_msg):
-    user_s, ass_s, msg = subm_msg.split(", ")
-    trader = user_s.split(":")[-1]
-    asset = ass_s.split(":")[-1]
 
 gui_data = {}
 gui_data['port'] = gg.get_portf_data()  # gui_data['port'] [0] can't be empty
@@ -60,7 +55,7 @@ layout = [[sg.TabGroup([
                         [sg.Tab('Traders alerts', ly_track)],
                         [sg.Tab("Account", ly_accnt)]
                         ],title_color='black')],
-          [sg.Input(default_text="Author, STC AAA @2.5 partial",
+          [sg.Input(default_text="Author, STC AAA 05/30 115C @2.5 partial",
                     size= (140,1.5), key="-subm-msg",
                     tooltip="User: any, Asset: {stock, option}"),
 
@@ -69,8 +64,6 @@ layout = [[sg.TabGroup([
 
 window = sg.Window('BullTrader', layout,size=(1000, 500), # force_toplevel=True,
                     auto_size_text=True, resizable=True)
-
-# window[MLINE_KEY].update(readonly=True)
 
 def mprint_queue(queue_item_list):
     # queue_item_list = [string, text_color, background_color]

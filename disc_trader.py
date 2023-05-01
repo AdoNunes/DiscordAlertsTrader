@@ -74,7 +74,7 @@ class AlertTrader():
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
             self.portfolio = pd.DataFrame(columns=[
-                "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Price-Alert", "Price-real",
+                "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Price-Alert", "Price-Current",
                 "uQty", "filledQty", "Avged", "Avged-prices", "exit_plan", "ordID", "Risk", "SL_mental","PnL", "$PnL",
                 "PnL-Alert", "$PnL-Alert","PnL-Current","$PnL-Current"
                 ] + [

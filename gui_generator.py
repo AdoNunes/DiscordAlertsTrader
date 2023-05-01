@@ -150,6 +150,7 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
         sumtotal['Symbol'] = "Total Average"
         sumtotal['Trader'] = track_filt_author if len(track_filt_author) else "Average"
         data = pd.concat([data, pd.DataFrame.from_records(sumtotal, index=[0])], ignore_index=True)
+        data.fillna("", inplace=True)
     data = data.values.tolist()
     return data, header_list
 
