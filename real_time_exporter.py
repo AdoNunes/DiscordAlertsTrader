@@ -229,11 +229,11 @@ class AlertsListner():
             # Skip closed market
             now = datetime.now()
             weekday, hour = now.weekday(), now.hour
-            if  weekday >= 5 or (hour < 7 and hour >= 20):  
+            if  weekday >= 5 or (hour < 9 and hour >= 17):  
                 time.sleep(60)
                 continue
 
-            # get unique symbols from portfolios
+            # get unique symbols  from portfolios
             track_symb = set(self.tracker.portfolio.loc[self.tracker.portfolio['isOpen']==1, 'Symbol'].to_list() + \
                 self.Altrader.portfolio.loc[self.Altrader.portfolio['isOpen']==1, 'Symbol'].to_list())
             # save quotes to file
@@ -245,19 +245,23 @@ class AlertsListner():
                 quote_date = datetime.fromtimestamp(timestamp)
                 if (datetime.now() - quote_date).total_seconds() > 10:
                     continue
+                
+                if os.path.exists(f"{dir_quotes}/{quote[q]['symbol']}.csv"):
+                    do_header = False
+                else:
+                    do_header = True
                 with open(f"{dir_quotes}/{quote[q]['symbol']}.csv", "a+") as f:
-                    if not len(f.readlines()):
+                    if do_header:
                         f.write(f"timestamp, quote\n")
-                    f.write(f"{timestamp}, {quote[q]['bidPrice']}")
+                    f.write(f"{timestamp}, {quote[q]['bidPrice']}\n")
             
             # Sleep for up to 5 secs    
             toc = (datetime.now() - now).total_seconds()
-            if toc > 5:
-                time.sleep(toc-5)
+            if toc < 5:
+                time.sleep(5-toc)
 
 
     def listent_trade_alerts(self):
-
         self.listening = True
         while self.listening:
             tic = datetime.now()

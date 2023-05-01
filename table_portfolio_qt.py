@@ -5,10 +5,11 @@ Created on Sat Apr  3 18:18:43 2021
 
 @author: adonay
 """
-
+import threading
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import time
 from place_order import get_TDsession
 import gui_generator as gg
 import gui_layouts as gl
@@ -17,6 +18,14 @@ from real_time_exporter import AlertsListner
 import config as cfg
 import queue
 import PySimpleGUIQt as sg
+
+
+def fit_table_elms(Widget_element):
+    Widget_element.resizeRowsToContents()
+    Widget_element.resizeColumnsToContents()
+    Widget_element.resizeRowsToContents()
+    Widget_element.resizeColumnsToContents()
+
 
 TDSession = get_TDsession()
 
@@ -55,10 +64,9 @@ layout = [[sg.TabGroup([
                         [sg.Tab('Traders alerts', ly_track)],
                         [sg.Tab("Account", ly_accnt)]
                         ],title_color='black')],
-          [sg.Input(default_text="Author, STC AAA 05/30 115C @2.5 partial",
+          [sg.Input(default_text="Author, STC 1 AAA 05/30 115C @2.5",
                     size= (140,1.5), key="-subm-msg",
                     tooltip="User: any, Asset: {stock, option}"),
-
            sg.Button("Submit alert", key="-subm-alert", size= (20,1))]
         ]
 
@@ -84,11 +92,14 @@ def mprint_queue(queue_item_list):
     window[MLINE_KEY].print(text, **kwargs)
 
 
-def fit_table_elms(Widget_element):
-    Widget_element.resizeRowsToContents()
-    Widget_element.resizeColumnsToContents()
-    Widget_element.resizeRowsToContents()
-    Widget_element.resizeColumnsToContents()
+def update_portfolios_thread( window):
+    print("sleep time")
+    time.sleep(60)
+    print("update time")
+    window["_upd-portfolio_"].click()
+    time.sleep(2)  
+    window["_upd-track_"].click()
+
 
 event, values = window.read(.1)
 # window.GetScreenDimensions()
@@ -103,7 +114,6 @@ for chn in chns:
     try:
         table = window[f"{chn}_table"].Widget.horizontalHeader()
         table.setSectionResizeMode(2, QHeaderView.Stretch)
-        # table.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         window[f"{chn}_table"].Widget.scrollToBottom()
     except:
         continue
@@ -113,6 +123,8 @@ event, values = window.read(.1)
 trade_events = queue.Queue(maxsize=20)
 alistner = AlertsListner(trade_events)
 
+
+threading.Thread(target=update_portfolios_thread, args=(window,), daemon=True).start()
 
 
 event, values = window.read(.1)
@@ -151,7 +163,7 @@ while True:
     if event == "_upd-portfolio_":
         ori_col = window.Element("_upd-portfolio_").ButtonColor
         window.Element("_upd-portfolio_").Update(button_color=("black", "white"))
-        event, values = window.read(1)
+        event, values = window.read(.1)
         dt, hdr = gg.get_portf_data(port_exc, **values)
         window.Element('_portfolio_').Update(values=dt)
         fit_table_elms(window.Element("_portfolio_").Widget)
@@ -160,7 +172,7 @@ while True:
     elif event == "_upd-track_": # update button in traders alerts
         ori_col = window.Element(f'_upd-track_').ButtonColor
         window.Element("_upd-track_").Update(button_color=("black", "white"))
-        event, values = window.read(1)
+        event, values = window.read(.1)
         dt, _  = gg.get_tracker_data(track_exc, **values)
         window.Element('_track_').Update(values=dt)
         fit_table_elms(window.Element("_track_").Widget)
@@ -184,7 +196,7 @@ while True:
         chn = event[:-4]
         ori_col = window.Element(f'{chn}_UPD').ButtonColor
         window.Element(f'{chn}_UPD').Update(button_color=("black", "white"))
-        event, values = window.read(1)
+        event, values = window.read(.1)
 
         args = {}
         for k, v in values.items():
@@ -204,7 +216,7 @@ while True:
     elif event == 'acc_updt':
         ori_col = window.Element("acc_updt").ButtonColor
         window.Element("acc_updt").Update(button_color=("black", "white"))
-        event, values = window.read(1)
+        event, values = window.read(.1)
         gl.update_acct_ly(TDSession, window)
         fit_table_elms(window.Element(f"{chn}_table").Widget)
         window.Element("acc_updt").Update(button_color=ori_col)
@@ -212,7 +224,7 @@ while True:
     elif event == "-subm-alert":
         ori_col = window.Element("-subm-alert").ButtonColor
         window.Element("-subm-alert").Update(button_color=("black", "white"))
-        event, values = window.read(1)
+        event, values = window.read(.1)
         try:        
             author, msg = values['-subm-msg'].split(', ')
         except ValueError:

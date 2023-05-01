@@ -335,6 +335,7 @@ class Bot_bulltrades_Tracker():
                 self.portfolio.loc[i, "isOpen"] = 0
                 str_prt = f"{trade['Symbol']} option expired -100%"
                 print(str_prt)
+        self.portfolio.to_csv(self.portfolio_fname, index=False)
 
 
 if __name__ == "__main__":
