@@ -38,6 +38,7 @@ def layout_portfolio(data_n_headers, font_body, font_header):
                       sg.Checkbox("Cancelled", key="-port-Cancelled", default=True, enable_events=True),
                       sg.Checkbox("Neg PnL", key="-port-NegPnL", enable_events=True),
                       sg.Checkbox("Pos PnL", key="-port-PosPnL", enable_events=True),
+                      sg.Checkbox("Live PnL", key="-port-live PnL", enable_events=True),
                       sg.Checkbox("Stocks", key="-port-stocks", default=True, enable_events=True),
                       sg.Checkbox("Options", key="-port-options", enable_events=True),
                       ],
@@ -74,7 +75,8 @@ def layout_traders(data_n_headers, font_body, font_header):
                       sg.Checkbox("Closed", key="-track-Closed", enable_events=True),
                       sg.Checkbox("Open", key="-track-Open", enable_events=True),
                       sg.Checkbox("Neg PnL", key="-track-NegPnL", enable_events=True),
-                      sg.Checkbox("Pos PnL", key="-track-PosPnL", enable_events=True),                      
+                      sg.Checkbox("Pos PnL", key="-track-PosPnL", enable_events=True),
+                      sg.Checkbox("Live PnL", key="-track-live PnL", enable_events=True),                   
                       sg.Checkbox("Stocks", key="-track-stocks", default=True, enable_events=True),
                       sg.Checkbox("Options", key="-track-options", enable_events=True)
                       ],

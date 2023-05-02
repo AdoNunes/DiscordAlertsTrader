@@ -5,12 +5,13 @@ Created on Fri Apr  9 09:53:44 2021
 
 @author: adonay
 """
-
+import os
 import os.path as op
 import pandas as pd
 from datetime import datetime
 import numpy as np
 import config as cfg
+from trader_tracker_bot_alerts import calc_stc_prices
 
 def short_date(datestr, infrm="%Y-%m-%d %H:%M:%S.%f", outfrm="%m/%d/%Y %H:%M"):
     return datetime.strptime(datestr, infrm).strftime(outfrm)
@@ -33,7 +34,7 @@ def max_dig_len(values, decim=2):
     len_tot = len_int + len_dig + 1 if len_dig else  len_int + len_dig
     return len_tot, len_int, len_dig
 
-def pd_col_str_frmt(pd_Series, max_decim=2, remove_zero=True):
+def pd_col_str_frmt(pd_Series, max_decim=2, remove_zero=False):
     slen,_, decim = max_dig_len(pd_Series.to_numpy(), max_decim)
     return pd_Series.apply(lambda x: formt_num_2str(x,decim, slen, remove_zero))
 
@@ -68,7 +69,10 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
                      port_filt_date_to='', port_filt_sym='', **kwargs ):
     if not op.exists(op.join(cfg.data_dir, "trader_portfolio.csv")):
         return [],[]
-    data = pd.read_csv(op.join(cfg.data_dir, "trader_portfolio.csv"))
+    try:
+        data = pd.read_csv(op.join(cfg.data_dir, "trader_portfolio.csv"),sep=",")
+    except:
+        data = pd.read_csv(op.join(cfg.data_dir, "trader_portfolio.csv"),sep=",")
 
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
     data['exit_plan']= data['exit_plan'].apply(lambda x: format_exitplan(x))
@@ -76,6 +80,9 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     alerts = data[['STC1-Alerted', 'STC2-Alerted', 'STC3-Alerted']].sum(1)
     data["N Alerts"]= alerts.astype(int)
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
+
+    if exclude.get("live PnL", False):
+        data =  get_live_quotes(data)
 
     for i in range(1,4):
         data[f'STC{i}-PnL'] = pd_col_str_frmt(data[f'STC{i}-PnL'])
@@ -114,21 +121,59 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     return data, header_list
 
 
+def get_live_quotes(portfolio):
+    dir_quotes = cfg.data_dir + '/live_quotes'
+    track_symb = portfolio.loc[portfolio['isOpen']=='Yes', 'Symbol'].to_list()
+    
+    quotes_sym = {}
+    for sym in track_symb: 
+        fquote = f"{dir_quotes}/{sym}.csv"
+        if not op.exists(fquote):
+            continue
+        
+        with open(fquote, "r") as f:
+            quotes = f.readlines()
+        
+        timestamp, quote = quotes[-1].split(',')  # in ms
+        quote_date = datetime.fromtimestamp(int(timestamp))
+        # if (datetime.now() - quote_date).total_seconds() > 20:
+        #     continue
+        quotes_sym[sym] = float(quote.replace('\n', '').replace(' ', ''))
+    
+    for sym in quotes_sym:
+        live_price = quotes_sym[sym]
+        msk = (portfolio['Symbol']==sym) & (portfolio['isOpen']=='Yes')
+        trades = portfolio.loc[msk]
+        
+        for _, trade in trades.iterrows():
+            order= {
+                "uQty": trade['Amount'] if pd.isnull(trade.get("STC-Amount")) else trade['Amount']- trade["STC-Amount"],
+                "price": live_price,
+                "Actual Cost": live_price,
+                }                 
+            stc_info = calc_stc_prices(trade, order)
+            for k, v in stc_info.items():
+                portfolio.loc[msk,k] = v
+    return portfolio
+
+
 def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
                      track_filt_date_to='', track_filt_sym='', **kwargs ):
-    data = pd.read_csv(op.join(cfg.data_dir, "trade_tracker_portfolio.csv"))
+    data = pd.read_csv(op.join(cfg.data_dir, "trade_tracker_portfolio.csv"),sep=",")
 
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
     data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
     data["N Alerts"]= data['Avged']
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
     
+    if not exclude.get("live PnL", False):
+        data =  get_live_quotes(data)
+    
     frm_cols = ['Amount', 'N Alerts', 'STC-Amount','STC-Price','STC-Price-current','STC-PnL','STC-PnL-current',
-                'STC-PnL$','STC-PnL$-current']
-
+                'STC-PnL$','STC-PnL$-current', 'Price', 'Price-current']
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
-
+    
     data = filter_data(data,exclude, track_filt_author, track_filt_date_frm,
                         track_filt_date_to, track_filt_sym )
 
