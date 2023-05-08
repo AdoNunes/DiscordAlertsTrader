@@ -92,13 +92,12 @@ def mprint_queue(queue_item_list):
     window[MLINE_KEY].print(text, **kwargs)
 
 
-def update_portfolios_thread( window):
-    print("sleep time")
-    time.sleep(60)
-    print("update time")
-    window["_upd-portfolio_"].click()
-    time.sleep(2)  
-    window["_upd-track_"].click()
+def update_portfolios_thread(window):
+    while True:
+        time.sleep(60)
+        window["_upd-portfolio_"].click()
+        time.sleep(2)  
+        window["_upd-track_"].click()
 
 
 event, values = window.read(.1)

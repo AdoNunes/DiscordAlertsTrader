@@ -237,15 +237,18 @@ class AlertsListner():
             track_symb = set(self.tracker.portfolio.loc[self.tracker.portfolio['isOpen']==1, 'Symbol'].to_list() + \
                 self.Altrader.portfolio.loc[self.Altrader.portfolio['isOpen']==1, 'Symbol'].to_list())
             # save quotes to file
-            quote = self.Altrader.TDsession.get_quotes(instruments=track_symb)
+            try:
+                quote = self.Altrader.TDsession.get_quotes(instruments=track_symb)
+            except ConnectionError as e:
+                print('error during live quote:', e)
+                
             for q in quote: 
                 if quote[q]['description'] == 'Symbol not found':
                     continue
                 timestamp = quote[q]['quoteTimeInLong']//1000  # in ms
-                quote_date = datetime.fromtimestamp(timestamp)
-                if (datetime.now() - quote_date).total_seconds() > 10:
-                    continue
-                
+                # quote_date = datetime.fromtimestamp(timestamp)
+                # if (datetime.now() - quote_date).total_seconds() > 10:
+                #     continue                
                 if os.path.exists(f"{dir_quotes}/{quote[q]['symbol']}.csv"):
                     do_header = False
                 else:

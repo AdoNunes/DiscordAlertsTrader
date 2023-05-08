@@ -21,7 +21,8 @@ alerts_exampes  = [("BTO 1 TSLA 195p 03/31 @ 4.75 @here (Day Trade/Swing) @Cblas
                     "STC  2 QQQ 297c 3/8 @ .7 @here",
                     "BTO 2 SPY 393c 3/20 @c1.3 @here",
                     "STC 2 SPY 393c 3/20 @ 1.0 @here @EM Alert",
-                    "BTO 5 QQQ 314c 4/25 @ .1.01 5% sz HIGH RISK  @Cedar Alert  voice"
+                    "BTO 5 QQQ 314c 4/25 @ .1.01 5% sz HIGH RISK  @Cedar Alert  voice",
+                    "BTO 4 SPY 415c 5/3 @ 1,61" 
                     
                     
     

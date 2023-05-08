@@ -211,10 +211,12 @@ def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
             elif k == "Open" and v:
                 data = data[data["isOpen"] !="Yes"]
             elif k == "NegPnL" and v:
-                pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
+                col = "PnL" if "PnL" in data else 'STC-PnL'                
+                pnl = data[col].apply(lambda x: np.nan if x =="" else eval(x))     
                 data = data[pnl > 0 ]
             elif k == "PosPnL" and v:
-                pnl = data["PnL"].apply(lambda x: np.nan if x =="" else eval(x))
+                col = "PnL" if "PnL" in data else 'STC-PnL' 
+                pnl = data[col].apply(lambda x: np.nan if x =="" else eval(x))
                 data = data[pnl < 0 ]
             elif k == "stocks" and v:
                 data = data[data["Asset"] !="stock"]

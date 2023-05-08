@@ -12,6 +12,9 @@ import numpy as np
 
 
 def parser_alerts(msg, asset=None):
+    msg = msg.replace("STc", "STC").replace("StC", "STC").replace("stC", "STC").replace("STc", "STC")
+    msg = msg.replace("BtO", "BTO").replace("btO", "BTO").replace("bTO", "BTO").replace("BTo", "BTO")
+    msg = msg.replace("spx", "SPX").replace("spy", "SPY")
     act = parse_action(msg)
     if act is None:
         if "ExitUpdate" in msg:
@@ -28,7 +31,7 @@ def parser_alerts(msg, asset=None):
             order, str_prt = make_order_exits(order, msg, pars, "stock") # price type dealt in disc_trader
             return pars, order
         return None, None
-
+    
     Symbol, Symbol_info = parse_Symbol(msg, act)
     if Symbol is None:
         return None, None
