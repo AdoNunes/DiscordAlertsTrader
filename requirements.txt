@@ -4,3 +4,4 @@ pandas
 numpy
 colorama
 pprintpp
+discord.py-self

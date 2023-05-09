@@ -132,7 +132,8 @@ class AlertTrader():
                 except Exception as ex: # (GeneralError, ConnectionError, KeyError):
                     print(Back.RED + f"Error raised, trying again later. Error: {ex}")
                     self.queue_prints.put([f"Error raised, trying again later. Error: {ex}", "", "red"])
-            time.sleep(refresh_rate)
+            if self.update_portfolio:
+                time.sleep(refresh_rate)
         print(Back.GREEN + "Closing portfolio updater")
         self.queue_prints.put(["Closed portfolio updater", "", "green"])
 

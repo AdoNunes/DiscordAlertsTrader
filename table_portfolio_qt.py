@@ -14,7 +14,7 @@ from place_order import get_TDsession
 import gui_generator as gg
 import gui_layouts as gl
 from PySide2.QtWidgets import QHeaderView
-from real_time_exporter import AlertsListner
+from discord_self import DiscordBot
 import config as cfg
 import queue
 import PySimpleGUIQt as sg
@@ -120,7 +120,7 @@ for chn in chns:
 event, values = window.read(.1)
 
 trade_events = queue.Queue(maxsize=20)
-alistner = AlertsListner(trade_events)
+alistner = DiscordBot(trade_events)
 
 
 threading.Thread(target=update_portfolios_thread, args=(window,), daemon=True).start()
@@ -155,95 +155,112 @@ dt, hdr = gg.get_portf_data(port_exc)
 window.Element('_portfolio_').Update(values=dt)
 fit_table_elms(window.Element("_portfolio_").Widget)
 
-while True:    
-    event, values = window.read(1)#.1)
+def run_gui():  
+    while True:    
+        event, values = window.read(1)#.1)
 
-    if event == sg.WINDOW_CLOSED:
-        break
+        if event == sg.WINDOW_CLOSED:
+            break
 
-    if event == "_upd-portfolio_":
-        ori_col = window.Element("_upd-portfolio_").ButtonColor
-        window.Element("_upd-portfolio_").Update(button_color=("black", "white"))
-        event, values = window.read(.1)
-        dt, hdr = gg.get_portf_data(port_exc, **values)
-        window.Element('_portfolio_').Update(values=dt)
-        fit_table_elms(window.Element("_portfolio_").Widget)
-        window.Element("_upd-portfolio_").Update(button_color=ori_col)
+        if event == "_upd-portfolio_":
+            ori_col = window.Element("_upd-portfolio_").ButtonColor
+            window.Element("_upd-portfolio_").Update(button_color=("black", "white"))
+            event, values = window.read(.1)
+            dt, hdr = gg.get_portf_data(port_exc, **values)
+            window.Element('_portfolio_').Update(values=dt)
+            fit_table_elms(window.Element("_portfolio_").Widget)
+            window.Element("_upd-portfolio_").Update(button_color=ori_col)
 
-    elif event == "_upd-track_": # update button in traders alerts
-        ori_col = window.Element(f'_upd-track_').ButtonColor
-        window.Element("_upd-track_").Update(button_color=("black", "white"))
-        event, values = window.read(.1)
-        dt, _  = gg.get_tracker_data(track_exc, **values)
-        window.Element('_track_').Update(values=dt)
-        fit_table_elms(window.Element("_track_").Widget)
-        window.Element("_upd-track_").Update(button_color=ori_col)
+        elif event == "_upd-track_": # update button in traders alerts
+            ori_col = window.Element(f'_upd-track_').ButtonColor
+            window.Element("_upd-track_").Update(button_color=("black", "white"))
+            event, values = window.read(.1)
+            dt, _  = gg.get_tracker_data(track_exc, **values)
+            window.Element('_track_').Update(values=dt)
+            fit_table_elms(window.Element("_track_").Widget)
+            window.Element("_upd-track_").Update(button_color=ori_col)
 
-    elif event[:6] == "-port-":
-        key =  event[6:]
-        state = window.Element(event).get()
-        port_exc[key] = state
-        dt, hdr = gg.get_portf_data(port_exc, **values)
-        window.Element('_portfolio_').Update(values=dt)
+        elif event[:6] == "-port-":
+            key =  event[6:]
+            state = window.Element(event).get()
+            port_exc[key] = state
+            dt, hdr = gg.get_portf_data(port_exc, **values)
+            window.Element('_portfolio_').Update(values=dt)
 
-    elif event[:7] == "-track-":
-        key =  event[7:]
-        state = window.Element(event).get()
-        track_exc[key] = state
-        dt, hdr = gg.get_tracker_data(track_exc, **values)
-        window.Element('_track_').Update(values=dt)
+        elif event[:7] == "-track-":
+            key =  event[7:]
+            state = window.Element(event).get()
+            track_exc[key] = state
+            dt, hdr = gg.get_tracker_data(track_exc, **values)
+            window.Element('_track_').Update(values=dt)
 
-    elif event[-3:] == "UPD":
-        chn = event[:-4]
-        ori_col = window.Element(f'{chn}_UPD').ButtonColor
-        window.Element(f'{chn}_UPD').Update(button_color=("black", "white"))
-        event, values = window.read(.1)
+        elif event[-3:] == "UPD":
+            chn = event[:-4]
+            ori_col = window.Element(f'{chn}_UPD').ButtonColor
+            window.Element(f'{chn}_UPD').Update(button_color=("black", "white"))
+            event, values = window.read(.1)
 
-        args = {}
-        for k, v in values.items():
-            if k[:len(chn)] == chn:
-                args[k[len(chn)+1:]] = v
-        dt, _  = gg.get_hist_msgs(chan_name=chn, **args)
-        if args['n_rows'] != "":
-            n_rows = eval(args['n_rows'])
-            n_rows = max(1, n_rows)
-            window.Element(f"{chn}_table").Update(values=dt,  num_rows=n_rows)
-        else:
-            window.Element(f"{chn}_table").Update(values=dt)
+            args = {}
+            for k, v in values.items():
+                if k[:len(chn)] == chn:
+                    args[k[len(chn)+1:]] = v
+            dt, _  = gg.get_hist_msgs(chan_name=chn, **args)
+            if args['n_rows'] != "":
+                n_rows = eval(args['n_rows'])
+                n_rows = max(1, n_rows)
+                window.Element(f"{chn}_table").Update(values=dt,  num_rows=n_rows)
+            else:
+                window.Element(f"{chn}_table").Update(values=dt)
 
-        fit_table_elms(window.Element(f"{chn}_table").Widget)
-        window.Element(f'{chn}_UPD').Update(button_color=ori_col)
+            fit_table_elms(window.Element(f"{chn}_table").Widget)
+            window.Element(f'{chn}_UPD').Update(button_color=ori_col)
 
-    elif event == 'acc_updt':
-        ori_col = window.Element("acc_updt").ButtonColor
-        window.Element("acc_updt").Update(button_color=("black", "white"))
-        event, values = window.read(.1)
-        gl.update_acct_ly(TDSession, window)
-        fit_table_elms(window.Element(f"{chn}_table").Widget)
-        window.Element("acc_updt").Update(button_color=ori_col)
+        elif event == 'acc_updt':
+            ori_col = window.Element("acc_updt").ButtonColor
+            window.Element("acc_updt").Update(button_color=("black", "white"))
+            event, values = window.read(.1)
+            gl.update_acct_ly(TDSession, window)
+            fit_table_elms(window.Element(f"{chn}_table").Widget)
+            window.Element("acc_updt").Update(button_color=ori_col)
 
-    elif event == "-subm-alert":
-        ori_col = window.Element("-subm-alert").ButtonColor
-        window.Element("-subm-alert").Update(button_color=("black", "white"))
-        event, values = window.read(.1)
-        try:        
-            author, msg = values['-subm-msg'].split(', ')
-        except ValueError:
-            author, msg = values['-subm-msg'].split(': ')
-        if author.startswith(" "): author = author.replace(" ","")
-        date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-        vals = np.array([date, author, msg]).reshape(1,-1)
-        new_msg = pd.DataFrame(vals, columns=["Date", 'Author', "Content"])
-        alistner.new_msg_acts(new_msg, "gui_msg", "None")
-        window.Element("-subm-alert").Update(button_color=ori_col)
+        elif event == "-subm-alert":
+            ori_col = window.Element("-subm-alert").ButtonColor
+            window.Element("-subm-alert").Update(button_color=("black", "white"))
+            event, values = window.read(.1)
+            try:        
+                author, msg = values['-subm-msg'].split(', ')
+            except ValueError:
+                author, msg = values['-subm-msg'].split(': ')
+            if author.startswith(" "): author = author.replace(" ","")
+            date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+            vals = np.array([date, author, msg]).reshape(1,-1)
+            new_msg = pd.DataFrame(vals, columns=["Date", 'Author', "Content"])
+            alistner.new_msg_acts(new_msg, "gui_msg", "None")
+            window.Element("-subm-alert").Update(button_color=ori_col)
 
-    try:
-        event_feedb = trade_events.get(False)
-        mprint_queue(event_feedb)
-    except queue.Empty:
-       pass
+        try:
+            event_feedb = trade_events.get(False)
+            mprint_queue(event_feedb)
+        except queue.Empty:
+            pass
 
 
-window.close()
-alistner.close()
 
+def run_client():
+    alistner.run(cfg.discord_token)
+
+
+def gui():   
+    client_thread = threading.Thread(target=run_client)
+
+    # start the threads
+    client_thread.start()
+    run_gui()
+
+    # close the GUI window
+    window.close()
+    alistner.close()
+
+
+if __name__ == '__main__':
+    gui()
