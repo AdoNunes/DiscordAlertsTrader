@@ -159,6 +159,10 @@ def get_live_quotes(portfolio):
 
 def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
                      track_filt_date_to='', track_filt_sym='', **kwargs ):
+    
+    if not op.exists(op.join(cfg.data_dir, "trade_tracker_portfolio.csv")):
+        return [],[]
+    
     data = pd.read_csv(op.join(cfg.data_dir, "trade_tracker_portfolio.csv"),sep=",")
 
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
