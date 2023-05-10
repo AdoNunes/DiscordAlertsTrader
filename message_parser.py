@@ -14,7 +14,7 @@ import numpy as np
 def parser_alerts(msg, asset=None):
     msg = msg.replace("STc", "STC").replace("StC", "STC").replace("stC", "STC").replace("STc", "STC")
     msg = msg.replace("BtO", "BTO").replace("btO", "BTO").replace("bTO", "BTO").replace("BTo", "BTO")
-    msg = msg.replace("spx", "SPX").replace("spy", "SPY")
+    msg = msg.replace("spx", "SPX").replace("spy", "SPY").replace("Spx", "SPX")
     act = parse_action(msg)
     if act is None:
         if "ExitUpdate" in msg:

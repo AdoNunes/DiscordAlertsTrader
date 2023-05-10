@@ -22,7 +22,8 @@ alerts_exampes  = [("BTO 1 TSLA 195p 03/31 @ 4.75 @here (Day Trade/Swing) @Cblas
                     "BTO 2 SPY 393c 3/20 @c1.3 @here",
                     "STC 2 SPY 393c 3/20 @ 1.0 @here @EM Alert",
                     "BTO 5 QQQ 314c 4/25 @ .1.01 5% sz HIGH RISK  @Cedar Alert  voice",
-                    "BTO 4 SPY 415c 5/3 @ 1,61" 
+                    "BTO 4 SPY 415c 5/3 @ 1,61" ,
+                    "BTO 200 CHSN @ 2.57 <@&1050033416185335808> (playing the momentum to upside off VWAP, High Risk low float) "
                     
                     
     
