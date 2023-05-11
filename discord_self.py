@@ -193,7 +193,7 @@ class DiscordBot(discord.Client):
 
             live_alert = True if date_diff.seconds < 90 else False
             str_msg = pars
-            if live_alert:
+            if live_alert:  # CHANGE
                 str_msg += " " + self.Altrader.price_now(order['Symbol'], order["action"], pflag=0)
             self.queue_prints.put([f"\t \t {str_msg}", "green"])
             print(Fore.GREEN + f"\t \t {str_msg}")

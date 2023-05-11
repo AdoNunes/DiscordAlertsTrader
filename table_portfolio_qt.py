@@ -220,7 +220,8 @@ def run_gui():
             window.Element("acc_updt").Update(button_color=("black", "white"))
             event, values = window.read(.1)
             gl.update_acct_ly(TDSession, window)
-            fit_table_elms(window.Element(f"{chn}_table").Widget)
+            fit_table_elms(window.Element(f"_positions_").Widget)
+            fit_table_elms(window.Element(f"_orders_").Widget)
             window.Element("acc_updt").Update(button_color=ori_col)
 
         elif event == "-subm-alert":

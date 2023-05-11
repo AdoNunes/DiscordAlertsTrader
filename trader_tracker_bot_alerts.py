@@ -45,7 +45,7 @@ class Bot_bulltrades_Tracker():
                 "Date", "Symbol", "Trader", 'Channel', "isOpen", "Asset", "Type", "Price", "Amount", "Price-current", "Prices", "Prices-current", "Avged"
                 ] + [ f"STC-{v}" for v in
                     ["Amount", "Price", "Price-current", "Prices", "Prices-current", "PnL", "PnL-current","PnL$", "PnL$-current", "Date"]
-                    for i in range(1,2)] )
+                    for i in range(1,2)] + "TrailStats" )
             self.portfolio.to_csv(self.portfolio_fname, index=False)
         self.TDSession = TDSession
         self.cmd = f'dotnet {path_dll} export' + ' -c {} -t ' + discord_token  + \
@@ -218,12 +218,15 @@ class Bot_bulltrades_Tracker():
         return str_act
 
 
-    def make_STC(self, order, open_trade):
+    def make_STC(self, order, open_trade, check_trail=False):
         trade = self.portfolio.loc[open_trade]
         stc_info = calc_stc_prices(trade, order)
         #Log portfolio
         for k, v in stc_info.items():
             self.portfolio.loc[open_trade, k] = v
+        
+        trailstat = self.compute_trail(open_trade)
+        self.portfolio.loc[open_trade, "TrailStats"] = trailstat
         self.portfolio.loc[open_trade, "STC-Date"] = order["Date"]
         stc_price =  self.portfolio.loc[open_trade,"STC-Price"]
         stc_utotal = self.portfolio.loc[open_trade,"STC-Amount"]
@@ -231,14 +234,64 @@ class Bot_bulltrades_Tracker():
         if stc_price == "none" or stc_price is None:
             str_STC = f"STC {order['Symbol']}  ({order['uQty']}), no price provided"
         else:
-            str_STC = f"STC {order['Symbol']}  ({order['uQty']}), {stc_price:.2f}%"
-
+            str_STC = f"STC {order['Symbol']} ({order['uQty']}), {stc_price:.2f}"
+            if stc_info['STC-Price-current'] is not None:           
+                       str_STC += f" current: {stc_info['STC-Price-current']:2f} " 
+            str_STC += f'PnL:{round(stc_info["STC-PnL"])}%-${round(stc_info["STC-PnL$"])}' 
+            if stc_info["STC-PnL-current"] is not None:
+                str_STC += f' Actual:{round(stc_info["STC-PnL-current"])}% ${round(stc_info["STC-PnL$-current"])}\n\t\t'
         if stc_utotal >= trade['Amount']:
             str_STC = str_STC +" Closed"
             self.portfolio.loc[open_trade, "isOpen"] = 0
         if eval(order.get('# Closed', "0"))==1 :
             self.portfolio.loc[open_trade, "isOpen"]=0
+        str_STC = str_STC + " " + trailstat.replace('|', '\n\t\t')
         return str_STC
+
+    def compute_trail(self, open_trade):
+        trade = self.portfolio.loc[open_trade]
+        
+        dir_quotes = data_dir + '/live_quotes'
+        fname = dir_quotes + f"/{trade['Symbol']}.csv"
+        if not op.exists(fname):
+            return ""
+        try:
+            quotes = pd.read_csv(fname, on_bad_lines='skip')
+        except Exception as e:
+            print("pandas failed reading the quote csv")
+            try:
+                quotes = pd.read_csv(fname)
+            except:
+                return ""
+        # start after BTO date
+        dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
+        msk = dates >= pd.to_datetime(trade['Date'])
+        quotes = quotes[msk].reset_index(drop=True)
+        
+        # first price will be the actual
+        if not pd.isnull(trade["Price-current"]):
+            price0 = trade["Price-current"]
+        else:
+            price0 = trade["Price"]
+        quotes.loc[0, ' quote'] = price0
+
+        # Calculate trailingStops
+        res_str = "TS:{},{}%,${},in {}"
+        trailing_Stop = [.2, .3, .4, .5] 
+        max_trails = []      
+        quotes['highest'] = quotes[' quote'].cummax() #take the cumulative max
+        quotes['perc'] = round((quotes[' quote'] - quotes[' quote'].loc[0])/ quotes[' quote'].loc[0] *100,2)
+        for trl in trailing_Stop:
+            quotes[f'trailingstop{trl}'] = quotes['highest']*(1-trl) 
+            trl_ix = (quotes[f' quote'] <= quotes[f'trailingstop{trl}']).idxmax()
+            if trl_ix:
+                trl_r = quotes.loc[trl_ix]
+                tdiff =  datetime.fromtimestamp(trl_r['timestamp']) - pd.to_datetime(trade['Date'])
+                tdiff = str(tdiff.round('s')).replace('0 days ','')
+                max_trails.extend([res_str.format(trl,trl_r['perc'],trl_r[' quote'],tdiff)])
+        max_trails = "| ".join(max_trails)
+        quotes_stats =  f"max:{quotes['perc'].max()}% min:{quotes['perc'].min()}%|" + max_trails
+        return quotes_stats
 
 
     def close_expired(self):
@@ -340,5 +393,6 @@ def calc_stc_prices(trade, order=None):
     return stc_info
 
 if __name__ == "__main__":
-    tracker = Bot_bulltrades_Tracker()
-    tracker.update_msgs()
+    tracker = Bot_bulltrades_Tracker(portfolio_fname = data_dir + "/trade_tracker_portfolio.csv")
+    tracker.compute_trail(32,  'QQQ_051223C328')
+    # tracker.update_msgs()
