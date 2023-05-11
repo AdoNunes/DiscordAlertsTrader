@@ -21,16 +21,7 @@ Invite link to Xtrades: https://discord.gg/fMANuG8tR9
  ## DiscordChatExporter dependency
  ______________________________
 
- It requires DiscordChatExporter CLI version (tested in Linux and Windows). 
- https://github.com/Tyrrrz/DiscordChatExporter
- For Linux, first intall .NET Core v3.1, as indicated in the DiscordChatExporter exporter.
-
-Once installed, edit config_example.py and save it as config.py. There needs to be:
-
-Path to the  DiscordChatExporter dll:
-```
-path_dll = "DiscordExtractor/DiscordChatExporter.Cli.dll"
-```
+It requires discord.py-self. Get a user discord token, then change config_example.py to config.py. There needs to be:
 
 Discord token to access discord message chats:
 ```
@@ -53,6 +44,8 @@ CHN_NAMES = ["stock_alerts","option_alerts"]
 
 ## TDAmeritrade
 _______________
+
+*CURRENTLY NO NEW DEVELOPER ACCOUNT UNTIL THE MERGE*
 
 To access the TDAmeritrade account for trading and info is necessary to install 
 td-ameritrade-python-api from:
@@ -99,7 +92,7 @@ Run the Command Line Interface:
 
 ```python real_time_exporter.py```
 
-Currently, the GUI is not available as it needs to be updated with current external package versions.
+Currently, the GUI is available I have to change the name... for now is table_portfolio_qt.py.
 
 
 ## Disclaimer
