@@ -81,6 +81,26 @@ In your browser go to the link, accept TD ameritrade pop-up and copy the link yo
 ## Setup and Run
 ______
 
+First of all **install python**. For windows you can run this in the PowerShell, if you see the output print "Hellow, World!" python with conda is installed:
+```# Check if Scoop is installed
+if (-not (Test-Path $env:USERPROFILE\scoop)) {
+    # Install Scoop
+    iex (new-object net.webclient).downloadstring('https://get.scoop.sh')
+}
+
+# Check if extras are included
+$extras = scoop bucket list | Select-String -Pattern '^extras$'
+if (-not $extras) {
+    # Add the extras bucket
+    scoop bucket add extras
+}
+
+# Install Miniconda3
+scoop install miniconda3
+
+# Run Python script
+python -c "print('Hello, World!')"
+```
 
 Once downloaded the package, install the dependencies listed in requirements.txt. Then open a terminal, cd to the folder directory of the package and type:
 
