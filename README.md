@@ -86,13 +86,13 @@ First of all **install python**. For windows you can run this in the PowerShell,
 if (-not (Test-Path $env:USERPROFILE\scoop)) {
     # Install Scoop
     Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-    iex (new-object net.webclient).downloadstring('https://get.scoop.sh')
+    irm get.scoop.sh | iex
 }
-
+scoop install git
 # Check if extras are included
 $extras = scoop bucket list | Select-String -Pattern '^extras$'
 if (-not $extras) {
-    # Add the extras bucket
+    # Add the extras bucket    
     scoop bucket add extras
 }
 
