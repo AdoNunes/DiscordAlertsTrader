@@ -85,6 +85,7 @@ First of all **install python**. For windows you can run this in the PowerShell,
 ```# Check if Scoop is installed
 if (-not (Test-Path $env:USERPROFILE\scoop)) {
     # Install Scoop
+    Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
     iex (new-object net.webclient).downloadstring('https://get.scoop.sh')
 }
 
