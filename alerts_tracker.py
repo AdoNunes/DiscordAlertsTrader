@@ -4,10 +4,10 @@ import os.path as op
 import json
 from datetime import datetime, timedelta, date
 
-from disc_trader import find_last_trade, option_date
+from alerts_trader import find_last_trade, option_date
 from message_parser import parser_alerts
 from config import (path_dll, data_dir,  discord_token,  analyst_logs)
-
+from configurator import config as cfg
 
 def get_date():
     time_strf = "%Y-%m-%d %H:%M:%S.%f"
@@ -31,10 +31,10 @@ def disc_json_time_corr(time_json):
     return date
 
 
-class Bot_bulltrades_Tracker():
+class AlertsTracker():
 
     def __init__(self, TDSession=None,
-                 portfolio_fname=data_dir + "/analyst_bot_log_portfolio.csv"):
+                 portfolio_fname=cfg['portfolio_name']["tracker_portfolio_name"]):
 
         self.portfolio_fname = portfolio_fname        
 

@@ -17,7 +17,7 @@ import queue
 sys.path.append("/data/Dropbox (Partners HealthCare)/xtrades_repo/")
 from place_order import (make_BTO_lim_order, send_order,
                          make_STC_lim, make_Lim_SL_order, make_STC_SL)
-from disc_trader import AlertTrader
+from alerts_trader import AlertTrader
 from message_parser import parser_alerts, get_symb_prev_msg, combine_new_old_orders
 import config_example as cfg
 

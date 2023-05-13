@@ -11,7 +11,7 @@ import pandas as pd
 from datetime import datetime
 import numpy as np
 import config as cfg
-from trader_tracker_bot_alerts import calc_stc_prices
+from alerts_tracker import calc_stc_prices
 
 def short_date(datestr, infrm="%Y-%m-%d %H:%M:%S.%f", outfrm="%m/%d/%Y %H:%M"):
     return datetime.strptime(datestr, infrm).strftime(outfrm)

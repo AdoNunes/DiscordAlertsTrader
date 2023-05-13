@@ -14,7 +14,7 @@ from place_order import get_TDsession
 import gui_generator as gg
 import gui_layouts as gl
 from PySide2.QtWidgets import QHeaderView
-from discord_self import DiscordBot
+from discord_bot import DiscordBot
 import config as cfg
 import queue
 import PySimpleGUIQt as sg
