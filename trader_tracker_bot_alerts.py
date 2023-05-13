@@ -45,7 +45,7 @@ class Bot_bulltrades_Tracker():
                 "Date", "Symbol", "Trader", 'Channel', "isOpen", "Asset", "Type", "Price", "Amount", "Price-current", "Prices", "Prices-current", "Avged"
                 ] + [ f"STC-{v}" for v in
                     ["Amount", "Price", "Price-current", "Prices", "Prices-current", "PnL", "PnL-current","PnL$", "PnL$-current", "Date"]
-                    for i in range(1,2)] + "TrailStats" )
+                    for i in range(1,2)] + ["TrailStats"] )
             self.portfolio.to_csv(self.portfolio_fname, index=False)
         self.TDSession = TDSession
         self.cmd = f'dotnet {path_dll} export' + ' -c {} -t ' + discord_token  + \

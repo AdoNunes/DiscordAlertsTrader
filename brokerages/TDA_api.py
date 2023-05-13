@@ -4,11 +4,11 @@ from td.client import TDClient
 from td.orders import Order, OrderLeg
 
 try:
-    from ..secrets_api import auth
+    from secrets_api import auth
 except ModuleNotFoundError:
     raise ModuleNotFoundError("No authentication file found, get TDA credentials (in setup.py) to continue")
 
-from . import BaseBroker
+from brokerages import BaseBroker
 
 class TDA(BaseBroker):
     def __init__(self, api_key):
@@ -98,7 +98,7 @@ class TDA(BaseBroker):
                 "Avg Price": pos['averagePrice'],
                 "PnL": pos["currentDayProfitLoss"],
                 }
-            pos_inf["Qty"] = pos[f"{pos_inf['type']}Quantity"]
+            pos_inf["Qty"] = int(pos[f"{pos_inf['type']}Quantity"])
             pos_inf["PnL %"] = pos_inf["PnL"]/(pos_inf["Avg Price"]*pos_inf["Qty"])
             df_pos =pd.concat([df_pos, pd.DataFrame.from_records(pos_inf, index=[0])], ignore_index=True)
 

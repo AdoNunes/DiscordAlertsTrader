@@ -11,7 +11,7 @@ class BaseBroker(ABC):
         pass
 
     @abstractmethod
-    def get_ticker_price(self, symbol):
+    def get_quotes(self, symbol):
         pass
 
     @abstractmethod

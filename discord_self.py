@@ -202,8 +202,8 @@ class DiscordBot(discord.Client):
             self.queue_prints.put([f"\t \t tracker logger: {track_out}", "red"])
             if msg['Author'] in cfg.authors_subscribed:
                 order["Trader"] = msg['Author']
-                if cfg.default_stop_lim is not None:
-                    order['SL'] = cfg.default_stop_lim
+                if cfg.default_trailstop is not None:
+                    order['SL'] = cfg.default_trailstop + "%"
                 self.Altrader.new_trade_alert(order, pars, msg['Content'])
         
         if self.chn_hist.get(chn) is not None:
