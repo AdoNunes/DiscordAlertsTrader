@@ -13,7 +13,9 @@ What this package does:
 - Track trading signals and performance of traders using message history and realtime price
 - Execute and cancel orders, check order status, account status and current ticker prices
 
-**Currently, the package is for parsing signals of the discord group Xtrades.** 
+control trade execution manually, through promts choose QTY, price, etc
+
+**Currently, the package is for parsing signals of the discord server BullTrades.** 
 
 Invite link to Xtrades: https://discord.gg/fMANuG8tR9
 
