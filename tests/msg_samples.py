@@ -30,3 +30,21 @@ alerts_exampes  = [("BTO 1 TSLA 195p 03/31 @ 4.75 @here (Day Trade/Swing) @Cblas
 ]
 
 "BTO TSLA 180p 3/17 @ .59 @here @EM Alert", "BTO 3 TSLA 180p 3/17 @ .54"
+
+
+order = {'action': 'BTO',
+    'Symbol': 'DPW',
+    'price': 3.7,
+    'avg': None,
+    'PT1': 3.72,
+    'PT2': 4.39,
+    'PT3': 5.95,
+    'SL': 3.65,
+    'n_PTs': 3,
+    'PTs_Qty': [.33, .33, .34],
+    'Trader': 'ScaredShirtless#0001',
+    'PTs': [5.84],
+    'uQty': 3}
+
+pars = "BTO DPW @3.7 PT1: 3.72 PT2: 4.39 PT3:5.96 SL: 3.01"
+msg = "BTO DPW @3.7 PT1 3.72 SL: 3.01"

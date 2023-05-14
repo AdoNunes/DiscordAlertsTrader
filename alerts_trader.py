@@ -340,6 +340,7 @@ class AlertsTrader():
                      }
 
         if order['action'] == "ExitUpdate" and isOpen:
+            #TODO : REMOVE
             # Pause updater to avoid overlapping
             self.update_paused = True
 
@@ -402,8 +403,9 @@ class AlertsTrader():
                 log_alert['action'] = "BTO-notAccepted"                
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
-                print(Back.GREEN + "BTO not accepted by user, order response is none")
-                self.queue_prints.put(["BTO not accepted by user, order response is none", "", "green"])
+                str_msg = "BTO not accepted by user, order response is none"
+                print(Back.GREEN + str_msg)
+                self.queue_prints.put([str_msg, "", "green"])
                 return
 
             order_status, order_info = self.get_order_info(order_id)
@@ -453,9 +455,8 @@ class AlertsTrader():
             # if PT in order: cancel previous and make_BTO_PT_SL_order
             # else : BTO
             alert_price = order['price']
-            order_response, order_id, order, ord_chngd = self.confirm_and_send(order, pars,
-                                                       self.bksession.make_BTO_lim_order)
-            # TODO: uQty should be the same
+            order_response, order_id, order, _ = self.confirm_and_send(order, pars,
+                                                                       self.bksession.make_BTO_lim_order)
             self.save_logs("port")
             if order_response is None:  #Assume trade not accepted
                 log_alert['action'] = "BTO-Avg-notAccepted"
@@ -485,15 +486,14 @@ class AlertsTrader():
                 self.portfolio.loc[open_trade, "Avged-uQty"] = f"{av_qt},{order_info['quantity']}"
 
             avg = self.portfolio.loc[open_trade, "Avged"]
-            price = order_info['price']
 
             self.portfolio.loc[open_trade, "uQty"] += order_info['quantity']
             if order_status == "FILLED":
                 self.portfolio.loc[open_trade, "filledQty"] += order_info['filledQuantity']
                 self.close_open_exit_orders(open_trade)
-
-            print(Back.GREEN + f"BTO {avg} th AVG, {order['Symbol']} executed. Status: {order_status}")
-            self.queue_prints.put([f"BTO {avg} th AVG, {order['Symbol']} executed. Status: {order_status}", "", "green"])
+            str_msg =  f"BTO {avg} th AVG, {order['Symbol']} executed. Status: {order_status}"
+            print(Back.GREEN + str_msg)
+            self.queue_prints.put([str_msg, "", "green"])
 
             #Log portfolio, trades_log
             log_alert['action'] = "BTO-avg"
@@ -509,13 +509,14 @@ class AlertsTrader():
             print(Back.RED + str_act)
             self.queue_prints.put([str_act, "", "red"])
 
-
         elif order["action"] == "STC" and isOpen == 0:
             open_trade, _ = find_last_trade(order, self.portfolio, open_only=False)
             if open_trade is None:
-                log_alert['action'] = f"STC-alerted without position"
+                log_alert['action'] = str_msg = f"STC-alerted without open position"
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs()
+                print(Back.GREEN + str_msg)
+                self.queue_prints.put([str_msg, "", "green"])
                 return
 
             position = self.portfolio.iloc[open_trade]
@@ -528,7 +529,6 @@ class AlertsTrader():
                     if not pd.isnull(position[ f"{STC}-Price"]):
                         print(Back.RED + "Position already closed")
                         self.queue_prints.put(["Position already closed", "", "red"])
-
                         log_alert['action'] = f"{STC}-alerterdAfterClose"
                         log_alert["portfolio_idx"] = open_trade
                         self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
@@ -544,7 +544,6 @@ class AlertsTrader():
 
         elif order["action"] == "STC":
             position = self.portfolio.iloc[open_trade]
-
             if order.get("amnt_left"):
                 order, changed = amnt_left(order, position)
                 print(Back.GREEN + f"Based on alerted amnt left, Updated order: " +
@@ -574,9 +573,6 @@ class AlertsTrader():
                             return
                     break
 
-                # # Make sure the previous alert executed STC
-                # assert(not pd.isnull(position[f"STC{i}-Alerted"]) and
-                #        not pd.isnull(position[ f"STC{i}-Price"]))
             else:
                 str_STC = "How many STC already?"
                 print (Back.RED + str_STC)
@@ -620,8 +616,9 @@ class AlertsTrader():
                 exit_plan = eval(self.portfolio.loc[open_trade, "exit_plan"])
                 exit_plan[f"PT{STC[-1]}"] = order["price"]
                 self.portfolio.loc[open_trade, "exit_plan"] = str(exit_plan)
-                print(Back.GREEN + f"Exit Plan {order['Symbol']} updated, with PT{STC[-1]}: {order['price']}")
-                self.queue_prints.put([f"Exit Plan {order['Symbol']} updated, with PT{STC[-1]}: {order['price']}","", "green"])
+                str_msg = f"Exit Plan {order['Symbol']} updated, with PT{STC[-1]}: {order['price']}"
+                print(Back.GREEN + str_msg)
+                self.queue_prints.put([str_msg,"", "green"])
                 log_alert['action'] = "STC-partial-BeforeFill-ExUp"
                 log_alert["portfolio_idx"] = open_trade
                 return
@@ -655,12 +652,11 @@ class AlertsTrader():
 
             if order['uQty'] + qty_sold > qty_bought:
                 order['uQty'] = qty_bought - qty_sold
-                print(Back.RED + Fore.BLACK + f"Order {order['Symbol']} Qty exceeded, changed to {order['uQty']}")
-                self.queue_prints.put([f"Order {order['Symbol']} Qty exceeded, changed to {order['uQty']}", "", "red"])
+                str_msg = f"Order {order['Symbol']} Qty exceeded, changed to {order['uQty']}"
+                print(Back.RED + Fore.BLACK + str_msg)
+                self.queue_prints.put([str_msg, "", "red"])
 
-            price_alerted = order['price']
             order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_STC_lim)
-
             log_alert["portfolio_idx"] = open_trade
 
             if order_response is None:  # Assume trade rejected by user
@@ -1046,14 +1042,10 @@ class AlertsTrader():
             self.queue_prints.put([str_prt,"", "green"])
             self.save_logs("port")
 
-
-
 def option_date(opt_symbol):
     sym_inf = opt_symbol.split("_")[1]
     opt_date = re.split("C|P", sym_inf)[0]
     return datetime.strptime(opt_date, "%m%d%y")
-
-
 
 def amnt_left(order, position):
     # Calculate amnt to sell based on alerted left amount
@@ -1070,88 +1062,8 @@ def amnt_left(order, position):
             order['xQty'] = 1 - left
             order['uQty'] = max(round(available * order['xQty']), 1)
         else:
-            error
+            raise ValueError
         return order, True
     else:
         return order, False
 
-
-if 0 :
-
-    order = {'action': 'BTO',
-      'Symbol': 'DPW',
-      'price': 3.7,
-      'avg': None,
-      'PT1': 3.72,
-      'PT2': 4.39,
-      'PT3': 5.95,
-      'SL': 3.65,
-      'n_PTs': 3,
-      'PTs_Qty': [.33, .33, .34],
-      'Trader': 'ScaredShirtless#0001',
-      'PTs': [5.84],
-      'uQty': 3}
-
-    pars = "BTO DPW @3.7 PT1: 3.72 PT2: 4.39 PT3:5.96 SL: 3.01"
-    msg = "BTO DPW @3.7 PT1 3.72 SL: 3.01"
-
-    self = AlertTrader(update_portfolio=False)
-    self.plot_portfolio()
-    self.new_stock_alert(order, pars, msg)
-
-    # order = {'action': 'BTO',
-    #   'Symbol': 'PLTR',
-    #   'price': 23,
-    #   'avg': None,
-    #   'PT1': None,
-    #   'PT2': 6.39,
-    #   'PT3': 6.95,
-    #   'SL': 3.01,
-    #   'n_PTs': 3,
-    #   'PTs_Qty': [.33, .33, .34],
-    #   'Trader': 'ScaredShirtless#0001',
-    #   'PTs': [5.84],
-    #   'uQty': 2}
-
-
-
-    # pars = "BTO DPW @3.1 PT1 5.84 SL: 3.01"
-
-    # msg = "BTO DPW @3.1 PT1 5.84 SL: 3.01"
-
-
-
-    # order = {'action': 'STC',
-    #  'Symbol': 'DPW',
-    #  'price': 5.84,
-    #  'qty': 2}
-
-    # pars = "STC DPW @ 5.84"
-
-    order = {'action': 'BTO',
-     'Symbol': 'KMPH_031921C7.5',
-     'ticker': 'KMPH',
-     'price': 1.75,
-     'expDate': '3/19/21',
-     'strike': '7.5C',
-     'avg': None,
-     'PT1': None,
-     'PT2': None,
-     'PT3': None,
-     'SL': None,
-     'n_PTs': 0,
-     'PTs_Qty': [1],
-     'uQty': 3,
-     'Trader': 'ScaredShirtless#0001'}
-
-    # pars = 'BTO KMPH 3/19/21 7.5C @1.75 PT1:None, PT2:None, PT3:None, SL:None'
-    # msg = "@everyone BTO **KMPH** 3/19/21 7.5c @ 1.75 (swing)"
-    # order = {'action': 'STC',
-    #  'Symbol': 'CURLF',
-    #  'price': 24.05,
-    #  'Trader': 'ScaredShirtless#0001',
-    #  'PTs': [5.84],
-    #  'Qty': 1}
-
-    # pars = "STC CURLF @  24.0"
-    msg  = "STC CURLF @  24.0"

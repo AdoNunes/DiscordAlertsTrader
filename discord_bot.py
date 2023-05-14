@@ -203,7 +203,7 @@ class DiscordBot(discord.Client):
 
 if __name__ == '__main__':
     client = DiscordBot()
-    client.run(cfg.discord_token)
+    client.run(cfg['discord']['discord_token'])
 
 
 

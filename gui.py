@@ -10,14 +10,15 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import time
-from place_order import get_TDsession
-import gui_generator as gg
-import gui_layouts as gl
-from PySide2.QtWidgets import QHeaderView
-from discord_bot import DiscordBot
-import config as cfg
 import queue
 import PySimpleGUIQt as sg
+from PySide2.QtWidgets import QHeaderView
+
+from brokerages import get_brokerage
+import gui_generator as gg
+import gui_layouts as gl
+from discord_bot import DiscordBot
+from configurator import cfg, channel_ids
 
 
 def fit_table_elms(Widget_element):
@@ -26,8 +27,7 @@ def fit_table_elms(Widget_element):
     Widget_element.resizeRowsToContents()
     Widget_element.resizeColumnsToContents()
 
-
-TDSession = get_TDsession()
+bksession = get_brokerage()
 
 # sg.theme('Dark Blue 3')
 # sg.SetOptions(font=("Helvitica", "11"),  background_color="whitesmoke")#,,
@@ -48,14 +48,14 @@ ly_port = gl.layout_portfolio(gui_data['port'], fnt_b, fnt_h)
 gui_data['trades'] = gg.get_tracker_data()  # gui_data['port'] [0] can't be empty
 ly_track = gl.layout_traders(gui_data['trades'], fnt_b, fnt_h)
 
-chns = cfg.CHN_NAMES
+chns = channel_ids.keys()
 ly_chns = []
 for chn in chns:
     gui_data[chn] = gg.get_hist_msgs(chan_name=chn)
     ly_ch = gl.layout_chan_msg(chn, gui_data[chn], fnt_b, fnt_h)
     ly_chns.append(ly_ch)
 
-ly_accnt = gl.layout_account(TDSession, fnt_b, fnt_h)
+ly_accnt = gl.layout_account(bksession, fnt_b, fnt_h)
 
 layout = [[sg.TabGroup([
                         [sg.Tab("Console", ly_cons)],
@@ -91,14 +91,12 @@ def mprint_queue(queue_item_list):
 
     window[MLINE_KEY].print(text, **kwargs)
 
-
 def update_portfolios_thread(window):
     while True:
         time.sleep(60)
         window["_upd-portfolio_"].click()
         time.sleep(2)  
         window["_upd-track_"].click()
-
 
 event, values = window.read(.1)
 # window.GetScreenDimensions()
@@ -122,9 +120,7 @@ event, values = window.read(.1)
 trade_events = queue.Queue(maxsize=20)
 alistner = DiscordBot(trade_events)
 
-
 threading.Thread(target=update_portfolios_thread, args=(window,), daemon=True).start()
-
 
 event, values = window.read(.1)
 
@@ -219,7 +215,7 @@ def run_gui():
             ori_col = window.Element("acc_updt").ButtonColor
             window.Element("acc_updt").Update(button_color=("black", "white"))
             event, values = window.read(.1)
-            gl.update_acct_ly(TDSession, window)
+            gl.update_acct_ly(bksession, window)
             fit_table_elms(window.Element(f"_positions_").Widget)
             fit_table_elms(window.Element(f"_orders_").Widget)
             window.Element("acc_updt").Update(button_color=ori_col)
@@ -229,10 +225,11 @@ def run_gui():
             window.Element("-subm-alert").Update(button_color=("black", "white"))
             event, values = window.read(.1)
             try:        
-                author, msg = values['-subm-msg'].split(', ')
+                author, msg = values['-subm-msg'].split(',')
             except ValueError:
-                author, msg = values['-subm-msg'].split(': ')
-            if author.startswith(" "): author = author.replace(" ","")
+                author, msg = values['-subm-msg'].split(':')
+            author = author.strip()
+            msg = msg.strip()
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             vals = np.array([date, author, msg]).reshape(1,-1)
             new_msg = pd.DataFrame(vals, columns=["Date", 'Author', "Content"])

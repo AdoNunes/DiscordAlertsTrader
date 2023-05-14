@@ -143,9 +143,9 @@ def tt_acnt(text, fsize=12, bold=True, underline=True, font_name="Arial", size=N
         return sg.T(text,font=font,size=size)
 
 
-def layout_account(TDSession, font_body, font_header):
+def layout_account(bksession, font_body, font_header):
 
-    acc_inf, ainf = gg.get_acc_bals(TDSession)
+    acc_inf, ainf = gg.get_acc_bals(bksession)
     pos_tab, pos_headings = gg.get_pos(acc_inf)
     ord_tab, ord_headings, _= gg.get_orders(acc_inf)
 
@@ -178,9 +178,9 @@ def layout_account(TDSession, font_body, font_header):
     return layout
 
 
-def update_acct_ly(TDSession, window):
+def update_acct_ly(bksession, window):
 
-    acc_inf, ainf = gg.get_acc_bals(TDSession)
+    acc_inf, ainf = gg.get_acc_bals(bksession)
     pos_tab, _ = gg.get_pos(acc_inf)
     ord_tab, _, _= gg.get_orders(acc_inf)
 

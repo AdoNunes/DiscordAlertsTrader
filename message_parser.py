@@ -7,9 +7,8 @@ Created on Mon Feb  8 18:11:55 2021
 """
 import re
 import pandas as pd
-from place_order import make_optionID
+from datetime import datetime
 import numpy as np
-
 
 def parser_alerts(msg, asset=None):
     msg = msg.replace("STc", "STC").replace("StC", "STC").replace("stC", "STC").replace("STc", "STC")
@@ -96,9 +95,7 @@ def parser_alerts(msg, asset=None):
         if order["uQty"] is None:
             str_prt = str_prt + f" xamount: {xamnt}"
         order["xQty"] = xamnt
-
     return str_prt, order
-
 
 def make_order_exits(order, msg, str_prt, asset):
     pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
@@ -119,7 +116,6 @@ def make_order_exits(order, msg, str_prt, asset):
                 str_prt = str_prt + f', {ext}:{order[ext]}'
     return order, str_prt
 
-
 def set_exit_price_type(exit_price, order):
     """Option or stock price decided with smallest distance"""
     if exit_price is None:
@@ -139,7 +135,6 @@ def set_exit_price_type(exit_price, order):
         raise("Not sure if price of option or stock")
     return exit_price
 
-
 def set_pt_qts(n_pts):
     if n_pts == 3:
         amnts = [.33, .33, .34]
@@ -149,14 +144,12 @@ def set_pt_qts(n_pts):
         amnts = [1]
     return amnts
 
-
 def parse_action(msg):
     if pd.isnull(msg):
         return None
     actions = ["BTO", "STC"]
     act =  actions[0] if actions[0] in msg  else actions[1] if actions[1] in msg else None
     return act
-
 
 def parse_Symbol(msg, act):
     re_Symbol = re.compile("\*\*([A-Z]*?)\*\*")
@@ -182,7 +175,6 @@ def parse_Symbol(msg, act):
     # print ("Symbol: ", Symbol)
     return Symbol, Symbol_info.span()
 
-
 def parse_mark_stock(msg, Symbol, act):
     re_mark = re.compile("\@[ ]*[$]*[ ]*(\d+(?:\.\d+)?|\.\d+)")
     mark_inf = re_mark.search(msg)
@@ -193,7 +185,6 @@ def parse_mark_stock(msg, Symbol, act):
             return None
     mark = float(mark_inf.groups()[-1])
     return mark
-
 
 def parse_mark_option(msg):
     re_mark = re.compile("(?:@|at)[a-zA-Z]?[ ]*[$]?[ ]*([.]?\d+(?:\.\d+)?)")
@@ -213,7 +204,6 @@ def parse_mark_option(msg):
             return float(mark_inf.groups()[-1][1:].replace(",","."))
     mark = float(mark_inf.groups()[-1].replace(",","."))
     return mark
-
 
 def parse_strike(msg):
     re_strike = re.compile(" [$]?(\d+(?:\.\d+)?)(C|c|P|p)")
@@ -298,8 +288,6 @@ def parse_exits_vals(msg, expr):
     exit_v = float(exit_inf.groups()[-1].replace("..", ""))
     return exit_v
 
-
-
 def parse_unit_amount(msg):    
     act = parse_action(msg)
     Symbol, _ = parse_Symbol(msg, act)
@@ -355,9 +343,7 @@ def parse_sell_ratio_amount(msg, asset):
         amnt = 1
     return amnt
 
-
 def parse_risk(msg):
-
     risk = {'very high risk':"very high",
             'risk very high':"very high",
             'very risky':"very high",
@@ -374,16 +360,13 @@ def parse_risk(msg):
                 break
     return risk_level
 
-
 def parse_exit_plan(order):
     exit_plan = {}
     for p in [f"PT{i}" for i in range (1,4)] + ["SL"]:
             exit_plan[p] = order.get(p)
     return exit_plan
 
-
 def auhtor_parser(msg, author, asset):
-
     if author not in ['ScaredShirtless#0001', 'Kevin (Momentum)#4441']:
         new_order = {}
         def stc_amount(msg):
@@ -479,9 +462,7 @@ def auhtor_parser(msg, author, asset):
             return None
     return None
 
-
 def get_symb_prev_msg(df_hist, msg_ix, author):
-
     # df_hist["Author"]  = df_hist["Author"].apply(lambda x: x.split("#")[0])
 
     df_hist_auth = df_hist[df_hist["Author"]==author]
@@ -498,10 +479,25 @@ def get_symb_prev_msg(df_hist, msg_ix, author):
             return symbol, inx
     return None, None
 
+def make_optionID(self, Symbol:str, expDate:str, strike=str, **kwarg):
+    """
+    date: "[M]M/[D]D" or "[M]M/[D]D/YY[YY]"
+    """
+    strike, opt_type = float(strike[:-1]), strike[-1]
+    date_elms = expDate.split("/")
+    date_frm = f"{int(date_elms[0]):02d}{int(date_elms[1]):02d}"
+    if len(date_elms) == 2: # MM/DD, year = current year
+        year = str(datetime.today().year)[-2:]
+        date_frm = date_frm + year
+    elif len(date_elms) == 3:
+        date_frm = date_frm + f"{int(date_elms[2][-2:]):02d}"
 
+    # Strike in interger if no decimals
+    if strike == int(strike):
+        return f"{Symbol}_{date_frm}{opt_type}{int(strike)}"
+    return f"{Symbol}_{date_frm}{opt_type}{strike}"
 
 def combine_new_old_orders(msg, order_old, pars, author, asset="option"):
-
     order_author = auhtor_parser(msg, author, asset)
     if order_author is None:
         return order_old, pars
@@ -536,6 +532,4 @@ def combine_new_old_orders(msg, order_old, pars, author, asset="option"):
                 val = order.get(ex)
                 if val is not None:
                     pars = pars + f" {ex}:{val},"
-
-
     return order, pars

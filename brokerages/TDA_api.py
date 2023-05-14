@@ -72,8 +72,8 @@ class TDA(BaseBroker):
         return order_status, order_info
     
 
-    def get_quotes(self, symbol):
-        return self.session.get_quotes(instruments=[symbol])
+    def get_quotes(self, symbol:list):
+        return self.session.get_quotes(instruments=symbol)
     
 
 
@@ -83,8 +83,12 @@ class TDA(BaseBroker):
     def get_order_status(self, order_id):
         pass
     
-    def get_positions_orders(self):
+    def get_account_info(self):
         acc_inf = self.session.get_accounts(self.session.accountId, ['orders','positions'])
+        return acc_inf
+
+    def get_positions_orders(self):
+        acc_inf = self.get_account_info()
 
         df_pos = pd.DataFrame(columns=["symbol", "asset", "type", "Qty", "Avg Price", "PnL", "PnL %"])
 
@@ -257,23 +261,7 @@ class TDA(BaseBroker):
         new_order.add_order_leg(order_leg=child_order_leg)
         return new_order
 
-    def make_optionID(self, Symbol:str, expDate:str, strike=str, **kwarg):
-        """
-        date: "[M]M/[D]D" or "[M]M/[D]D/YY[YY]"
-        """
-        strike, opt_type = float(strike[:-1]), strike[-1]
-        date_elms = expDate.split("/")
-        date_frm = f"{int(date_elms[0]):02d}{int(date_elms[1]):02d}"
-        if len(date_elms) == 2: # MM/DD, year = current year
-            year = str(datetime.today().year)[-2:]
-            date_frm = date_frm + year
-        elif len(date_elms) == 3:
-            date_frm = date_frm + f"{int(date_elms[2][-2:]):02d}"
 
-        # Strike in interger if no decimals
-        if strike == int(strike):
-            return f"{Symbol}_{date_frm}{opt_type}{int(strike)}"
-        return f"{Symbol}_{date_frm}{opt_type}{strike}"
 
 
 
