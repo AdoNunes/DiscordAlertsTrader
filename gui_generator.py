@@ -232,6 +232,8 @@ def get_live_quotes(portfolio):
                 }                 
             stc_info = calc_stc_prices(trade, order)
             for k, v in stc_info.items():
+                if k == "STC-Amount":
+                    continue
                 portfolio.loc[msk,k] = v
     return portfolio
 

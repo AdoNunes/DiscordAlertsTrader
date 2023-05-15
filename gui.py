@@ -236,9 +236,14 @@ def run_gui():
             author = author.strip()
             msg = msg.strip()
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-            vals = np.array([date, author, msg]).reshape(1,-1)
-            new_msg = pd.DataFrame(vals, columns=["Date", 'Author', "Content"])
-            alistner.new_msg_acts(new_msg, "gui_msg", "None")
+            new_msg = pd.Series({
+                'AuthorID': None,
+                'Author': author,
+                'Date': date, 
+                'Content': msg,
+                'Channel': "GUI_input"
+                })
+            alistner.new_msg_acts(new_msg, from_disc=False)
             window.Element("-subm-alert").Update(button_color=ori_col)
 
         try:

@@ -155,7 +155,7 @@ class DiscordBot(discord.Client):
                 chn_ix = list(self.channel_IDS.values()).index(message.channel.id)
                 chn = list(self.channel_IDS.keys())[chn_ix]
             else:
-                chn = 'None'
+                chn = None
             msg = pd.Series({'AuthorID': message.author.id,
                             'Author': f"{message.author.name}#{message.author.discriminator}",
                             'Date': msg_date_f, 
@@ -170,7 +170,7 @@ class DiscordBot(discord.Client):
         print(Fore.BLUE + f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
 
         pars, order =  parser_alerts(msg['Content'])
-        if pars is None:
+        if pars is None and self.chn_hist.get(chn) is not None:
             msg['Parsed'] = ""
             self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
             self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
