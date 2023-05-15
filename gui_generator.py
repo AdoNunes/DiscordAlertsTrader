@@ -247,7 +247,7 @@ def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
     data['Author'] = data['Author'].apply(lambda x: x.split('#')[0])
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
 
-    data = data.dropna()
+    data = data.fillna("")
     if filt_author:
         data = data[data['Author'].str.contains(filt_author, case=False)]
     if filt_date_frm:

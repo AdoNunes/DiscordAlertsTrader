@@ -57,7 +57,7 @@ class BaseBroker(ABC):
 
 def get_brokerage(name=cfg['general']['BROKERAGE']):
     if name == 'TDA':
-        from TDA_api import TDA
+        from brokerages.TDA_api import TDA
         return TDA
     elif name == "webull":
         NotImplemented

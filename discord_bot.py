@@ -46,7 +46,7 @@ class DiscordBot(discord.Client):
             self.thread_liveq =  threading.Thread(target=self.track_live_quotes)
             self.thread_liveq.start()
 
-    def close(self):
+    def close_bot(self):
         if self.bksession is not None:
             self.trader.update_portfolio = False
             self.live_quotes = False
@@ -139,11 +139,13 @@ class DiscordBot(discord.Client):
                 date_After = datetime.strptime(msg_last.Date, self.time_strf) 
                 iterator = channel.history(after=date_After, oldest_first=True)
             else:
-                iterator = channel.history(oldest_first=True)
+                # iterator = channel.history(oldest_first=True)
+                continue
                 
             print("In", channel)
             async for message in iterator:
                 self.new_msg_acts(message)
+        print("Done")
 
     def new_msg_acts(self, message, from_disc=True):
         if from_disc:
@@ -188,7 +190,7 @@ class DiscordBot(discord.Client):
             
             track_out = self.tracker.trade_alert(order, live_alert, chn)
             self.queue_prints.put([f"\t \t tracker log: {track_out}", "red"])
-            if msg['Author'] in cfg['discord']['authors_subscribed']:
+            if msg['Author'] in cfg['discord']['authors_subscribed'] and  self.bksession is not None:
                 order["Trader"] = msg['Author']
                 if len(cfg["order_configs"]["default_trailstop"]):
                     order['SL'] = cfg["order_configs"]["default_trailstop"] + "%"

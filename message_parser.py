@@ -479,7 +479,7 @@ def get_symb_prev_msg(df_hist, msg_ix, author):
             return symbol, inx
     return None, None
 
-def make_optionID(self, Symbol:str, expDate:str, strike=str, **kwarg):
+def make_optionID(Symbol:str, expDate:str, strike=str, **kwarg):
     """
     date: "[M]M/[D]D" or "[M]M/[D]D/YY[YY]"
     """

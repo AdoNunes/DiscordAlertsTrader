@@ -25,7 +25,7 @@ class AlertsTracker():
         if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
-            self.portfolio = pd.DataFrame(columns=cfg["col_names"]['tracker_portfolio_name'].split(",") )
+            self.portfolio = pd.DataFrame(columns=cfg["col_names"]['tracker_portfolio'].split(",") )
             self.portfolio.to_csv(self.portfolio_fname, index=False)
 
     def price_now(self, symbol, price_type="BTO"):

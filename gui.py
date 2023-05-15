@@ -5,11 +5,14 @@ Created on Sat Apr  3 18:18:43 2021
 
 @author: adonay
 """
+import os
+import os.path as op
 import threading
 import pandas as pd
 import numpy as np
 from datetime import datetime
 import time
+import asyncio
 import queue
 import PySimpleGUIQt as sg
 from PySide2.QtWidgets import QHeaderView
@@ -26,8 +29,6 @@ def fit_table_elms(Widget_element):
     Widget_element.resizeColumnsToContents()
     Widget_element.resizeRowsToContents()
     Widget_element.resizeColumnsToContents()
-
-bksession = get_brokerage()
 
 # sg.theme('Dark Blue 3')
 # sg.SetOptions(font=("Helvitica", "11"),  background_color="whitesmoke")#,,
@@ -51,18 +52,23 @@ ly_track = gl.layout_traders(gui_data['trades'], fnt_b, fnt_h)
 chns = channel_ids.keys()
 ly_chns = []
 for chn in chns:
+    chn_fname = cfg['general']['data_dir']+f"/{chn}_message_history.csv"
+    if not op.exists(chn_fname):
+        os.makedirs(cfg['general']['data_dir'], exist_ok=True)
+        pd.DataFrame(columns=cfg["col_names"]['chan_hist'].split(',')).to_csv(chn_fname, index=False)
     gui_data[chn] = gg.get_hist_msgs(chan_name=chn)
     ly_ch = gl.layout_chan_msg(chn, gui_data[chn], fnt_b, fnt_h)
     ly_chns.append(ly_ch)
 
-ly_accnt = gl.layout_account(bksession, fnt_b, fnt_h)
+bksession = get_brokerage()
+# ly_accnt = gl.layout_account(bksession, fnt_b, fnt_h)
 
 layout = [[sg.TabGroup([
                         [sg.Tab("Console", ly_cons)],
                         [sg.Tab('Portfolio', ly_port)],
                         [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],
                         [sg.Tab('Traders alerts', ly_track)],
-                        [sg.Tab("Account", ly_accnt)]
+                        # [sg.Tab("Account", ly_accnt)]
                         ],title_color='black')],
           [sg.Input(default_text="Author, STC 1 AAA 05/30 115C @2.5",
                     size= (140,1.5), key="-subm-msg",
@@ -100,7 +106,8 @@ def update_portfolios_thread(window):
 
 event, values = window.read(.1)
 # window.GetScreenDimensions()
-els = ['_portfolio_', '_track_', '_orders_', '_positions_'] + [f"{chn}_table" for chn in chns]
+els = ['_portfolio_', '_track_', ] + [f"{chn}_table" for chn in chns]
+els = els + ['_orders_', '_positions_'] if bksession is not None else els
 for el in els:
     try:
         fit_table_elms(window.Element(el).Widget)
@@ -108,17 +115,15 @@ for el in els:
         pass
 
 for chn in chns:
-    try:
-        table = window[f"{chn}_table"].Widget.horizontalHeader()
-        table.setSectionResizeMode(2, QHeaderView.Stretch)
-        window[f"{chn}_table"].Widget.scrollToBottom()
-    except:
-        continue
+    table = window[f"{chn}_table"].Widget.horizontalHeader()
+    table.setSectionResizeMode(2, QHeaderView.Stretch)
+    window[f"{chn}_table"].Widget.scrollToBottom()
+
 
 event, values = window.read(.1)
 
 trade_events = queue.Queue(maxsize=20)
-alistner = DiscordBot(trade_events)
+alistner = DiscordBot(trade_events, brokerage=bksession)
 
 threading.Thread(target=update_portfolios_thread, args=(window,), daemon=True).start()
 
@@ -162,7 +167,7 @@ def run_gui():
             ori_col = window.Element("_upd-portfolio_").ButtonColor
             window.Element("_upd-portfolio_").Update(button_color=("black", "white"))
             event, values = window.read(.1)
-            dt, hdr = gg.get_portf_data(port_exc, **values)
+            dt, _ = gg.get_portf_data(port_exc, **values)
             window.Element('_portfolio_').Update(values=dt)
             fit_table_elms(window.Element("_portfolio_").Widget)
             window.Element("_upd-portfolio_").Update(button_color=ori_col)
@@ -180,7 +185,7 @@ def run_gui():
             key =  event[6:]
             state = window.Element(event).get()
             port_exc[key] = state
-            dt, hdr = gg.get_portf_data(port_exc, **values)
+            dt, _ = gg.get_portf_data(port_exc, **values)
             window.Element('_portfolio_').Update(values=dt)
 
         elif event[:7] == "-track-":
@@ -245,7 +250,7 @@ def run_gui():
 
 
 def run_client():
-    alistner.run(cfg.discord_token)
+    alistner.run(cfg['discord']['discord_token'])
 
 
 def gui():   
@@ -257,7 +262,9 @@ def gui():
 
     # close the GUI window
     window.close()
-    alistner.close()
+    alistner.close_bot()
+    # alistner.close()
+    exit()
 
 
 if __name__ == '__main__':

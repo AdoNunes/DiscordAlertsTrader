@@ -97,18 +97,24 @@ def layout_traders(data_n_headers, font_body, font_header):
     return layout
 
 
-def layout_chan_msg(chn, data_n_headers, font_body, font_header):
+def layout_chan_msg(chn, data_n_headers, font_body, font_header):    
+    # Handle empy chan history
+    if data_n_headers[0] == []: 
+        values = [[""*len(data_n_headers[1])] ]
+    else:
+        values=data_n_headers[0]
+
     layout = [
         [sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'{chn}_filt_author', size=(20, 1)),
            # sg.Text(' '*2),
-         sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'{chn}_filt_date_frm', size=(10, 1), default_text='02/09'),
+         sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'{chn}_filt_date_frm', size=(10, 1), default_text='05/09'),
          sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'{chn}_filt_date_to', size=(10, 1)),
           # sg.Text(' '*1),
          sg.Text('Message contains: ', size=(25, 1)), sg.Input(key=f'{chn}_filt_cont', size=(20, 1)),
          sg.Text('Num. rows display: '), sg.Input(key=f'{chn}_n_rows', size=(5, 1)),
          ],
         [sg.ReadFormButton("Update", button_color=('white', 'black'), key=f'{chn}_UPD', bind_return_key=True)],
-        [sg.Column([[sg.Table(values=data_n_headers[0],
+        [sg.Column([[sg.Table(values=values,
                   headings=data_n_headers[1],
                   justification='left',
                   display_row_numbers=False,
@@ -144,7 +150,8 @@ def tt_acnt(text, fsize=12, bold=True, underline=True, font_name="Arial", size=N
 
 
 def layout_account(bksession, font_body, font_header):
-
+    if bksession is None:
+        return [[sg.T("No brokerage API provided in config.ini")]]
     acc_inf, ainf = gg.get_acc_bals(bksession)
     pos_tab, pos_headings = gg.get_pos(acc_inf)
     ord_tab, ord_headings, _= gg.get_orders(acc_inf)

@@ -1,14 +1,10 @@
 import pandas as pd
-from datetime import datetime
-from td.client import TDClient
-from td.orders import Order, OrderLeg
 
-try:
-    from secrets_api import auth
-except ModuleNotFoundError:
-    raise ModuleNotFoundError("No authentication file found, get TDA credentials (in setup.py) to continue")
-
+from configurator import cfg
 from brokerages import BaseBroker
+
+from td.orders import Order, OrderLeg
+from td.client import TDClient
 
 class TDA(BaseBroker):
     def __init__(self, api_key):
@@ -23,12 +19,13 @@ class TDA(BaseBroker):
 
         auth is a dict with login info created with setup.py
         """
-        
+        if len(cfg['TDA']['client_id']) < 10:
+            raise ValueError( "No TDA authentication file found, get credentials (in setup.py) to continue")
         # Create a new session, credentials path is required.
         self.session = TDClient(
-            client_id=auth['client_id'],
-            redirect_uri=auth['redirect_url'],
-            credentials_path=auth['credentials_path']
+            client_id=cfg['TDA']['client_id'],
+            redirect_uri=cfg['TDA']['redirect_url'],
+            credentials_path=cfg['TDA']['credentials_path']
         )
 
         # Login to the session
