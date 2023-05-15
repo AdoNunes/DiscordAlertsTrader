@@ -3,8 +3,8 @@ import numpy as np
 import os.path as op
 from datetime import datetime, date
 
-from alerts_trader import find_last_trade, option_date
-from configurator import cfg
+from .alerts_trader import find_last_trade, option_date
+from .configurator import cfg
 
 def get_date():
     time_strf = "%Y-%m-%d %H:%M:%S.%f"

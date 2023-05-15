@@ -3,15 +3,17 @@ import os
 import os.path as op
 import json
 
+package_dir = os.path.abspath(os.path.dirname(__file__))
+assert(op.exists(package_dir+'/config.ini'), 
+       FileNotFoundError("config.ini not found, rename condig_example and add discord token"))
 # load configuration file
 cfg = configparser.ConfigParser()
-cfg.read('config.ini',  encoding='utf-8')
+cfg.read(package_dir+'/config.ini',  encoding='utf-8')
 
 # change data_dir if it is just a folder name
 data_dir = cfg['general']['data_dir']
 _, ext = os.path.splitext(data_dir)
-if ext == "":
-    package_dir = os.path.abspath(os.path.dirname(__file__))
+if ext == "":    
     cfg['general']['data_dir'] = os.path.join(package_dir, "..", data_dir)
     print("full data dir:", cfg['general']['data_dir'])
 

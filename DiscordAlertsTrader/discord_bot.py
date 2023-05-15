@@ -1,20 +1,20 @@
 
 import os
 import time
-
 import pandas as pd
-from datetime import datetime
-from message_parser import parser_alerts
-
-from configurator import cfg
-from configurator import channel_ids
-from alerts_trader import AlertsTrader
+from datetime import datetime, timezone
 import threading
 from colorama import Fore, Back, Style, init
-from alerts_tracker import AlertsTracker
-
-from datetime import datetime, timezone
 import discord # this is discord.py-self package not discord
+
+from .message_parser import parser_alerts
+from .configurator import cfg
+from .configurator import channel_ids
+from .alerts_trader import AlertsTrader
+from .alerts_tracker import AlertsTracker
+
+
+
 
 init(autoreset=True)
 

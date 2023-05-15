@@ -15,8 +15,8 @@ import threading
 import queue
 from colorama import Fore, Back
 
-from configurator import cfg
-from message_parser import parse_exit_plan, set_exit_price_type
+from .configurator import cfg
+from .message_parser import parse_exit_plan, set_exit_price_type
 
 
 def find_last_trade(order, trades_log, open_only=True):
