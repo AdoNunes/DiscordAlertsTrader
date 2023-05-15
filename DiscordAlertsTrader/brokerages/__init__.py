@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from configurator import cfg
+from ..configurator import cfg
 
 class BaseBroker(ABC):
     @abstractmethod

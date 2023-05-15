@@ -9,19 +9,17 @@ import os
 import os.path as op
 import threading
 import pandas as pd
-import numpy as np
 from datetime import datetime
 import time
-import asyncio
 import queue
 import PySimpleGUIQt as sg
 from PySide2.QtWidgets import QHeaderView
 
-from brokerages import get_brokerage
-import gui_generator as gg
-import gui_layouts as gl
-from discord_bot import DiscordBot
-from configurator import cfg, channel_ids
+from DiscordAlertsTrader.brokerages import get_brokerage
+from DiscordAlertsTrader import gui_generator as gg
+from DiscordAlertsTrader import gui_layouts as gl
+from DiscordAlertsTrader.discord_bot import DiscordBot
+from DiscordAlertsTrader.configurator import cfg, channel_ids
 
 
 def fit_table_elms(Widget_element):
@@ -42,13 +40,14 @@ ly_cons, MLINE_KEY = gl.layout_console()
 def mprint(*args, **kwargs):
     window[MLINE_KEY].print(*args, **kwargs)
 
+print(1)
 gui_data = {}
 gui_data['port'] = gg.get_portf_data()  # gui_data['port'] [0] can't be empty
 ly_port = gl.layout_portfolio(gui_data['port'], fnt_b, fnt_h)
 
 gui_data['trades'] = gg.get_tracker_data()  # gui_data['port'] [0] can't be empty
 ly_track = gl.layout_traders(gui_data['trades'], fnt_b, fnt_h)
-
+print(2)
 chns = channel_ids.keys()
 ly_chns = []
 for chn in chns:
@@ -75,10 +74,10 @@ layout = [[sg.TabGroup([
                     tooltip="User: any, Asset: {stock, option}"),
            sg.Button("Submit alert", key="-subm-alert", size= (20,1))]
         ]
-
+print(3)
 window = sg.Window('BullTrader', layout,size=(1000, 500), # force_toplevel=True,
                     auto_size_text=True, resizable=True)
-
+print(4)
 def mprint_queue(queue_item_list):
     # queue_item_list = [string, text_color, background_color]
     kwargs = {}
@@ -103,7 +102,7 @@ def update_portfolios_thread(window):
         window["_upd-portfolio_"].click()
         time.sleep(2)  
         window["_upd-track_"].click()
-
+print(5)
 event, values = window.read(.1)
 # window.GetScreenDimensions()
 els = ['_portfolio_', '_track_', ] + [f"{chn}_table" for chn in chns]
@@ -119,14 +118,14 @@ for chn in chns:
     table.setSectionResizeMode(2, QHeaderView.Stretch)
     window[f"{chn}_table"].Widget.scrollToBottom()
 
-
+print(6)
 event, values = window.read(.1)
-
+print(7)
 trade_events = queue.Queue(maxsize=20)
 alistner = DiscordBot(trade_events, brokerage=bksession)
-
+print(8)
 threading.Thread(target=update_portfolios_thread, args=(window,), daemon=True).start()
-
+print(9)
 event, values = window.read(.1)
 
 port_exc = {"Cancelled":True,
@@ -148,7 +147,7 @@ track_exc = {"Cancelled":False,
             "stocks":True,
             "options":False,
             }
-
+print(10)
 dt, _  = gg.get_tracker_data(track_exc, **values)
 window.Element('_track_').Update(values=dt)
 fit_table_elms(window.Element("_track_").Widget)

@@ -7,7 +7,7 @@ Created on Tue Apr 27 11:54:36 2021
 """
 
 import PySimpleGUIQt as sg
-import gui_generator as gg
+from . import gui_generator as gg
 
 
 
