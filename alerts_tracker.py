@@ -1,13 +1,10 @@
 import pandas as pd
 import numpy as np
 import os.path as op
-import json
-from datetime import datetime, timedelta, date
+from datetime import datetime, date
 
-from disc_trader import find_last_trade, option_date
-from message_parser import parser_alerts
-from config import (path_dll, data_dir,  discord_token,  analyst_logs)
-
+from alerts_trader import find_last_trade, option_date
+from configurator import cfg
 
 def get_date():
     time_strf = "%Y-%m-%d %H:%M:%S.%f"
@@ -15,46 +12,24 @@ def get_date():
     return date
 
 
-def disc_json_time_corr(time_json):
-    """ Mesages from json are 4hs forward
+class AlertsTracker():
 
-        Original format: '2021-03-19T18:31:01.609+00:00'
-        output: dateime object - 4hs !"""
-    try:
-        date = datetime.strptime(time_json.split("+")[0], "%Y-%m-%dT%H:%M:%S.%f")
-    except ValueError:
-        date = datetime.strptime(time_json.split("+")[0], "%Y-%m-%dT%H:%M:%S")
+    def __init__(self, brokerage=None,
+                 portfolio_fname=cfg['portfolio_names']["tracker_portfolio_name"],
+                 dir_quotes = cfg['general']['data_dir'] + '/live_quotes' ):
 
-    time_strf = "%Y-%m-%d %H:%M:%S.%f"
-    date +=  timedelta(hours=-4)
-    date = date.strftime(time_strf)
-    return date
-
-
-class Bot_bulltrades_Tracker():
-
-    def __init__(self, TDSession=None,
-                 portfolio_fname=data_dir + "/analyst_bot_log_portfolio.csv"):
-
-        self.portfolio_fname = portfolio_fname        
+        self.portfolio_fname = portfolio_fname  
+        self.dir_quotes = dir_quotes
+        self.bksession = brokerage    
 
         if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
-            self.portfolio = pd.DataFrame(columns=[
-                "Date", "Symbol", "Trader", 'Channel', "isOpen", "Asset", "Type", "Price", "Amount", "Price-current", "Prices", "Prices-current", "Avged"
-                ] + [ f"STC-{v}" for v in
-                    ["Amount", "Price", "Price-current", "Prices", "Prices-current", "PnL", "PnL-current","PnL$", "PnL$-current", "Date"]
-                    for i in range(1,2)] + "TrailStats" )
+            self.portfolio = pd.DataFrame(columns=cfg["col_names"]['tracker_portfolio'].split(",") )
             self.portfolio.to_csv(self.portfolio_fname, index=False)
-        self.TDSession = TDSession
-        self.cmd = f'dotnet {path_dll} export' + ' -c {} -t ' + discord_token  + \
-            ' -f Json --after "{}" --dateformat "yyyy-MM-dd HH:mm:ss.ffffff" -o {}'
-        self.time_strf = "%Y-%m-%d %H:%M:%S.%f"
-
 
     def price_now(self, symbol, price_type="BTO"):
-        if self.TDSession is None:
+        if self.bksession is None:
             return None
 
         if price_type in ["BTO", "BTC"]:
@@ -62,9 +37,9 @@ class Bot_bulltrades_Tracker():
         else:
             ptype = 'bidPrice'
 
-        quote = self.TDSession.get_quotes(instruments=[symbol])
+        quote = self.bksession.get_quotes([symbol])
         if quote is None:
-            quote = self.TDSession.get_quotes(instruments=[symbol])
+            quote = self.bksession.get_quotes([symbol])
             
         if quote is not None and len(quote):
             quote = quote.get(symbol)[ptype]
@@ -72,63 +47,6 @@ class Bot_bulltrades_Tracker():
                 return quote
             else:
                 print("quote 0 for", symbol, price_type)
-
-
-    def update_msgs(self): 
-        from real_time_exporter import send_sh_cmd       
-        for author, chan_ID in analyst_logs.items():
-            out_file = op.join(data_dir, f"alert_chan_logs_{author}.json")
-            
-            # Decide from when to read alerts 
-            if (self.portfolio["Trader"]==author).sum():
-                trader_trades = self.portfolio.loc[self.portfolio["Trader"] == author]
-                time_after_1 = trader_trades["Date"].max()
-                time_after_2 = trader_trades.loc[~trader_trades["STC-Date"].isnull(), "STC-Date"].max()
-                time_after = max(time_after_1,time_after_2)
-                new_t = min(59.99, float(time_after[-9:]) + .1)
-                time_after = time_after[:-9] + f"{new_t:.6f}"
-            else:
-                time_after = (datetime.now() - timedelta(weeks=2)).strftime(self.time_strf)
-
-            cmd_sh = self.cmd.format(chan_ID, time_after, out_file)
-            new_msgs = send_sh_cmd(cmd_sh)
-            
-            if not new_msgs:
-                continue
-
-            with open(out_file, "r", errors='ignore') as f:
-                data = json.load(f)
-
-            for msg_n in range(data['messageCount']):
-                msg = data['messages'][msg_n]
-                msg_str = msg['content']
-                if not len(msg_str):
-                    continue
-                field = {m['name']:m['value'] for m in msg['embeds'][0]['fields']}
-                if msg_str ==  'Expired contract.':
-                    msg_str = f"STC {field['# Closed'].split('/')[0]} {field['Ticker']} {field['Strike']} {field['Date']} @{field['Sell']}"
-                    print(msg_str)
-                ord_str, order = parser_alerts(msg_str)
-                if order is None:
-                    continue
-                if field['Actual Cost'] == 'None':
-                    order['Actual Cost'] = None
-                else:
-                    order['Actual Cost'] = float(field['Actual Cost'])
-                order['# Closed'] = field['# Closed']
-                order['Trader'] = author
-                order["Date"] = disc_json_time_corr(msg['timestamp'])
-                
-                # find if live alert and process trade
-                order_date = datetime.strptime(order["Date"], "%Y-%m-%d %H:%M:%S.%f")
-                date_diff = datetime.now() - order_date
-                live_alert = True if date_diff.seconds < 90 else False
-                msg_track = self.trade_alert(order, live_alert, author)
-                print(msg_track)
-            self.close_expired()
-        self.portfolio = self.portfolio.sort_values("Date")
-        self.portfolio.to_csv(self.portfolio_fname, index=False) 
-
 
     def trade_alert(self, order, live_alert=True, channel=None):
         open_trade, _ = find_last_trade(order, self.portfolio, open_only=True)
@@ -154,8 +72,7 @@ class Bot_bulltrades_Tracker():
 
         #save to csv
         self.portfolio.to_csv(self.portfolio_fname, index=False)      
-        return  str_act
-
+        return str_act
 
     def make_BTO(self, order, chan=None):
         if order["price"] is None:
@@ -182,7 +99,6 @@ class Bot_bulltrades_Tracker():
         if order['SL'] is not None:
             str_act += f", SL:{order['SL']}"
         return str_act
-
 
     def make_BTO_Avg(self, order, open_trade):
         current_Avg = self.portfolio.loc[open_trade, "Avged"]
@@ -217,7 +133,6 @@ class Bot_bulltrades_Tracker():
         str_act = f"BTO {order['Symbol']} {current_Avg}th averging down @ {order['price']}"
         return str_act
 
-
     def make_STC(self, order, open_trade, check_trail=False):
         trade = self.portfolio.loc[open_trade]
         stc_info = calc_stc_prices(trade, order)
@@ -236,8 +151,8 @@ class Bot_bulltrades_Tracker():
         else:
             str_STC = f"STC {order['Symbol']} ({order['uQty']}), {stc_price:.2f}"
             if stc_info['STC-Price-current'] is not None:           
-                       str_STC += f" current: {stc_info['STC-Price-current']:2f} " 
-            str_STC += f'PnL:{round(stc_info["STC-PnL"])}%-${round(stc_info["STC-PnL$"])}' 
+                       str_STC += f" current: {stc_info['STC-Price-current']:.2f} " 
+            str_STC += f'PnL:{round(stc_info["STC-PnL"])}% ${round(stc_info["STC-PnL$"])}' 
             if stc_info["STC-PnL-current"] is not None:
                 str_STC += f' Actual:{round(stc_info["STC-PnL-current"])}% ${round(stc_info["STC-PnL$-current"])}\n\t\t'
         if stc_utotal >= trade['Amount']:
@@ -250,19 +165,11 @@ class Bot_bulltrades_Tracker():
 
     def compute_trail(self, open_trade):
         trade = self.portfolio.loc[open_trade]
-        
-        dir_quotes = data_dir + '/live_quotes'
-        fname = dir_quotes + f"/{trade['Symbol']}.csv"
+        fname = self.dir_quotes + f"/{trade['Symbol']}.csv"
         if not op.exists(fname):
             return ""
-        try:
-            quotes = pd.read_csv(fname, on_bad_lines='skip')
-        except Exception as e:
-            print("pandas failed reading the quote csv")
-            try:
-                quotes = pd.read_csv(fname)
-            except:
-                return ""
+        
+        quotes = pd.read_csv(fname, on_bad_lines='skip')
         # start after BTO date
         dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
         msk = dates >= pd.to_datetime(trade['Date'])
@@ -285,14 +192,22 @@ class Bot_bulltrades_Tracker():
             quotes[f'trailingstop{trl}'] = quotes['highest']*(1-trl) 
             trl_ix = (quotes[f' quote'] <= quotes[f'trailingstop{trl}']).idxmax()
             if trl_ix:
-                trl_r = quotes.loc[trl_ix]
-                tdiff =  datetime.fromtimestamp(trl_r['timestamp']) - pd.to_datetime(trade['Date'])
-                tdiff = str(tdiff.round('s')).replace('0 days ','')
-                max_trails.extend([res_str.format(trl,trl_r['perc'],trl_r[' quote'],tdiff)])
+                tdiff_str, trl_r = self.trailing_get_time(trade['Date'], quotes, trl_ix)
+                max_trails.extend([res_str.format(trl,trl_r['perc'],trl_r[' quote'],tdiff_str)])
         max_trails = "| ".join(max_trails)
-        quotes_stats =  f"max:{quotes['perc'].max()}% min:{quotes['perc'].min()}%|" + max_trails
+        # get min max and their time
+        quotes_stats = ""
+        for st, ix in  zip(['min', 'max'],[ quotes['perc'].idxmin(),  quotes['perc'].idxmax()]):
+            tdiff_str, trl_r = self.trailing_get_time(trade['Date'], quotes, ix)
+            quotes_stats += f"{st},{trl_r['perc']}%,${trl_r[' quote']},in {tdiff_str}| "
+        quotes_stats +=  "| " + max_trails
         return quotes_stats
 
+    def trailing_get_time(self, trade_date, quotes, inx):
+        trl_r = quotes.loc[inx]
+        tdiff =  datetime.fromtimestamp(trl_r['timestamp']) - pd.to_datetime(trade_date)
+        tdiff_str = str(tdiff.round('s')).replace('0 days ','')
+        return tdiff_str, trl_r
 
     def close_expired(self):
         for i, trade in  self.portfolio.iterrows():
@@ -391,8 +306,3 @@ def calc_stc_prices(trade, order=None):
                 "STC-PnL$-current": stc_pnl_al_u,
                 }
     return stc_info
-
-if __name__ == "__main__":
-    tracker = Bot_bulltrades_Tracker(portfolio_fname = data_dir + "/trade_tracker_portfolio.csv")
-    tracker.compute_trail(32,  'QQQ_051223C328')
-    # tracker.update_msgs()

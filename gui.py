@@ -5,19 +5,23 @@ Created on Sat Apr  3 18:18:43 2021
 
 @author: adonay
 """
+import os
+import os.path as op
 import threading
 import pandas as pd
 import numpy as np
 from datetime import datetime
 import time
-from place_order import get_TDsession
-import gui_generator as gg
-import gui_layouts as gl
-from PySide2.QtWidgets import QHeaderView
-from discord_self import DiscordBot
-import config as cfg
+import asyncio
 import queue
 import PySimpleGUIQt as sg
+from PySide2.QtWidgets import QHeaderView
+
+from brokerages import get_brokerage
+import gui_generator as gg
+import gui_layouts as gl
+from discord_bot import DiscordBot
+from configurator import cfg, channel_ids
 
 
 def fit_table_elms(Widget_element):
@@ -25,9 +29,6 @@ def fit_table_elms(Widget_element):
     Widget_element.resizeColumnsToContents()
     Widget_element.resizeRowsToContents()
     Widget_element.resizeColumnsToContents()
-
-
-TDSession = get_TDsession()
 
 # sg.theme('Dark Blue 3')
 # sg.SetOptions(font=("Helvitica", "11"),  background_color="whitesmoke")#,,
@@ -48,14 +49,19 @@ ly_port = gl.layout_portfolio(gui_data['port'], fnt_b, fnt_h)
 gui_data['trades'] = gg.get_tracker_data()  # gui_data['port'] [0] can't be empty
 ly_track = gl.layout_traders(gui_data['trades'], fnt_b, fnt_h)
 
-chns = cfg.CHN_NAMES
+chns = channel_ids.keys()
 ly_chns = []
 for chn in chns:
+    chn_fname = cfg['general']['data_dir']+f"/{chn}_message_history.csv"
+    if not op.exists(chn_fname):
+        os.makedirs(cfg['general']['data_dir'], exist_ok=True)
+        pd.DataFrame(columns=cfg["col_names"]['chan_hist'].split(',')).to_csv(chn_fname, index=False)
     gui_data[chn] = gg.get_hist_msgs(chan_name=chn)
     ly_ch = gl.layout_chan_msg(chn, gui_data[chn], fnt_b, fnt_h)
     ly_chns.append(ly_ch)
 
-ly_accnt = gl.layout_account(TDSession, fnt_b, fnt_h)
+bksession = get_brokerage()
+ly_accnt = gl.layout_account(bksession, fnt_b, fnt_h)
 
 layout = [[sg.TabGroup([
                         [sg.Tab("Console", ly_cons)],
@@ -91,7 +97,6 @@ def mprint_queue(queue_item_list):
 
     window[MLINE_KEY].print(text, **kwargs)
 
-
 def update_portfolios_thread(window):
     while True:
         time.sleep(60)
@@ -99,10 +104,10 @@ def update_portfolios_thread(window):
         time.sleep(2)  
         window["_upd-track_"].click()
 
-
 event, values = window.read(.1)
 # window.GetScreenDimensions()
-els = ['_portfolio_', '_track_', '_orders_', '_positions_'] + [f"{chn}_table" for chn in chns]
+els = ['_portfolio_', '_track_', ] + [f"{chn}_table" for chn in chns]
+els = els + ['_orders_', '_positions_'] if bksession is not None else els
 for el in els:
     try:
         fit_table_elms(window.Element(el).Widget)
@@ -110,21 +115,17 @@ for el in els:
         pass
 
 for chn in chns:
-    try:
-        table = window[f"{chn}_table"].Widget.horizontalHeader()
-        table.setSectionResizeMode(2, QHeaderView.Stretch)
-        window[f"{chn}_table"].Widget.scrollToBottom()
-    except:
-        continue
+    table = window[f"{chn}_table"].Widget.horizontalHeader()
+    table.setSectionResizeMode(2, QHeaderView.Stretch)
+    window[f"{chn}_table"].Widget.scrollToBottom()
+
 
 event, values = window.read(.1)
 
 trade_events = queue.Queue(maxsize=20)
-alistner = DiscordBot(trade_events)
-
+alistner = DiscordBot(trade_events, brokerage=bksession)
 
 threading.Thread(target=update_portfolios_thread, args=(window,), daemon=True).start()
-
 
 event, values = window.read(.1)
 
@@ -166,7 +167,7 @@ def run_gui():
             ori_col = window.Element("_upd-portfolio_").ButtonColor
             window.Element("_upd-portfolio_").Update(button_color=("black", "white"))
             event, values = window.read(.1)
-            dt, hdr = gg.get_portf_data(port_exc, **values)
+            dt, _ = gg.get_portf_data(port_exc, **values)
             window.Element('_portfolio_').Update(values=dt)
             fit_table_elms(window.Element("_portfolio_").Widget)
             window.Element("_upd-portfolio_").Update(button_color=ori_col)
@@ -184,7 +185,7 @@ def run_gui():
             key =  event[6:]
             state = window.Element(event).get()
             port_exc[key] = state
-            dt, hdr = gg.get_portf_data(port_exc, **values)
+            dt, _ = gg.get_portf_data(port_exc, **values)
             window.Element('_portfolio_').Update(values=dt)
 
         elif event[:7] == "-track-":
@@ -219,7 +220,7 @@ def run_gui():
             ori_col = window.Element("acc_updt").ButtonColor
             window.Element("acc_updt").Update(button_color=("black", "white"))
             event, values = window.read(.1)
-            gl.update_acct_ly(TDSession, window)
+            gl.update_acct_ly(bksession, window)
             fit_table_elms(window.Element(f"_positions_").Widget)
             fit_table_elms(window.Element(f"_orders_").Widget)
             window.Element("acc_updt").Update(button_color=ori_col)
@@ -229,14 +230,20 @@ def run_gui():
             window.Element("-subm-alert").Update(button_color=("black", "white"))
             event, values = window.read(.1)
             try:        
-                author, msg = values['-subm-msg'].split(', ')
+                author, msg = values['-subm-msg'].split(',')
             except ValueError:
-                author, msg = values['-subm-msg'].split(': ')
-            if author.startswith(" "): author = author.replace(" ","")
+                author, msg = values['-subm-msg'].split(':')
+            author = author.strip()
+            msg = msg.strip()
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-            vals = np.array([date, author, msg]).reshape(1,-1)
-            new_msg = pd.DataFrame(vals, columns=["Date", 'Author', "Content"])
-            alistner.new_msg_acts(new_msg, "gui_msg", "None")
+            new_msg = pd.Series({
+                'AuthorID': None,
+                'Author': author,
+                'Date': date, 
+                'Content': msg,
+                'Channel': "GUI_input"
+                })
+            alistner.new_msg_acts(new_msg, from_disc=False)
             window.Element("-subm-alert").Update(button_color=ori_col)
 
         try:
@@ -248,7 +255,7 @@ def run_gui():
 
 
 def run_client():
-    alistner.run(cfg.discord_token)
+    alistner.run(cfg['discord']['discord_token'])
 
 
 def gui():   
@@ -260,7 +267,9 @@ def gui():
 
     # close the GUI window
     window.close()
-    alistner.close()
+    alistner.close_bot()
+    # alistner.close()
+    exit()
 
 
 if __name__ == '__main__':

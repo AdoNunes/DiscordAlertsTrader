@@ -5,13 +5,13 @@ Created on Fri Apr  9 09:53:44 2021
 
 @author: adonay
 """
-import os
+
 import os.path as op
 import pandas as pd
 from datetime import datetime
 import numpy as np
-import config as cfg
-from trader_tracker_bot_alerts import calc_stc_prices
+from configurator import cfg
+from alerts_tracker import calc_stc_prices
 
 def short_date(datestr, infrm="%Y-%m-%d %H:%M:%S.%f", outfrm="%m/%d/%Y %H:%M"):
     return datetime.strptime(datestr, infrm).strftime(outfrm)
@@ -67,12 +67,13 @@ def format_exitplan(plan):
 
 def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
                      port_filt_date_to='', port_filt_sym='', **kwargs ):
-    if not op.exists(op.join(cfg.data_dir, "trader_portfolio.csv")):
+    fname_port = cfg['portfolio_names']['portfolio_fname']
+    if not op.exists(fname_port):
         return [],[]
     try:
-        data = pd.read_csv(op.join(cfg.data_dir, "trader_portfolio.csv"),sep=",")
+        data = pd.read_csv(fname_port,sep=",")
     except:
-        data = pd.read_csv(op.join(cfg.data_dir, "trader_portfolio.csv"),sep=",")
+        data = pd.read_csv(fname_port,sep=",")
 
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
     data['exit_plan']= data['exit_plan'].apply(lambda x: format_exitplan(x))
@@ -120,50 +121,13 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     data = data.values.tolist()
     return data, header_list
 
-
-def get_live_quotes(portfolio):
-    dir_quotes = cfg.data_dir + '/live_quotes'
-    track_symb = portfolio.loc[portfolio['isOpen']=='Yes', 'Symbol'].to_list()
-    
-    quotes_sym = {}
-    for sym in track_symb: 
-        fquote = f"{dir_quotes}/{sym}.csv"
-        if not op.exists(fquote):
-            continue
-        
-        with open(fquote, "r") as f:
-            quotes = f.readlines()
-        
-        timestamp, quote = quotes[-1].split(',')  # in ms
-        quote_date = datetime.fromtimestamp(int(timestamp))
-        # if (datetime.now() - quote_date).total_seconds() > 20:
-        #     continue
-        quotes_sym[sym] = float(quote.replace('\n', '').replace(' ', ''))
-    
-    for sym in quotes_sym:
-        live_price = quotes_sym[sym]
-        msk = (portfolio['Symbol']==sym) & (portfolio['isOpen']=='Yes')
-        trades = portfolio.loc[msk]
-        
-        for _, trade in trades.iterrows():
-            order= {
-                "uQty": trade['Amount'] if pd.isnull(trade.get("STC-Amount")) else trade['Amount']- trade["STC-Amount"],
-                "price": live_price,
-                "Actual Cost": live_price,
-                }                 
-            stc_info = calc_stc_prices(trade, order)
-            for k, v in stc_info.items():
-                portfolio.loc[msk,k] = v
-    return portfolio
-
-
 def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
                      track_filt_date_to='', track_filt_sym='', **kwargs ):
-    
-    if not op.exists(op.join(cfg.data_dir, "trade_tracker_portfolio.csv")):
+    fname_port = cfg['portfolio_names']['tracker_portfolio_name']
+    if not op.exists(fname_port):
         return [],[]
     
-    data = pd.read_csv(op.join(cfg.data_dir, "trade_tracker_portfolio.csv"),sep=",")
+    data = pd.read_csv(fname_port, sep=",")
 
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
     data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
@@ -203,7 +167,6 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     data = data.values.tolist()
     return data, header_list
 
-
 def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
                 track_filt_date_to='', track_filt_sym=''):
     if len(exclude):
@@ -237,12 +200,48 @@ def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
         data = data[data['Symbol'].str.contains(track_filt_sym, case=False)]
     return data
 
+def get_live_quotes(portfolio):
+    dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
+    track_symb = portfolio.loc[portfolio['isOpen']=='Yes', 'Symbol'].to_list()
+    
+    quotes_sym = {}
+    for sym in track_symb: 
+        fquote = f"{dir_quotes}/{sym}.csv"
+        if not op.exists(fquote):
+            continue
+        
+        with open(fquote, "r") as f:
+            quotes = f.readlines()
+        
+        timestamp, quote = quotes[-1].split(',')  # in ms
+        # quote_date = datetime.fromtimestamp(int(timestamp))
+        # if (datetime.now() - quote_date).total_seconds() > 20:
+        #     continue
+        quotes_sym[sym] = float(quote.replace('\n', '').replace(' ', ''))
+    
+    for sym in quotes_sym:
+        live_price = quotes_sym[sym]
+        msk = (portfolio['Symbol']==sym) & (portfolio['isOpen']=='Yes')
+        trades = portfolio.loc[msk]
+        
+        for _, trade in trades.iterrows():
+            order= {
+                "uQty": trade['Amount'] if pd.isnull(trade.get("STC-Amount")) else trade['Amount']- trade["STC-Amount"],
+                "price": live_price,
+                "Actual Cost": live_price,
+                }                 
+            stc_info = calc_stc_prices(trade, order)
+            for k, v in stc_info.items():
+                if k == "STC-Amount":
+                    continue
+                portfolio.loc[msk,k] = v
+    return portfolio
 
 def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
                   filt_cont='', chan_name="option_alerts", **kwargs):
     # Provide arguments to filter
 
-    data = pd.read_csv(op.join(cfg.data_dir , f"{chan_name}_message_history.csv"))
+    data = pd.read_csv(op.join(cfg['general']['data_dir'] , f"{chan_name}_message_history.csv"))
     cols = ['Author', 'Date', 'Content', 'Parsed']
     data = data[cols]
 
@@ -250,7 +249,7 @@ def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
     data['Author'] = data['Author'].apply(lambda x: x.split('#')[0])
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
 
-    data = data.dropna()
+    data = data.fillna("")
     if filt_author:
         data = data[data['Author'].str.contains(filt_author, case=False)]
     if filt_date_frm:
@@ -263,19 +262,17 @@ def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
     header_list = data.columns.tolist()
     return data.values.tolist(), header_list
 
-
-
-def get_acc_bals(TDSession):
-    acc_inf = TDSession.get_accounts(TDSession.accountId, ['orders','positions'])
-    if acc_inf is None:  # if grabes new access token return None, try again
-        acc_inf = TDSession.get_accounts(TDSession.accountId, ['orders','positions'])
+def get_acc_bals(bksession):
+    acc_inf = bksession.get_account_info()
+    # if grabing new access token return None, try again
+    if acc_inf is None:  
+        acc_inf = bksession.get_account_info()
     accnt= {"id" : acc_inf['securitiesAccount']['accountId'],
         "balance": acc_inf['securitiesAccount']['currentBalances']['liquidationValue'],
         "cash": acc_inf['securitiesAccount']['currentBalances']['cashBalance'],
         "funds": acc_inf['securitiesAccount']['currentBalances']['availableFunds'],
         }
     return acc_inf, accnt
-
 
 def get_pos(acc_inf):
     positions = acc_inf['securitiesAccount']['positions']
@@ -306,17 +303,13 @@ def get_pos(acc_inf):
 
     db = pd.DataFrame(data=pos_tab, columns=pos_headings)
     db = dataframe_num2str(db)
-
     return db.values.tolist(), pos_headings
-
 
 def order_info_pars(ord_dic, ord_list):
     """ get info from order request
     :param ord_dic: dict with order info, from 'orderStrategies' or
     'childOrderStrategies'
     """
-    ord_fields = ['quantity', 'filledQuantity','price', "stop", 'status',
-              'enteredTime']
     ord_headings = ["Sym", "Act", "Strat", "Price/stp","Date", "Qty/fill", "Status", "ordId"]
     sing_ord = []
 
@@ -351,7 +344,6 @@ def order_info_pars(ord_dic, ord_list):
 
     return ord_list, ord_headings
 
-
 def get_orders(acc_inf):
     orders =acc_inf['securitiesAccount']['orderStrategies']
     ord_tab, cols = [], []
@@ -373,7 +365,6 @@ def get_orders(acc_inf):
 
     db = pd.DataFrame(data=ord_tab, columns=heads)
     db = dataframe_num2str(db)
-
     return db.values.tolist(),heads, cols
 
 
