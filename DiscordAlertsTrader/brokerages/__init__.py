@@ -57,7 +57,7 @@ class BaseBroker(ABC):
 
 def get_brokerage(name=cfg['general']['BROKERAGE']):
     if name == 'TDA':
-        from brokerages.TDA_api import TDA
+        from .TDA_api import TDA
         tda = TDA()
         tda.get_session()
         return tda

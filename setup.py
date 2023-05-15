@@ -35,7 +35,7 @@ setup(
         'Intended Audience :: Developers',
         'Intended Audience :: Financial and Insurance Industry',
         'Intended Audience :: Information Technology',
-        'Operating System :: OS Independent',
+        'Operating System :: Microsoft :: Windows',
     ],
     entry_points = {'console_scripts': ['DiscordAlertsTrader = DiscordAlertsTrader.gui:gui'],
           }

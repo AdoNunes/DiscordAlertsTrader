@@ -1,7 +1,7 @@
 import pandas as pd
 
 from ..configurator import cfg
-from .brokerages import BaseBroker
+from . import BaseBroker
 
 from td.orders import Order, OrderLeg
 from td.client import TDClient

@@ -4,7 +4,8 @@ import os.path as op
 import json
 
 package_dir = os.path.abspath(os.path.dirname(__file__))
-
+assert(op.exists(package_dir+'/config.ini'), 
+       FileNotFoundError("config.ini not found, rename condig_example and add discord token"))
 # load configuration file
 cfg = configparser.ConfigParser()
 cfg.read(package_dir+'/config.ini',  encoding='utf-8')
