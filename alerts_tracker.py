@@ -151,8 +151,8 @@ class AlertsTracker():
         else:
             str_STC = f"STC {order['Symbol']} ({order['uQty']}), {stc_price:.2f}"
             if stc_info['STC-Price-current'] is not None:           
-                       str_STC += f" current: {stc_info['STC-Price-current']:2f} " 
-            str_STC += f'PnL:{round(stc_info["STC-PnL"])}%-${round(stc_info["STC-PnL$"])}' 
+                       str_STC += f" current: {stc_info['STC-Price-current']:.2f} " 
+            str_STC += f'PnL:{round(stc_info["STC-PnL"])}% ${round(stc_info["STC-PnL$"])}' 
             if stc_info["STC-PnL-current"] is not None:
                 str_STC += f' Actual:{round(stc_info["STC-PnL-current"])}% ${round(stc_info["STC-PnL$-current"])}\n\t\t'
         if stc_utotal >= trade['Amount']:

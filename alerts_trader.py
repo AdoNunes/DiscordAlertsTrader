@@ -209,12 +209,12 @@ class AlertsTrader():
                     pars = self.order_to_pars(order)
                     question += f"\n new price: {pars}"
                 else:
-                    if cfg['order_configs']['auto_trade'] is True and order['action'] == "BTO":
+                    if cfg['order_configs'].getboolean('auto_trade') is True and order['action'] == "BTO":
                         str_msg = f"BTO alert price diff too high: {pdiff}% at {current_price}, keeping original price of {ord_ori['price']}"
                         print(Back.GREEN + str_msg)
                         self.queue_prints.put([str_msg, "", "green"])
 
-            if cfg['order_configs']['auto_trade'] is True:
+            if cfg['order_configs'].getboolean('auto_trade') is True:
                 if cfg['order_configs']['DO_BTO_TRADES'] is False and order['action'] == "BTO":
                     str_msg = f"BTO not accepted by config options: DO_BTO_TRADES = False"
                     print(Back.GREEN + str_msg)
