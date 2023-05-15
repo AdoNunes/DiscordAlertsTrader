@@ -1,4 +1,5 @@
 import configparser
+import os
 import os.path as op
 import json
 
@@ -6,8 +7,15 @@ import json
 cfg = configparser.ConfigParser()
 cfg.read('config.ini',  encoding='utf-8')
 
-# add path to file names
+# change data_dir if it is just a folder name
 data_dir = cfg['general']['data_dir']
+_, ext = os.path.splitext(data_dir)
+if ext == "":
+    package_dir = os.path.abspath(os.path.dirname(__file__))
+    cfg['general']['data_dir'] = os.path.join(package_dir, "..", data_dir)
+    print("full data dir:", cfg['general']['data_dir'])
+
+# add path to file names
 for k, v in cfg['portfolio_names'].items():
     cfg['portfolio_names'][k] = op.join(data_dir, v)
 cfg['portfolio_names']['mock_portfolio_fname'] = './tests/trader_portfolio_simulated.csv'
@@ -34,7 +42,6 @@ cfg["col_names"] = {
     "tracker_portfolio": tracker_portfolio_cols,
     "chan_hist": 'AuthorID,Author,Date,Content,Parsed'
     } 
-
 
 # get chan IDs in a dict format
 channel_ids_str = cfg.get('discord', 'channel_IDS')
