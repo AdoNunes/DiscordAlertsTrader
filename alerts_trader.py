@@ -144,7 +144,7 @@ class AlertsTrader():
         else:
             ptype= 'bidPrice'
         try:
-            resp = self.bksession.get_quotes(symbol)
+            resp = self.bksession.get_quotes([symbol])
             if len(resp) == 0  or resp[symbol].get('description' ) == 'Symbol not found':
                 str_msg =  f"{symbol} not found during price quote"
                 print (Back.RED + str_msg)

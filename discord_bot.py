@@ -68,7 +68,7 @@ class DiscordBot(discord.Client):
                 self.trader.portfolio.loc[self.trader.portfolio['isOpen']==1, 'Symbol'].to_list())
             # save quotes to file
             try:
-                quote = self.bksession.get_quotes(instruments=track_symb)
+                quote = self.bksession.get_quotes(track_symb)
             except ConnectionError as e:
                 print('error during live quote:', e)
             

@@ -61,14 +61,14 @@ for chn in chns:
     ly_chns.append(ly_ch)
 
 bksession = get_brokerage()
-# ly_accnt = gl.layout_account(bksession, fnt_b, fnt_h)
+ly_accnt = gl.layout_account(bksession, fnt_b, fnt_h)
 
 layout = [[sg.TabGroup([
                         [sg.Tab("Console", ly_cons)],
                         [sg.Tab('Portfolio', ly_port)],
                         [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],
                         [sg.Tab('Traders alerts', ly_track)],
-                        # [sg.Tab("Account", ly_accnt)]
+                        [sg.Tab("Account", ly_accnt)]
                         ],title_color='black')],
           [sg.Input(default_text="Author, STC 1 AAA 05/30 115C @2.5",
                     size= (140,1.5), key="-subm-msg",

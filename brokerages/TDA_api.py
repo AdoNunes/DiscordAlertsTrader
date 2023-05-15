@@ -7,9 +7,8 @@ from td.orders import Order, OrderLeg
 from td.client import TDClient
 
 class TDA(BaseBroker):
-    def __init__(self, api_key):
-        # Initialize the broker's API key for BrokerXYZ
-        self.api_key = api_key
+    def __init__(self):
+        pass
 
     def get_session(self, account_n=0, accountId=None):
         """Provide either:
@@ -67,12 +66,9 @@ class TDA(BaseBroker):
         else:
             raise TypeError("Not sure type order. Check")
         return order_status, order_info
-    
 
     def get_quotes(self, symbol:list):
         return self.session.get_quotes(instruments=symbol)
-    
-
 
     def get_open_orders(self):
         pass
