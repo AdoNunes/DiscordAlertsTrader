@@ -26,7 +26,7 @@ Invite link to BullTrades: https://discord.gg/bulltrades
 
 <img src="media/GUI_analysts_portfolio.PNG" alt="Analysts Portfolio" width="500" height="300">
 <img src="media/GUI_messages.PNG" alt="Channel message history" width="500" height="300">
-(olfer version shots)
+(older version shots)
 <img src="media/xtrader_console.png" alt="Console with discord mesages" width="500" height="300">
 <img src="media/xtrader_portfolio.png" alt="Portfolio" width="500" height="300">
 
@@ -63,7 +63,8 @@ scoop install miniconda3
 python -c "print('Hello, World!')"
 ```
 
-then in the terminal, go to the directory where you want DiscordAlertsTrader, e.g.: 
+Then in the terminal, go to the directory where you want DiscordAlertsTrader, e.g.: 
+
 ```cd Desktop```
 
 **Download the package and install it**, run the following lines:
