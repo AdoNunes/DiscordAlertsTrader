@@ -5,7 +5,7 @@ import pandas as pd
 from td.client import TDClient
 from td.orders import Order, OrderLeg
 
-from brokerages.TDA_api import TDA
+from DiscordAlertsTrader.brokerages.TDA_api import TDA
 
 
 class TestTDA(unittest.TestCase):

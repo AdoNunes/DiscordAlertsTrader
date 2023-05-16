@@ -1,4 +1,4 @@
-from alerts_tracker import AlertsTracker
+from DiscordAlertsTrader.alerts_tracker import AlertsTracker
 
 tracker = AlertsTracker(brokerage=None,
                  portfolio_fname='tests/data/trade_tracker_portfolio.csv',

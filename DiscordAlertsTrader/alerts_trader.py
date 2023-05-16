@@ -215,7 +215,7 @@ class AlertsTrader():
                         self.queue_prints.put([str_msg, "", "green"])
 
             if cfg['order_configs'].getboolean('auto_trade') is True:
-                if cfg['order_configs']['DO_BTO_TRADES'] is False and order['action'] == "BTO":
+                if cfg['general'].getboolean('DO_BTO_TRADES') is False and order['action'] == "BTO":
                     str_msg = f"BTO not accepted by config options: DO_BTO_TRADES = False"
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])

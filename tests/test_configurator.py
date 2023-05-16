@@ -1,6 +1,6 @@
 
 import unittest
-from configurator import cfg
+from DiscordAlertsTrader.configurator import cfg
 
 class TestConfigurator(unittest.TestCase):
 
