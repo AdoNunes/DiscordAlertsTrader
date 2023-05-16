@@ -65,8 +65,8 @@ ly_accnt = gl.layout_account(bksession, fnt_b, fnt_h)
 layout = [[sg.TabGroup([
                         [sg.Tab("Console", ly_cons)],
                         [sg.Tab('Portfolio', ly_port)],
-                        [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],
-                        [sg.Tab('Traders alerts', ly_track)],
+                        [sg.Tab('Analysts portfolio', ly_track)],
+                        [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],                        
                         [sg.Tab("Account", ly_accnt)]
                         ],title_color='black')],
           [sg.Input(default_text="Author, STC 1 AAA 05/30 115C @2.5",
@@ -75,7 +75,7 @@ layout = [[sg.TabGroup([
            sg.Button("Submit alert", key="-subm-alert", size= (20,1))]
         ]
 print(3)
-window = sg.Window('BullTrader', layout,size=(1000, 500), # force_toplevel=True,
+window = sg.Window('BullTrader', layout,size=(800, 400), # force_toplevel=True,
                     auto_size_text=True, resizable=True)
 print(4)
 def mprint_queue(queue_item_list):
@@ -104,7 +104,7 @@ def update_portfolios_thread(window):
         window["_upd-track_"].click()
 print(5)
 event, values = window.read(.1)
-# window.GetScreenDimensions()
+
 els = ['_portfolio_', '_track_', ] + [f"{chn}_table" for chn in chns]
 els = els + ['_orders_', '_positions_'] if bksession is not None else els
 for el in els:

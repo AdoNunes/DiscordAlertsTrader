@@ -1,7 +1,7 @@
 from DiscordAlertsTrader.alerts_tracker import AlertsTracker
 
 tracker = AlertsTracker(brokerage=None,
-                 portfolio_fname='tests/data/trade_tracker_portfolio.csv',
+                 portfolio_fname='tests/data/analysts_portfolio.csv',
                  dir_quotes='tests/data/live_quotes'
                  )
 
