@@ -67,6 +67,8 @@ def parser_alerts(msg, asset=None):
     if asset == "option":
         if Symbol == "SPX": 
             order['Symbol'] = "SPXW"
+        elif Symbol == "NDX":
+            order['Symbol'] = "NDXP"
         optType = optType.upper()
         order["expDate"] = expDate
         order["strike"] = strike + optType
