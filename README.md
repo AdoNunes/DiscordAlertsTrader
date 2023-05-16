@@ -24,6 +24,12 @@ What this package does:
 
 Invite link to BullTrades: https://discord.gg/bulltrades
 
+<img src="media/GUI_analysts_portfolio.PNG" alt="Analysts Portfolio" width="500" height="300">
+<img src="media/GUI_messages.PNG" alt="Channel message history" width="500" height="300">
+(olfer version shots)
+<img src="media/xtrader_console.PNG" alt="Console with discord mesages" width="500" height="300">
+<img src="media/xtrader_portfolio.png" alt="Portfolio" width="500" height="300">
+
 
  ## Discord user token and channel IDs
  ______________________________
