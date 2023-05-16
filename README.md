@@ -18,34 +18,18 @@ What this package does:
 - Read messages and parse trading singals, e.g. BTO (Buy to Open), STC (Sell to Close), partial STC, SL (Stop Limits), PT (Profit Taking)
 - Track trading signals and performance of traders using message history and realtime price
 - Execute and cancel orders, check order status, account status and current ticker prices
-
-control trade execution manually, through promts choose QTY, price, etc
+- If in config.ini auto_trade = False, trades are executed manually through promts and optionally choose QTY, price, etc
 
 **Currently, the package is for parsing signals of the discord server BullTrades.** 
 
 Invite link to BullTrades: https://discord.gg/bulltrades
 
 
- ## Discord user token
+ ## Discord user token and channel IDs
  ______________________________
 
-It requires a user discord token, then change config_example.py to config.py. There needs to be:
-
-Discord token to access discord message chats:
-```
-discord_token = "token0Y03e..."
-```
-to get discord token and channels IDs follow the instructions in: https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Token-and-IDs.md
-
-Channel ID of the channel were trading alers are messaged (left click on channel and go to channel ID):
-```
-channel_IDS = {"stock_alerts": 6666,
-               "option_alerts": 4444,
-               "options_chat": 5555}
-```
-
-
-
+It requires a user discord token, once installed the package save the token in config.ini[discord], as well as the channel ID where alerts are posted.
+To get discord token and channels IDs follow the instructions in: https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Token-and-IDs.md
 
 
 ## Setup and Run
@@ -74,9 +58,9 @@ python -c "print('Hello, World!')"
 ```
 
 then in the terminal, go to the directory where you want DiscordAlertsTrader, e.g.: 
-```cd c:\Users\User\Desktop```
+```cd Desktop```
 
-Download the package and install it, run the following lines:
+**Download the package and install it**, run the following lines:
 ```
 git clone https://github.com/AdoNunes/DiscordAlertsTrader.git
 cd DiscordAlertsTrader
@@ -85,11 +69,10 @@ copy DiscordAlertsTrader/config_example.ini DiscordAlertsTrader/config.ini
 ```
 
 Add the **discord token** in config.ini, by default no brokerage is specified. Edit configs, 
-for example, chang the authors to follow the trades, change trailing stop, maximum allowed
-price difference between alerted and current.  
+for example, change the authors to follow the trades, change trailing stop, maximum allowed
+price difference between alerted and current. If you already have a TDA API add it.   
 
-
-Run the app by typing:
+**Run the app by typing**:
 ```DiscordAlertsTrader```
 alternatively:
 ```python -c from DiscordAlertsTrader import gui```
@@ -98,7 +81,7 @@ alternatively:
 ## TDAmeritrade
 _______________
 
-*CURRENTLY NO NEW DEVELOPER ACCOUNT UNTIL THE MERGE*
+*CURRENTLY NO NEW DEVELOPER ACCOUNT ARE CREATED UNTIL THE MERGE*
 
 To access the TDAmeritrade account for trading and info is necessary to install 
 td-ameritrade-python-api from:
