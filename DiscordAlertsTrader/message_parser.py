@@ -10,6 +10,52 @@ import pandas as pd
 from datetime import datetime
 import numpy as np
 
+def parse_trade_alert(msg, asset=None):
+    pattern = r'\b(BTO|STC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[cp]?)?\s*(\d{1,2}\/\d{1,2})?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
+    match = re.search(pattern, msg, re.IGNORECASE)
+    
+    if match:
+        action, quantity, ticker, strike, expDate, price = match.groups()
+
+        asset_type = 'option' if strike and expDate else 'stock'
+        symbol =  ticker.upper()
+        order = {
+            'action': action.upper(),
+            'Symbol': symbol,
+            'uQty': int(quantity) if quantity else 1,
+            'price': float(price.replace(',', '.')) if price else None,
+            'asset': asset_type
+        }
+        str_ext = ""
+        if asset_type == 'option':
+            # fix missing strike, assume Call            
+            if "c" not in strike.lower() and "p" not in strike.lower():
+                strike = strike + "c"
+                order['strike'] = strike.upper()
+                str_ext = " No direction found in option strike, assuming Call"
+
+            order['strike'] = strike.upper()
+            order['expDate'] = expDate
+            symbol = fix_index_symbols(symbol)            
+            order['Symbol'] = make_optionID(**order)
+
+        risk_level = parse_risk(msg)
+        order['risk'] = risk_level
+        []
+        pars =  " ".join(match.groups()) + f" {risk_level}{str_ext}"
+        pars = pars.replace("None", "")
+        return order, pars
+    else:
+        return None
+
+def fix_index_symbols(symbol):
+    if symbol == "SPX": 
+        symbol = "SPXW"
+    elif symbol == "NDX":
+        symbol = "NDXP"
+    return symbol
+    
+
 def parser_alerts(msg, asset=None):
     msg = msg.replace("STc", "STC").replace("StC", "STC").replace("stC", "STC").replace("STc", "STC")
     msg = msg.replace("BtO", "BTO").replace("btO", "BTO").replace("bTO", "BTO").replace("BTo", "BTO")
@@ -351,7 +397,7 @@ def parse_risk(msg):
             'very risky':"very high",
             'risk high': "high",
             'high risk': "high",
-            'lotto': "very high",
+            'lotto': "lotto",
             'risky': "medium",
             'yolo':"yolo"}
     risk_level = None
