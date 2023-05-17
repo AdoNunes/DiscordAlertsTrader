@@ -38,51 +38,66 @@ It requires a user discord token, once installed the package save the token in c
 To get discord token and channels IDs follow the instructions in: https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Token-and-IDs.md
 
 
-## Setup and Run
-______
+## Installation and Setup
+ ______________________________
 
-First of all **install python**. For windows you can run this in the PowerShell, if you see the output print "Hellow, World!" python with conda is installed:
-```# Check if Scoop is installed
-if (-not (Test-Path $env:USERPROFILE\scoop)) {
-    # Install Scoop
-    Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-    irm get.scoop.sh | iex
-}
-scoop install git
-# Check if extras are included
-$extras = scoop bucket list | Select-String -Pattern '^extras$'
-if (-not $extras) {
-    # Add the extras bucket    
-    scoop bucket add extras
-}
+1. Install Python:
+   - For Windows, open PowerShell and run the following command:
+     ```powershell
+     if (-not (Test-Path $env:USERPROFILE\scoop)) {
+         # Install Scoop
+         Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+         irm get.scoop.sh | iex
+     }
+     scoop install git
+     # Check if extras are included
+     $extras = scoop bucket list | Select-String -Pattern '^extras$'
+     if (-not $extras) {
+         # Add the extras bucket    
+         scoop bucket add extras
+     }
+     # Install Miniconda3
+     scoop install miniconda3
+     ```
+   - Run the following command to verify that Python with Conda is installed:
+     ```powershell
+     python -c "print('Hello, World!')"
+     ```
 
-# Install Miniconda3
-scoop install miniconda3
+2. In the PowerShell terminal navigate to the directory where you want to clone the DiscordAlertsTrader package, e.g. type: `cd Desktop`.
 
-# Run Python script
-python -c "print('Hello, World!')"
+3. Clone the package from the GitHub repository and install the package and its dependencies using pip:
+   ```shell
+   git clone https://github.com/AdoNunes/DiscordAlertsTrader.git
+   cd DiscordAlertsTrader
+   pip install -e .
+   ```
+
+5. Copy the example configuration file to `config.ini`:
+   ```shell
+   cp DiscordAlertsTrader/config_example.ini DiscordAlertsTrader/config.ini
+   ```
+
+6. Edit the `DiscordAlertsTrader/config.ini` file to add your Discord token and configure other settings:
+   - Add your Discord token in the appropriate field.
+   - (Optional) Modify other configurations as needed, such as authors to follow, trailing stop, etc.
+   - (Optional) If you have a TDA API, add it to the configuration.
+
+**Running the DiscordAlertsTrader**
+
+To run the DiscordAlertsTrader, execute the following command in the terminal:
+
+```shell
+DiscordAlertsTrader
 ```
 
-Then in the terminal, go to the directory where you want DiscordAlertsTrader, e.g.: 
+This will launch the DiscordAlertsTrader application and start listening for alerts on Discord.
 
-```cd Desktop```
+Make sure to keep the terminal or command prompt window open while the application is running to see any output or errors.
 
-**Download the package and install it**, run the following lines:
-```
-git clone https://github.com/AdoNunes/DiscordAlertsTrader.git
-cd DiscordAlertsTrader
-pip install -e .
-copy DiscordAlertsTrader/config_example.ini DiscordAlertsTrader/config.ini 
-```
+**Closing the Application**
 
-Add the **discord token** in config.ini, by default no brokerage is specified. Edit configs, 
-for example, change the authors to follow the trades, change trailing stop, maximum allowed
-price difference between alerted and current. If you already have a TDA API add it.   
-
-**Run the app by typing**:
-```DiscordAlertsTrader```
-alternatively:
-```python -c from DiscordAlertsTrader import gui```
+To stop the DiscordAlertsTrader application, simply close the terminal or command prompt window where it is running.
 
 
 ## TDAmeritrade
