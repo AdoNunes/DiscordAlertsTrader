@@ -30,7 +30,11 @@ class dummy_queue():
 
 
 class DiscordBot(discord.Client):
-    def __init__(self, queue_prints=dummy_queue(maxsize=10), live_quotes=True, brokerage=None):
+    def __init__(self, 
+                 queue_prints=dummy_queue(maxsize=10), 
+                 live_quotes=True, 
+                 brokerage=None,
+                 tracker_portfolio_fname=cfg['portfolio_names']["tracker_portfolio_name"]):
         super().__init__()
         self.channel_IDS = channel_ids
         self.time_strf = "%Y-%m-%d %H:%M:%S.%f"
@@ -39,7 +43,7 @@ class DiscordBot(discord.Client):
         self.live_quotes = live_quotes
         if brokerage is not None:
             self.trader = AlertsTrader(queue_prints=self.queue_prints, brokerage=brokerage)       
-        self.tracker = AlertsTracker(brokerage=brokerage)
+        self.tracker = AlertsTracker(brokerage=brokerage, portfolio_fname=tracker_portfolio_fname)
         self.load_data()        
 
         if live_quotes and brokerage is not None:
@@ -164,7 +168,7 @@ class DiscordBot(discord.Client):
                             })
         else:
             msg = message
-
+        chn = msg['Channel']
         shrt_date = datetime.strptime(msg["Date"], self.time_strf).strftime('%Y-%m-%d %H:%M:%S')
         self.queue_prints.put([f"{shrt_date} \t {msg['Author']}: {msg['Content']} ", "blue"])
         print(Fore.BLUE + f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
