@@ -2,7 +2,7 @@
 import os
 import time
 import pandas as pd
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 import threading
 from colorama import Fore, Back, Style, init
 import discord # this is discord.py-self package not discord
@@ -150,6 +150,7 @@ class DiscordBot(discord.Client):
             async for message in iterator:
                 self.new_msg_acts(message)
         print("Done")
+        self.tracker.close_expired()
 
     def new_msg_acts(self, message, from_disc=True):
         if from_disc:
@@ -180,6 +181,21 @@ class DiscordBot(discord.Client):
             self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
             return
         else:
+            if order['asset'] == "option":
+                # get option date with year
+                opt_dt = datetime.strptime(f"{order['expDate']} {datetime.now().year}" , "%m/%d %Y")
+                today = datetime.now().date()
+                past = opt_dt.date() < today
+                if past:
+                    str_msg = f"Option date in the past: {order['expDate']}"
+                    self.queue_prints.put([f"\t \t {str_msg}", "green"])
+                    print(Fore.GREEN + f"\t \t {str_msg}")
+                    msg['Parsed'] = str_msg
+                    if self.chn_hist.get(chn) is not None:
+                        self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
+                        self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
+                    return
+                
             order['Trader'], order["Date"] = msg['Author'], msg["Date"]
             order_date = datetime.strptime(order["Date"], "%Y-%m-%d %H:%M:%S.%f")
             date_diff = datetime.now() - order_date
