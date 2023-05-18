@@ -28,7 +28,7 @@ def layout_portfolio(data_n_headers, font_body, font_header):
     
     layout = [
          [sg.Column([[sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'port_filt_author', size=(20, 1)),
-                      sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'port_filt_date_frm', size=(18, 1), default_text='04/09/2023'),
+                      sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'port_filt_date_frm', size=(18, 1), default_text='05/10/2023'),
                       sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'port_filt_date_to', size=(15, 1)),
                       sg.Text('   Contains symbol: ', size=(20, 1)), sg.Input(key=f'port_filt_sym', size=(20, 1)),
                       ],
@@ -67,7 +67,7 @@ def layout_traders(data_n_headers, font_body, font_header):
     
     layout = [
         [sg.Column([[sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'track_filt_author', size=(20, 1)),
-                     sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'track_filt_date_frm', size=(18, 1), default_text='04/09/2023'),
+                     sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'track_filt_date_frm', size=(18, 1), default_text='05/10/2023'),
                      sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'track_filt_date_to', size=(18, 1)),
                      sg.Text('   Contains symbol: ', size=(20, 1)), sg.Input(key=f'track_filt_sym', size=(20, 1)),
                      ],
@@ -96,6 +96,44 @@ def layout_traders(data_n_headers, font_body, font_header):
          ]
     return layout
 
+
+def layout_stats(data_n_headers, font_body, font_header):
+    
+    if data_n_headers[0] == []: 
+        values = [""*21 ]
+    else:
+        values=data_n_headers[0]
+    
+    layout = [
+        [sg.Column([[sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'stat_filt_author', size=(20, 1)),
+                     sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'stat_filt_date_frm', size=(18, 1), default_text='05/10/2023'),
+                     sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'stat_filt_date_to', size=(18, 1)),
+                     sg.Text('   Contains symbol: ', size=(20, 1)), sg.Input(key=f'stat_filt_sym', size=(20, 1)),
+                     ],
+                     [sg.Text("Exclude: "),
+                      sg.Checkbox("Closed", key="-stat-Closed", enable_events=True),
+                      sg.Checkbox("Open", key="-stat-Open", enable_events=True),
+                      sg.Checkbox("Neg PnL", key="-stat-NegPnL", enable_events=True),
+                      sg.Checkbox("Pos PnL", key="-stat-PosPnL", enable_events=True),
+                      sg.Checkbox("Live PnL", key="-stat-live PnL", enable_events=True),                   
+                      sg.Checkbox("Stocks", key="-stat-stocks", default=True, enable_events=True),
+                      sg.Checkbox("Options", key="-stat-options", enable_events=True)
+                      ],
+                     [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-stat_")]])
+                    ],
+         [sg.Column([[sg.Table(values=values,
+                        headings=data_n_headers[1],
+                        display_row_numbers=True,
+                        auto_size_columns=True,
+                        header_font=font_header,
+                        text_color='black',
+                        font=font_body,
+                        justification='left',
+                        alternating_row_color='grey',
+                        # num_rows=30, #len(data_n_headers[0]),
+                        key='_stat_'), sg.Stretch()]])]
+         ]
+    return layout
 
 def layout_chan_msg(chn, data_n_headers, font_body, font_header):    
     # Handle empy chan history

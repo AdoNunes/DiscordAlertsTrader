@@ -42,12 +42,16 @@ def mprint(*args, **kwargs):
 
 print(1)
 gui_data = {}
-gui_data['port'] = gg.get_portf_data()  # gui_data['port'] [0] can't be empty
+gui_data['port'] = gg.get_portf_data()
 ly_port = gl.layout_portfolio(gui_data['port'], fnt_b, fnt_h)
 
-gui_data['trades'] = gg.get_tracker_data()  # gui_data['port'] [0] can't be empty
+gui_data['trades'] = gg.get_tracker_data()
 ly_track = gl.layout_traders(gui_data['trades'], fnt_b, fnt_h)
+
+gui_data['stats'] = gg.get_stats_data()
+ly_stats = gl.layout_stats(gui_data['stats'], fnt_b, fnt_h)
 print(2)
+
 chns = channel_ids.keys()
 ly_chns = []
 for chn in chns:
@@ -66,6 +70,7 @@ layout = [[sg.TabGroup([
                         [sg.Tab("Console", ly_cons)],
                         [sg.Tab('Portfolio', ly_port)],
                         [sg.Tab('Analysts portfolio', ly_track)],
+                        [sg.Tab('Analysts stats', ly_stats)],
                         [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],                        
                         [sg.Tab("Account", ly_accnt)]
                         ],title_color='black')],
@@ -128,8 +133,8 @@ threading.Thread(target=update_portfolios_thread, args=(window,), daemon=True).s
 print(9)
 event, values = window.read(.1)
 
-port_exc = {"Cancelled":True,
-            "Closed":False,
+# exclusion filters for the portfolio and analysts tabs
+port_exc = {"Closed":False,
             "Open":False,
             "NegPnL":False,
             "PosPnL":False,
@@ -137,16 +142,10 @@ port_exc = {"Cancelled":True,
             "stocks":True,
             "options":False,
             }
+track_exc = port_exc.copy()
+stat_exc = port_exc.copy()
+port_exc["Cancelled"] = True
 
-track_exc = {"Cancelled":False,
-            "Closed":False,
-            "Open":False,
-            "NegPnL":False,
-            "PosPnL":False,
-            "live PnL":False,
-            "stocks":True,
-            "options":False,
-            }
 print(10)
 dt, _  = gg.get_tracker_data(track_exc, **values)
 window.Element('_track_').Update(values=dt)
@@ -162,7 +161,7 @@ def run_gui():
         if event == sg.WINDOW_CLOSED:
             break
 
-        if event == "_upd-portfolio_":
+        if event == "_upd-portfolio_": # update button in portfolio
             ori_col = window.Element("_upd-portfolio_").ButtonColor
             window.Element("_upd-portfolio_").Update(button_color=("black", "white"))
             event, values = window.read(.1)
@@ -180,6 +179,15 @@ def run_gui():
             fit_table_elms(window.Element("_track_").Widget)
             window.Element("_upd-track_").Update(button_color=ori_col)
 
+        elif event == "_upd-stat_": # update button in traders stats
+            ori_col = window.Element(f'_upd-stat_').ButtonColor
+            window.Element("_upd-stat_").Update(button_color=("black", "white"))
+            event, values = window.read(.1)
+            dt, _  = gg.get_stats_data(track_exc, **values)
+            window.Element('stat_').Update(values=dt)
+            fit_table_elms(window.Element("stat_").Widget)
+            window.Element("_upd-stat_").Update(button_color=ori_col)
+
         elif event[:6] == "-port-":
             key =  event[6:]
             state = window.Element(event).get()
@@ -193,6 +201,13 @@ def run_gui():
             track_exc[key] = state
             dt, hdr = gg.get_tracker_data(track_exc, **values)
             window.Element('_track_').Update(values=dt)
+
+        elif event[:7] == "-stat-":
+            key =  event[7:]
+            state = window.Element(event).get()
+            stat_exc[key] = state
+            dt, _ = gg.get_tracker_data(stat_exc, **values)
+            window.Element('_stat_').Update(values=dt)
 
         elif event[-3:] == "UPD":
             chn = event[:-4]
