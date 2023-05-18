@@ -170,7 +170,7 @@ def run_gui():
             fit_table_elms(window.Element("_portfolio_").Widget)
             window.Element("_upd-portfolio_").Update(button_color=ori_col)
 
-        elif event == "_upd-track_": # update button in traders alerts
+        elif event == "_upd-track_": # update button in analyst alerts
             ori_col = window.Element(f'_upd-track_').ButtonColor
             window.Element("_upd-track_").Update(button_color=("black", "white"))
             event, values = window.read(.1)
@@ -179,13 +179,13 @@ def run_gui():
             fit_table_elms(window.Element("_track_").Widget)
             window.Element("_upd-track_").Update(button_color=ori_col)
 
-        elif event == "_upd-stat_": # update button in traders stats
+        elif event == "_upd-stat_": # update button in analyst stats
             ori_col = window.Element(f'_upd-stat_').ButtonColor
             window.Element("_upd-stat_").Update(button_color=("black", "white"))
             event, values = window.read(.1)
             dt, _  = gg.get_stats_data(track_exc, **values)
-            window.Element('stat_').Update(values=dt)
-            fit_table_elms(window.Element("stat_").Widget)
+            window.Element('_stat_').Update(values=dt)
+            fit_table_elms(window.Element("_stat_").Widget)
             window.Element("_upd-stat_").Update(button_color=ori_col)
 
         elif event[:6] == "-port-":
