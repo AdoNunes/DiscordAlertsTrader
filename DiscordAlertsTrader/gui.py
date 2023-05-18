@@ -153,6 +153,9 @@ fit_table_elms(window.Element("_track_").Widget)
 dt, hdr = gg.get_portf_data(port_exc)
 window.Element('_portfolio_').Update(values=dt)
 fit_table_elms(window.Element("_portfolio_").Widget)
+dt, hdr = gg.get_portf_data(port_exc)
+window.Element('_portfolio_').Update(values=dt)
+fit_table_elms(window.Element("_portfolio_").Widget)
 
 def run_gui():  
     while True:    
@@ -183,7 +186,7 @@ def run_gui():
             ori_col = window.Element(f'_upd-stat_').ButtonColor
             window.Element("_upd-stat_").Update(button_color=("black", "white"))
             event, values = window.read(.1)
-            dt, _  = gg.get_stats_data(track_exc, **values)
+            dt, _  = gg.get_stats_data(stat_exc, **values)
             window.Element('_stat_').Update(values=dt)
             fit_table_elms(window.Element("_stat_").Widget)
             window.Element("_upd-stat_").Update(button_color=ori_col)
@@ -199,7 +202,7 @@ def run_gui():
             key =  event[7:]
             state = window.Element(event).get()
             track_exc[key] = state
-            dt, hdr = gg.get_tracker_data(track_exc, **values)
+            dt, _ = gg.get_tracker_data(track_exc, **values)
             window.Element('_track_').Update(values=dt)
 
         elif event[:7] == "-stat-":
@@ -276,7 +279,7 @@ def gui():
     client_thread = threading.Thread(target=run_client)
 
     # start the threads
-    client_thread.start()
+    # client_thread.start()
     run_gui()
 
     # close the GUI window
