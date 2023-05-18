@@ -34,7 +34,7 @@ def max_dig_len(values, decim=2):
     len_tot = len_int + len_dig + 1 if len_dig else  len_int + len_dig
     return len_tot, len_int, len_dig
 
-def pd_col_str_frmt(pd_Series, max_decim=2, remove_zero=False):
+def pd_col_str_frmt(pd_Series, max_decim=2, remove_zero=True):
     slen,_, decim = max_dig_len(pd_Series.to_numpy(), max_decim)
     return pd_Series.apply(lambda x: formt_num_2str(x,decim, slen, remove_zero))
 
@@ -167,6 +167,66 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     data = data.values.tolist()
     return data, header_list
 
+
+def get_stats_data(exclude={}, track_filt_author='', track_filt_date_frm='',
+                     track_filt_date_to='', track_filt_sym='', **kwargs ):
+    fname_port = cfg['portfolio_names']['tracker_portfolio_name']
+    if not op.exists(fname_port):
+        return [],[]
+    
+    data = pd.read_csv(fname_port, sep=",")
+
+    data['Date'] = data['Date'].apply(lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f").strftime("%m/%d/%Y"))
+    data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
+    data["N Alerts"]= data['Avged']
+    data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
+
+    data = filter_data(data,exclude, track_filt_author, track_filt_date_frm,
+                        track_filt_date_to, track_filt_sym )
+
+
+    data['PnL diff'] = data['STC-PnL-current'] - data['STC-PnL']
+    # Define the aggregation functions for each column
+    agg_funcs = {'STC-PnL$': 'sum',
+                 'STC-PnL$-current': 'sum',
+                 'STC-PnL': 'mean',
+                 'STC-PnL-current': 'mean',
+                 'PnL diff' : "mean",
+                 'Date': ['count', 'min', 'max']
+                 }
+    # Perform the groupby operation and apply the aggregation functions
+    result_td = data.groupby('Trader').agg(agg_funcs)
+    result_td = result_td.reset_index()
+    
+    result_ch = data.groupby('Channel').agg(agg_funcs)
+    result_ch = result_ch.reset_index()
+    result_ch = result_ch.rename({'Channel': 'Trader'}, axis=1)
+
+    # make grand avg
+    data["all"] = 1
+    agg_values_all = data.groupby('all').agg(agg_funcs)    
+    agg_values_all["Trader"] = "Total average"
+    agg_values_all.loc[0, 'Trader'] = "Channels:"
+    agg_values_all = agg_values_all.reset_index()
+
+    result_td = pd.concat([result_td, agg_values_all, result_ch],axis=0, ignore_index=True)
+    result_td.drop('all', axis=1, level=0, inplace=True)
+    new_cols =[k for k in result_td.columns.get_level_values(0)]
+    new_cols[-3] = "N Trades"
+    new_cols[-2] = "Since"
+    new_cols[-1] = "Last"
+    result_td.columns = new_cols
+    result_td = result_td.round(2)
+
+    for cfrm in result_td.columns[1:-2]:
+        result_td[cfrm] = pd_col_str_frmt(result_td[cfrm])
+    result_td = result_td.fillna("")
+    header_list = result_td.columns.tolist()
+    header_list = [d.replace('STC-', '') for d in header_list]
+    data = result_td.values.tolist()
+    return data, header_list
+
+
 def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
                 track_filt_date_to='', track_filt_sym=''):
     if len(exclude):
@@ -179,11 +239,11 @@ def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
                 data = data[data["isOpen"] !="Yes"]
             elif k == "NegPnL" and v:
                 col = "PnL" if "PnL" in data else 'STC-PnL'                
-                pnl = data[col].apply(lambda x: np.nan if x =="" else eval(x))     
+                pnl = data[col].apply(lambda x: np.nan if x =="" else eval(x) if isinstance(x, str) else x)     
                 data = data[pnl > 0 ]
             elif k == "PosPnL" and v:
                 col = "PnL" if "PnL" in data else 'STC-PnL' 
-                pnl = data[col].apply(lambda x: np.nan if x =="" else eval(x))
+                pnl = data[col].apply(lambda x: np.nan if x =="" else eval(x) if isinstance(x, str) else x)
                 data = data[pnl < 0 ]
             elif k == "stocks" and v:
                 data = data[data["Asset"] !="stock"]
@@ -193,9 +253,9 @@ def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
     if track_filt_author:
         data = data[data['Trader'].str.contains(track_filt_author, case=False)]
     if track_filt_date_frm:
-        data = data[data['Date'] > track_filt_date_frm]
+        data = data[data['Date'] >= track_filt_date_frm]
     if track_filt_date_to:
-        data = data[data['Date'] < track_filt_date_to]
+        data = data[data['Date'] <= track_filt_date_to]
     if track_filt_sym:
         data = data[data['Symbol'].str.contains(track_filt_sym, case=False)]
     return data
