@@ -209,7 +209,7 @@ def run_gui():
             key =  event[7:]
             state = window.Element(event).get()
             stat_exc[key] = state
-            dt, _ = gg.get_tracker_data(stat_exc, **values)
+            dt, _ = gg.get_stats_data(stat_exc, **values)
             window.Element('_stat_').Update(values=dt)
 
         elif event[-3:] == "UPD":
@@ -279,7 +279,7 @@ def gui():
     client_thread = threading.Thread(target=run_client)
 
     # start the threads
-    # client_thread.start()
+    client_thread.start()
     run_gui()
 
     # close the GUI window

@@ -168,8 +168,10 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     return data, header_list
 
 
-def get_stats_data(exclude={}, track_filt_author='', track_filt_date_frm='',
-                     track_filt_date_to='', track_filt_sym='', **kwargs ):
+def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
+                     stat_filt_date_to='', stat_filt_sym='', 
+                     stat_max_trade_cap='', stat_max_qty='', trail_stop_perc='',
+                     **kwargs ):
     fname_port = cfg['portfolio_names']['tracker_portfolio_name']
     if not op.exists(fname_port):
         return [],[]
@@ -181,9 +183,31 @@ def get_stats_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     data["N Alerts"]= data['Avged']
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
 
-    data = filter_data(data,exclude, track_filt_author, track_filt_date_frm,
-                        track_filt_date_to, track_filt_sym )
+    data = filter_data(data,exclude, stat_filt_author, stat_filt_date_frm,
+                        stat_filt_date_to, stat_filt_sym )
 
+    if stat_max_qty != "" or stat_max_trade_cap != "":
+        if stat_max_qty != "":
+            stat_max_qty = int(stat_max_qty)
+            print("stat_max_qty:", stat_max_qty)
+            option_mult = (data['Asset'] == 'option').astype(int)
+            option_mult[option_mult==1] = 100
+            exceeds_cap = data['Amount'] > stat_max_qty
+            data.loc[exceeds_cap, 'Amount'] = stat_max_qty
+
+        if stat_max_trade_cap != "":
+            stat_max_trade_cap = int(stat_max_trade_cap)
+            print("stat_max_trade_cap:", stat_max_trade_cap)
+            option_mult = (data['Asset'] == 'option').astype(int)
+            option_mult[option_mult==1] = 100
+            trade_value = data['Amount'] * data['Price'] * option_mult
+            exceeds_cap = trade_value > stat_max_trade_cap
+            data.loc[exceeds_cap, 'Amount'] = np.floor(stat_max_trade_cap / (data['Price'] * option_mult))
+            data = data[data['Amount'] * data['Price'] * option_mult <= stat_max_trade_cap]
+        mult =(data['Asset'] == 'option').astype(int) 
+        mult[mult==0] = .01  # pnl already in %
+        data['STC-PnL$'] = data['Amount'] * data['STC-PnL'] * data['Price'] * mult
+        data['STC-PnL$-current'] = data['Amount'] * data['STC-PnL'] * data['Price-current'] * mult
 
     data['PnL diff'] = data['STC-PnL-current'] - data['STC-PnL']
     # Define the aggregation functions for each column
