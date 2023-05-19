@@ -208,7 +208,7 @@ def parse_Symbol(msg, act):
         Symbol_info = re_Symbol.search(msg)
 
         if Symbol_info is None:
-            for wrd in ["I", "ATH", "BTO", "STC", "ITM"]:
+            for wrd in [ "ATH", "BTO", "STC", "ITM"]:
                 msg = msg.replace(wrd+" ", " ")
             msg = msg.replace('VWAP', " ")
             msg = msg.replace("I'", "i'")
