@@ -26,7 +26,6 @@ if ext == "":
 # add path to file names
 for k, v in cfg['portfolio_names'].items():
     cfg['portfolio_names'][k] = op.join(cfg['general']['data_dir'], v)
-    print(cfg['portfolio_names'][k])
 cfg['portfolio_names']['mock_portfolio_fname'] = './tests/trader_portfolio_simulated.csv'
 cfg['portfolio_names']['mock_alerts_log_fname'] = './tests/trader_logger_simulated.csv'
 
