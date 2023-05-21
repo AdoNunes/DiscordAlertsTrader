@@ -2,9 +2,9 @@
 import os
 import time
 import pandas as pd
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
 import threading
-from colorama import Fore, Back, Style, init
+from colorama import Fore, init
 import discord # this is discord.py-self package not discord
 
 from .message_parser import parser_alerts
@@ -12,8 +12,11 @@ from .configurator import cfg
 from .configurator import channel_ids
 from .alerts_trader import AlertsTrader
 from .alerts_tracker import AlertsTracker
-
-
+try:
+    from .fend_bot import bot_msgs
+    with_fend = True
+except ImportError:
+    with_fend = False
 
 
 init(autoreset=True)
@@ -111,9 +114,14 @@ class DiscordBot(discord.Client):
         await self.load_previous_msgs()
 
     async def on_message(self, message):
+        # handle fend bot messages
+        if with_fend:
+            alert = bot_msgs(message)
+            if alert is not None:
+                self.new_msg_acts(alert, False)
+                return
         # only respond to channels in config        
         if message.channel.id not in self.channel_IDS.values():
-            # print('not in cfg', message)
             return
         if message.content == 'ping':
             await message.channel.send('pong')
