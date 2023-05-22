@@ -74,13 +74,13 @@ layout = [[sg.TabGroup([
                         [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],                        
                         [sg.Tab("Account", ly_accnt)]
                         ],title_color='black')],
-          [sg.Input(default_text="Author, STC 1 AAA 05/30 115C @2.5",
+          [sg.Input(default_text="Author#1234, STC 1 AAA 05/30 115C @2.5",
                     size= (140,1.5), key="-subm-msg",
                     tooltip="User: any, Asset: {stock, option}"),
            sg.Button("Submit alert", key="-subm-alert", size= (20,1))]
         ]
 print(3)
-window = sg.Window('BullTrader', layout,size=(800, 400), # force_toplevel=True,
+window = sg.Window('BullTrader', layout,size=(800, 800), # force_toplevel=True,
                     auto_size_text=True, resizable=True)
 print(4)
 def mprint_queue(queue_item_list):
@@ -153,9 +153,9 @@ fit_table_elms(window.Element("_track_").Widget)
 dt, hdr = gg.get_portf_data(port_exc)
 window.Element('_portfolio_').Update(values=dt)
 fit_table_elms(window.Element("_portfolio_").Widget)
-dt, hdr = gg.get_portf_data(port_exc)
-window.Element('_portfolio_').Update(values=dt)
-fit_table_elms(window.Element("_portfolio_").Widget)
+dt, hdr = gg.get_stats_data(port_exc)
+window.Element('_stat_').Update(values=dt)
+fit_table_elms(window.Element("_stat_").Widget)
 
 def run_gui():  
     while True:    
@@ -191,22 +191,22 @@ def run_gui():
             fit_table_elms(window.Element("_stat_").Widget)
             window.Element("_upd-stat_").Update(button_color=ori_col)
 
-        elif event[:6] == "-port-":
-            key =  event[6:]
+        elif event.startswith("-port-"): # radial click, update portfolio
+            key =  event.replace("-port-", "")
             state = window.Element(event).get()
             port_exc[key] = state
             dt, _ = gg.get_portf_data(port_exc, **values)
             window.Element('_portfolio_').Update(values=dt)
 
-        elif event[:7] == "-track-":
-            key =  event[7:]
+        elif event.startswith("-track-"): # radial click, update analyst alerts
+            key =  event.replace("-track-", "")
             state = window.Element(event).get()
             track_exc[key] = state
             dt, _ = gg.get_tracker_data(track_exc, **values)
             window.Element('_track_').Update(values=dt)
 
-        elif event[:7] == "-stat-":
-            key =  event[7:]
+        elif event.startswith("-stat-"): # radial click, update analyst stats
+            key =  event.replace("-stat-", "")
             state = window.Element(event).get()
             stat_exc[key] = state
             dt, _ = gg.get_stats_data(stat_exc, **values)
