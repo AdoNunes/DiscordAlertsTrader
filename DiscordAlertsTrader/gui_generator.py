@@ -66,7 +66,7 @@ def format_exitplan(plan):
     return plan
 
 def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
-                     port_filt_date_to='', port_filt_sym='', **kwargs ):
+                     port_filt_date_to='', port_filt_chn='', **kwargs ):
     fname_port = cfg['portfolio_names']['portfolio_fname']
     if not op.exists(fname_port):
         return [],[]
@@ -95,7 +95,7 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
         data[cfrm] = pd_col_str_frmt(data[cfrm])
 
     data = filter_data(data,exclude, port_filt_author, port_filt_date_frm,
-                        port_filt_date_to, port_filt_sym)
+                        port_filt_date_to, port_filt_chn)
     cols = ['isOpen', "PnL", "$PnL", 'Date', 'Symbol', 'Trader', 'BTO-Status', 'Price',
             'Price-Alert', "Price-Current", 'uQty', 'filledQty', 'N Alerts',"PnL-Alert",
             "$PnL-Alert","PnL-Current","$PnL-Current", "STC1-Price", "STC1-Price-Alerted",
@@ -122,7 +122,8 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     return data, header_list
 
 def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
-                     track_filt_date_to='', track_filt_sym='', **kwargs ):
+                     track_filt_date_to='', track_filt_sym='', track_exc_author='',
+                     track_exc_chn='',**kwargs ):
     fname_port = cfg['portfolio_names']['tracker_portfolio_name']
     if not op.exists(fname_port):
         return [],[]
@@ -143,7 +144,7 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
         data[cfrm] = pd_col_str_frmt(data[cfrm])
     
     data = filter_data(data,exclude, track_filt_author, track_filt_date_frm,
-                        track_filt_date_to, track_filt_sym )
+                        track_filt_date_to, track_filt_sym, track_exc_author, track_exc_chn)
 
     cols = ['isOpen','STC-PnL','STC-PnL-current', 'STC-PnL$','STC-PnL$-current', 'Date', 'Symbol', 'Trader', 'Price',
             "Price-current", 'Amount', 'N Alerts','STC-Amount','STC-Price','STC-Price-current','STC-Date','Channel'
@@ -189,7 +190,7 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
                         stat_filt_date_to, stat_filt_sym )
 
     if stat_max_qty != "" or stat_max_trade_cap != "":
-        if stat_max_qty != "":
+        if stat_max_qty != "" and stat_max_qty.isnumeric():
             stat_max_qty = int(stat_max_qty)
             print("stat_max_qty:", stat_max_qty)
             option_mult = (data['Asset'] == 'option').astype(int)
@@ -197,7 +198,7 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
             exceeds_cap = data['Amount'] > stat_max_qty
             data.loc[exceeds_cap, 'Amount'] = stat_max_qty
 
-        if stat_max_trade_cap != "":
+        if stat_max_trade_cap != "" and stat_max_trade_cap.isnumeric():
             stat_max_trade_cap = int(stat_max_trade_cap)
             print("stat_max_trade_cap:", stat_max_trade_cap)
             option_mult = (data['Asset'] == 'option').astype(int)
@@ -210,6 +211,8 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
         mult[mult==0] = .01  # pnl already in %
         data['STC-PnL$'] = data['Amount'] * data['STC-PnL'] * data['Price'] * mult
         data['STC-PnL$-current'] = data['Amount'] * data['STC-PnL-current'] * data['Price-current'] * mult
+        data['STC-PnL$'] = data['STC-PnL$'].round()
+        data['STC-PnL$-current'] = data['STC-PnL$-current'].round()
 
     data['PnL diff'] = data['STC-PnL-current'] - data['STC-PnL']
     # Define the aggregation functions for each column
@@ -242,7 +245,7 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
     new_cols[-2] = "Since"
     new_cols[-1] = "Last"
     result_td.columns = new_cols
-    result_td = result_td.round(2)
+    result_td = result_td.round(1)
 
     for cfrm in result_td.columns[1:-2]:
         result_td[cfrm] = pd_col_str_frmt(result_td[cfrm])
@@ -254,10 +257,10 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
 
 
 def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
-                track_filt_date_to='', track_filt_sym=''):
+                track_filt_date_to='', track_filt_sym='', track_exc_author='', track_exc_chn=''):
     if len(exclude):
         for k, v in exclude.items():
-            if k == "Cancelled" and v:
+            if k == "Cancelled" and v and k in data.columns:
                 data = data[data["BTO-Status"] !="CANCELED"]
             elif k == "Closed" and v:
                 data = data[data["isOpen"] !="No"]
@@ -277,13 +280,21 @@ def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
                 data = data[data["Asset"] !="option"]
 
     if track_filt_author:
-        data = data[data['Trader'].str.contains(track_filt_author, case=False)]
+        msk = [x.strip() for x in track_filt_author.split(",")]
+        data = data[data['Trader'].str.contains('|'.join(msk), case=False)]
     if track_filt_date_frm:
         data = data[data['Date'] >= track_filt_date_frm]
     if track_filt_date_to:
         data = data[data['Date'] <= track_filt_date_to]
     if track_filt_sym:
-        data = data[data['Symbol'].str.contains(track_filt_sym, case=False)]
+        msk = [x.strip() for x in track_filt_sym.split(",")]
+        data = data[data['Symbol'].str.contains('|'.join(msk), case=False)]
+    if track_exc_author:
+        msk = [x.strip() for x in track_exc_author.split(",")]
+        data = data[~data['Trader'].str.contains('|'.join(msk), case=False)]
+    if track_exc_chn:
+        msk = [x.strip() for x in track_exc_chn.split(",")]
+        data = data[~data['Channel'].str.contains('|'.join(msk), case=False)]
     return data
 
 def get_live_quotes(portfolio):

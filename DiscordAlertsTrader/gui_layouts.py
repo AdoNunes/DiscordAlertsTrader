@@ -14,7 +14,7 @@ from . import gui_generator as gg
 def layout_console():
     MLINE_KEY = '-MLINE-__WRITE ONLY__'
     layout = [[sg.Text('Real Time Discord Alert Trader', size=(50,1))],
-              [sg.Multiline(size=(1500,800), key=MLINE_KEY)]]
+              [sg.Multiline(size=(1500,None), key=MLINE_KEY, autoscroll=True, enable_events=False),sg.Stretch()]]
      # [sg.Column([[sg.Multiline(key=MLINE_KEY),sg.Stretch()]])]]
     return layout, MLINE_KEY
 
@@ -26,23 +26,28 @@ def layout_portfolio(data_n_headers, font_body, font_header):
     else:
         values=data_n_headers[0]
     
+    tip = "coma separed patterns, e.g. string1,string2"
     layout = [
-         [sg.Column([[sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'port_filt_author', size=(20, 1)),
-                      sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'port_filt_date_frm', size=(18, 1), default_text='05/10/2023'),
-                      sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'port_filt_date_to', size=(15, 1)),
-                      sg.Text('   Contains symbol: ', size=(20, 1)), sg.Input(key=f'port_filt_sym', size=(20, 1)),
-                      ],
-                     [sg.Text("Exclude: "),
-                      sg.Checkbox("Closed", key="-port-Closed", enable_events=True),
-                      sg.Checkbox("Open", key="-port-Open", enable_events=True),
-                      sg.Checkbox("Cancelled", key="-port-Cancelled", default=True, enable_events=True),
-                      sg.Checkbox("Neg PnL", key="-port-NegPnL", enable_events=True),
-                      sg.Checkbox("Pos PnL", key="-port-PosPnL", enable_events=True),
-                      sg.Checkbox("Live PnL", key="-port-live PnL", enable_events=True),
-                      sg.Checkbox("Stocks", key="-port-stocks", default=True, enable_events=True),
-                      sg.Checkbox("Options", key="-port-options", enable_events=True),
-                      ],
-             [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-portfolio_")]])],
+         [sg.Column([[
+            sg.Text('Include (exp1,exp2):  Author: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_filt_author',tooltip=tip),
+            sg.Text('Date from: '), sg.Input(key=f'port_filt_date_frm', size=(16, 1), default_text='05/10/2023'),
+            sg.Text(' To: '), sg.Input(key=f'port_filt_date_to', size=(16, 1)),
+            sg.Text(' Symbol: ', tooltip=tip), sg.Input(key=f'port_filt_sym', tooltip=tip),
+            sg.Text(' Channel: ',tooltip=tip), sg.Input(key=f'port_filt_chn',tooltip=tip)
+            ],                                        
+            [sg.Text("Exclude: |"),
+            sg.Checkbox("Closed", key="-port-Closed", enable_events=True),
+            sg.Checkbox("Open", key="-port-Open", enable_events=True),
+            sg.Checkbox("Cancelled", key="-port-Cancelled", default=True, enable_events=True),
+            sg.Checkbox("Neg PnL", key="-port-NegPnL", enable_events=True),
+            sg.Checkbox("Pos PnL", key="-port-PosPnL", enable_events=True),
+            sg.Checkbox("Live PnL", key="-port-live PnL", enable_events=True),
+            sg.Checkbox("Stocks", key="-port-stocks", default=True, enable_events=True),
+            sg.Checkbox("Options", key="-port-options", enable_events=True),
+            sg.Text('| Author: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_exc_author', tooltip=tip),
+            sg.Text('Channel: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_exc_chn',tooltip=tip),
+            ],
+            [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-portfolio_")]])],
          [sg.Column([[sg.Table(values=values,
                         headings=data_n_headers[1],
                         display_row_numbers=True,
@@ -65,34 +70,41 @@ def layout_traders(data_n_headers, font_body, font_header):
     else:
         values=data_n_headers[0]
     
-    layout = [
-        [sg.Column([[sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'track_filt_author', size=(20, 1)),
-                     sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'track_filt_date_frm', size=(18, 1), default_text='05/10/2023'),
-                     sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'track_filt_date_to', size=(18, 1)),
-                     sg.Text('   Contains symbol: ', size=(20, 1)), sg.Input(key=f'track_filt_sym', size=(20, 1)),
-                     ],
-                     [sg.Text("Exclude: "),
-                      sg.Checkbox("Closed", key="-track-Closed", enable_events=True),
-                      sg.Checkbox("Open", key="-track-Open", enable_events=True),
-                      sg.Checkbox("Neg PnL", key="-track-NegPnL", enable_events=True),
-                      sg.Checkbox("Pos PnL", key="-track-PosPnL", enable_events=True),
-                      sg.Checkbox("Live PnL", key="-track-live PnL", enable_events=True),                   
-                      sg.Checkbox("Stocks", key="-track-stocks", default=True, enable_events=True),
-                      sg.Checkbox("Options", key="-track-options", enable_events=True)
-                      ],
-                     [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-track_")]])
-                    ],
-         [sg.Column([[sg.Table(values=values,
-                        headings=data_n_headers[1],
-                        display_row_numbers=True,
-                        auto_size_columns=True,
-                        header_font=font_header,
-                        text_color='black',
-                        font=font_body,
-                        justification='left',
-                        alternating_row_color='grey',
-                        # num_rows=30, #len(data_n_headers[0]),
-                        key='_track_'), sg.Stretch()]])]
+    tip = "coma separed patterns, e.g. string1,string2"
+    layout = [[
+        sg.Column([
+            [
+            sg.Text('Include (exp1,exp2):  Author: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_filt_author',tooltip=tip),
+            sg.Text('Date from: '), sg.Input(key=f'track_filt_date_frm', default_text='05/10/2023', size=(16, 1)),
+            sg.Text(' To: '), sg.Input(key=f'track_filt_date_to', size=(16, 1)),
+            sg.Text(' Symbol: ',tooltip=tip), sg.Input(key=f'track_filt_sym',tooltip=tip),
+            sg.Text(' Channel: ',tooltip=tip), sg.Input(key=f'track_filt_chn',tooltip=tip)
+            ],[ 
+            sg.Text("Exclude: |"),
+            sg.Checkbox("Closed", key="-track-Closed", enable_events=True),
+            sg.Checkbox("Open", key="-track-Open", enable_events=True),
+            sg.Checkbox("Neg PnL", key="-track-NegPnL", enable_events=True),
+            sg.Checkbox("Pos PnL", key="-track-PosPnL", enable_events=True),
+            sg.Checkbox("Live PnL", key="-track-live PnL", enable_events=True), 
+            sg.Checkbox("Stocks", key="-track-stocks", default=True, enable_events=True),
+            sg.Checkbox("Options", key="-track-options", enable_events=True),
+            sg.Text('| Author: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_exc_author', tooltip=tip),
+            sg.Text('Channel: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_exc_chn',tooltip=tip),
+            ],[sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-track_")]
+            ])],
+         [sg.Column([
+            [
+            sg.Table(values=values,
+                headings=data_n_headers[1],
+                display_row_numbers=True,
+                auto_size_columns=True,
+                header_font=("Helvitica", "5"),
+                text_color='black',
+                font=font_body,
+                justification='left',
+                alternating_row_color='grey',
+                # num_rows=30, #len(data_n_headers[0]),
+                key='_track_'), sg.Stretch()]])]
          ]
     return layout
 
@@ -105,19 +117,16 @@ def layout_stats(data_n_headers, font_body, font_header):
         values=data_n_headers[0]
     
     layout = [
-        [sg.Column([[sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'stat_filt_author', size=(20, 1)),
-                     sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'stat_filt_date_frm', size=(18, 1), default_text='05/10/2023'),
-                     sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'stat_filt_date_to', size=(18, 1)),
-                     sg.Text('  Contains symbol: ', size=(20, 1)), sg.Input(key=f'stat_filt_sym', size=(20, 1)),
-                     sg.Text(' Max $: ', size=(10, 1)), sg.Input(key=f'stat_max_trade_cap', size=(10, 1)),
-                     sg.Text(' Max quantity: ', size=(10, 1)), sg.Input(key=f'stat_max_qty', size=(10, 1)),
+        [sg.Column([[sg.Text('Filter:  Author:'), sg.Input(key=f'stat_filt_author'),
+                     sg.Text('Date from:'), sg.Input(key=f'stat_filt_date_frm', size=(18, 1), default_text='05/10/2023'),
+                     sg.Text(' To:', size=(5, 1)), sg.Input(key=f'stat_filt_date_to', size=(18, 1)),
+                     sg.Text(' Symbol:', ), sg.Input(key=f'stat_filt_sym'),
+                     sg.Text(' Max $:'), sg.Input(key=f'stat_max_trade_cap', size=(10, 1)),
+                     sg.Text(' Max quantity:'), sg.Input(key=f'stat_max_qty', size=(10, 1)),
                      ],
                      [sg.Text("Exclude: "),
-                      sg.Checkbox("Closed", key="-stat-Closed", enable_events=True),
-                      sg.Checkbox("Open", key="-stat-Open", enable_events=True),
                       sg.Checkbox("Neg PnL", key="-stat-NegPnL", enable_events=True),
-                      sg.Checkbox("Pos PnL", key="-stat-PosPnL", enable_events=True),
-                      sg.Checkbox("Live PnL", key="-stat-live PnL", enable_events=True),                   
+                      sg.Checkbox("Pos PnL", key="-stat-PosPnL", enable_events=True),                  
                       sg.Checkbox("Stocks", key="-stat-stocks", default=True, enable_events=True),
                       sg.Checkbox("Options", key="-stat-options", enable_events=True)
                       ],
