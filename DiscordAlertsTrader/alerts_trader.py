@@ -515,8 +515,9 @@ class AlertsTrader():
                 log_alert['action'] = str_msg = f"STC-alerted without open position"
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs()
-                print(Back.GREEN + str_msg)
-                self.queue_prints.put([str_msg, "", "green"])
+                if cfg['general'].getboolean('DO_BTO_TRADES'):
+                    print(Back.GREEN + str_msg)
+                    self.queue_prints.put([str_msg, "", "green"])
                 return
 
             position = self.portfolio.iloc[open_trade]
