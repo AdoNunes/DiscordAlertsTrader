@@ -231,7 +231,7 @@ class TDA(BaseBroker):
         new_order.add_order_leg(order_leg=order_leg)
         return new_order
 
-    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_percent:float, new_order=None, strike=None, **kwarg):
+    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_percent:float, new_order=None, **kwarg):
         if new_order is None:
             new_order = Order()
         new_order.order_strategy_type("SINGLE")
@@ -245,7 +245,7 @@ class TDA(BaseBroker):
         
         child_order_leg = OrderLeg()
         child_order_leg.order_leg_quantity(quantity=uQty)
-        if strike is not None:
+        if len(Symbol.split("_")) > 1:
             child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
             child_order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
         else:

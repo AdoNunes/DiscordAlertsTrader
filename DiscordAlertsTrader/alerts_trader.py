@@ -15,8 +15,8 @@ import threading
 import queue
 from colorama import Fore, Back
 
-from .configurator import cfg
-from .message_parser import parse_exit_plan, set_exit_price_type
+from DiscordAlertsTrader.configurator import cfg
+from DiscordAlertsTrader.message_parser import parse_exit_plan, set_exit_price_type
 
 
 def find_last_trade(order, trades_log, open_only=True):
@@ -450,7 +450,6 @@ class AlertsTrader():
             self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
             self.save_logs()
 
-
         elif order["action"] == "BTO" and order['avg'] is not None:
             # if PT in order: cancel previous and make_BTO_lim_rder
             # else : BTO
@@ -798,7 +797,7 @@ class AlertsTrader():
 
             exit_plan = eval(trade["exit_plan"])
             if  exit_plan != {}:                
-                if any([isinstance(e, str) for e in exit_plan.values()]) and trade['Asset'] == 'option':
+                if any([isinstance(e, str) and "%" not in e for e in exit_plan.values()]) and trade['Asset'] == 'option':
                     self.check_opt_stock_price(i, exit_plan, "STC")
                 else:
                     self.make_exit_orders(i, exit_plan)
@@ -1068,3 +1067,8 @@ def amnt_left(order, position):
     else:
         return order, False
 
+if __name__ == "__main__":
+    from DiscordAlertsTrader.brokerages import get_brokerage
+    
+    bksession = get_brokerage()
+    at = AlertsTrader(bksession)

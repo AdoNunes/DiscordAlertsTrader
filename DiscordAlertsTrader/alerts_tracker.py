@@ -206,6 +206,8 @@ class AlertsTracker():
 
     def trailing_get_time(self, trade_date, quotes, inx):
         trl_r = quotes.loc[inx]
+        if pd.isna(trl_r['timestamp']):
+            return "", trl_r
         tdiff =  datetime.fromtimestamp(trl_r['timestamp']) - pd.to_datetime(trade_date)
         tdiff_str = str(tdiff.round('s')).replace('0 days ','')
         return tdiff_str, trl_r
