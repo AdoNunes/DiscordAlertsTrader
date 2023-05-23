@@ -452,7 +452,7 @@ class AlertsTrader():
 
 
         elif order["action"] == "BTO" and order['avg'] is not None:
-            # if PT in order: cancel previous and make_BTO_PT_SL_order
+            # if PT in order: cancel previous and make_BTO_lim_rder
             # else : BTO
             alert_price = order['price']
             order_response, order_id, order, _ = self.confirm_and_send(order, pars,
