@@ -23,7 +23,7 @@ class BaseBroker(ABC):
         pass
 
     @abstractmethod
-    def get_open_orders(self):
+    def get_orders(self):
         pass
 
     @abstractmethod

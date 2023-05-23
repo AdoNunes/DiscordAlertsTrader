@@ -10,6 +10,7 @@ import PySimpleGUIQt as sg
 from . import gui_generator as gg
 
 
+tip = "coma separed patterns, e.g. string1,string2"
 
 def layout_console():
     MLINE_KEY = '-MLINE-__WRITE ONLY__'
@@ -26,7 +27,6 @@ def layout_portfolio(data_n_headers, font_body, font_header):
     else:
         values=data_n_headers[0]
     
-    tip = "coma separed patterns, e.g. string1,string2"
     layout = [
          [sg.Column([[
             sg.Text('Include (exp1,exp2):  Author: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_filt_author',tooltip=tip),
@@ -58,6 +58,7 @@ def layout_portfolio(data_n_headers, font_body, font_header):
                         justification='left',
                         alternating_row_color='grey',
                         # num_rows=30, #len(data_n_headers[0]),
+                        enable_events=True,
                         key='_portfolio_'), sg.Stretch()]])]
          ]
     return layout
@@ -70,7 +71,6 @@ def layout_traders(data_n_headers, font_body, font_header):
     else:
         values=data_n_headers[0]
     
-    tip = "coma separed patterns, e.g. string1,string2"
     layout = [[
         sg.Column([
             [
@@ -117,18 +117,20 @@ def layout_stats(data_n_headers, font_body, font_header):
         values=data_n_headers[0]
     
     layout = [
-        [sg.Column([[sg.Text('Filter:  Author:'), sg.Input(key=f'stat_filt_author'),
-                     sg.Text('Date from:'), sg.Input(key=f'stat_filt_date_frm', size=(18, 1), default_text='05/10/2023'),
-                     sg.Text(' To:', size=(5, 1)), sg.Input(key=f'stat_filt_date_to', size=(18, 1)),
-                     sg.Text(' Symbol:', ), sg.Input(key=f'stat_filt_sym'),
-                     sg.Text(' Max $:'), sg.Input(key=f'stat_max_trade_cap', size=(10, 1)),
-                     sg.Text(' Max quantity:'), sg.Input(key=f'stat_max_qty', size=(10, 1)),
+        [sg.Column([[sg.Text('Include (exp1,exp2):  Author: ', auto_size_text=True, tooltip=tip), sg.Input(key=f'stat_filt_author'),
+                     sg.Text('Date from:'), sg.Input(key=f'stat_filt_date_frm', size=(16, 1), default_text='05/10/2023'),
+                     sg.Text(' To:', size=(5, 1)), sg.Input(key=f'stat_filt_date_to', size=(16, 1)),
+                     sg.Text(' Symbol:'), sg.Input(key=f'stat_filt_sym', tooltip=tip),
+                     sg.Text(' Max $:'), sg.Input(key=f'stat_max_trade_cap'),
+                     sg.Text(' Max quantity:'), sg.Input(key=f'stat_max_qty'),
                      ],
                      [sg.Text("Exclude: "),
                       sg.Checkbox("Neg PnL", key="-stat-NegPnL", enable_events=True),
                       sg.Checkbox("Pos PnL", key="-stat-PosPnL", enable_events=True),                  
                       sg.Checkbox("Stocks", key="-stat-stocks", default=True, enable_events=True),
-                      sg.Checkbox("Options", key="-stat-options", enable_events=True)
+                      sg.Checkbox("Options", key="-stat-options", enable_events=True),
+                      sg.Text('| Author: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_author', tooltip=tip),
+                      sg.Text('Channel: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_chn',tooltip=tip),
                       ],
                      [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-stat_")]])
                     ],

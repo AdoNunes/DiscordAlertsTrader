@@ -4,3 +4,4 @@ pandas
 numpy
 colorama
 discord.py-self
+pyetrade

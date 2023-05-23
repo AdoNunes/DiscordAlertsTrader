@@ -163,7 +163,8 @@ def run_gui():
 
         if event == sg.WINDOW_CLOSED:
             break
-
+        if '_portfolio_' in event:
+            print('_portfolio_', values['_portfolio_'])
         if event == "_upd-portfolio_": # update button in portfolio
             ori_col = window.Element("_upd-portfolio_").ButtonColor
             window.Element("_upd-portfolio_").Update(button_color=("black", "white"))

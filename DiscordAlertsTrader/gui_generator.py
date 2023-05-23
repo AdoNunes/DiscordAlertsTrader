@@ -172,6 +172,7 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
 def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
                      stat_filt_date_to='', stat_filt_sym='', 
                      stat_max_trade_cap='', stat_max_qty='', trail_stop_perc='',
+                     stat_exc_author='', stat_exc_chn='',
                      fname_port=None,
                      **kwargs ):
     if fname_port is None:
@@ -187,7 +188,7 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
 
     data = filter_data(data,exclude, stat_filt_author, stat_filt_date_frm,
-                        stat_filt_date_to, stat_filt_sym )
+                        stat_filt_date_to, stat_filt_sym, stat_exc_author, stat_exc_chn)
 
     if stat_max_qty != "" or stat_max_trade_cap != "":
         if stat_max_qty != "" and stat_max_qty.isnumeric():
