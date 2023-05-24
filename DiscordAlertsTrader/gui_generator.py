@@ -443,6 +443,7 @@ def order_info_pars(ord_dic, ord_list):
     return ord_list, ord_headings
 
 def get_orders(acc_inf):
+    heads = ['NoOrders']
     orders =acc_inf['securitiesAccount'].get('orderStrategies', [])
     ord_tab, cols = [], []
     col = 0

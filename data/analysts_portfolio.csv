@@ -297,3 +297,4 @@ Date,Symbol,Trader,Channel,isOpen,Asset,Type,Price,Amount,Price-current,Prices,P
 2023-05-24 12:07:52.245000,SPY_052623C412,algo_2,fend_bot,1,option,BTO,2.0,1,2.0,,,,,,,,,,,,,,,,
 2023-05-24 12:10:33.415000,SHOP_052623P59,algo_2,fend_bot,1,option,BTO,1.12,1,1.13,,,,,,,,,,,,,,,,
 2023-05-24 12:51:14.858000,SPXW_052523C4160,AVI#9896,analyst-alerts,1,option,BTO,3.0,2,3.1,,,,,,,,,,,,,,,,
+2023-05-24 13:27:41.715000,QQQ_052623C334,EvaPanda#7872,analyst-alerts,1,option,BTO,0.85,1,0.86,,,,,,,,,,,,,,,,
