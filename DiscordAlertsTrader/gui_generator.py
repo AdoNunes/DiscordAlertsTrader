@@ -366,14 +366,14 @@ def get_acc_bals(bksession):
     if acc_inf is None:  
         acc_inf = bksession.get_account_info()
     accnt= {"id" : acc_inf['securitiesAccount']['accountId'],
-        "balance": acc_inf['securitiesAccount']['currentBalances']['liquidationValue'],
-        "cash": acc_inf['securitiesAccount']['currentBalances']['cashBalance'],
-        "funds": acc_inf['securitiesAccount']['currentBalances']['availableFunds'],
+        "balance": acc_inf['securitiesAccount']['currentBalances'].get('liquidationValue', 0),
+        "cash": acc_inf['securitiesAccount']['currentBalances'].get('cashBalance',0),
+        "funds": acc_inf['securitiesAccount']['currentBalances'].get('availableFunds', 0),
         }
     return acc_inf, accnt
 
 def get_pos(acc_inf):
-    positions = acc_inf['securitiesAccount']['positions']
+    positions = acc_inf['securitiesAccount'].get('positions', [])
     pos_tab = []
     pos_headings = ["Sym", "Last", "price", "PnL_%", "PnL","Qty", "Val", "Cost"]
     for pos in positions:

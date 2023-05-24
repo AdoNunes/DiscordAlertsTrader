@@ -80,7 +80,7 @@ layout = [[sg.TabGroup([
            sg.Button("Submit alert", key="-subm-alert", size= (20,1))]
         ]
 print(3)
-window = sg.Window('BullTrader', layout,size=(800, 800), # force_toplevel=True,
+window = sg.Window('Discord Alerts Trader for BullTrades', layout,size=(800, 800), # force_toplevel=True,
                     auto_size_text=True, resizable=True)
 print(4)
 def mprint_queue(queue_item_list):
