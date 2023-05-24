@@ -7,7 +7,7 @@ import threading
 from colorama import Fore, init
 import discord # this is discord.py-self package not discord
 
-from .message_parser import parser_alerts
+from .message_parser import parse_trade_alert
 from .configurator import cfg
 from .configurator import channel_ids
 from .alerts_trader import AlertsTrader
@@ -76,8 +76,9 @@ class DiscordBot(discord.Client):
             # save quotes to file
             try:
                 quote = self.bksession.get_quotes(track_symb)
-            except ConnectionError as e:
+            except Exception as e:
                 print('error during live quote:', e)
+                continue
             
             for q in quote: 
                 if quote[q]['description'] == 'Symbol not found':
@@ -182,11 +183,12 @@ class DiscordBot(discord.Client):
         self.queue_prints.put([f"{shrt_date} \t {msg['Author']}: {msg['Content']} ", "blue"])
         print(Fore.BLUE + f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
 
-        pars, order =  parser_alerts(msg['Content'])
-        if pars is None and self.chn_hist.get(chn) is not None:
-            msg['Parsed'] = ""
-            self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
-            self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
+        pars, order =  parse_trade_alert(msg['Content'])
+        if pars is None:
+            if self.chn_hist.get(chn) is not None:
+                msg['Parsed'] = ""
+                self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
+                self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
             return
         else:
             if order['asset'] == "option":

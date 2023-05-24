@@ -26,9 +26,9 @@ class BaseBroker(ABC):
     def get_orders(self):
         pass
 
-    @abstractmethod
-    def get_order_status(self, order_id):
-        pass
+    # @abstractmethod
+    # def get_order_status(self, order_id):
+    #     pass
     
     def get_order_info(self, order_id):
         #     sold_unts = order_info['orderLegCollection'][0]['quantity']
@@ -56,12 +56,19 @@ class BaseBroker(ABC):
 
 
 def get_brokerage(name=cfg['general']['BROKERAGE']):
-    if name == 'TDA':
+    if name.lower() == 'tda':
         from .TDA_api import TDA
         tda = TDA()
         tda.get_session()
         return tda
     elif name == "webull":
         NotImplemented
-    elif name == 'etrades':
-        NotImplemented
+    elif name.lower() == 'etrade':
+        from .eTrade_api import eTrade
+        et = eTrade()
+        try:
+            et.get_session()
+        except Exception as e:
+            print("Got error: \n", e, "\n Trying again...if it fails again, rerun the application.")
+            et.get_session()
+        return et

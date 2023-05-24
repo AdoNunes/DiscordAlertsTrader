@@ -11,7 +11,7 @@ from datetime import datetime
 import numpy as np
 
 def parse_trade_alert(msg, asset=None):
-    pattern = r'\b(BTO|STC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[cp]?)?\s*(\d{1,2}\/\d{1,2})?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
+    pattern = r'\b(BTO|STC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[.\d+]*[cp]?)?\s*(\d{1,2}\/\d{1,2})?(?:\/2023|\/23)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
     match = re.search(pattern, msg, re.IGNORECASE)
     
     if match:
@@ -36,22 +36,47 @@ def parse_trade_alert(msg, asset=None):
 
             order['strike'] = strike.upper()
             order['expDate'] = expDate
-            symbol = fix_index_symbols(symbol)            
+            order['Symbol'] = fix_index_symbols(symbol)            
             order['Symbol'] = make_optionID(**order)
 
         risk_level = parse_risk(msg)
         order['risk'] = risk_level
-        []
-        pars =  " ".join(match.groups()) + f" {risk_level}{str_ext}"
-        pars = pars.replace("None", "")
-        return order, pars
+
+        pars = []
+        for el in [action, quantity, ticker, strike, expDate, price, risk_level, str_ext]:
+            if el is not None:
+                pars.append(el)
+        pars = " ".join(pars)
+        if action.upper() == "BTO":
+            if "avg" in msg.lower() or "average" in msg.lower():
+                avg_price, _ = parse_avg(msg)
+                pars = pars + f"AVG to {avg_price} "
+                order["avg"] = avg_price
+            else:
+                order["avg"] = None
+            pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
+            n_pts = 3 if pt3_v else 2 if pt2_v else 1 if pt1_v else 0
+            pts_qty = set_pt_qts(n_pts)
+            order, pars = make_order_exits(order, msg, pars, asset_type)
+            sl_mental = True if "mental" in msg.lower() else False
+            if sl_mental: order["SL_mental"] = True
+            order["n_PTs"] = n_pts
+            order["PTs_Qty"] = pts_qty
+
+        elif action.upper() == "STC":
+            xamnt = parse_sell_ratio_amount(msg, asset_type)
+            if order["uQty"] is None:
+                pars = pars + f" xamount: {xamnt}"
+            order["xQty"] = xamnt
+        
+        return pars, order
     else:
-        return None
+        return None, None
 
 def fix_index_symbols(symbol):
-    if symbol == "SPX": 
+    if symbol.upper() == "SPX": 
         symbol = "SPXW"
-    elif symbol == "NDX":
+    elif symbol.upper() == "NDX":
         symbol = "NDXP"
     return symbol
     

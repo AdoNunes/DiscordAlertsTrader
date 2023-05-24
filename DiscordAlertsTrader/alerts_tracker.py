@@ -60,7 +60,8 @@ class AlertsTracker():
         if open_trade is None and order["action"] == "BTO":
             str_act = self.make_BTO(order, channel)
         elif order["action"] == "BTO":
-            str_act = self.make_BTO_Avg(order, open_trade)
+            str_act = "BTO averaging disabled as it is mostly wrong alert messages"
+            # str_act = self.make_BTO_Avg(order, open_trade)
         elif order["action"] == "STC" and open_trade is None:
             str_act = "STC without BTO"
         elif order["action"] == "STC":
@@ -145,20 +146,22 @@ class AlertsTracker():
         self.portfolio.loc[open_trade, "STC-Date"] = order["Date"]
         stc_price =  self.portfolio.loc[open_trade,"STC-Price"]
         stc_utotal = self.portfolio.loc[open_trade,"STC-Amount"]
-        
+        suffx = ''
+        if stc_utotal >= trade['Amount']:
+            suffx = " Closed"
+            self.portfolio.loc[open_trade, "isOpen"] = 0
+            
         if stc_price == "none" or stc_price is None:
-            str_STC = f"STC {order['Symbol']}  ({order['uQty']}), no price provided"
+            str_STC = f"STC {order['Symbol']}  ({order['uQty']}), no price provided" + suffx
         else:
-            str_STC = f"STC {order['Symbol']} ({order['uQty']}), {stc_price:.2f}"
+            str_STC = f"STC {order['Symbol']} ({order['uQty']}),{suffx} {stc_price:.2f}"
             if stc_info['STC-Price-current'] is not None:           
                        str_STC += f" current: {stc_info['STC-Price-current']:.2f} " 
             if stc_info["STC-PnL"] is not None:
                 str_STC += f'PnL:{round(stc_info["STC-PnL"])}% ${round(stc_info["STC-PnL$"])}' 
             if stc_info["STC-PnL-current"] is not None:
                 str_STC += f' Actual:{round(stc_info["STC-PnL-current"])}% ${round(stc_info["STC-PnL$-current"])}\n\t\t'
-        if stc_utotal >= trade['Amount']:
-            str_STC = str_STC +" Closed"
-            self.portfolio.loc[open_trade, "isOpen"] = 0
+
         if eval(order.get('# Closed', "0"))==1 :
             self.portfolio.loc[open_trade, "isOpen"]=0
         str_STC = str_STC + " " + trailstat.replace('|', '\n\t\t')

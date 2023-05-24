@@ -17,7 +17,8 @@ exit_examples = [("BTO AEHL @ 7 (risky scalp. PT 8.39, SL below 6.45) @everyone"
                  ("BTO CPB @ 45.95 (SL $43, PT 49, posted this in watchlist on monday", (49.0, None, None, 43.0)),
                  ("Price Target: 185 Stop: 200", (185, None,None, 200)),
                  ("SL around 388.5 PT 380"),
-                 ("BTO 1 COIN 73c 04/06 @ 1.03 @here (Swing) @Cblast Alert")
+                 ("BTO 1 COIN 73c 04/06 @ 1.03 @here (Swing) @Cblast Alert"),
+                 "AVI#9896: STC PNC 140c 07/21/2023 @ 1.4 <@&1037722002145935360> ( 79%)"
                  
 ]
 

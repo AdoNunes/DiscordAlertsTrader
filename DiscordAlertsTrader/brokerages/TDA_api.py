@@ -7,10 +7,11 @@ from td.orders import Order, OrderLeg
 from td.client import TDClient
 
 class TDA(BaseBroker):
-    def __init__(self):
-        pass
+    def __init__(self,account_n=0, accountId=None):
+        self.account_n = account_n
+        self.accountId = accountId
 
-    def get_session(self, account_n=0, accountId=None):
+    def get_session(self, ):
         """Provide either:
             - account_n: indicating the orinal position from the accounts list
             (if only one account, it will be 0)
@@ -30,35 +31,34 @@ class TDA(BaseBroker):
         # Login to the session
         success = self.session.login()
 
-        if accountId is not None:
-            self.session.accountId = accountId
+        if self.accountId is not None:
+            self.session.accountId = self.accountId
         else:
-            account_n = 0
-            accounts_info = self.session.get_accounts(account="all")[account_n]
-            self.session.accountId = accounts_info['securitiesAccount']['accountId']
+            self.account_n = 0
+            accounts_info = self.session.get_accounts(account="all")[self.account_n]
+            self.accountId = accounts_info['securitiesAccount']['accountId']
         return success
 
     def send_order(self, new_order):
-        order_response = self.session.place_order(account=self.session.accountId,
+        order_response = self.session.place_order(account=self.accountId,
                                         order=new_order)
         order_id = order_response["order_id"]
         return order_response, order_id
     
     def cancel_order(self, order_id):
-        return self.session.cancel_order(self.session.accountId, order_id)
+        return self.session.cancel_order(self.accountId, order_id)
 
     def get_order_info(self, order_id):  
         """
         order_status = 'REJECTED' | "FILLED" | "WORKING"
         """      
-        order_info = self.session.get_orders(account=self.session.accountId,
-                                              order_id=order_id)
+        order_info = self.session.get_orders(account=self.accountId, order_id=order_id)
         if order_info['orderStrategyType'] == "OCO":
             order_status = [
                 order_info['childOrderStrategies'][0]['status'],
                 order_info['childOrderStrategies'][1]['status']]
             if not order_status[0]==order_status[1]:
-                print("OCO order status are different in ordID {order_id}: ",
+                print(f"OCO order status are different in ordID {order_id}: ",
                       f"{order_status[0]} vs {order_status[1]}")
             order_status = order_status[0]
         elif order_info['orderStrategyType'] in ['SINGLE', 'TRIGGER']:
@@ -70,14 +70,14 @@ class TDA(BaseBroker):
     def get_quotes(self, symbol:list):
         return self.session.get_quotes(instruments=symbol)
 
-    def get_open_orders(self):
+    def get_orders(self):
         pass
 
     def get_order_status(self, order_id):
         pass
     
     def get_account_info(self):
-        acc_inf = self.session.get_accounts(self.session.accountId, ['orders','positions'])
+        acc_inf = self.session.get_accounts(self.accountId, ['orders','positions'])
         return acc_inf
 
     def get_positions_orders(self):
