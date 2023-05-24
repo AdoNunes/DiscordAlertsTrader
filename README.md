@@ -22,7 +22,7 @@ What this package does:
 
 **Currently, the package is for parsing signals of the discord server BullTrades.** 
 
-Invite link to BullTrades: https://discord.gg/bulltrades
+Invite link to BullTrades with referral: [https://discord.gg/bulltrades](https://bulltrades.net/?ref=ndrjogi)
 
 <img src="media/GUI_analysts_portfolio.PNG" alt="Analysts Portfolio" width="500" height="300">
 <img src="media/GUI_messages.PNG" alt="Channel message history" width="500" height="300">
@@ -99,6 +99,17 @@ Make sure to keep the terminal or command prompt window open while the applicati
 
 To stop the DiscordAlertsTrader application, simply close the terminal or command prompt window where it is running.
 
+## Etrade
+
+create a sandbox (mock) api key:
+https://us.etrade.com/etx/ris/apikey
+then fill out the forms at the bottom of:
+https://developer.etrade.com/getting-started
+
+Make sure to select free real-time quote data:
+https://us.etrade.com/etx/hw/subscriptioncenter#/subscription
+
+Before running the package and send orders, in etrade make a trailing stop order and preview to sign an Advanced Order Disclosure, otherwise an error will rise when posting the order
 
 ## TDAmeritrade
 _______________
