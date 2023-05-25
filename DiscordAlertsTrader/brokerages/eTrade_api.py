@@ -145,8 +145,10 @@ class eTrade(BaseBroker):
         match = re.search(exp, opt_ticker, re.IGNORECASE)
         if match:
             symbol, mnt, day, yer, type, strike = match.groups()
-        converted_code = f"{symbol}:20{yer}:{mnt}:{day}:{type}:{strike}"
-        return converted_code
+            converted_code = f"{symbol}:20{yer}:{mnt}:{day}:{type}:{strike}"
+            return converted_code
+        else:
+            print('No format_option match for', opt_ticker)
 
     def get_quotes(self, symbol:list):
         """
