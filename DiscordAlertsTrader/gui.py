@@ -280,13 +280,12 @@ def gui():
     client_thread = threading.Thread(target=run_client)
 
     # start the threads
-    # client_thread.start()
+    client_thread.start()
     run_gui()
 
     # close the GUI window
     window.close()
     alistner.close_bot()
-    # alistner.close()
     exit()
 
 
