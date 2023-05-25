@@ -15,8 +15,7 @@ tip = "coma separed patterns, e.g. string1,string2"
 def layout_console():
     MLINE_KEY = '-MLINE-__WRITE ONLY__'
     layout = [[sg.Text('Real Time Discord Alert Trader', size=(50,1))],
-              [sg.Multiline(size=(1500,None), key=MLINE_KEY, autoscroll=True, enable_events=False),sg.Stretch()]]
-     # [sg.Column([[sg.Multiline(key=MLINE_KEY),sg.Stretch()]])]]
+              [sg.Multiline(size=(1000,None), key=MLINE_KEY, autoscroll=True, enable_events=False),sg.Stretch()]]
     return layout, MLINE_KEY
 
 
@@ -29,11 +28,11 @@ def layout_portfolio(data_n_headers, font_body, font_header):
     
     layout = [
          [sg.Column([[
-            sg.Text('Include (exp1,exp2):  Author: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_filt_author',tooltip=tip),
+            sg.Text('Include:  Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_filt_author',tooltip=tip),
             sg.Text('Date from: '), sg.Input(key=f'port_filt_date_frm', size=(16, 1), default_text='05/10/2023'),
             sg.Text(' To: '), sg.Input(key=f'port_filt_date_to', size=(16, 1)),
-            sg.Text(' Symbol: ', tooltip=tip), sg.Input(key=f'port_filt_sym', tooltip=tip),
-            sg.Text(' Channel: ',tooltip=tip), sg.Input(key=f'port_filt_chn',tooltip=tip)
+            sg.Text(' Symbols: ', tooltip=tip), sg.Input(key=f'port_filt_sym', tooltip=tip),
+            sg.Text(' Channels: ',tooltip=tip), sg.Input(key=f'port_filt_chn',tooltip=tip)
             ],                                        
             [sg.Text("Exclude: |"),
             sg.Checkbox("Closed", key="-port-Closed", enable_events=True),
@@ -44,8 +43,8 @@ def layout_portfolio(data_n_headers, font_body, font_header):
             sg.Checkbox("Live PnL", key="-port-live PnL", enable_events=True),
             sg.Checkbox("Stocks", key="-port-stocks", default=True, enable_events=True),
             sg.Checkbox("Options", key="-port-options", enable_events=True),
-            sg.Text('| Author: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_exc_author', tooltip=tip),
-            sg.Text('Channel: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_exc_chn',tooltip=tip),
+            sg.Text('| Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_exc_author', tooltip=tip),
+            sg.Text('Channels: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_exc_chn',tooltip=tip),
             ],
             [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-portfolio_")]])],
          [sg.Column([[sg.Table(values=values,
@@ -74,11 +73,11 @@ def layout_traders(data_n_headers, font_body, font_header):
     layout = [[
         sg.Column([
             [
-            sg.Text('Include (exp1,exp2):  Author: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_filt_author',tooltip=tip),
+            sg.Text('Include:  Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_filt_author',tooltip=tip),
             sg.Text('Date from: '), sg.Input(key=f'track_filt_date_frm', default_text='05/10/2023', size=(16, 1)),
             sg.Text(' To: '), sg.Input(key=f'track_filt_date_to', size=(16, 1)),
-            sg.Text(' Symbol: ',tooltip=tip), sg.Input(key=f'track_filt_sym',tooltip=tip),
-            sg.Text(' Channel: ',tooltip=tip), sg.Input(key=f'track_filt_chn',tooltip=tip)
+            sg.Text(' Symbols: ',tooltip=tip), sg.Input(key=f'track_filt_sym',tooltip=tip),
+            sg.Text(' Channels: ',tooltip=tip), sg.Input(key=f'track_filt_chn',tooltip=tip)
             ],[ 
             sg.Text("Exclude: |"),
             sg.Checkbox("Closed", key="-track-Closed", enable_events=True),
@@ -88,8 +87,8 @@ def layout_traders(data_n_headers, font_body, font_header):
             sg.Checkbox("Live PnL", key="-track-live PnL", enable_events=True), 
             sg.Checkbox("Stocks", key="-track-stocks", default=True, enable_events=True),
             sg.Checkbox("Options", key="-track-options", enable_events=True),
-            sg.Text('| Author: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_exc_author', tooltip=tip),
-            sg.Text('Channel: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_exc_chn',tooltip=tip),
+            sg.Text('| Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_exc_author', tooltip=tip),
+            sg.Text('Channels: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_exc_chn',tooltip=tip),
             ],[sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-track_")]
             ])],
          [sg.Column([
@@ -117,10 +116,10 @@ def layout_stats(data_n_headers, font_body, font_header):
         values=data_n_headers[0]
     
     layout = [
-        [sg.Column([[sg.Text('Include (exp1,exp2):  Author: ', auto_size_text=True, tooltip=tip), sg.Input(key=f'stat_filt_author'),
+        [sg.Column([[sg.Text('Include:  Authors: ', auto_size_text=True, tooltip=tip), sg.Input(key=f'stat_filt_author', tooltip=tip),
                      sg.Text('Date from:'), sg.Input(key=f'stat_filt_date_frm', size=(16, 1), default_text='05/10/2023'),
                      sg.Text(' To:', size=(5, 1)), sg.Input(key=f'stat_filt_date_to', size=(16, 1)),
-                     sg.Text(' Symbol:'), sg.Input(key=f'stat_filt_sym', tooltip=tip),
+                     sg.Text(' Symbols:'), sg.Input(key=f'stat_filt_sym', tooltip=tip),
                      sg.Text(' Max $:'), sg.Input(key=f'stat_max_trade_cap'),
                      sg.Text(' Max quantity:'), sg.Input(key=f'stat_max_qty'),
                      ],
@@ -129,8 +128,8 @@ def layout_stats(data_n_headers, font_body, font_header):
                       sg.Checkbox("Pos PnL", key="-stat-PosPnL", enable_events=True),                  
                       sg.Checkbox("Stocks", key="-stat-stocks", default=True, enable_events=True),
                       sg.Checkbox("Options", key="-stat-options", enable_events=True),
-                      sg.Text('| Author: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_author', tooltip=tip),
-                      sg.Text('Channel: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_chn',tooltip=tip),
+                      sg.Text('| Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_author', tooltip=tip),
+                      sg.Text('Channels: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_chn',tooltip=tip),
                       ],
                      [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-stat_")]])
                     ],
@@ -156,13 +155,13 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
         values=data_n_headers[0]
 
     layout = [
-        [sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'{chn}_filt_author', size=(20, 1)),
+        [sg.Text('Filter:  Authors: '), sg.Input(key=f'{chn}_filt_author'),
            # sg.Text(' '*2),
-         sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'{chn}_filt_date_frm', size=(10, 1), default_text='05/09'),
-         sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'{chn}_filt_date_to', size=(10, 1)),
+         sg.Text('Date from: '), sg.Input(key=f'{chn}_filt_date_frm', default_text='05/09/23'),
+         sg.Text(' To: '), sg.Input(key=f'{chn}_filt_date_to'),
           # sg.Text(' '*1),
-         sg.Text('Message contains: ', size=(25, 1)), sg.Input(key=f'{chn}_filt_cont', size=(20, 1)),
-         sg.Text('Num. rows display: '), sg.Input(key=f'{chn}_n_rows', size=(5, 1)),
+         sg.Text('Message contains: '), sg.Input(key=f'{chn}_filt_cont'),
+         sg.Text('Num. rows display: '), sg.Input(key=f'{chn}_n_rows'),
          ],
         [sg.ReadFormButton("Update", button_color=('white', 'black'), key=f'{chn}_UPD', bind_return_key=True)],
         [sg.Column([[sg.Table(values=values,
@@ -173,7 +172,7 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
                   font=font_body,
                   # col_widths=[30,200, 300],
                   header_font=font_header,
-                  auto_size_columns =True, max_col_width=50,
+                  auto_size_columns =True, max_col_width=30,
                   # auto_size_columns=True,
                   # vertical_scroll_only=False,
                    alternating_row_color='grey',
@@ -182,7 +181,7 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
                   # num_rows=30,
                   # enable_events = False,
                   # bind_return_key = True,
-                  tooltip = "Selecting row and pressing enter will parse message",
+                #   tooltip = "Selecting row and pressing enter will parse message",
                   key=f"{chn}_table")]])]
         ]
     return layout

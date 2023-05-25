@@ -739,12 +739,12 @@ class AlertsTrader():
         
         symb = self.portfolio.loc[open_trade, 'Symbol']
 
-        sold_Qty =  self.portfolio.loc[open_trade, [f"STC{i}-xQty" for i in range(1,4)]].sum()
+        sold_Qty =  self.portfolio.loc[open_trade, [f"STC{i}-uQty" for i in range(1,4)]].sum()
 
         str_STC = f"{STC} {symb} @{stc_price} Qty:" + \
             f"{sold_unts}({int(xQty*100)}%), for {stc_PnL:.2f}%"
 
-        if sold_Qty == 1:
+        if sold_Qty == self.portfolio.loc[open_trade, "uQty"]:
             str_STC += " (Closed)"
             self.portfolio.loc[open_trade, "isOpen"] = 0
 

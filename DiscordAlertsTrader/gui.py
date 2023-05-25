@@ -32,7 +32,7 @@ def fit_table_elms(Widget_element):
 # sg.SetOptions(font=("Helvitica", "11"),  background_color="whitesmoke")#,,
                 # element_padding=(0, 0), margins=(1, 1))
 
-fnt_b = ("Helvitica", "9")
+fnt_b = ("Helvitica", "10")
 fnt_h = ("Helvitica", "10")
 
 ly_cons, MLINE_KEY = gl.layout_console()
@@ -75,12 +75,12 @@ layout = [[sg.TabGroup([
                         [sg.Tab("Account", ly_accnt)]
                         ],title_color='black')],
           [sg.Input(default_text="Author#1234, STC 1 AAA 05/30 115C @2.5",
-                    size= (140,1.5), key="-subm-msg",
+                    size= (110,1.5), key="-subm-msg",
                     tooltip="User: any, Asset: {stock, option}"),
-           sg.Button("Submit alert", key="-subm-alert", size= (20,1))]
+           sg.Button("Trigger alert", key="-subm-alert", tooltip="Will generate alert in portfolio and tracker", size= (20,1))]
         ]
 print(3)
-window = sg.Window('BullTrader', layout,size=(800, 800), # force_toplevel=True,
+window = sg.Window('Discord Alerts Trader for BullTrades', layout,size=(100, 800), # force_toplevel=True,
                     auto_size_text=True, resizable=True)
 print(4)
 def mprint_queue(queue_item_list):
@@ -286,7 +286,6 @@ def gui():
     # close the GUI window
     window.close()
     alistner.close_bot()
-    # alistner.close()
     exit()
 
 
