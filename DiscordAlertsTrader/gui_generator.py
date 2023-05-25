@@ -450,8 +450,8 @@ def order_info_pars(ord_dic, ord_list):
 
 def get_orders(acc_inf):
     orders =acc_inf['securitiesAccount'].get('orderStrategies', [])
-    # if len(orders) == 0:
-    return ["NoOrders"],  ["Sym", "Act", "Strat", "Price/stp","Date", "Qty/fill", "Status", "ordId"], []
+    if len(orders) == 0:
+        return ["NoOrders"],  ["Sym", "Act", "Strat", "Price/stp","Date", "Qty/fill", "Status", "ordId"], []
     ord_tab, cols = [], []
     col = 0
     for ordr in orders:
