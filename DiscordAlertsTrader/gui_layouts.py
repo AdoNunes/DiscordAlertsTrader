@@ -15,7 +15,7 @@ tip = "coma separed patterns, e.g. string1,string2"
 def layout_console():
     MLINE_KEY = '-MLINE-__WRITE ONLY__'
     layout = [[sg.Text('Real Time Discord Alert Trader', size=(50,1))],
-              [sg.Multiline(size=(1500,None), key=MLINE_KEY, autoscroll=True, enable_events=False),sg.Stretch()]]
+              [sg.Multiline(size=(1000,None), key=MLINE_KEY, autoscroll=True, enable_events=False),sg.Stretch()]]
      # [sg.Column([[sg.Multiline(key=MLINE_KEY),sg.Stretch()]])]]
     return layout, MLINE_KEY
 
@@ -156,13 +156,13 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
         values=data_n_headers[0]
 
     layout = [
-        [sg.Text('Filter:  Author: ', size=(20, 1)), sg.Input(key=f'{chn}_filt_author', size=(20, 1)),
+        [sg.Text('Filter:  Author: '), sg.Input(key=f'{chn}_filt_author'),
            # sg.Text(' '*2),
-         sg.Text('Date from: ', size=(15, 1)), sg.Input(key=f'{chn}_filt_date_frm', size=(10, 1), default_text='05/09'),
-         sg.Text(' To: ', size=(5, 1)), sg.Input(key=f'{chn}_filt_date_to', size=(10, 1)),
+         sg.Text('Date from: '), sg.Input(key=f'{chn}_filt_date_frm', default_text='05/09'),
+         sg.Text(' To: '), sg.Input(key=f'{chn}_filt_date_to'),
           # sg.Text(' '*1),
-         sg.Text('Message contains: ', size=(25, 1)), sg.Input(key=f'{chn}_filt_cont', size=(20, 1)),
-         sg.Text('Num. rows display: '), sg.Input(key=f'{chn}_n_rows', size=(5, 1)),
+         sg.Text('Message contains: '), sg.Input(key=f'{chn}_filt_cont'),
+         sg.Text('Num. rows display: '), sg.Input(key=f'{chn}_n_rows'),
          ],
         [sg.ReadFormButton("Update", button_color=('white', 'black'), key=f'{chn}_UPD', bind_return_key=True)],
         [sg.Column([[sg.Table(values=values,
@@ -173,7 +173,7 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
                   font=font_body,
                   # col_widths=[30,200, 300],
                   header_font=font_header,
-                  auto_size_columns =True, max_col_width=50,
+                  auto_size_columns =True, max_col_width=30,
                   # auto_size_columns=True,
                   # vertical_scroll_only=False,
                    alternating_row_color='grey',
@@ -182,7 +182,7 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
                   # num_rows=30,
                   # enable_events = False,
                   # bind_return_key = True,
-                  tooltip = "Selecting row and pressing enter will parse message",
+                #   tooltip = "Selecting row and pressing enter will parse message",
                   key=f"{chn}_table")]])]
         ]
     return layout

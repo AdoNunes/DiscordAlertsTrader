@@ -93,9 +93,12 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
                 "PnL", "$PnL","PnL-Alert", "$PnL-Alert","PnL-Current","$PnL-Current"]
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
-
-    data = filter_data(data,exclude, port_filt_author, port_filt_date_frm,
+    
+    try:
+        data = filter_data(data,exclude, port_filt_author, port_filt_date_frm,
                         port_filt_date_to, port_filt_chn)
+    except:
+        pass
     cols = ['isOpen', "PnL", "$PnL", 'Date', 'Symbol', 'Trader', 'BTO-Status', 'Price',
             'Price-Alert', "Price-Current", 'uQty', 'filledQty', 'N Alerts',"PnL-Alert",
             "$PnL-Alert","PnL-Current","$PnL-Current", "STC1-Price", "STC1-Price-Alerted",
@@ -143,9 +146,11 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
     
-    data = filter_data(data,exclude, track_filt_author, track_filt_date_frm,
+    try:
+        data = filter_data(data,exclude, track_filt_author, track_filt_date_frm,
                         track_filt_date_to, track_filt_sym, track_exc_author, track_exc_chn)
-
+    except:
+        pass
     cols = ['isOpen','STC-PnL','STC-PnL-current', 'STC-PnL$','STC-PnL$-current', 'Date', 'Symbol', 'Trader', 'Price',
             "Price-current", 'Amount', 'N Alerts','STC-Amount','STC-Price','STC-Price-current','STC-Date','Channel'
             ]
@@ -186,10 +191,11 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
     data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
     data["N Alerts"]= data['Avged']
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
-
-    data = filter_data(data,exclude, stat_filt_author, stat_filt_date_frm,
+    try:
+        data = filter_data(data,exclude, stat_filt_author, stat_filt_date_frm,
                         stat_filt_date_to, stat_filt_sym, stat_exc_author, stat_exc_chn)
-
+    except:
+        pass
     if stat_max_qty != "" or stat_max_trade_cap != "":
         if stat_max_qty != "" and stat_max_qty.isnumeric():
             stat_max_qty = int(stat_max_qty)
@@ -444,8 +450,8 @@ def order_info_pars(ord_dic, ord_list):
 
 def get_orders(acc_inf):
     orders =acc_inf['securitiesAccount'].get('orderStrategies', [])
-    if len(orders) == 0:
-        return [], [], []
+    # if len(orders) == 0:
+    return ["NoOrders"],  ["Sym", "Act", "Strat", "Price/stp","Date", "Qty/fill", "Status", "ordId"], []
     ord_tab, cols = [], []
     col = 0
     for ordr in orders:
