@@ -28,7 +28,7 @@ class AlertsTracker():
             self.portfolio = pd.DataFrame(columns=cfg["col_names"]['tracker_portfolio'].split(",") )
             self.portfolio.to_csv(self.portfolio_fname, index=False)
 
-    def price_now(self, symbol, price_type="BTO"):
+    def price_now(self, symbol:str, price_type="BTO"):
         if self.bksession is None:
             return None
 
@@ -60,8 +60,8 @@ class AlertsTracker():
         if open_trade is None and order["action"] == "BTO":
             str_act = self.make_BTO(order, channel)
         elif order["action"] == "BTO":
-            str_act = "BTO averaging disabled as it is mostly wrong alert messages"
-            # str_act = self.make_BTO_Avg(order, open_trade)
+            # str_act = "BTO averaging disabled as it is mostly wrong alert messages"
+            str_act = self.make_BTO_Avg(order, open_trade)
         elif order["action"] == "STC" and open_trade is None:
             str_act = "STC without BTO"
         elif order["action"] == "STC":

@@ -5,6 +5,7 @@ import pyetrade
 import re
 import random
 from datetime import datetime
+import time
 
 from ..configurator import cfg
 from . import BaseBroker
@@ -18,9 +19,19 @@ class eTrade(BaseBroker):
         self.consumer_secret = cfg["etrade"]["CONSUMER_SECRET"]
         
     def get_session(self):
+        """get token and sessions, will try several times and sleep for a second between each try"""
+        for ix in range(5):
+            try:
+                return self._get_session()
+                ""
+            except:
+                print(ix,"Could not get session, trying again")
+                time.sleep(1)
+        raise Exception("Could not get session")
+
+    def _get_session(self):
         """Allows user authorization for the sample application with OAuth 1"""
         oauth = pyetrade.ETradeOAuth(self.consumer_key, self.consumer_secret)
-        print(oauth.get_request_token())  # Use the printed URL
 
         if cfg['etrade'].getboolean('WITH_BROWSER'):
             webbrowser.open(oauth.get_request_token())
@@ -28,9 +39,8 @@ class eTrade(BaseBroker):
             print("Please open the following URL in your browser:")
             print(oauth.get_request_token())
         verifier_code = input("Please accept agreement and enter verification code from browser: ")
-
         self.tokens = oauth.get_access_token(verifier_code)
-        
+
         # get sessions
         kwargs = {'client_key': self.consumer_key,
                   'client_secret': self.consumer_secret,
@@ -145,6 +155,8 @@ class eTrade(BaseBroker):
         match = re.search(exp, opt_ticker, re.IGNORECASE)
         if match:
             symbol, mnt, day, yer, type, strike = match.groups()
+            if type.lower() == 'c':
+                type = 'Call'
             converted_code = f"{symbol}:20{yer}:{mnt}:{day}:{type}:{strike}"
             return converted_code
         else:

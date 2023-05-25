@@ -177,7 +177,7 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
 def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
                      stat_filt_date_to='', stat_filt_sym='', 
                      stat_max_trade_cap='', stat_max_qty='', trail_stop_perc='',
-                     stat_exc_author='', stat_exc_chn='',
+                     stat_exc_author='', stat_exc_chn='', stat_exc_sym='',
                      fname_port=None,
                      **kwargs ):
     if fname_port is None:
@@ -193,7 +193,7 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
     try:
         data = filter_data(data,exclude, stat_filt_author, stat_filt_date_frm,
-                        stat_filt_date_to, stat_filt_sym, stat_exc_author, stat_exc_chn)
+                        stat_filt_date_to, stat_filt_sym, stat_exc_author, stat_exc_chn, stat_exc_sym)
     except:
         pass
     if stat_max_qty != "" or stat_max_trade_cap != "":
@@ -264,7 +264,7 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
 
 
 def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
-                track_filt_date_to='', track_filt_sym='', track_exc_author='', track_exc_chn=''):
+                track_filt_date_to='', track_filt_sym='', track_exc_author='', track_exc_chn='', stat_exc_sym=''):
     if len(exclude):
         for k, v in exclude.items():
             if k == "Cancelled" and v and k in data.columns:
@@ -302,6 +302,9 @@ def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
     if track_exc_chn:
         msk = [x.strip() for x in track_exc_chn.split(",")]
         data = data[~data['Channel'].str.contains('|'.join(msk), case=False)]
+    if stat_exc_sym:
+        msk = [x.strip() for x in stat_exc_sym.split(",")]
+        data = data[~data['Symbol'].str.contains('|'.join(msk), case=False)]
     return data
 
 def get_live_quotes(portfolio):

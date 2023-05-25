@@ -15,7 +15,7 @@ tip = "coma separed patterns, e.g. string1,string2"
 def layout_console():
     MLINE_KEY = '-MLINE-__WRITE ONLY__'
     layout = [[sg.Text('Real Time Discord Alert Trader', size=(50,1))],
-              [sg.Multiline(size=(1000,None), key=MLINE_KEY, autoscroll=True, enable_events=False),sg.Stretch()]]
+              [sg.Multiline(size=(1200,None), key=MLINE_KEY, autoscroll=True, enable_events=False),sg.Stretch()]]
     return layout, MLINE_KEY
 
 
@@ -97,7 +97,7 @@ def layout_traders(data_n_headers, font_body, font_header):
                 headings=data_n_headers[1],
                 display_row_numbers=True,
                 auto_size_columns=True,
-                header_font=("Helvitica", "5"),
+                header_font=font_header,
                 text_color='black',
                 font=font_body,
                 justification='left',
@@ -129,6 +129,7 @@ def layout_stats(data_n_headers, font_body, font_header):
                       sg.Checkbox("Stocks", key="-stat-stocks", default=True, enable_events=True),
                       sg.Checkbox("Options", key="-stat-options", enable_events=True),
                       sg.Text('| Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_author', tooltip=tip),
+                      sg.Text('Symbols: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_sym',tooltip=tip),
                       sg.Text('Channels: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_chn',tooltip=tip),
                       ],
                      [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-stat_")]])

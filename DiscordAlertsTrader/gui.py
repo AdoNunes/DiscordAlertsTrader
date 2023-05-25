@@ -29,11 +29,11 @@ def fit_table_elms(Widget_element):
     Widget_element.resizeColumnsToContents()
 
 # sg.theme('Dark Blue 3')
-# sg.SetOptions(font=("Helvitica", "11"),  background_color="whitesmoke")#,,
+sg.SetOptions(font=("Helvitica 10"))
                 # element_padding=(0, 0), margins=(1, 1))
 
-fnt_b = ("Helvitica", "10")
-fnt_h = ("Helvitica", "10")
+fnt_b = "Arial 10"
+fnt_h = "Arial 10"
 
 ly_cons, MLINE_KEY = gl.layout_console()
 
@@ -67,7 +67,7 @@ bksession = get_brokerage()
 ly_accnt = gl.layout_account(bksession, fnt_b, fnt_h)
 
 layout = [[sg.TabGroup([
-                        [sg.Tab("Console", ly_cons)],
+                        [sg.Tab("Console", ly_cons, font=fnt_b)],
                         [sg.Tab('Portfolio', ly_port)],
                         [sg.Tab('Analysts portfolio', ly_track)],
                         [sg.Tab('Analysts stats', ly_stats)],
@@ -280,7 +280,7 @@ def gui():
     client_thread = threading.Thread(target=run_client)
 
     # start the threads
-    client_thread.start()
+    # client_thread.start()
     run_gui()
 
     # close the GUI window
