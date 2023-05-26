@@ -23,11 +23,21 @@ class eTrade(BaseBroker):
         for ix in range(5):
             try:
                 return self._get_session()
-                ""
             except:
                 print(ix,"Could not get session, trying again")
                 time.sleep(1)
         raise Exception("Could not get session")
+
+    def _get_request_token(self, oauth,verifier_code):
+        """Gets access token and tries 3 times before giving up"""        
+        for ix in range(3):
+            try:
+                request_token = oauth.get_access_token(verifier_code)
+                return request_token                
+            except:
+                print(f"Could not get token, trying again {ix}/3")
+                time.sleep(1)
+        raise Exception("Could not get token")
 
     def _get_session(self):
         """Allows user authorization for the sample application with OAuth 1"""
@@ -39,7 +49,8 @@ class eTrade(BaseBroker):
             print("Please open the following URL in your browser:")
             print(oauth.get_request_token())
         verifier_code = input("Please accept agreement and enter verification code from browser: ")
-        self.tokens = oauth.get_access_token(verifier_code)
+        self.tokens = self._get_request_token(oauth, verifier_code)
+        # print(self.tokens)
 
         # get sessions
         kwargs = {'client_key': self.consumer_key,
@@ -149,7 +160,7 @@ class eTrade(BaseBroker):
         return df_pos, df_ordr
 
     def format_option(self, opt_ticker:str)->str:
-        """From ticker_monthdayyearstrike[callput] to ticker:year:month:day:optionType:strikePrice"""
+        """From ticker_monthdayyear[callput]strike to ticker:year:month:day:optionType:strikePrice"""
 
         exp = r"(\w+)_(\d{2})(\d{2})(\d{2})([CP])([\d.]+)"        
         match = re.search(exp, opt_ticker, re.IGNORECASE)
@@ -191,7 +202,8 @@ class eTrade(BaseBroker):
                         if  quote.get("Product").get('securityType') == "OPTN":
                             # to common format ticker_monthdayyearstrike[callput]
                             prod = quote['Product']
-                            ticker = f"{prod['symbol']}_{prod['expiryMonth']:02d}{prod['expiryDay']:02d}{str(prod['expiryYear'])[2:]}{prod['callPut'][0]}{str(prod['strikePrice']).replace('.0','')}"
+                            opty = prod['callPut'][0].upper().replace('CALL','C').replace('PUT','P')
+                            ticker = f"{prod['symbol']}_{prod['expiryMonth']:02d}{prod['expiryDay']:02d}{str(prod['expiryYear'])[2:]}{opty}{str(prod['strikePrice']).replace('.0','')}"
                         else:
                             ticker =  quote.get("Product").get('symbol')        
                         resp[ticker] = {
@@ -251,7 +263,6 @@ class eTrade(BaseBroker):
         
         order_response['quantity'] =  int(order_response['PlaceOrderResponse']['Order']['Instrument']['quantity']),
         order_response.update(ord_inf) 
-                    
         return order_response, order_id
     
     def cancel_order(self, order_id:int):        
@@ -261,6 +272,7 @@ class eTrade(BaseBroker):
         "Buy with a limit order"
         kwargs = {}
         kwargs['symbol'] = Symbol
+        kwargs['orderAction'] = "BUY"
         if len(Symbol.split("_"))>1:
             Symbol = self.format_option(Symbol)            
             symbol, year, month, day, optype, strike = Symbol.split(":")
@@ -269,8 +281,7 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
             kwargs["securityType"] = "OPTN"
-
-        kwargs['orderAction'] = "BUY"
+            order['orderAction'] = 'BUY_OPEN'        
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'LIMIT'
         kwargs['limitPrice'] = price    
@@ -284,6 +295,7 @@ class eTrade(BaseBroker):
         """Sell with a limit order and a stop loss order"""
         kwargs = {}
         kwargs['symbol'] = Symbol
+        kwargs['orderAction'] = "SELL"
         if len(Symbol.split("_"))>1:
             Symbol = self.format_option(Symbol)            
             symbol, year, month, day, optype, strike = Symbol.split(":")
@@ -292,8 +304,7 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
             kwargs["securityType"] = "OPTN"
-        
-        kwargs['orderAction'] = "SELL"
+            order['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'STOP_LIMIT'
         kwargs['limitPrice'] = PT
@@ -308,6 +319,7 @@ class eTrade(BaseBroker):
         """Sell with a limit order and a stop loss order"""
         kwargs = {}
         kwargs['symbol'] = Symbol
+        kwargs['orderAction'] = "SELL"
         if len(Symbol.split("_"))>1:
             Symbol = self.format_option(Symbol)            
             symbol, year, month, day, optype, strike = Symbol.split(":")
@@ -316,8 +328,7 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
             kwargs["securityType"] = "OPTN"
-        
-        kwargs['orderAction'] = "SELL"
+            order['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'LIMIT'
         kwargs['limitPrice'] = price
@@ -331,6 +342,7 @@ class eTrade(BaseBroker):
         """Sell with a stop loss order"""
         kwargs = {}
         kwargs['symbol'] = Symbol
+        kwargs['orderAction'] = "SELL"
         if len(Symbol.split("_"))>1:
             Symbol = self.format_option(Symbol)            
             symbol, year, month, day, optype, strike = Symbol.split(":")
@@ -339,8 +351,7 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
             kwargs["securityType"] = "OPTN"
-        
-        kwargs['orderAction'] = "SELL"
+            order['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'STOP'
         kwargs['stopPrice'] = SL
@@ -352,6 +363,7 @@ class eTrade(BaseBroker):
     def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_percent:float, **kwarg):
         kwargs = {}
         kwargs['symbol'] = Symbol
+        kwargs['orderAction'] = "SELL"
         if len(Symbol.split("_"))>1:
             Symbol = self.format_option(Symbol)            
             symbol, year, month, day, optype, strike = Symbol.split(":")
@@ -360,8 +372,7 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
             kwargs["securityType"] = "OPTN"
-
-        kwargs['orderAction'] = "SELL"
+            order['orderAction'] = 'SELL_CLOSE'       
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'TRAILING_STOP_PRCT'
         kwargs['stopPrice'] = trail_stop_percent
@@ -436,11 +447,16 @@ class eTrade(BaseBroker):
         'Product': {'symbol': 'VERB', 'securityType': 'EQ'}}]}]},"""
         return orders
 
+
+
 if 0:
-    rt = etrade()
+    rt = eTrade()
     rt.get_session()
     rt.get_account_info()
     rt.get_quotes(["AAPL", 'NIO:2023:08:18:P:4'])
+
+    order = rt.make_STC_lim('NIO_081823P4', 1, 0.07)
+    order_response, order_id = rt.send_order(order)
 
     order = rt.make_BTO_lim_order('VERB', 1, 1.7)
     order_response, order_id = rt.send_order(order)
