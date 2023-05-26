@@ -244,7 +244,7 @@ class AlertsTrader():
                             print(Back.GREEN + str_msg)
                             self.queue_prints.put([str_msg, "", "green"])
                         else:
-                            str_msg = "cancelled BTO: trade exeeded max_trade_capital of ${max_trade_val}"
+                            str_msg = f"cancelled BTO: trade exeeded max_trade_capital of ${max_trade_val}"
                             print(Back.RED + str_msg)
                             self.queue_prints.put([str_msg, "", "red"])
                             return "no", order, False
@@ -817,9 +817,8 @@ class AlertsTrader():
                 order_status, _ =  self.get_order_info(STC_ordID)
 
                 if order_status == 'CANCELED':
-                    # Try next order number. probably went through
+                    # Try next order number. probably went through. This is for TDA OCO
                     order_status, _ =  self.get_order_info(STC_ordID + 1)
-
                     if order_status == 'FILLED':
                         STC_ordID = STC_ordID + 1
                         self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID
