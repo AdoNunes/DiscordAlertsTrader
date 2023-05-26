@@ -635,14 +635,17 @@ class AlertsTrader():
                 self.save_logs(["alert"])
                 return
 
-            if order['xQty'] == 1 and order['uQty'] is None:
+            # Sell all and close waiting stc orders
+            if order['xQty'] == 1:                
                 # Stop updater to avoid overlapping
                 self.update_paused = True
                 # Sell all and close waiting stc orders
                 self.close_open_exit_orders(open_trade)
-
-                position = self.portfolio.iloc[open_trade]
-                order['uQty'] = int(position["uQty"]) - qty_sold
+                
+                # if no uQty get all remaining
+                if order['uQty'] is None:
+                    position = self.portfolio.iloc[open_trade]
+                    order['uQty'] = int(position["uQty"]) - qty_sold
 
             elif order['xQty'] < 1:  # portion
                 # Stop updater to avoid overlapping
