@@ -74,7 +74,7 @@ layout = [[sg.TabGroup([
                         [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],                        
                         [sg.Tab("Account", ly_accnt)]
                         ],title_color='black')],
-          [sg.Input(default_text="Author#1234, STC 1 AAA 05/30 115C @2.5",
+          [sg.Input(default_text="Author#1234, STC 1 AAA 115C 05/30 @2.5",
                     size= (110,1.5), key="-subm-msg",
                     tooltip="User: any, Asset: {stock, option}"),
            sg.Button("Trigger alert", key="-subm-alert", tooltip="Will generate alert in portfolio and tracker", size= (20,1))]

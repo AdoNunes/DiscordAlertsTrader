@@ -266,7 +266,7 @@ class AlertsTrader():
                 if order['action'] == 'BTO':
                     PTs = [order[f'PT{i}'] for i in range(1,4)]
                     PTs = eval(input(f"Change PTs @{PTs} {price_now(symb, act)}? \
-                                      Leave blank if NO, respnd eg [1, 2, None] \n")
+                                      Leave blank if NO, respond eg [1, 2, None] \n")
                                       or str(PTs))
 
                     new_n = len([i for i in PTs if i is not None ])
@@ -300,7 +300,7 @@ class AlertsTrader():
             order_id =  int(position[ f"STC{i}-ordID"])
             ord_stat, _ = self.get_order_info(order_id)
 
-            if ord_stat not in ["FILLED", 'CANCELED', 'REJECTED']:
+            if ord_stat not in ["FILLED", "EXECUTED", 'CANCELED','CANCEL_REQUESTED','REJECTED', 'EXPIRED']:
                 print(Back.GREEN + f"Cancelling {position['Symbol']} STC{i}")
                 self.queue_prints.put([f"Cancelling {position['Symbol']} STC{i}", "", "green"])
                 _ = self.bksession.cancel_order(order_id)
@@ -437,7 +437,7 @@ class AlertsTrader():
 
             self.portfolio = pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)
             
-            if order_status == "FILLED":
+            if order_status in ["FILLED", "EXECUTED"]:
                 ot, _ = find_last_trade(order, self.portfolio)
                 self.portfolio.loc[ot, "Price"] = order_info['price']
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
@@ -487,7 +487,7 @@ class AlertsTrader():
             avg = self.portfolio.loc[open_trade, "Avged"]
 
             self.portfolio.loc[open_trade, "uQty"] += order_info['quantity']
-            if order_status == "FILLED":
+            if  order_status in ["FILLED", "EXECUTED"]:
                 self.portfolio.loc[open_trade, "filledQty"] += order_info['filledQuantity']
                 self.close_open_exit_orders(open_trade)
             str_msg =  f"BTO {avg} th AVG, {order['Symbol']} executed. Status: {order_status}"
@@ -585,8 +585,8 @@ class AlertsTrader():
 
             qty_bought = position["filledQty"]
 
-            if position["BTO-Status"] == "CANCELED":
-                log_alert['action'] = "STC-already cancelled"
+            if position["BTO-Status"] in ["CANCELED", "REJECTED", "EXPIRED", "CANCEL_REQUESTED"]:
+                log_alert['action'] = "Trade-already cancelled"
                 log_alert["portfolio_idx"] = open_trade
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
@@ -676,7 +676,7 @@ class AlertsTrader():
             self.portfolio.loc[open_trade, STC + "-Price-Current"] = order["price_current"]
 
             # Check if STC price changed
-            if order_status == "FILLED":
+            if order_status in ["FILLED", 'EXECUTED', 'INDIVIDUAL_FILLS']:
                 self.log_filled_STC(order_id, open_trade, STC)
             else:
                 str_STC = f"Submitted: {STC} {order['Symbol']} @{order['price']} Qty:{order['uQty']} ({order['xQty']})"
@@ -766,7 +766,7 @@ class AlertsTrader():
             if trade["isOpen"] == 0:
                 continue
 
-            if trade["BTO-Status"]  in ["QUEUED", "WORKING"]:
+            if trade["BTO-Status"]  in ["QUEUED", "WORKING", 'OPEN']:
                 _, order_info = self.get_order_info(trade['ordID'])
 
                 # Check if number filled Qty changed
@@ -785,7 +785,7 @@ class AlertsTrader():
             if pd.isnull(trade["filledQty"]) or trade["filledQty"] == 0:
                 continue
 
-            if trade.get("BTO-avg-Status") in ["QUEUED", "WORKING"]:
+            if trade.get("BTO-avg-Status") in ["QUEUED", "WORKING", 'OPEN']:
                 ordID = trade['ordID'].split(",")[-1]
                 _, order_info = self.get_order_info(ordID)
                 if order_info['status'] == 'FILLED' :
@@ -829,7 +829,7 @@ class AlertsTrader():
                 self.portfolio.loc[i, STC+"-Status"] = order_status
                 trade = self.portfolio.iloc[i]
 
-                if order_status == "FILLED" and np.isnan(trade[STC+"-xQty"]):
+                if order_status in ["FILLED", "EXECUTED"] and np.isnan(trade[STC+"-xQty"]):
                     self.log_filled_STC(STC_ordID, i, STC)
 
         self.save_logs("port")
