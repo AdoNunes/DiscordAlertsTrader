@@ -6,6 +6,8 @@ import re
 import random
 from datetime import datetime
 import time
+import json
+import os
 
 from ..configurator import cfg
 from . import BaseBroker
@@ -28,7 +30,7 @@ class eTrade(BaseBroker):
                 time.sleep(1)
         raise Exception("Could not get session")
 
-    def _get_request_token(self, oauth,verifier_code):
+    def _get_access_token(self, oauth,verifier_code):
         """Gets access token and tries 3 times before giving up"""        
         for ix in range(3):
             try:
@@ -41,29 +43,43 @@ class eTrade(BaseBroker):
 
     def _get_session(self):
         """Allows user authorization for the sample application with OAuth 1"""
+        def sessions():
+            # get sessions
+            kwargs = {
+                'client_key': self.consumer_key,
+                'client_secret': self.consumer_secret,
+                'resource_owner_key': self.tokens['oauth_token'],
+                'resource_owner_secret': self.tokens['oauth_token_secret'],
+                'dev': False
+                }
+            self.account_session = pyetrade.ETradeAccounts(**kwargs)
+            self.market_session = pyetrade.ETradeMarket(**kwargs)     
+            self.order_session = pyetrade.ETradeOrder(**kwargs)
+            self._get_account()
+            return True
+        
+        # if tokens saved try getting session
+        if os.path.exists("tokens.json"):
+            with open("tokens.json", "r") as f:
+                self.tokens = json.load(f)   
+            try:
+                return sessions()  
+            except:
+                print("Loaded tokens expired, requesting new tokens")
+                os.remove("tokens.json")  
+        
+        # if tokens not valid, get new ones
         oauth = pyetrade.ETradeOAuth(self.consumer_key, self.consumer_secret)
-
         if cfg['etrade'].getboolean('WITH_BROWSER'):
             webbrowser.open(oauth.get_request_token())
         else:
             print("Please open the following URL in your browser:")
             print(oauth.get_request_token())
         verifier_code = input("Please accept agreement and enter verification code from browser: ")
-        self.tokens = self._get_request_token(oauth, verifier_code)
-        # print(self.tokens)
-
-        # get sessions
-        kwargs = {'client_key': self.consumer_key,
-                  'client_secret': self.consumer_secret,
-                  'resource_owner_key': self.tokens['oauth_token'],
-                  'resource_owner_secret': self.tokens['oauth_token_secret'],
-                  'dev': False}
-        
-        self.account_session = pyetrade.ETradeAccounts(**kwargs)
-        self.market_session = pyetrade.ETradeMarket(**kwargs)     
-        self.order_session = pyetrade.ETradeOrder(**kwargs)
-        self._get_account()
-        return True
+        self.tokens = self._get_access_token(oauth, verifier_code)
+        with open("tokens.json", "w") as f:
+            json.dump(self.tokens, f)
+        return sessions() 
 
     def _get_account(self):
         """
@@ -129,8 +145,8 @@ class eTrade(BaseBroker):
         orders = self.get_orders()
         orders_inf =[]
         for order in orders:
-            order_status = order['OrderDetail'][0]['status']
-            if order_status in ['Cancelled', 'Rejected']:
+            order_status = order['OrderDetail'][0]['status'].upper()
+            if order_status in ['CANCELLED', 'REJECTED', 'EXPIRED']:
                 continue
             orders_inf.append(self.format_order(order))
         acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
@@ -214,6 +230,8 @@ class eTrade(BaseBroker):
                             'quoteTimeInLong': quote.get("dateTimeUTC")*1000,
                             "status": quote['quoteStatus']
                             }
+                        if resp[ticker]['status'].upper() == 'DELAYED':
+                            print("\033[91mWARNING: QUOTES ARE DELAYED by 15 min, setup realtime quotes in etrade.com. Info in github README.md \033[0m")
         return resp
 
     def get_order_info(self, order_id): 
@@ -222,7 +240,7 @@ class eTrade(BaseBroker):
         
         for order in orders['OrdersResponse']['Order']:
             if order['orderId'] == order_id:
-                order_status = order['OrderDetail'][0]['status']
+                order_status = order['OrderDetail'][0]['status'].upper()
                 order_info = self.format_order(order)         
                 return order_status, order_info
         return None, None
@@ -232,9 +250,8 @@ class eTrade(BaseBroker):
         stopPrice= order['OrderDetail'][0]['Instrument'][0].get('stopPrice')
         timestamp = int(order['OrderDetail'][0]['placedTime'])/1000
         enteredTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00")
-        order_status = order['OrderDetail'][0]['status']
         order_info = {
-            'status': order_status,
+            'status': order['OrderDetail'][0]['status'].upper(),
             'quantity': order['OrderDetail'][0]['Instrument'][0]['orderedQuantity'],
             'filledQuantity': order['OrderDetail'][0]['Instrument'][0]['filledQuantity'],
             'price':order['OrderDetail'][0]['Instrument'][0].get('averageExecutionPrice'),
@@ -281,7 +298,7 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
             kwargs["securityType"] = "OPTN"
-            order['orderAction'] = 'BUY_OPEN'        
+            kwargs['orderAction'] = 'BUY_OPEN'        
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'LIMIT'
         kwargs['limitPrice'] = price    
@@ -304,7 +321,7 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
             kwargs["securityType"] = "OPTN"
-            order['orderAction'] = 'SELL_CLOSE'
+            kwargs['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'STOP_LIMIT'
         kwargs['limitPrice'] = PT
@@ -328,7 +345,7 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
             kwargs["securityType"] = "OPTN"
-            order['orderAction'] = 'SELL_CLOSE'
+            kwargs['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'LIMIT'
         kwargs['limitPrice'] = price
@@ -351,7 +368,7 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
             kwargs["securityType"] = "OPTN"
-            order['orderAction'] = 'SELL_CLOSE'
+            kwargs['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'STOP'
         kwargs['stopPrice'] = SL
@@ -372,7 +389,7 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
             kwargs["securityType"] = "OPTN"
-            order['orderAction'] = 'SELL_CLOSE'       
+            kwargs['orderAction'] = 'SELL_CLOSE'       
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'TRAILING_STOP_PRCT'
         kwargs['stopPrice'] = trail_stop_percent
