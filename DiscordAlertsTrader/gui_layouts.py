@@ -20,7 +20,6 @@ def layout_console():
 
 
 def layout_portfolio(data_n_headers, font_body, font_header):
-    
     if data_n_headers[0] == []: 
         values = [""*21 ]
     else:
@@ -120,8 +119,10 @@ def layout_stats(data_n_headers, font_body, font_header):
                      sg.Text('Date from:'), sg.Input(key=f'stat_filt_date_frm', size=(16, 1), default_text='05/10/2023'),
                      sg.Text(' To:', size=(5, 1)), sg.Input(key=f'stat_filt_date_to', size=(16, 1)),
                      sg.Text(' Symbols:'), sg.Input(key=f'stat_filt_sym', tooltip=tip),
-                     sg.Text(' Max $:'), sg.Input(key=f'stat_max_trade_cap'),
-                     sg.Text(' Max quantity:'), sg.Input(key=f'stat_max_qty'),
+                     sg.Text(' Max $:', tooltip="calculate stats limiting trades to max $"), 
+                     sg.Input(key=f'stat_max_trade_cap', tooltip="calculate stats limiting trades to max $"),
+                     sg.Text(' Max quantity:', tooltip="calculate stats limiting trades to max quantity"), 
+                     sg.Input(key=f'stat_max_qty', tooltip="calculate stats limiting trades to max quantity"),
                      ],
                      [sg.Text("Exclude: "),
                       sg.Checkbox("Neg PnL", key="-stat-NegPnL", enable_events=True),

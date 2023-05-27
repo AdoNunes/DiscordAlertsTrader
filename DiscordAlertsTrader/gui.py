@@ -11,6 +11,7 @@ import threading
 import pandas as pd
 from datetime import datetime
 import time
+import re
 import queue
 import PySimpleGUIQt as sg
 from PySide2.QtWidgets import QHeaderView
@@ -21,6 +22,34 @@ from DiscordAlertsTrader import gui_layouts as gl
 from DiscordAlertsTrader.discord_bot import DiscordBot
 from DiscordAlertsTrader.configurator import cfg, channel_ids
 
+def match_authors(author_str:str)->str:
+    """Author have an identifier in discord, it will try to find full author name
+
+    Parameters
+    ----------
+    author_str : str
+        string to match the author
+
+    Returns
+    -------
+    str
+        author with identifier
+    """
+    if "#" in author_str:
+        return author_str
+    authors = []
+    for chn in channel_ids.keys():
+        at = pd.read_csv(op.join(cfg['general']['data_dir'] , f"{chn}_message_history.csv"))["Author"].unique()
+        authors.extend(at)
+    authors = list(dict.fromkeys(authors))
+    authors = [a for a in authors if author_str.lower() in a.lower()]
+    if len(authors) == 0:
+        author = f"{author_str}#No match, find author identifier#1234"
+    elif len(authors) > 1:
+        author = f"{author_str}#Multiple matches, find author identifier#1234"
+    else:
+        author = authors[0]
+    return author
 
 def fit_table_elms(Widget_element):
     Widget_element.resizeRowsToContents()
@@ -73,10 +102,10 @@ layout = [[sg.TabGroup([
                         [sg.Tab('Analysts stats', ly_stats)],
                         [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],                        
                         [sg.Tab("Account", ly_accnt)]
-                        ],title_color='black')],
-          [sg.Input(default_text="Author#1234, STC 1 AAA 115C 05/30 @2.5",
+                        ], title_color='black')],
+          [sg.Input(default_text="Author#1234, STC 1 AAA 115C 05/30 @2.5 [click portfolio row number to prefill]",
                     size= (110,1.5), key="-subm-msg",
-                    tooltip="User: any, Asset: {stock, option}"),
+                    tooltip="Click portfolio row number to prefill the STC alert"),
            sg.Button("Trigger alert", key="-subm-alert", tooltip="Will generate alert in portfolio and tracker", size= (20,1))]
         ]
 print(3)
@@ -163,8 +192,24 @@ def run_gui():
 
         if event == sg.WINDOW_CLOSED:
             break
-        if '_portfolio_' in event:
-            print('_portfolio_', values['_portfolio_'])
+        if '_portfolio_' in event and values['_portfolio_'] != []:
+            pix = values['_portfolio_'][0]
+            dt, hdr = gg.get_portf_data(port_exc, **values)
+            symb = dt[pix][hdr.index('Symbol')]
+            auth = match_authors(dt[pix][hdr.index('Trader')])
+            qty = dt[pix][hdr.index('filledQty')]
+            price = dt[pix][hdr.index('1-$-Current')]
+            if "_" in symb:
+                # option
+                exp = r"(\w+)_(\d{6})([CP])([\d.]+)"        
+                match = re.search(exp, symb, re.IGNORECASE)
+                if match:
+                    symbol, date, type, strike = match.groups()
+                    symb_str = f"{auth}, STC {qty} {symbol} {strike}{type} {date[:2]}/{date[2:4]} @{price}"
+            else:
+                symb_str= f"{auth}, STC {qty} {symb} @{price}"
+            window.Element("-subm-msg").Update(value=symb_str)
+            
         if event == "_upd-portfolio_": # update button in portfolio
             ori_col = window.Element("_upd-portfolio_").ButtonColor
             window.Element("_upd-portfolio_").Update(button_color=("black", "white"))
@@ -251,7 +296,7 @@ def run_gui():
                 author, msg = values['-subm-msg'].split(',')
             except ValueError:
                 author, msg = values['-subm-msg'].split(':')
-            author = author.strip()
+            author = match_authors(author.strip())
             msg = msg.strip()
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             new_msg = pd.Series({
