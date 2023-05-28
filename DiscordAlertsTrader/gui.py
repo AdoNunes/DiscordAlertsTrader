@@ -322,7 +322,7 @@ def run_client():
 
 
 def gui():   
-    client_thread = threading.Thread(target=run_client)
+    client_thread = threading.Thread(target=run_client, daemon=True)
 
     # start the threads
     client_thread.start()

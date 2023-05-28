@@ -19,6 +19,7 @@ class eTrade(BaseBroker):
         self.account_n = account_n
         self.consumer_key = cfg["etrade"]["CONSUMER_KEY"]
         self.consumer_secret = cfg["etrade"]["CONSUMER_SECRET"]
+        self.token_fname = os.path.join(cfg['root']['dir'], "tokens.json")
         
     def get_session(self):
         """get token and sessions, will try several times and sleep for a second between each try"""
@@ -59,14 +60,14 @@ class eTrade(BaseBroker):
             return True
         
         # if tokens saved try getting session
-        if os.path.exists("tokens.json"):
-            with open("tokens.json", "r") as f:
+        if os.path.exists(self.token_fname):
+            with open(self.token_fname, "r") as f:
                 self.tokens = json.load(f)   
             try:
                 return sessions()  
             except:
                 print("Loaded tokens expired, requesting new tokens")
-                os.remove("tokens.json")  
+                os.remove(self.token_fname)  
         
         # if tokens not valid, get new ones
         oauth = pyetrade.ETradeOAuth(self.consumer_key, self.consumer_secret)
@@ -77,7 +78,7 @@ class eTrade(BaseBroker):
             print(oauth.get_request_token())
         verifier_code = input("Please accept agreement and enter verification code from browser: ")
         self.tokens = self._get_access_token(oauth, verifier_code)
-        with open("tokens.json", "w") as f:
+        with open(self.token_fname, "w") as f:
             json.dump(self.tokens, f)
         return sessions() 
 

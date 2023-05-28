@@ -15,6 +15,7 @@ if not os.path.exists(config_path):
 # load configuration file
 cfg = configparser.ConfigParser()
 cfg.read(config_path, encoding='utf-8')
+cfg['root']= {'dir': package_dir}
 
 # change data_dir if it is just a folder name
 data_dir = cfg['general']['data_dir']
