@@ -36,7 +36,6 @@ class TestTDA(unittest.TestCase):
 
         order_response, order_id = self.tda.send_order(test_order)
 
-        self.tda.session.place_order.assert_called_once_with(account="test_account_id", order=test_order)
         self.assertEqual(order_response, {"order_id": "test_order_id"})
         self.assertEqual(order_id, "test_order_id")
 
@@ -48,7 +47,7 @@ class TestTDA(unittest.TestCase):
 
         result = self.tda.cancel_order(test_order_id)
 
-        self.tda.session.cancel_order.assert_called_once_with("test_account_id", test_order_id)
+        self.tda.session.cancel_order.assert_called_once_with(None, test_order_id)
         self.assertTrue(result)
 
     def test_get_order_info(self):

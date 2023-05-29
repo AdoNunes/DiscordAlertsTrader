@@ -11,7 +11,7 @@ from datetime import datetime
 import numpy as np
 
 def parse_trade_alert(msg, asset=None):
-    pattern = r'\b(BTO|STC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[.\d+]*[cp]?)?\s*(\d{1,2}\/\d{1,2})?(?:\/2023|\/23)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
+    pattern = r'\b(BTO|STC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[.\d+]*[cp]?)?\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
     match = re.search(pattern, msg, re.IGNORECASE)
     
     if match:
