@@ -17,12 +17,13 @@ with open(os.path.join('DiscordAlertsTrader', '__init__.py'), 'r') as fid:
 
 setup(
     name='DiscordAlertsTrader',
-    version='1.0.0',
+    version='0.9.1',
     author='Adonay Nunes',
     author_email='adonays.nunes@gmail.com',
-    description='Package for automating discord stock and option alerts.',
+    description='Package for automating discord trade alerts in TDA or eTrade.',
     license='BSD (3-clause)',
-    long_description='Listen to discord alerts, track profits, execute alerts in brokerage',
+    long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
     url='',
     download_url='https://github.com/AdoNunes/DiscordAlertsTrader',
     packages=find_packages(),
