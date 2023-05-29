@@ -220,9 +220,9 @@ class DiscordBot(discord.Client):
             
             track_out = self.tracker.trade_alert(order, live_alert, chn)
             self.queue_prints.put([f"\t \t tracker log: {track_out}", "red"])
-            if msg['Author'] in cfg['discord']['authors_subscribed'] and  self.bksession is not None:
+            if self.do_trade_alert(msg['Author'], msg['Channel']):
                 order["Trader"] = msg['Author']
-                if len(cfg["order_configs"]["default_trailstop"]):
+                if len(cfg["order_configs"]["default_trailstop"]) and order.get("SL") is None and order.get("PT1") is None:
                     order['SL'] = cfg["order_configs"]["default_trailstop"] + "%"
                 self.trader.new_trade_alert(order, pars, msg['Content'])
         
@@ -231,7 +231,14 @@ class DiscordBot(discord.Client):
             self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
             self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
 
-
+    def do_trade_alert(self, author, channel):
+        "Decide if alert should be traded"
+        if author in cfg['discord']['authors_subscribed'] and self.bksession is not None:
+            return True
+        elif channel in cfg['discord']['channelwise_subscription'] and self.bksession is None:
+            return True
+        else:
+            return False
 
 if __name__ == '__main__':
     client = DiscordBot()
