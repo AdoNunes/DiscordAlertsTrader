@@ -1,24 +1,30 @@
 # DiscordAlertsTrader: *Discord Alerts Trader Bot*
 ________________________
 
-DiscordAlertsTrader is a python package to get messages from a subscribed discord channel where buy
- and sell stock and options signals are messaged. The package will parse the messages and execute
- the trades for traders specified in the config file. It will track the messages from all channels,
- the analysts portfolio and the bot portfolio.
 
-If no brokerage API key is provided, it will just print the discord messages and track the analysts
- portfolio. With a TDA API key, it will track current price of the alerts, and calculated PnL-current.
+DiscordAlertsTrader is a Python package that automates trading of alerts shared in a Discord server by analysts.
+The package parses these messages and executes trades from traders specified in the configuration file. 
+It tracks messages from all channels, monitors the portfolios of analysts and the bot itself, providing 
+a comprehensive overview of trades executed and performance. 
+
+DiscordAlertsTrader streamlines the trading process by integrating Discord trade alerts,
+message parsing, and trade execution, offering a convenient solution for automated trading.
+
+Trades are done through TDAmeritrade or eTrade API, weBull is being implemented. If no 
+brokerage API key is provided, it will just print the discord messages and track the 
+analysts portfolio. With an API key, it will track current price of the alerts, besides executing trades.
 
 If in config.ini DO_BTO_TRADES = false, not trades will be executed. 
 
-Trades are done through TDAmeritrade API, implementing webull and etrade.  
 
-What this package does:
+This package's GUI capabilities include:
 
-- Read messages and parse trading singals, e.g. BTO (Buy to Open), STC (Sell to Close), partial STC, SL (Stop Limits), PT (Profit Taking)
-- Track trading signals and performance of traders using message history and realtime price
-- Execute and cancel orders, check order status, account status and current ticker prices
-- If in config.ini auto_trade = False, trades are executed manually through promts and optionally choose QTY, price, etc
+- Parsing trading signals from messages (e.g., BTO, STC, SL, PT).
+- Tracking trading signals and performance using message history and real-time prices.
+- Closing open trades, viewing current trades, analyst trades.
+- Calculate analysts stats and provide options to test stats with maximum capital 
+- Executing and canceling orders, checking order and account status, and accessing current ticker prices.
+- Supporting manual trade execution through prompts if auto_trade is set to False in config.ini.
 
 **Currently, the package is for parsing signals of the discord server BullTrades.** 
 
@@ -42,7 +48,7 @@ To get discord token and channels IDs follow the instructions in: https://github
  ______________________________
 
 1. Install Python:
-   - For Windows, open PowerShell and run the following command:
+   - For Windows, open PowerShell and run the following command, verify that it prints out "Hello World!":
      ```powershell
      if (-not (Test-Path $env:USERPROFILE\scoop)) {
          # Install Scoop
@@ -58,9 +64,7 @@ To get discord token and channels IDs follow the instructions in: https://github
      }
      # Install Miniconda3
      scoop install miniconda3
-     ```
-   - Run the following command to verify that Python with Conda is installed:
-     ```powershell
+     # Check python is installed
      python -c "print('Hello, World!')"
      ```
 
@@ -81,7 +85,7 @@ To get discord token and channels IDs follow the instructions in: https://github
 6. Edit the `DiscordAlertsTrader/config.ini` file to add your Discord token and configure other settings:
    - Add your Discord token in the appropriate field.
    - (Optional) Modify other configurations as needed, such as authors to follow, trailing stop, etc.
-   - (Optional) If you have a TDA API, add it to the configuration.
+   - (Optional) If you have a TDA/etrade API, add it to the configuration. See next sections.
 
 **Running the DiscordAlertsTrader**
 
@@ -99,11 +103,12 @@ Make sure to keep the terminal or command prompt window open while the applicati
 
 To stop the DiscordAlertsTrader application, simply close the terminal or command prompt window where it is running.
 
-## Etrade
+## Etrade API
 
-create a sandbox (mock) api key:
+Create a sandbox (mock) api key:
 https://us.etrade.com/etx/ris/apikey
-then fill out the forms at the bottom of:
+
+To get the production (real) keys, fill out the forms at the bottom of:
 https://developer.etrade.com/getting-started
 
 Make sure to select free real-time quote data:
@@ -139,7 +144,7 @@ then, run the script:
 it will prompt to:
 
 ```
-$ Please go to URL provided authorize your account: https://auth.tdameritrade.com/auth?response_type=code&redirect_uri=.......OAUTHAP
+$Go to URL provided authorize your account: https://auth.tdameritrade.com/auth?response_type=code&redirect_uri=.......OAUTHAP
 $ Paste the full URL redirect here:
 ```
 

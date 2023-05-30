@@ -18,7 +18,7 @@ class TestConfigurator(unittest.TestCase):
             self.assertTrue(v.endswith(".csv"))
 
     def test_cfg_options_set(self):
-        self.assertTrue(cfg['general']['BROKERAGE'] in ['', 'TDA', "webull", 'etrades'])
+        self.assertTrue(cfg['general']['BROKERAGE'] in ['', 'TDA', "webull", 'etrade'])
         self.assertTrue(cfg['order_configs']['default_bto_qty'] in ['buy_one', 'trade_capital'])
         
 if __name__ == '__main__':
