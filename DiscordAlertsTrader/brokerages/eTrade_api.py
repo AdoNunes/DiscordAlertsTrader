@@ -297,7 +297,7 @@ class eTrade(BaseBroker):
             kwargs['symbol'] = symbol
             kwargs['expiryDate'] = f"{year}-{month}-{day}"
             kwargs['strikePrice'] = float(strike)
-            kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
+            kwargs['callPut'] = "Call" if optype.lower() == 'c' else 'Put'
             kwargs["securityType"] = "OPTN"
             kwargs['orderAction'] = 'BUY_OPEN'        
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
@@ -320,7 +320,7 @@ class eTrade(BaseBroker):
             kwargs['symbol'] = symbol
             kwargs['expiryDate'] = f"{year}-{month}-{day}"
             kwargs['strikePrice'] = float(strike)
-            kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
+            kwargs['callPut'] = "Call" if optype.lower() == 'c' else 'Put'
             kwargs["securityType"] = "OPTN"
             kwargs['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
@@ -344,7 +344,7 @@ class eTrade(BaseBroker):
             kwargs['symbol'] = symbol
             kwargs['expiryDate'] = f"{year}-{month}-{day}"
             kwargs['strikePrice'] = float(strike)
-            kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
+            kwargs['callPut'] = "Call" if optype.lower() == 'c' else 'Put'
             kwargs["securityType"] = "OPTN"
             kwargs['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
@@ -367,7 +367,7 @@ class eTrade(BaseBroker):
             kwargs['symbol'] = symbol
             kwargs['expiryDate'] = f"{year}-{month}-{day}"
             kwargs['strikePrice'] = float(strike)
-            kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
+            kwargs['callPut'] = "Call" if optype.lower() == 'c' else 'Put'
             kwargs["securityType"] = "OPTN"
             kwargs['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
@@ -388,7 +388,7 @@ class eTrade(BaseBroker):
             kwargs['symbol'] = symbol
             kwargs['expiryDate'] = f"{year}-{month}-{day}"
             kwargs['strikePrice'] = float(strike)
-            kwargs['callPut'] = "CALL" if optype.lower() == 'c' else 'PUT'
+            kwargs['callPut'] = "Call" if optype.lower() == 'c' else 'Put'
             kwargs["securityType"] = "OPTN"
             kwargs['orderAction'] = 'SELL_CLOSE'       
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
