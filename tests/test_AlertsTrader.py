@@ -30,7 +30,8 @@ class TestAlertsTrader(unittest.TestCase):
         trader = AlertsTrader(brokerage, 
                               portfolio_fname=self.trader_portfolio_fname,
                               alerts_log_fname=self.trader_log_fname,
-                              update_portfolio=False)
+                              update_portfolio=False,
+                              )
         
         # Expected values
         expected = {
@@ -42,9 +43,22 @@ class TestAlertsTrader(unittest.TestCase):
             'Price-Current': 1.1,
             'uQty': 5,
             'filledQty': 5,
-            'exit_plan': "{'PT1': None, 'PT2': None, 'PT3': None, 'SL': None}"
+            'exit_plan': "{'PT1': None, 'PT2': None, 'PT3': None, 'SL': None}",
+            "STC1-uQty": 5,
+            "STC1-Price": 2,
+            "STC1-Price-Current": 2.2,
+            "STC1-Price-Alerted": 2.1,
+            "STC1-Status": "FILLED",
+            "STC1-ordID": 100,
+            
             }
-        
+        expected["PnL"] =  100*(expected["STC1-Price"]- expected["Price"])/ expected["Price"]
+        expected["$PnL"] =  round(expected["PnL"] * expected["STC1-uQty"] * expected["Price"],1)
+        expected["PnL-Alert" ] = 100*(expected["STC1-Price-Alerted"]- expected["Price-Alert"])/ expected["Price-Alert"]
+        expected["$PnL-Alert"] =  expected["PnL-Alert"] * expected["STC1-uQty"] * expected["Price-Alert"]
+        expected["PnL-Current"] =  100*(expected["STC1-Price-Current"]- expected["Price-Current"])/ expected["Price-Current"]
+        expected["$PnL-Current"] =  expected["PnL-Current"] * expected["STC1-uQty"] * expected["Price-Current"]
+
         # Create a message, order and pars
         message = make_message()
         expdate = datetime.now().strftime("%m/%d")
@@ -68,11 +82,36 @@ class TestAlertsTrader(unittest.TestCase):
         
         trader.new_trade_alert(order, pars, message.content)
         
-        # Check that the portfolio was updated
-        trade = trader.portfolio.loc[0]
+        # make STC order
+        message.content = f'STC {expected["STC1-uQty"]} AI 25c {expdate} @ {expected["STC1-Price-Alerted"]}'
+        pars, order =  parse_trade_alert(message.content)
+        order['Trader'] = f"{message.author.name}#{message.author.discriminator}"
+        order["Date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
         
+        # Generate return vals for the brokerage
+        brokerage.get_quotes.return_value = {'AI_052923C25': {'bidPrice': expected["STC1-Price-Current"]}}
+        brokerage.send_order.return_value = [
+            expected['STC1-Status'],
+            expected["STC1-ordID"]         
+            ]
+        brokerage.get_order_info.return_value = [
+            expected['STC1-Status'],
+            {'quantity': expected["STC1-uQty"],
+             "price": expected['STC1-Price'],
+             'orderLegCollection':[{"quantity": expected["STC1-uQty"]}],
+             'closeTime' : order["Date"]
+             }         
+            ]
+        
+        trader.new_trade_alert(order, pars, message.content)
+        
+        # assert expected values
+        trade = trader.portfolio.loc[0]
         for exp, val in expected.items():
-            self.assertEqual(trade[exp], val)
+            if isinstance(trade[exp], float):
+                self.assertAlmostEqual(trade[exp], val, places=2)
+            else:
+                self.assertEqual(trade[exp], val)
 
         # Delete the generated file
         os.remove(self.trader_portfolio_fname)
