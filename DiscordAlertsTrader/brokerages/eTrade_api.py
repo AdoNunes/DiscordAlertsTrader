@@ -144,9 +144,9 @@ class eTrade(BaseBroker):
             
         # get orders and add them to acc_inf
         orders = self.get_orders()
-        orders_inf =[]
+        orders_inf =[]        
         for order in orders:
-            order_status = order['OrderDetail'][0]['status'].upper()
+            order_status = order['OrderDetail'][0]['status'].upper().replace('EXECUTED','FILLED').replace('OPEN','WORKING')
             if order_status in ['CANCELLED', 'REJECTED', 'EXPIRED']:
                 continue
             orders_inf.append(self.format_order(order))
@@ -237,11 +237,10 @@ class eTrade(BaseBroker):
 
     def get_order_info(self, order_id): 
         """ Get order info from order_id, mimicks the order_info from TDA API"""
-        orders = self.order_session.list_orders(self.accountIdKey, resp_format='json')
-        
+        orders = self.order_session.list_orders(self.accountIdKey, resp_format='json')        
         for order in orders['OrdersResponse']['Order']:
             if order['orderId'] == order_id:
-                order_status = order['OrderDetail'][0]['status'].upper()
+                order_status = order['OrderDetail'][0]['status'].upper().replace('EXECUTED','FILLED').replace('OPEN','WORKING')
                 order_info = self.format_order(order)         
                 return order_status, order_info
         return None, None
@@ -251,8 +250,9 @@ class eTrade(BaseBroker):
         stopPrice= order['OrderDetail'][0]['Instrument'][0].get('stopPrice')
         timestamp = int(order['OrderDetail'][0]['placedTime'])/1000
         enteredTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00")
+        status = order['OrderDetail'][0]['status'].upper().replace('EXECUTED','FILLED').replace('OPEN','WORKING')
         order_info = {
-            'status': order['OrderDetail'][0]['status'].upper(),
+            'status': status,
             'quantity': order['OrderDetail'][0]['Instrument'][0]['orderedQuantity'],
             'filledQuantity': order['OrderDetail'][0]['Instrument'][0]['filledQuantity'],
             'price':order['OrderDetail'][0]['Instrument'][0].get('averageExecutionPrice'),

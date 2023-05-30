@@ -88,7 +88,7 @@ class AlertsTrader():
 
     def activate_trade_updater(self, refresh_rate=30):
         self.update_portfolio = True
-        self.updater = threading.Thread(target=self.trade_updater, args=[refresh_rate])
+        self.updater = threading.Thread(target=self.trade_updater, args=[refresh_rate], daemon=True)
         self.updater.start()
         self.queue_prints.put([f"Updating portfolio orders every {refresh_rate} secs", "", "green"])
         print(Back.GREEN + f"Updating portfolio orders every {refresh_rate} secs")
