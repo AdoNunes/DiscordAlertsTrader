@@ -235,7 +235,7 @@ class DiscordBot(discord.Client):
         "Decide if alert should be traded"
         if author in cfg['discord']['authors_subscribed'] and self.bksession is not None:
             return True
-        elif channel in cfg['discord']['channelwise_subscription'] and self.bksession is None:
+        elif channel in cfg['discord']['channelwise_subscription'].split(",") and self.bksession is not None:
             return True
         else:
             return False
