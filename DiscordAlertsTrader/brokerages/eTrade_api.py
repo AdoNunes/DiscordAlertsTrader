@@ -31,6 +31,7 @@ def retry_on_exception(retries=3, do_raise=False):
 
 class eTrade(BaseBroker):
     def __init__(self, account_n=0, accountId=None):
+        self.name = 'etrade'
         self.base_url = cfg["etrade"]["PROD_BASE_URL"]
         self.accountId = accountId
         self.account_n = account_n
@@ -208,6 +209,8 @@ class eTrade(BaseBroker):
             symbol, mnt, day, yer, type, strike = match.groups()
             if type.lower() == 'c':
                 type = 'Call'
+            else:
+                type = 'Put'
             converted_code = f"{symbol}:20{yer}:{mnt}:{day}:{type}:{strike}"
             return converted_code
         else:
@@ -331,7 +334,7 @@ class eTrade(BaseBroker):
             kwargs['symbol'] = symbol
             kwargs['expiryDate'] = f"{year}-{month}-{day}"
             kwargs['strikePrice'] = float(strike)
-            kwargs['callPut'] = "Call" if optype.lower() == 'c' else 'Put'
+            kwargs['callPut'] = optype
             kwargs["securityType"] = "OPTN"
             kwargs['orderAction'] = 'BUY_OPEN'        
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
@@ -354,7 +357,7 @@ class eTrade(BaseBroker):
             kwargs['symbol'] = symbol
             kwargs['expiryDate'] = f"{year}-{month}-{day}"
             kwargs['strikePrice'] = float(strike)
-            kwargs['callPut'] = "Call" if optype.lower() == 'c' else 'Put'
+            kwargs['callPut'] = optype
             kwargs["securityType"] = "OPTN"
             kwargs['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
@@ -378,7 +381,7 @@ class eTrade(BaseBroker):
             kwargs['symbol'] = symbol
             kwargs['expiryDate'] = f"{year}-{month}-{day}"
             kwargs['strikePrice'] = float(strike)
-            kwargs['callPut'] = "Call" if optype.lower() == 'c' else 'Put'
+            kwargs['callPut'] = optype
             kwargs["securityType"] = "OPTN"
             kwargs['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
@@ -401,7 +404,7 @@ class eTrade(BaseBroker):
             kwargs['symbol'] = symbol
             kwargs['expiryDate'] = f"{year}-{month}-{day}"
             kwargs['strikePrice'] = float(strike)
-            kwargs['callPut'] = "Call" if optype.lower() == 'c' else 'Put'
+            kwargs['callPut'] = optype
             kwargs["securityType"] = "OPTN"
             kwargs['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
@@ -423,7 +426,7 @@ class eTrade(BaseBroker):
             kwargs['symbol'] = symbol
             kwargs['expiryDate'] = f"{year}-{month}-{day}"
             kwargs['strikePrice'] = float(strike)
-            kwargs['callPut'] = "Call" if optype.lower() == 'c' else 'Put'
+            kwargs['callPut'] = optype
             kwargs["securityType"] = "OPTN"
             kwargs['orderAction'] = 'SELL_CLOSE'       
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))

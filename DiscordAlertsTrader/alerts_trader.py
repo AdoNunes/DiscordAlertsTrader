@@ -778,6 +778,7 @@ class AlertsTrader():
 
                 self.portfolio.loc[i, "filledQty"] = order_info['filledQuantity']
                 self.portfolio.loc[i, "BTO-Status"] = order_info['status']
+                self.portfolio.loc[i, "Price"] = order_info['price']
                 trade = self.portfolio.iloc[i]
                 self.save_logs("port")
 
@@ -952,7 +953,7 @@ class AlertsTrader():
                 elif ii == 1 and SL is not None:
                     if "%" in SL:
                         ord_func = self.bksession.make_STC_SL_trailstop
-                        order["trail_stop_const"] = trade['Price']*float(exit_plan["SL"].replace("%", ""))/100
+                        order = self.calculate_stoploss(order, trade, exit_plan["SL"])
                     else:
                         ord_func =self.bksession.make_STC_SL
                         order["price"] = exit_plan["SL"]
@@ -984,12 +985,12 @@ class AlertsTrader():
                 else:
                     break
         # no PTs but trailing stop
-        if nPTs == 0 and exit_plan["SL"] is not None and "%" in exit_plan["SL"] and pd.isnull(trade["STC1-ordID"]):
-            order["trail_stop_const"] =  trade['Price']*float(exit_plan["SL"].replace("%", ""))/100      
+        if nPTs == 0 and exit_plan["SL"] is not None and "%" in exit_plan["SL"] and pd.isnull(trade["STC1-ordID"]):            
+            order = self.calculate_stoploss(order, trade, exit_plan["SL"])
             order['uQty'] = int(trade['uQty'])
             order['xQty'] = 1
             _, STC_ordID = self.bksession.send_order(self.bksession.make_STC_SL_trailstop(**order))
-            str_prt = f"STC1 {order['Symbol']} Trailing stop of {order['trail_stop_const']}% sent during order update"            
+            str_prt = f"STC1 {order['Symbol']} Trailing stop of {exit_plan['SL']} constant $ sent during order update"            
             print(Back.GREEN + str_prt)
             self.queue_prints.put([str_prt,"", "green"])
             self.portfolio.loc[i, "STC1-ordID"] = STC_ordID
@@ -1043,6 +1044,20 @@ class AlertsTrader():
             self.queue_prints.put([str_prt,"", "green"])
             self.save_logs("port")
 
+    def calculate_stoploss(self, order, trade, SL:str):
+        "Calculate stop loss price with increment, SL: e.g. '40%"        
+        stop_loss_price =  trade['Price']*float(SL.replace("%", ""))/100        
+        if trade['Symbol'] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
+            increment = 0.01  # ETFs trade in penny increments
+        else:
+            if trade['Price'] < 3.0:
+                increment = 0.05
+            else:
+                increment = 0.10
+        rounded_stop_loss_price = round(stop_loss_price / increment) * increment
+        order["trail_stop_const"] = rounded_stop_loss_price
+        return order
+        
 def option_date(opt_symbol):
     sym_inf = opt_symbol.split("_")[1]
     opt_date = re.split("C|P", sym_inf)[0]

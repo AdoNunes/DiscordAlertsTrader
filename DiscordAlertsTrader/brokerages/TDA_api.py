@@ -8,6 +8,7 @@ from td.client import TDClient
 
 class TDA(BaseBroker):
     def __init__(self,account_n=0, accountId=None):
+        self.name = 'tda'
         self.account_n = account_n
         self.accountId = accountId
 
