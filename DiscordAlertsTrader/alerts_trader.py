@@ -778,6 +778,7 @@ class AlertsTrader():
 
                 self.portfolio.loc[i, "filledQty"] = order_info['filledQuantity']
                 self.portfolio.loc[i, "BTO-Status"] = order_info['status']
+                self.portfolio.loc[i, "Price"] = order_info['price']
                 trade = self.portfolio.iloc[i]
                 self.save_logs("port")
 
