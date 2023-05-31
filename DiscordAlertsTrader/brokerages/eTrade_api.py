@@ -31,6 +31,7 @@ def retry_on_exception(retries=3, do_raise=False):
 
 class eTrade(BaseBroker):
     def __init__(self, account_n=0, accountId=None):
+        self.name = 'etrade'
         self.base_url = cfg["etrade"]["PROD_BASE_URL"]
         self.accountId = accountId
         self.account_n = account_n

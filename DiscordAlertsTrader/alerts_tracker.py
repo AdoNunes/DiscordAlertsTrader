@@ -42,7 +42,7 @@ class AlertsTracker():
             # Try it again in case of TDA
             quote = self.bksession.get_quotes([symbol])
             
-        if quote is not None and len(quote) and quote.get(symbol).get('description' ) != 'Symbol not found':
+        if quote is not None and len(quote) and quote.get(symbol) is not None and quote.get(symbol).get('description' ) != 'Symbol not found':
             quote = quote.get(symbol).get(ptype)
             if quote != 0:
                 return quote
