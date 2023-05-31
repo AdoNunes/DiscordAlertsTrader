@@ -194,8 +194,9 @@ class AlertsTracker():
         quotes['highest'] = quotes[' quote'].cummax() #take the cumulative max
         quotes['perc'] = round((quotes[' quote'] - quotes[' quote'].loc[0])/ quotes[' quote'].loc[0] *100,2)
         for trl in trailing_Stop:
-            quotes[f'trailingstop{trl}'] = quotes['highest']*(1-trl) 
-            trl_ix = (quotes[f' quote'] <= quotes[f'trailingstop{trl}']).idxmax()
+            # Calculate trailing stop based on constant value
+            trailing_stop = quotes['highest'] - quotes[' quote'].loc[0]* trl
+            trl_ix = (quotes[' quote'] <= trailing_stop).idxmax()
             if trl_ix:
                 tdiff_str, trl_r = self.trailing_get_time(trade['Date'], quotes, trl_ix)
                 max_trails.extend([res_str.format(trl,trl_r['perc'],trl_r[' quote'],tdiff_str)])

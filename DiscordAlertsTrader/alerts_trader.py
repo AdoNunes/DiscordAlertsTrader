@@ -654,7 +654,7 @@ class AlertsTrader():
                 order['uQty'] = round(max(qty_bought * order['xQty'], 1))
 
             if order['uQty'] + qty_sold > qty_bought:
-                order['uQty'] = qty_bought - qty_sold
+                order['uQty'] = int(qty_bought - qty_sold)
                 str_msg = f"Order {order['Symbol']} Qty exceeded, changed to {order['uQty']}"
                 print(Back.RED + Fore.BLACK + str_msg)
                 self.queue_prints.put([str_msg, "", "red"])
@@ -738,7 +738,6 @@ class AlertsTrader():
         self.portfolio.loc[open_trade, "$PnL"] =  stc_PnL_all* bto_price *mutipl*sold_tot
         self.portfolio.loc[open_trade, "$PnL-Alert"] =  stc_PnL_all_alert* bto_price_alert *mutipl*sold_tot
         self.portfolio.loc[open_trade, "$PnL-Current"] =  stc_PnL_all_curr* bto_price_current *mutipl*sold_tot
-        
         
         symb = self.portfolio.loc[open_trade, 'Symbol']
 
@@ -953,7 +952,7 @@ class AlertsTrader():
                 elif ii == 1 and SL is not None:
                     if "%" in SL:
                         ord_func = self.bksession.make_STC_SL_trailstop
-                        order["trail_stop_percent"] = float(exit_plan["SL"].replace("%", ""))
+                        order["trail_stop_const"] = trade['Price']*float(exit_plan["SL"].replace("%", ""))/100
                     else:
                         ord_func =self.bksession.make_STC_SL
                         order["price"] = exit_plan["SL"]
@@ -986,11 +985,11 @@ class AlertsTrader():
                     break
         # no PTs but trailing stop
         if nPTs == 0 and exit_plan["SL"] is not None and "%" in exit_plan["SL"] and pd.isnull(trade["STC1-ordID"]):
-            order["trail_stop_percent"] = float(exit_plan["SL"].replace("%", ""))      
+            order["trail_stop_const"] =  trade['Price']*float(exit_plan["SL"].replace("%", ""))/100      
             order['uQty'] = int(trade['uQty'])
             order['xQty'] = 1
             _, STC_ordID = self.bksession.send_order(self.bksession.make_STC_SL_trailstop(**order))
-            str_prt = f"STC1 {order['Symbol']} Trailing stop of {order['trail_stop_percent']}% sent during order update"            
+            str_prt = f"STC1 {order['Symbol']} Trailing stop of {order['trail_stop_const']}% sent during order update"            
             print(Back.GREEN + str_prt)
             self.queue_prints.put([str_prt,"", "green"])
             self.portfolio.loc[i, "STC1-ordID"] = STC_ordID

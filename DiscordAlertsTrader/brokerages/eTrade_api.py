@@ -8,9 +8,26 @@ from datetime import datetime
 import time
 import json
 import os
+import functools
 
 from ..configurator import cfg
 from . import BaseBroker
+
+def retry_on_exception(retries=3, do_raise=False):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(1, retries+1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    print(f"Exception occurred: {e}. Retrying... (Attempt {attempt}/{retries})")
+            if do_raise:
+                raise Exception(f"Method {func.__name__} failed after {retries} retries.")
+            else:
+                print(f"Method {func.__name__} failed after {retries} retries. Returning...")
+        return wrapper
+    return decorator
 
 class eTrade(BaseBroker):
     def __init__(self, account_n=0, accountId=None):
@@ -82,6 +99,7 @@ class eTrade(BaseBroker):
             json.dump(self.tokens, f)
         return sessions() 
 
+    # @retry_on_exception()
     def _get_account(self):
         """
         Calls account list API to retrieve a list of the user's E*TRADE accounts
@@ -97,11 +115,13 @@ class eTrade(BaseBroker):
             self.accountId = self.accounts_list[self.account_n]['accountId']
         self.account = self.accounts_list[self.account_n]
 
+    @retry_on_exception()
     def get_account_info(self):
         """
         Call portfolio API to retrieve a list of positions held in the specified account
         """
         data = self.account_session.get_account_balance(self.accountIdKey, resp_format='json')        
+
         balance= {
             'liquidationValue': data['BalanceResponse'].get("Computed").get("RealTimeValues").get("totalAccountValue"),
             'cashBalance': data['BalanceResponse'].get("Computed").get('cashBalance'),
@@ -154,8 +174,11 @@ class eTrade(BaseBroker):
         return acc_inf
 
     def get_positions_orders(self):
-        acc_inf = self.get_account_info()
-
+        try:
+            acc_inf = self.get_account_info()
+        except:
+            print("Could not get account info")
+            return [], []
         df_pos = pd.DataFrame(columns=["symbol", "asset", "type", "Qty", "Avg Price", "PnL", "PnL %"])
 
         for pos in acc_inf['securitiesAccount']['positions']:
@@ -190,6 +213,7 @@ class eTrade(BaseBroker):
         else:
             print('No format_option match for', opt_ticker)
 
+    @retry_on_exception()
     def get_quotes(self, symbol:list):
         """
         Calls quotes API to provide quote details for equities, options, and mutual funds
@@ -235,6 +259,7 @@ class eTrade(BaseBroker):
                             print("\033[91mWARNING: QUOTES ARE DELAYED by 15 min, setup realtime quotes in etrade.com. Info in github README.md \033[0m")
         return resp
 
+    @retry_on_exception()
     def get_order_info(self, order_id): 
         """ Get order info from order_id, mimicks the order_info from TDA API"""
         orders = self.order_session.list_orders(self.accountIdKey, resp_format='json')        
@@ -250,6 +275,11 @@ class eTrade(BaseBroker):
         stopPrice= order['OrderDetail'][0]['Instrument'][0].get('stopPrice')
         timestamp = int(order['OrderDetail'][0]['placedTime'])/1000
         enteredTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00")
+        if 'executedTime' in order['OrderDetail'][0]:
+            timestamp = int(order['OrderDetail'][0]['executedTime'])/1000
+            closeTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00")
+        else:
+            closeTime = enteredTime
         status = order['OrderDetail'][0]['status'].upper().replace('EXECUTED','FILLED').replace('OPEN','WORKING')
         order_info = {
             'status': status,
@@ -262,13 +292,16 @@ class eTrade(BaseBroker):
             "stopPrice": stopPrice if stopPrice else None,
             'orderType':  order['OrderDetail'][0]['priceType'],
             'enteredTime': enteredTime,
+            "closeTime": closeTime,
             'orderLegCollection':[{
                 'instrument':{'symbol':order['OrderDetail'][0]['Instrument'][0]['Product']['symbol']},
-                'instruction': order['OrderDetail'][0]['Instrument'][0]['orderAction']
+                'instruction': order['OrderDetail'][0]['Instrument'][0]['orderAction'],
+                'quantity': order['OrderDetail'][0]['Instrument'][0]['filledQuantity'],
             }]             
         }    
         return order_info
 
+    @retry_on_exception()
     def send_order(self, new_order:dict):        
         order_response =  self.order_session.place_equity_order(
             resp_format="xml",
@@ -283,6 +316,7 @@ class eTrade(BaseBroker):
         order_response.update(ord_inf) 
         return order_response, order_id
     
+    @retry_on_exception()
     def cancel_order(self, order_id:int):        
         return self.order_session.cancel_order(self.accountIdKey,order_id, resp_format='xml')
 
@@ -372,13 +406,14 @@ class eTrade(BaseBroker):
             kwargs['orderAction'] = 'SELL_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'STOP'
-        kwargs['stopPrice'] = SL
+        kwargs['stopPrice'] = int(SL)
         kwargs['allOrNone'] = False
         kwargs['quantity'] = uQty       
         kwargs['orderTerm'] = "GOOD_UNTIL_CANCEL"
         kwargs['marketSession'] = 'REGULAR'
 
-    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_percent:float, **kwarg):
+    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_const:float, **kwarg):
+        "trail_stop_const"
         kwargs = {}
         kwargs['symbol'] = Symbol
         kwargs['orderAction'] = "SELL"
@@ -392,14 +427,15 @@ class eTrade(BaseBroker):
             kwargs["securityType"] = "OPTN"
             kwargs['orderAction'] = 'SELL_CLOSE'       
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
-        kwargs['priceType'] = 'TRAILING_STOP_PRCT'
-        kwargs['stopPrice'] = trail_stop_percent
+        kwargs['priceType'] = 'TRAILING_STOP_CNST'
+        kwargs['stopPrice'] = trail_stop_const
         kwargs['allOrNone'] = False
         kwargs['quantity'] = uQty       
         kwargs['orderTerm'] = "GOOD_UNTIL_CANCEL"
         kwargs['marketSession'] = 'REGULAR'
         return kwargs
 
+    @retry_on_exception()
     def get_orders(self):
         orders = self.order_session.list_orders(self.accountIdKey, resp_format='json')
         orders = orders['OrdersResponse']['Order']

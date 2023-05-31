@@ -231,7 +231,7 @@ class TDA(BaseBroker):
         new_order.add_order_leg(order_leg=order_leg)
         return new_order
 
-    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_percent:float, new_order=None, **kwarg):
+    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_const:float, new_order=None, **kwarg):
         if new_order is None:
             new_order = Order()
         new_order.order_strategy_type("SINGLE")
@@ -239,8 +239,8 @@ class TDA(BaseBroker):
         new_order.order_type("TRAILING_STOP")
         new_order.order_session('NORMAL')
         new_order.order_duration('GOOD_TILL_CANCEL')
-        new_order.stop_price_offset(trail_stop_percent)
-        new_order.stop_price_link_type('PERCENT')
+        new_order.stop_price_offset(trail_stop_const)
+        new_order.stop_price_link_type('VALUE')
         new_order.stop_price_link_basis('BID')
         
         child_order_leg = OrderLeg()
@@ -254,44 +254,6 @@ class TDA(BaseBroker):
         new_order.add_order_leg(order_leg=child_order_leg)
         return new_order
 
-
-
-
-
-
-#
-#msft_quotes = TDSession.get_quotes(instruments=['MSFT'])
-#
-#
-#optID= make_optionID('PLTR', '3/26', 27, 'C')
-#opt_order = make_lim_option(optID, 1, 3.1)
-#
-#order_response = TDSession.place_order(account=self.TDsession.accountId,
-#                                       order=opt_order)
-#order_id = order_response["order_id"]
-#order_info = TDSession.get_orders(account=accountId, order_id=order_id)
-#order_status = order_info['status']
-#
-#
-#TDSession.get_options_chain({"symbol":"PLTR", "contractType":"CALL", "strike":27,
-#                             "fromDate":"2021-03-26", "toDate":"2021-03-26"})
-#
-#
-#new_order = make_BTO_PT_SL_order("PLTR", 1, BTO=26.0, PT=30.0, SL=24.0, SL_stop=24.5)
-#
-#order_response = TDSession.place_order(account=accountId,
-#                                       order=new_order)
-#order_id = order_response["order_id"]
-#order_info = TDSession.get_orders(account=accountId, order_id=order_id)
-#order_status = order_info['childOrderStrategies'][0]['status']
-#
-#
-#
-#accounts_info = TDSession.get_accounts(account="all", fields=['orders'])[account_n]
-#
-#
-#TDSession.cancel_order(self.TDsession.accountId, order_id)
-#
 
 
 
