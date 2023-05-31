@@ -374,6 +374,8 @@ def get_acc_bals(bksession):
     # if grabing new access token return None, try again
     if acc_inf is None:  
         acc_inf = bksession.get_account_info()
+        if acc_inf is None:
+            return {"id": 0, "balance":0, "cash":0, "funds":0},  {"id": "00", "balance":0, "cash":0, "funds":0}
     accnt= {"id" : acc_inf['securitiesAccount']['accountId'],
         "balance": acc_inf['securitiesAccount']['currentBalances'].get('liquidationValue', 0),
         "cash": acc_inf['securitiesAccount']['currentBalances'].get('cashBalance',0),
@@ -382,6 +384,8 @@ def get_acc_bals(bksession):
     return acc_inf, accnt
 
 def get_pos(acc_inf):
+    if acc_inf.get('securitiesAccount') is None:
+        return ["NoAccount"], ["Sym", "Last", "price", "PnL_%", "PnL","Qty", "Val", "Cost"]
     positions = acc_inf['securitiesAccount'].get('positions', [])
     pos_tab = []
     pos_headings = ["Sym", "Last", "price", "PnL_%", "PnL","Qty", "Val", "Cost"]
@@ -452,6 +456,8 @@ def order_info_pars(ord_dic, ord_list):
     return ord_list, ord_headings
 
 def get_orders(acc_inf):
+    if acc_inf.get('securitiesAccount') is None:
+        return ["NoAccount"],  ["Sym", "Act", "Strat", "Price/stp","Date", "Qty/fill", "Status", "ordId"], []
     orders =acc_inf['securitiesAccount'].get('orderStrategies', [])
     if len(orders) == 0:
         return ["NoOrders"],  ["Sym", "Act", "Strat", "Price/stp","Date", "Qty/fill", "Status", "ordId"], []
