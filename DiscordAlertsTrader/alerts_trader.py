@@ -968,7 +968,7 @@ class AlertsTrader():
                     raise("Case not caught")
 
                 # Check that is below current price
-                if order.get("SL") is not None and "%" not in order.get("SL"):
+                if order.get("SL") is not None and isinstance(order.get("SL"), (int, float)):
                     order = self.SL_below_market(order)
 
                 if ord_func is not None and order['uQty'] > 0:
