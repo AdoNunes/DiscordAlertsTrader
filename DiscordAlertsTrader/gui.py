@@ -105,8 +105,8 @@ layout = [[sg.TabGroup([
                         ], title_color='black')],
           [sg.Input(default_text="Author#1234, STC 1 AAA 115C 05/30 @2.5 [click portfolio row number to prefill]",
                     size= (110,1.5), key="-subm-msg",
-                    tooltip="Click portfolio row number to prefill the STC alert"),
-           sg.Button("Trigger alert", key="-subm-alert", tooltip="Will generate alert in portfolio and tracker", size= (20,1))]
+                    tooltip="Click portfolio row number to prefill the STC alert\na BTO can look like: Author#1234, BTO 1 AAA 115C 05/30 @2.5 PT 3.5 PT2 4 SL 40%, % willmake it a Trailing Stop"),
+           sg.Button("Trigger alert", key="-subm-alert", tooltip="Will generate alert in portfolio and tracker, useful to close or open a position", size= (20,1))]
         ]
 print(3)
 window = sg.Window('Discord Alerts Trader for BullTrades', layout,size=(100, 800), # force_toplevel=True,
