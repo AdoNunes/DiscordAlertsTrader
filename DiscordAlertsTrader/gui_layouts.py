@@ -14,7 +14,7 @@ tip = "coma separed patterns, e.g. string1,string2"
 
 def layout_console():
     MLINE_KEY = '-MLINE-__WRITE ONLY__'
-    layout = [[sg.Text('Real Time Discord Alert Trader', size=(50,1))],
+    layout = [[sg.Text('Discord messages from subscribed channels', size=(50,1))],
               [sg.Multiline(size=(1200,None), key=MLINE_KEY, autoscroll=True, enable_events=False),sg.Stretch()]]
     return layout, MLINE_KEY
 

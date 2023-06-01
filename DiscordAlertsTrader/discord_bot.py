@@ -79,6 +79,8 @@ class DiscordBot(discord.Client):
             except Exception as e:
                 print('error during live quote:', e)
                 continue
+            if quote is None:
+                continue
             
             for q in quote: 
                 if quote[q]['description'] == 'Symbol not found':
