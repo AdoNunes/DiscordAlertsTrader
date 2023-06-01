@@ -90,7 +90,7 @@ class DiscordBot(discord.Client):
                 with open(f"{dir_quotes}/{quote[q]['symbol']}.csv", "a+") as f:
                     if do_header:
                         f.write(f"timestamp, quote\n")
-                    f.write(f"{timestamp}, {quote[q]['bidPrice']}\n")
+                    f.write(f"{timestamp}, {quote[q]['askPrice']}\n")
             
             # Sleep for up to 5 secs    
             toc = (datetime.now() - now).total_seconds()

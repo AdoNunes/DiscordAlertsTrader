@@ -307,6 +307,8 @@ def run_gui():
             except ValueError:
                 author, msg = values['-subm-msg'].split(':')
             author = match_authors(author.strip())
+            # let pass no identifier if no match
+            author = author.replace("#No match, find author identifier#1234", "")
             msg = msg.strip()
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             new_msg = pd.Series({
