@@ -101,6 +101,7 @@ def layout_traders(data_n_headers, font_body, font_header):
                 font=font_body,
                 justification='left',
                 alternating_row_color='grey',
+                enable_events=True,
                 # num_rows=30, #len(data_n_headers[0]),
                 key='_track_'), sg.Stretch()]])]
          ]

@@ -192,13 +192,23 @@ def run_gui():
 
         if event == sg.WINDOW_CLOSED:
             break
-        if '_portfolio_' in event and values['_portfolio_'] != []:
-            pix = values['_portfolio_'][0]
-            dt, hdr = gg.get_portf_data(port_exc, **values)
+
+        if ('_portfolio_' in event and values['_portfolio_'] != []) or \
+            ('_track_' in event and values['_track_'] != []):  # Prefill trigger alert message
+            if '_portfolio_' in event:
+                pix = values['_portfolio_'][0] 
+                dt, hdr = gg.get_portf_data(port_exc, **values)
+                qty = dt[pix][hdr.index('filledQty')]
+            else:
+                pix = values['_track_'][0]
+                dt, hdr = gg.get_tracker_data(port_exc, **values)
+                qty = dt[pix][hdr.index('Amount')]  
+            qty = qty if qty == "" else int(qty)            
             symb = dt[pix][hdr.index('Symbol')]
             auth = match_authors(dt[pix][hdr.index('Trader')])
-            qty = dt[pix][hdr.index('filledQty')]
-            price = dt[pix][hdr.index('1-$-Current')]
+            
+            price = dt[pix][hdr.index('S-Price-current')]
+            price = price if price == "" else float(price)
             if "_" in symb:
                 # option
                 exp = r"(\w+)_(\d{6})([CP])([\d.]+)"        

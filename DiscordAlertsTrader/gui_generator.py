@@ -65,6 +65,16 @@ def format_exitplan(plan):
 
     return plan
 
+
+def calculate_weighted_mean(row, sufix="Price"):
+    prices = row[[f'STC1-{sufix}', f'STC2-{sufix}', f'STC3-{sufix}',]].values
+    uqtys = row[['STC1-uQty', 'STC2-uQty', 'STC3-uQty']].values
+    valid_indices = ~pd.isna(prices) & ~pd.isna(uqtys)
+    if np.any(valid_indices):
+        return np.average(prices[valid_indices], weights=uqtys[valid_indices])
+    else:
+        return np.nan
+    
 def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
                      port_filt_date_to='', port_filt_chn='', **kwargs ):
     fname_port = cfg['portfolio_names']['portfolio_fname']
@@ -75,6 +85,38 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     except:
         data = pd.read_csv(fname_port,sep=",")
 
+    data['Amount'] = data['uQty']
+    data['STC-Amount'] = data[['STC1-uQty', 'STC2-uQty', 'STC3-uQty']].sum(axis=1)
+    data['Price-current'] = data['Price-Current']
+    
+    for price in ['Price', 'Price-Alerted', 'Price-Current']:
+        data[f'STC-{price.replace("Current", "current")}'] = data.apply(calculate_weighted_mean, args=(price,), axis=1)
+    
+    data["STC-Price"] = data.apply(calculate_weighted_mean, args=('Price',), axis=1)
+    data["STC-Price-current"] = data.apply(calculate_weighted_mean, args=('Price-Current',), axis=1)
+    data["STC-Price-Alerted"] = data.apply(calculate_weighted_mean, args=('Price-Alerted',), axis=1)
+        
+    data["STC-Prices"] = data[['STC1-Price', 'STC2-Price', 'STC3-Price']].apply(
+        lambda x: "/".join(x.astype(str)).replace("/nan", ""), axis=1)
+    data["STC-Prices-current"] = data[['STC1-Price-Current', 'STC2-Price-Current', 'STC3-Price-Current']].apply(
+        lambda x: "/".join(x.astype(str)).replace("/nan", ""), axis=1)
+    data["STC-Prices-Alerted"] = data[['STC1-Price-Alerted', 'STC2-Price-Alerted', 'STC3-Price-Alerted']].apply(
+        lambda x: "/".join(x.astype(str)).replace("/nan", ""), axis=1)
+    
+    if exclude.get("live PnL", False):
+        # alerted not calculated, so tmp chage name to price
+        data =  get_live_quotes(data)
+        data["STC-Price_o"] = data["STC-Price"]
+        data["STC-Prices_o"] = data["STC-Prices"]
+        data["STC-Price"] = data["STC-Price-Alerted"]
+        data["STC-Prices"] = data["STC-Prices-Alerted"]
+        
+        data =  get_live_quotes(data)
+        data["STC-Price-Alerted"] = data["STC-Price"]
+        data["STC-Prices-Alerted"] = data["STC-Prices"]
+        data["STC-Price"] = data["STC-Price_o"]
+        data["STC-Prices"] = data["STC-Prices_o"]
+        
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
     data['exit_plan']= data['exit_plan'].apply(lambda x: format_exitplan(x))
     data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
@@ -82,15 +124,15 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     data["N Alerts"]= alerts.astype(int)
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
 
-    if exclude.get("live PnL", False):
-        data =  get_live_quotes(data)
-
     for i in range(1,4):
         data[f'STC{i}-PnL'] = pd_col_str_frmt(data[f'STC{i}-PnL'])
         data[f'STC{i}-uQty'] = pd_col_str_frmt(data[f'STC{i}-uQty'])
 
     frm_cols = ['Price', 'Price-Alert', "Price-Current", 'uQty', 'filledQty', 'N Alerts', 
-                "PnL", "$PnL","PnL-Alert", "$PnL-Alert","PnL-Current","$PnL-Current"]
+                "PnL", "$PnL","PnL-Alert", "$PnL-Alert","PnL-Current","$PnL-Current", 
+                "STC-Price", "STC-Price-current", "STC-Price-Alerted", 
+                ]
+    
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
     
@@ -101,18 +143,20 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
         pass
     cols = ['isOpen', "PnL", "$PnL", 'Date', 'Symbol', 'Trader', 'BTO-Status', 'Price',
             'Price-Alert', "Price-Current", 'uQty', 'filledQty', 'N Alerts',"PnL-Alert",
-            "$PnL-Alert","PnL-Current","$PnL-Current", "STC1-Price", "STC1-Price-Alerted",
-            "STC1-Price-Current", 'STC1-PnL', 'STC1-Status','STC1-uQty','STC2-PnL',
-            'STC2-Status', 'STC2-uQty', 'STC3-PnL', 'STC3-Status',  'STC3-uQty'
+            "$PnL-Alert","PnL-Current","$PnL-Current", 
+            "STC-Price", "STC-Price-current", "STC-Price-Alerted",
+            "STC-Prices","STC-Prices-current", "STC-Prices-Alerted",
+            'STC1-Status','STC1-uQty', 'STC2-Status', 'STC2-uQty', 'STC3-Status',  'STC3-uQty',                      
             ]
+
     data = data[cols]
     data.fillna("", inplace=True)
     header_list = data.columns.tolist()
-    header_list = [d.replace('STC', '').replace("Price", "$") for d in header_list]
-    
+    header_list = [d.replace('STC', 'S') for d in header_list]
+    data = data.astype(str)
     if len(data):
         sumtotal = {c:"" for c in data.columns}
-        for sumcol in ["PnL","PnL-Alert","PnL-Current",'STC1-PnL']:
+        for sumcol in ["PnL","PnL-Alert","PnL-Current"]:
             sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).mean():.2f}'
         for sumcol in [ "$PnL","$PnL-Alert","$PnL-Current"]:
             sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).sum():.2f}'

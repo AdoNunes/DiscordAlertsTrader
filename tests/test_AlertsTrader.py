@@ -68,7 +68,7 @@ class TestAlertsTrader(unittest.TestCase):
         order["Date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
         
         # Generate return vals for the brokerage
-        brokerage.get_quotes.return_value = {'AI_052923C25': {'askPrice': expected['Price-Current']}}
+        brokerage.get_quotes.return_value = {f'AI_{expdate.replace("/", "")}23C25': {'askPrice': expected['Price-Current']}}
         brokerage.send_order.return_value = [
             expected['BTO-Status'],
             expected["ordID"]         
@@ -89,7 +89,7 @@ class TestAlertsTrader(unittest.TestCase):
         order["Date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
         
         # Generate return vals for the brokerage
-        brokerage.get_quotes.return_value = {'AI_052923C25': {'bidPrice': expected["STC1-Price-Current"]}}
+        brokerage.get_quotes.return_value = {f'AI_{expdate.replace("/", "")}23C25': {'bidPrice': expected["STC1-Price-Current"]}}
         brokerage.send_order.return_value = [
             expected['STC1-Status'],
             expected["STC1-ordID"]         
