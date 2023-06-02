@@ -53,15 +53,16 @@ class TDA(BaseBroker):
         """
         order_status = 'REJECTED' | "FILLED" | "WORKING"
         """      
-        order_info = self.session.get_orders(account=self.accountId, order_id=order_id)
+        order_info = self.session.get_orders(account=self.accountId, order_id=int(order_id))
         if order_info['orderStrategyType'] == "OCO":
             order_status = [
                 order_info['childOrderStrategies'][0]['status'],
                 order_info['childOrderStrategies'][1]['status']]
             if not order_status[0]==order_status[1]:
                 print(f"OCO order status are different in ordID {order_id}: ",
-                      f"{order_status[0]} vs {order_status[1]}")
-            order_status = order_status[0]
+                      f"{order_status[0]} vs {order_status[1]}, will try to get the filled")
+            # take the first one, if cancelled it will look for the filled later
+            order_status = order_status[0] 
         elif order_info['orderStrategyType'] in ['SINGLE', 'TRIGGER']:
             order_status = order_info['status']
         else:

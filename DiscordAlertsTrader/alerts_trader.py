@@ -441,8 +441,9 @@ class AlertsTrader():
                 ot, _ = find_last_trade(order, self.portfolio)
                 self.portfolio.loc[ot, "Price"] = order_info['price']
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
-            print(Back.GREEN + f"BTO {order['Symbol']} executed @ {order_info['price']}. Status: {order_status}")
-            self.queue_prints.put([f"BTO {order['Symbol']} executed. Status: {order_status}", "", "green"])
+            msg_prt = f"BTO {order['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
+            print(Back.GREEN + msg_prt)
+            self.queue_prints.put([msg_prt, "", "green"])
 
             #Log portfolio, trades_log
             log_alert['action'] = "BTO"
@@ -820,11 +821,17 @@ class AlertsTrader():
                 order_status, _ =  self.get_order_info(STC_ordID)
 
                 if order_status == 'CANCELED':
-                    # Try next order number. probably went through. This is for TDA OCO
+                    # Try next order number. OCO gets chancelled when one of child ordergets filled.
+                    # This is for TDA OCO
                     order_status, _ =  self.get_order_info(STC_ordID + 1)
                     if order_status == 'FILLED':
                         STC_ordID = STC_ordID + 1
                         self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID
+                    else: # try the other one
+                        order_status, _ =  self.get_order_info(STC_ordID + 2)
+                        if order_status == 'FILLED':
+                            STC_ordID = STC_ordID + 2
+                            self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID
 
                 self.portfolio.loc[i, STC+"-Status"] = order_status
                 trade = self.portfolio.iloc[i]

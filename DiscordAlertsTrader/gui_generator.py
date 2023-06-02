@@ -175,7 +175,10 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     if not op.exists(fname_port):
         return [],[]
     
-    data = pd.read_csv(fname_port, sep=",")
+    try:
+        data = pd.read_csv(fname_port, sep=",")
+    except:
+        return [[]],[]
 
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
     data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
