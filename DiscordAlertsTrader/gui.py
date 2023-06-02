@@ -97,17 +97,17 @@ bksession = get_brokerage()
 ly_accnt = gl.layout_account(bksession, fnt_b, fnt_h)
 
 layout = [[sg.TabGroup([
-                        [sg.Tab("Messages", ly_cons, font=fnt_b)],
-                        [sg.Tab("Messages subs", ly_cons_subs, font=fnt_b)],
+                        [sg.Tab("Msgs Subs", ly_cons_subs, font=fnt_b)],
+                        [sg.Tab("Msgs All", ly_cons, font=fnt_b)], 
                         [sg.Tab('Portfolio', ly_port)],
-                        [sg.Tab('Analysts portfolio', ly_track)],
-                        [sg.Tab('Analysts stats', ly_stats)],
+                        [sg.Tab('Analysts Portfolio', ly_track)],
+                        [sg.Tab('Analysts Stats', ly_stats)],
                         [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],                        
                         [sg.Tab("Account", ly_accnt)]
                         ], title_color='black')],
           [sg.Input(default_text="Author#1234, STC 1 AAA 115C 05/30 @2.5 [click portfolio row number to prefill]",
                     size= (110,1.5), key="-subm-msg",
-                    tooltip="Click portfolio row number to prefill the STC alert\na BTO can look like: Author#1234, BTO 1 AAA 115C 05/30 @2.5 PT 3.5 PT2 4 SL 40%, % willmake it a Trailing Stop"),
+                    tooltip="Click portfolio row number to prefill the STC alert\na BTO can look like: Author#1234, BTO 1 AAA 115C 05/30 @2.5 PT 3.5 PT2 4 SL 40%, % will make it a Trailing Stop"),
            sg.Button("Trigger alert", key="-subm-alert", tooltip="Will generate alert in portfolio and tracker, useful to close or open a position", size= (20,1))]
         ]
 print(3)
