@@ -58,14 +58,18 @@ class BaseBroker(ABC):
 def get_brokerage(name=cfg['general']['BROKERAGE']):
     if name.lower() == 'tda':
         from .TDA_api import TDA
-        tda = TDA()
+        accountId = cfg['tda']['accountId']
+        accountId = None if len(accountId) == 0 else accountId
+        tda = TDA(accountId=accountId)
         tda.get_session()
         return tda
     elif name == "webull":
         NotImplemented
     elif name.lower() == 'etrade':
         from .eTrade_api import eTrade
-        et = eTrade()
+        accountId = cfg['etrade']['accountId']
+        accountId = None if len(accountId) == 0 else accountId
+        et = eTrade(accountId=accountId)
         try:
             et.get_session()
         except Exception as e:
