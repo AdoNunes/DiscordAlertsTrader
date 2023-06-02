@@ -59,7 +59,7 @@ class TestDiscordBot(unittest.TestCase):
         self.assertEqual(queue_prints.put.call_args_list[0][0][0],
                          [f'2022-01-01 10:00:00 \t JonP: BTO 5 AI 25c {expdate} @ 1 <@&940418825235619910> swinging ', 'blue'])
         self.assertEqual(queue_prints.put.call_args_list[1][0][0],
-                         [f'\t \t BTO 5 AI 25c {expdate} 1 ', 'green'])
+                         [f'\t BTO 5 AI 25c {expdate} 1 ', 'green'])
 
         # Delete the generated file
         os.remove(self.tracker_portfolio_fname)
@@ -84,9 +84,9 @@ class TestDiscordBot(unittest.TestCase):
         print("here:", queue_prints.put.call_args_list)
         self.assertEqual(queue_prints.put.call_count, 2)
         self.assertEqual(queue_prints.put.call_args_list[0][0][0],
-                         [f'2022-01-01 10:00:00 \t JonP: BTO 5 AI 25c {expdate} @ 1 <@&940418825235619910> swinging ', 'blue'])
+                         [f'\n2022-01-01 10:00:00 {message["Channel"]}: \n\tJonP: BTO 5 AI 25c {expdate} @ 1 <@&940418825235619910> swinging ', 'blue'])
         self.assertEqual(queue_prints.put.call_args_list[1][0][0],
-                         [f'\t \t Option date in the past: {expdate}', 'green'])
+                         [f'\t Option date in the past: {expdate}', 'green'])
 
         # Delete the generated file
         os.remove(self.tracker_portfolio_fname)

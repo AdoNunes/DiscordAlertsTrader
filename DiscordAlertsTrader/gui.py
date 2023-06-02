@@ -64,10 +64,11 @@ sg.SetOptions(font=("Helvitica 10"))
 fnt_b = "Arial 10"
 fnt_h = "Arial 10"
 
-ly_cons, MLINE_KEY = gl.layout_console()
+ly_cons, MLINE_KEY = gl.layout_console('Discord messages from all the channels',
+                                       '-MLINE-')
 
-def mprint(*args, **kwargs):
-    window[MLINE_KEY].print(*args, **kwargs)
+ly_cons_subs, MLINE_SUBS_KEY = gl.layout_console('Discord messages only from subscribed authors',
+                                       '-MLINEsub-')
 
 print(1)
 gui_data = {}
@@ -96,7 +97,8 @@ bksession = get_brokerage()
 ly_accnt = gl.layout_account(bksession, fnt_b, fnt_h)
 
 layout = [[sg.TabGroup([
-                        [sg.Tab("Console", ly_cons, font=fnt_b)],
+                        [sg.Tab("Messages", ly_cons, font=fnt_b)],
+                        [sg.Tab("Messages subs", ly_cons_subs, font=fnt_b)],
                         [sg.Tab('Portfolio', ly_port)],
                         [sg.Tab('Analysts portfolio', ly_track)],
                         [sg.Tab('Analysts stats', ly_stats)],
@@ -112,7 +114,7 @@ print(3)
 window = sg.Window('Discord Alerts Trader for BullTrades', layout,size=(100, 800), # force_toplevel=True,
                     auto_size_text=True, resizable=True)
 print(4)
-def mprint_queue(queue_item_list):
+def mprint_queue(queue_item_list, subscribed_author=False):
     # queue_item_list = [string, text_color, background_color]
     kwargs = {}
     text = queue_item_list[0]
@@ -129,6 +131,8 @@ def mprint_queue(queue_item_list):
         kwargs["background_color"] = bcol
 
     window[MLINE_KEY].print(text, **kwargs)
+    if subscribed_author or len_que == 3:
+        window[MLINE_SUBS_KEY].print(text, **kwargs)
 
 def update_portfolios_thread(window):
     while True:
@@ -186,7 +190,12 @@ dt, hdr = gg.get_stats_data(port_exc)
 window.Element('_stat_').Update(values=dt)
 fit_table_elms(window.Element("_stat_").Widget)
 
+
 def run_gui():  
+    subs_auth_msg = False
+    auth_subs = cfg['discord']['authors_subscribed'].split(',')
+    auth_subs = [i.split("#")[0] for i in auth_subs]
+    
     while True:    
         event, values = window.read(1)#.1)
 
@@ -323,7 +332,16 @@ def run_gui():
 
         try:
             event_feedb = trade_events.get(False)
-            mprint_queue(event_feedb)
+            # if message from subscribed author or channel flag it to print in both consoles
+            if event_feedb[1] == "blue":
+                if any(a in event_feedb[0] for a in auth_subs):
+                    subs_auth_msg = True
+                elif any([c in event_feedb[0] for c in cfg['discord']['channelwise_subscription'].split(",")]):
+                    subs_auth_msg = True
+                else:
+                    subs_auth_msg = False
+            
+            mprint_queue(event_feedb, subs_auth_msg)
         except queue.Empty:
             pass
 

@@ -155,17 +155,18 @@ class AlertsTracker():
         if stc_price == "none" or stc_price is None:
             str_STC = f"STC {order['Symbol']}  ({order['uQty']}), no price provided" + suffx
         else:
-            str_STC = f"STC {order['Symbol']} ({order['uQty']}),{suffx} {stc_price:.2f}"
+            # str_STC = f"STC {order['Symbol']} ({order['uQty']}),{suffx} @{stc_price:.2f}"
+            str_STC = ""
             if stc_info['STC-Price-current'] is not None:           
-                       str_STC += f" current: {stc_info['STC-Price-current']:.2f} " 
+                       str_STC += f"\t@{stc_price:.2f}, actual: {stc_info['STC-Price-current']:.2f} " 
             if stc_info["STC-PnL"] is not None:
-                str_STC += f'PnL:{round(stc_info["STC-PnL"])}% ${round(stc_info["STC-PnL$"])}' 
+                str_STC += f'\tPnL:{round(stc_info["STC-PnL"])}% ${round(stc_info["STC-PnL$"])}' 
             if stc_info["STC-PnL-current"] is not None:
                 str_STC += f' Actual:{round(stc_info["STC-PnL-current"])}% ${round(stc_info["STC-PnL$-current"])}\n\t\t'
 
         if eval(order.get('# Closed', "0"))==1 :
             self.portfolio.loc[open_trade, "isOpen"]=0
-        str_STC = str_STC + " " + trailstat.replace('|', '\n\t\t')
+        str_STC = str_STC + " " + trailstat.replace('| ', '\n\t')
         return str_STC
 
     def compute_trail(self, open_trade):
@@ -202,7 +203,7 @@ class AlertsTracker():
                 max_trails.extend([res_str.format(trl,trl_r['perc'],trl_r[' quote'],tdiff_str)])
         max_trails = "| ".join(max_trails)
         # get min max and their time
-        quotes_stats = ""
+        quotes_stats = "| "
         for st, ix in  zip(['min', 'max'],[ quotes['perc'].idxmin(),  quotes['perc'].idxmax()]):
             tdiff_str, trl_r = self.trailing_get_time(trade['Date'], quotes, ix)
             quotes_stats += f"{st},{trl_r['perc']}%,${trl_r[' quote']},in {tdiff_str}| "

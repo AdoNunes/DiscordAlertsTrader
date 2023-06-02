@@ -182,7 +182,7 @@ class DiscordBot(discord.Client):
             msg = message
         chn = msg['Channel']
         shrt_date = datetime.strptime(msg["Date"], self.time_strf).strftime('%Y-%m-%d %H:%M:%S')
-        self.queue_prints.put([f"{shrt_date} \t {msg['Author']}: {msg['Content']} ", "blue"])
+        self.queue_prints.put([f"\n{shrt_date} {msg['Channel']}: \n\t{msg['Author']}: {msg['Content']} ", "blue"])
         print(Fore.BLUE + f"{shrt_date} \t {msg['Author']}: {msg['Content']} ")
 
         pars, order =  parse_trade_alert(msg['Content'])
@@ -200,8 +200,8 @@ class DiscordBot(discord.Client):
                 past = opt_dt.date() < today
                 if past:
                     str_msg = f"Option date in the past: {order['expDate']}"
-                    self.queue_prints.put([f"\t \t {str_msg}", "green"])
-                    print(Fore.GREEN + f"\t \t {str_msg}")
+                    self.queue_prints.put([f"\t {str_msg}", "green"])
+                    print(Fore.GREEN + f"\t {str_msg}")
                     msg['Parsed'] = str_msg
                     if self.chn_hist.get(chn) is not None:
                         self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
@@ -217,11 +217,11 @@ class DiscordBot(discord.Client):
             str_msg = pars
             if live_alert and self.bksession is not None: 
                 str_msg += " " + self.trader.price_now(order['Symbol'], order["action"], pflag=0)
-            self.queue_prints.put([f"\t \t {str_msg}", "green"])
-            print(Fore.GREEN + f"\t \t {str_msg}")
+            self.queue_prints.put([f"\t {str_msg}", "green"])
+            print(Fore.GREEN + f"\t {str_msg}")
             
             track_out = self.tracker.trade_alert(order, live_alert, chn)
-            self.queue_prints.put([f"\t \t tracker log: {track_out}", "red"])
+            self.queue_prints.put([f"{track_out}", "red"])
             if self.do_trade_alert(msg['Author'], msg['Channel']):
                 order["Trader"] = msg['Author']
                 if len(cfg["order_configs"]["default_trailstop"]) and order.get("SL") is None and order.get("PT1") is None:

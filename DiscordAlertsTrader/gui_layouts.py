@@ -12,11 +12,11 @@ from . import gui_generator as gg
 
 tip = "coma separed patterns, e.g. string1,string2"
 
-def layout_console():
-    MLINE_KEY = '-MLINE-__WRITE ONLY__'
-    layout = [[sg.Text('Discord messages from subscribed channels', size=(50,1))],
-              [sg.Multiline(size=(1200,None), key=MLINE_KEY, autoscroll=True, enable_events=False),sg.Stretch()]]
-    return layout, MLINE_KEY
+def layout_console(ttl='Discord messages from subscribed channels', 
+                   key='-MLINE-__WRITE ONLY__'):
+    layout = [[sg.Text(ttl, size=(100,1))],
+              [sg.Multiline(size=(1200,None), key=key, autoscroll=True, enable_events=False),sg.Stretch()]]
+    return layout, key
 
 
 def layout_portfolio(data_n_headers, font_body, font_header):
