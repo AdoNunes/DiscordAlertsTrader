@@ -16,7 +16,7 @@ import queue
 from colorama import Fore, Back
 
 from DiscordAlertsTrader.configurator import cfg
-from DiscordAlertsTrader.message_parser import parse_exit_plan, set_exit_price_type
+from DiscordAlertsTrader.message_parser import parse_exit_plan, set_exit_price_type, ordersymb_to_str
 
 
 def find_last_trade(order, trades_log, open_only=True):
@@ -441,9 +441,11 @@ class AlertsTrader():
                 ot, _ = find_last_trade(order, self.portfolio)
                 self.portfolio.loc[ot, "Price"] = order_info['price']
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
-            print(Back.GREEN + f"BTO {order['Symbol']} executed @ {order_info['price']}. Status: {order_status}")
-            self.queue_prints.put([f"BTO {order['Symbol']} executed. Status: {order_status}", "", "green"])
-
+                notifier(order_info)
+            str_msg = f"BTO {order['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
+            print(Back.GREEN + str_msg)
+            self.queue_prints.put([str_msg, "", "green"])
+            
             #Log portfolio, trades_log
             log_alert['action'] = "BTO"
             log_alert["portfolio_idx"] = len(self.portfolio) - 1
@@ -489,8 +491,9 @@ class AlertsTrader():
             self.portfolio.loc[open_trade, "uQty"] += order_info['quantity']
             if  order_status in ["FILLED", "EXECUTED"]:
                 self.portfolio.loc[open_trade, "filledQty"] += order_info['filledQuantity']
+                notifier(order_info)
                 self.close_open_exit_orders(open_trade)
-            str_msg =  f"BTO {avg} th AVG, {order['Symbol']} executed. Status: {order_status}"
+            str_msg =  f"BTO {avg} th AVG, {order['Symbol']} executed @{order_info['price']}. Status: {order_status}"
             print(Back.GREEN + str_msg)
             self.queue_prints.put([str_msg, "", "green"])
 
@@ -677,6 +680,7 @@ class AlertsTrader():
 
             # Check if STC price changed
             if order_status in ["FILLED", 'EXECUTED', 'INDIVIDUAL_FILLS']:
+                notifier(order_info)
                 self.log_filled_STC(order_id, open_trade, STC)
             else:
                 str_STC = f"Submitted: {STC} {order['Symbol']} @{order['price']} Qty:{order['uQty']} ({order['xQty']})"
@@ -694,7 +698,6 @@ class AlertsTrader():
     def log_filled_STC(self, order_id, open_trade, STC):
 
         order_status, order_info = self.get_order_info(order_id)
-
         sold_unts = order_info['orderLegCollection'][0]['quantity']
 
         if 'price' in order_info.keys():
@@ -775,10 +778,17 @@ class AlertsTrader():
                 if not (pd.isnull(qty_fill_old) or qty_fill_old == 0) and \
                     qty_fill_old != qty_fill:
                     redo_orders = True
-
+                
+                if order_status in ["FILLED", "EXECUTED"]:
+                    ot, _ = find_last_trade(order_info, self.portfolio)
+                    self.portfolio.loc[ot, "Price"] = order_info['price']
+                    notifier(order_info)
+                str_msg = f"BTO {order_info['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
+                print(Back.GREEN + str_msg)
+                self.queue_prints.put([str_msg, "", "green"])
                 self.portfolio.loc[i, "filledQty"] = order_info['filledQuantity']
                 self.portfolio.loc[i, "BTO-Status"] = order_info['status']
-                self.portfolio.loc[i, "Price"] = order_info['price']
+
                 trade = self.portfolio.iloc[i]
                 self.save_logs("port")
 
@@ -788,12 +798,17 @@ class AlertsTrader():
             if trade.get("BTO-avg-Status") in ["QUEUED", "WORKING", 'OPEN']:
                 ordID = trade['ordID'].split(",")[-1]
                 _, order_info = self.get_order_info(ordID)
-                if order_info['status'] == 'FILLED' :
+                if order_info['status'] in ["FILLED", "EXECUTED"]:
                     self.portfolio.loc[i, "BTO-avg-Status"] = order_info['status']
                     self.portfolio.loc[i, "filledQty"] += order_info['filledQuantity']
                     redo_orders = True
                     trade = self.portfolio.iloc[i]
                     self.save_logs("port")
+                    
+                    str_msg = f"BTO-avg {order_info['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
+                    print(Back.GREEN + str_msg)
+                    self.queue_prints.put([str_msg, "", "green"])
+                    notifier(order_info)
 
             if redo_orders:
                 self.close_open_exit_orders(i)
@@ -817,7 +832,7 @@ class AlertsTrader():
                 # Get status exit orders
                 STC_ordID = int(float(STC_ordID))  # Might be read as a float
 
-                order_status, _ =  self.get_order_info(STC_ordID)
+                order_status, order_info =  self.get_order_info(STC_ordID)
 
                 if order_status == 'CANCELED':
                     # Try next order number. probably went through. This is for TDA OCO
@@ -830,7 +845,8 @@ class AlertsTrader():
                 trade = self.portfolio.iloc[i]
 
                 if order_status in ["FILLED", "EXECUTED"] and np.isnan(trade[STC+"-xQty"]):
-                    self.log_filled_STC(STC_ordID, i, STC)
+                    self.log_filled_STC(STC_ordID, i, STC)                    
+                    notifier(order_info)
 
         self.save_logs("port")
 
@@ -1082,6 +1098,28 @@ def amnt_left(order, position):
         return order, True
     else:
         return order, False
+
+
+def notifier(order_info):
+    from discord_webhook import DiscordWebhook
+    if not len(cfg['discord']['send_alerts_to_WH']):
+        return
+    
+    if order_info['status'] not in ['FILLED', 'EXECUTED', 'INDIVIDUAL_FILLS']:
+        print("order in notifier not filled")
+        return
+    action = "BTO" if order_info['orderLegCollection'][0]['instruction'].startswith("BUY") else "STC"
+    symbol = ordersymb_to_str(order_info['orderId'])
+    msg = f"{action} {order_info['filledQuantity']} {symbol} @{order_info['price']}"
+    
+    webhook = DiscordWebhook(
+        url=cfg['discord']['send_alerts_to_WH'], 
+        username="nuns", 
+        content=f'{msg.upper()} <@&ROLEID>', 
+        rate_limit_retry=True)
+    response = webhook.execute()
+    print("webhook response:", response)
+
 
 if __name__ == "__main__":
     from DiscordAlertsTrader.brokerages import get_brokerage

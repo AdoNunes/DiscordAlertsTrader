@@ -81,6 +81,17 @@ def fix_index_symbols(symbol):
     return symbol
     
 
+def ordersymb_to_str(symbol):
+    "Symbol format AAA_YYMMDDCCPXXX"
+    if "_" in symbol:
+        # option
+        exp = r"(\w+)_(\d{6})([CP])([\d.]+)"        
+        match = re.search(exp, symbol, re.IGNORECASE)
+        if match:
+            symbol, date, type, strike = match.groups()
+            symbol = f"{symbol} {strike}{type} {date[:2]}/{date[2:4]}"
+    return symbol
+    
 def parser_alerts(msg, asset=None):
     msg = msg.replace("STc", "STC").replace("StC", "STC").replace("stC", "STC").replace("STc", "STC")
     msg = msg.replace("BtO", "BTO").replace("btO", "BTO").replace("bTO", "BTO").replace("BTo", "BTO")
