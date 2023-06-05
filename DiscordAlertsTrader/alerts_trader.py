@@ -835,11 +835,17 @@ class AlertsTrader():
                 order_status, order_info =  self.get_order_info(STC_ordID)
 
                 if order_status == 'CANCELED':
-                    # Try next order number. probably went through. This is for TDA OCO
+                    # Try next order number. OCO gets chancelled when one of child ordergets filled.
+                    # This is for TDA OCO
                     order_status, _ =  self.get_order_info(STC_ordID + 1)
                     if order_status == 'FILLED':
                         STC_ordID = STC_ordID + 1
                         self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID
+                    else: # try the other one
+                        order_status, _ =  self.get_order_info(STC_ordID + 2)
+                        if order_status == 'FILLED':
+                            STC_ordID = STC_ordID + 2
+                            self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID
 
                 self.portfolio.loc[i, STC+"-Status"] = order_status
                 trade = self.portfolio.iloc[i]
