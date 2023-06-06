@@ -813,7 +813,7 @@ class AlertsTrader():
                 if order_status in ["FILLED", "EXECUTED"]:
                     self.portfolio.loc[i, "Price"] = order_info['price']
                     self.disc_notifier(order_info)
-                    str_msg = f"BTO {order_info['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
+                    str_msg = f"BTO {order_info['orderLegCollection'][0]['instrument']['symbol']} executed @ {order_info['price']}. Status: {order_status}"
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
                 self.portfolio.loc[i, "filledQty"] = order_info['filledQuantity']
@@ -835,7 +835,7 @@ class AlertsTrader():
                     trade = self.portfolio.iloc[i]
                     self.save_logs("port")
                     
-                    str_msg = f"BTO-avg {order_info['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
+                    str_msg = f"BTO-avg {order_info['orderLegCollection'][0]['instrument']['symbol']} executed @ {order_info['price']}. Status: {order_status}"
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
                     self.disc_notifier(order_info)
