@@ -61,11 +61,15 @@ class AlertsTrader():
                  portfolio_fname=cfg['portfolio_names']['portfolio_fname'] ,
                  alerts_log_fname=cfg['portfolio_names']['alerts_log_fname'],
                  queue_prints=queue.Queue(maxsize=10),
-                 update_portfolio=True):
+                 update_portfolio=True,
+                 send_alert_to_discord=cfg['discord'].getboolean('notify_alerts_to_discord')
+                 ):
         self.bksession = brokerage
         self.portfolio_fname = portfolio_fname
         self.alerts_log_fname = alerts_log_fname
         self.queue_prints = queue_prints
+        self.send_alert_to_discord = send_alert_to_discord
+        self.discord_channel = None # discord channel object to post trade alerts, passed on_ready discord
         
         # load port and log
         if op.exists(self.portfolio_fname):
@@ -137,6 +141,33 @@ class AlertsTrader():
         elif {order['action']} == "STC":
             pars_str = pars_str + f" Qty:{order['uQty']}({int(order['xQty']*100)}%)"
         return pars_str
+
+    
+    def disc_notifier(self,order_info):
+        from discord_webhook import DiscordWebhook
+        if not self.send_alert_to_discord:
+            return
+        
+        if order_info['status'] not in ['FILLED', 'EXECUTED', 'INDIVIDUAL_FILLS']:
+            print("order in notifier not filled")
+            return
+        
+        action = "BTO" if order_info['orderLegCollection'][0]['instruction'].startswith("BUY") else "STC"
+        symbol = ordersymb_to_str(order_info['orderLegCollection'][0]['instrument']['symbol'])
+        msg = f"{action} {order_info['filledQuantity']} {symbol} @{order_info['price']}"
+        
+        if len(cfg['discord']['webhook']):
+            webhook = DiscordWebhook(
+                url=cfg['discord']['webhook'], 
+                username=cfg['discord']['webhook_name'], 
+                content=f'{msg.upper()}', 
+                rate_limit_retry=True)
+            response = webhook.execute()
+            print("webhook sent, response:", response.json())
+        
+        if self.discord_channel is not None:
+            self.discord_channel.send(msg.upper())
+            print("discord channel message sent")
 
     def price_now(self, symbol, price_type="BTO", pflag=0):
         if price_type in ["BTO", "BTC"]:
@@ -441,7 +472,7 @@ class AlertsTrader():
                 ot, _ = find_last_trade(order, self.portfolio)
                 self.portfolio.loc[ot, "Price"] = order_info['price']
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
-                notifier(order_info)
+                self.disc_notifier(order_info)
             str_msg = f"BTO {order['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
             print(Back.GREEN + str_msg)
             self.queue_prints.put([str_msg, "", "green"])
@@ -491,7 +522,7 @@ class AlertsTrader():
             self.portfolio.loc[open_trade, "uQty"] += order_info['quantity']
             if  order_status in ["FILLED", "EXECUTED"]:
                 self.portfolio.loc[open_trade, "filledQty"] += order_info['filledQuantity']
-                notifier(order_info)
+                self.disc_notifier(order_info)
                 self.close_open_exit_orders(open_trade)
             str_msg =  f"BTO {avg} th AVG, {order['Symbol']} executed @{order_info['price']}. Status: {order_status}"
             print(Back.GREEN + str_msg)
@@ -680,7 +711,7 @@ class AlertsTrader():
 
             # Check if STC price changed
             if order_status in ["FILLED", 'EXECUTED', 'INDIVIDUAL_FILLS']:
-                notifier(order_info)
+                self.disc_notifier(order_info)
                 self.log_filled_STC(order_id, open_trade, STC)
             else:
                 str_STC = f"Submitted: {STC} {order['Symbol']} @{order['price']} Qty:{order['uQty']} ({order['xQty']})"
@@ -782,7 +813,7 @@ class AlertsTrader():
                 if order_status in ["FILLED", "EXECUTED"]:
                     ot, _ = find_last_trade(order_info, self.portfolio)
                     self.portfolio.loc[ot, "Price"] = order_info['price']
-                    notifier(order_info)
+                    self.disc_notifier(order_info)
                 str_msg = f"BTO {order_info['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
                 print(Back.GREEN + str_msg)
                 self.queue_prints.put([str_msg, "", "green"])
@@ -808,7 +839,7 @@ class AlertsTrader():
                     str_msg = f"BTO-avg {order_info['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
-                    notifier(order_info)
+                    self.disc_notifier(order_info)
 
             if redo_orders:
                 self.close_open_exit_orders(i)
@@ -852,7 +883,7 @@ class AlertsTrader():
 
                 if order_status in ["FILLED", "EXECUTED"] and np.isnan(trade[STC+"-xQty"]):
                     self.log_filled_STC(STC_ordID, i, STC)                    
-                    notifier(order_info)
+                    self.disc_notifier(order_info)
 
         self.save_logs("port")
 
@@ -1104,27 +1135,6 @@ def amnt_left(order, position):
         return order, True
     else:
         return order, False
-
-
-def notifier(order_info):
-    from discord_webhook import DiscordWebhook
-    if not len(cfg['discord']['send_alerts_to_WH']):
-        return
-    
-    if order_info['status'] not in ['FILLED', 'EXECUTED', 'INDIVIDUAL_FILLS']:
-        print("order in notifier not filled")
-        return
-    action = "BTO" if order_info['orderLegCollection'][0]['instruction'].startswith("BUY") else "STC"
-    symbol = ordersymb_to_str(order_info['orderId'])
-    msg = f"{action} {order_info['filledQuantity']} {symbol} @{order_info['price']}"
-    
-    webhook = DiscordWebhook(
-        url=cfg['discord']['send_alerts_to_WH'], 
-        username="nuns", 
-        content=f'{msg.upper()} <@&ROLEID>', 
-        rate_limit_retry=True)
-    response = webhook.execute()
-    print("webhook response:", response)
 
 
 if __name__ == "__main__":

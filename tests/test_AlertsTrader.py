@@ -68,7 +68,8 @@ class TestAlertsTrader(unittest.TestCase):
         order["Date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
         
         # Generate return vals for the brokerage
-        brokerage.get_quotes.return_value = {f'AI_{expdate.replace("/", "")}23C25': {'askPrice': expected['Price-Current']}}
+        symbol = f'AI_{expdate.replace("/", "")}23C25'
+        brokerage.get_quotes.return_value = {symbol: {'askPrice': expected['Price-Current']}}
         brokerage.send_order.return_value = [
             expected['BTO-Status'],
             expected["ordID"]         
@@ -77,8 +78,12 @@ class TestAlertsTrader(unittest.TestCase):
             expected['BTO-Status'],
             {'quantity': expected["uQty"],
              "price": expected['Price'],
-             'filledQuantity': expected["uQty"]}         
-            ]
+             'filledQuantity': expected["uQty"],
+             'status': expected['BTO-Status'],
+             'orderLegCollection':[
+                {'instrument': {'symbol': symbol},
+                 'instruction': "BUY"},  
+            ]}]
         
         trader.new_trade_alert(order, pars, message.content)
         
@@ -96,9 +101,14 @@ class TestAlertsTrader(unittest.TestCase):
             ]
         brokerage.get_order_info.return_value = [
             expected['STC1-Status'],
-            {'quantity': expected["STC1-uQty"],
+            {'status': expected['STC1-Status'],
+             'quantity': expected["STC1-uQty"],
+             'filledQuantity': expected["STC1-uQty"],
              "price": expected['STC1-Price'],
-             'orderLegCollection':[{"quantity": expected["STC1-uQty"]}],
+             'orderLegCollection':[{
+                 'instrument': {'symbol': symbol},
+                 'instruction': "SELL", 
+                 "quantity": expected["STC1-uQty"]}],
              'closeTime' : order["Date"]
              }         
             ]

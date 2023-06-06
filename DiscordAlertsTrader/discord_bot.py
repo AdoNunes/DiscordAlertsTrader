@@ -114,6 +114,10 @@ class DiscordBot(discord.Client):
 
     async def on_ready(self):
         print('Logged on as', self.user , '\n loading previous messages')
+        # pass channel object to trader
+        if self.bksession is not None and cfg['discord'].getboolean('notify_alerts') and \
+            len(cfg['discord'].get('send_alerts_to_chan')):
+            self.trader.discord_channel = self.fetch_channel(cfg['discord'].get('send_alerts_to_chan'))
         await self.load_previous_msgs()
 
     async def on_message(self, message):
