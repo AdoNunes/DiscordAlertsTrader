@@ -127,8 +127,10 @@ class DiscordBot(discord.Client):
             if alert is not None:
                 self.new_msg_acts(alert, False)
                 return
-        # only respond to channels in config        
-        if message.channel.id not in self.channel_IDS.values():
+        # only respond to channels in config
+        author = f"{message.author.name}#{message.author.discriminator}"    
+        if message.channel.id not in self.channel_IDS.values() and \
+            author not in cfg['discord']['auhtorwise_subscription'].split(","):
             return
         if message.content == 'ping':
             await message.channel.send('pong')
