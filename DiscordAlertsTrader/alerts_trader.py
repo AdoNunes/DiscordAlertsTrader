@@ -800,7 +800,7 @@ class AlertsTrader():
                 continue
 
             if trade["BTO-Status"]  in ["QUEUED", "WORKING", 'OPEN']:
-                _, order_info = self.get_order_info(trade['ordID'])
+                order_status, order_info = self.get_order_info(trade['ordID'])
 
                 # Check if number filled Qty changed
                 qty_fill = order_info['filledQuantity']
@@ -814,9 +814,9 @@ class AlertsTrader():
                     ot, _ = find_last_trade(order_info, self.portfolio)
                     self.portfolio.loc[ot, "Price"] = order_info['price']
                     self.disc_notifier(order_info)
-                str_msg = f"BTO {order_info['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
-                print(Back.GREEN + str_msg)
-                self.queue_prints.put([str_msg, "", "green"])
+                    str_msg = f"BTO {order_info['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
+                    print(Back.GREEN + str_msg)
+                    self.queue_prints.put([str_msg, "", "green"])
                 self.portfolio.loc[i, "filledQty"] = order_info['filledQuantity']
                 self.portfolio.loc[i, "BTO-Status"] = order_info['status']
 
@@ -828,7 +828,7 @@ class AlertsTrader():
 
             if trade.get("BTO-avg-Status") in ["QUEUED", "WORKING", 'OPEN']:
                 ordID = trade['ordID'].split(",")[-1]
-                _, order_info = self.get_order_info(ordID)
+                order_status, order_info = self.get_order_info(ordID)
                 if order_info['status'] in ["FILLED", "EXECUTED"]:
                     self.portfolio.loc[i, "BTO-avg-Status"] = order_info['status']
                     self.portfolio.loc[i, "filledQty"] += order_info['filledQuantity']

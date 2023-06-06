@@ -127,7 +127,7 @@ class DiscordBot(discord.Client):
             if alert is not None:
                 self.new_msg_acts(alert, False)
                 return
-        # only respond to channels in config
+        # only respond to channels in config or authorwise subscription
         author = f"{message.author.name}#{message.author.discriminator}"    
         if message.channel.id not in self.channel_IDS.values() and \
             author not in cfg['discord']['auhtorwise_subscription'].split(","):
@@ -144,7 +144,7 @@ class DiscordBot(discord.Client):
             return
 
         str_prt = f"Message edited by {before.author}: '{before.content}' -> '{after.content}'"
-        self.queue_prints.put([str_prt, "blue"])
+        self.queue_prints.put([str_prt, "black"])
         print(Fore.BLUE + str_prt)
 
     async def load_previous_msgs(self):
