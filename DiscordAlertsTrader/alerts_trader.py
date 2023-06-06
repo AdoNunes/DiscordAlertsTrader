@@ -811,8 +811,7 @@ class AlertsTrader():
                     redo_orders = True
                 
                 if order_status in ["FILLED", "EXECUTED"]:
-                    ot, _ = find_last_trade(order_info, self.portfolio)
-                    self.portfolio.loc[ot, "Price"] = order_info['price']
+                    self.portfolio.loc[i, "Price"] = order_info['price']
                     self.disc_notifier(order_info)
                     str_msg = f"BTO {order_info['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
                     print(Back.GREEN + str_msg)
