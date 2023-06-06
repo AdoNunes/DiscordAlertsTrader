@@ -71,7 +71,10 @@ def calculate_weighted_mean(row, sufix="Price"):
     uqtys = row[['STC1-uQty', 'STC2-uQty', 'STC3-uQty']].values
     valid_indices = ~pd.isna(prices) & ~pd.isna(uqtys)
     if np.any(valid_indices):
-        return np.average(prices[valid_indices], weights=uqtys[valid_indices])
+        try:
+            return np.average(prices[valid_indices], weights=uqtys[valid_indices])
+        except:
+            return np.average(prices[valid_indices])
     else:
         return np.nan
     
