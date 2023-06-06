@@ -66,7 +66,6 @@ fnt_h = "Arial 10"
 
 ly_cons, MLINE_KEY = gl.layout_console('Discord messages from all the channels',
                                        '-MLINE-')
-
 ly_cons_subs, MLINE_SUBS_KEY = gl.layout_console('Discord messages only from subscribed authors',
                                        '-MLINEsub-')
 
