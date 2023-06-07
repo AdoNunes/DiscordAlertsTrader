@@ -845,7 +845,7 @@ class AlertsTrader():
 
             exit_plan = eval(trade["exit_plan"])
             if  exit_plan != {}:                
-                if any([isinstance(e, str) and ("%" not in e and "TS" not in e) for e in exit_plan.values()]) and trade['Asset'] == 'option':
+                if all([isinstance(e, str) and ("%" not in e and "TS" not in e) for e in exit_plan.values()]) and trade['Asset'] == 'option':
                     self.check_opt_stock_price(i, exit_plan, "STC")
                 else:
                     self.make_exit_orders(i, exit_plan)
@@ -960,13 +960,14 @@ class AlertsTrader():
             if not pd.isnull(STC_ordID):
                 # assume PT with trailing stop at lim has SL
                 if isinstance(exit_plan[f"PT{ii}"], str) and "TS" in exit_plan[f"PT{ii}"]:
-                    trigger = exit_plan[f"PT{ii}"].split("TS")[0]
+                    trigger = float(exit_plan[f"PT{ii}"].split("TS")[0])
                     TS = exit_plan[f"PT{ii}"].split("TS")[1]
                     TS = TS + "%" if "%" not in TS else TS
                     quote_opt = self.price_now(trade['Symbol'], "STC", 1)
                     if quote_opt >= trigger:
+                        self.close_open_exit_orders(ii)
                         ord_func = self.bksession.make_STC_SL_trailstop
-                        order = self.calculate_stoploss(order, trade, exit_plan["SL"])                                            
+                        order = self.calculate_stoploss(order, trade, TS)                                            
                         order['uQty'] = int(trade['uQty'])
                         order['xQty'] = 1
                         
@@ -975,6 +976,8 @@ class AlertsTrader():
                             str_prt = f"{STC} {order['Symbol']} @{order['price']}(Qty:{order['uQty']}) sent during order update"
                         else:
                             str_prt = f"{STC} {order['Symbol']} @{order.get('PT')}/{order.get('SL')} (Qty:{order['uQty']}) sent during order update"
+                        exit_plan[f"PT{ii}"] = TS
+                        self.portfolio.loc[i, 'exit_plan'] = str(exit_plan)
                         print (Back.GREEN + str_prt)
                         self.queue_prints.put([str_prt,"", "green"])
                         self.portfolio.loc[i, STC+"-ordID"] = STC_ordID
@@ -1025,12 +1028,12 @@ class AlertsTrader():
 
                 # SL order
                 elif ii == 1 and SL is not None:
-                    if "%" in SL:
+                    if isinstance(SL, str) and "%" in SL:
                         ord_func = self.bksession.make_STC_SL_trailstop
                         order = self.calculate_stoploss(order, trade, exit_plan["SL"])
                     else:
                         ord_func =self.bksession.make_STC_SL
-                        order["price"] = exit_plan["SL"]
+                        order["SL"] = exit_plan["SL"]
                     
                     order['uQty'] = int(trade['uQty'])
                     order['xQty'] = 1
