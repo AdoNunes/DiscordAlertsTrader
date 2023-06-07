@@ -359,17 +359,17 @@ def parse_avg(msg):
     return avg, avg_inf.span()
 
 def parse_exits_vals(msg, expr):
-    re_comp= re.compile("(" + expr + "[:]?[ ]*[$]*(\d+[\.]*[\d]*))", re.IGNORECASE)
+    re_comp= re.compile(expr + "[:]?[ ]*[$]*(\d+[\.]*[\d]*)(TS[\d+\.]*)?", re.IGNORECASE) 
     exit_inf = re_comp.search(msg)
 
     if exit_inf is None:
         re_comp= re.compile("(" + expr.lower() + "[:]?[ ]*[$]*(\d+[\.]*[\d]*))")
-        exit_inf = re_comp.search(msg)
+        exit_inf = re_comp.search(msg)        
 
         if exit_inf is None:
             return None
-
-    exit_v = float(exit_inf.groups()[-1].replace("..", ""))
+        return float(exit_inf.groups()[-1].replace("..", ""))
+    exit_v = exit_inf.group(1) + (exit_inf.group(2) if exit_inf.group(2) else "")
     return exit_v
 
 def parse_unit_amount(msg):    

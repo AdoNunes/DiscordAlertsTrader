@@ -845,7 +845,7 @@ class AlertsTrader():
 
             exit_plan = eval(trade["exit_plan"])
             if  exit_plan != {}:                
-                if any([isinstance(e, str) and "%" not in e for e in exit_plan.values()]) and trade['Asset'] == 'option':
+                if any([isinstance(e, str) and ("%" not in e and "TS" not in e) for e in exit_plan.values()]) and trade['Asset'] == 'option':
                     self.check_opt_stock_price(i, exit_plan, "STC")
                 else:
                     self.make_exit_orders(i, exit_plan)
@@ -958,25 +958,47 @@ class AlertsTrader():
 
             STC_ordID = trade[STC+"-ordID"]
             if not pd.isnull(STC_ordID):
+                # assume PT with trailing stop at lim has SL
+                if isinstance(exit_plan[f"PT{ii}"], str) and "TS" in exit_plan[f"PT{ii}"]:
+                    trigger = exit_plan[f"PT{ii}"].split("TS")[0]
+                    TS = exit_plan[f"PT{ii}"].split("TS")[1]
+                    TS = TS + "%" if "%" not in TS else TS
+                    quote_opt = self.price_now(trade['Symbol'], "STC", 1)
+                    if quote_opt >= trigger:
+                        ord_func = self.bksession.make_STC_SL_trailstop
+                        order = self.calculate_stoploss(order, trade, exit_plan["SL"])                                            
+                        order['uQty'] = int(trade['uQty'])
+                        order['xQty'] = 1
+                        
+                        _, STC_ordID = self.bksession.send_order(ord_func(**order))
+                        if order.get("price"):
+                            str_prt = f"{STC} {order['Symbol']} @{order['price']}(Qty:{order['uQty']}) sent during order update"
+                        else:
+                            str_prt = f"{STC} {order['Symbol']} @{order.get('PT')}/{order.get('SL')} (Qty:{order['uQty']}) sent during order update"
+                        print (Back.GREEN + str_prt)
+                        self.queue_prints.put([str_prt,"", "green"])
+                        self.portfolio.loc[i, STC+"-ordID"] = STC_ordID
+                        trade = self.portfolio.iloc[i]
+                        self.save_logs("port")
+                        
                 # Adjust if necessary uQty based on remaining shares
-                if nPTs < 2:
-                    continue
-                ord_stat, ord_inf = self.get_order_info(int(STC_ordID))
-                iord_qty = ord_inf.get('quantity')
-                if iord_qty is None:
-                    iord_qty = ord_inf['childOrderStrategies'][0]['quantity']
-                if uQty[ii - 1] != iord_qty:
-                    uQty[ii - 1] = int(iord_qty)
-                    uleft = uQty_bought - sum(uQty[:ii])
-                    if uleft == 0:
-                        break
-                    nPts = len(uQty) - ii
-                    if nPts !=0:
-                        uQty = uQty[:ii] + [round(uleft/nPts)]*nPts
-                        uQty[-1] = int(uQty_bought - sum(uQty[:-1]))
-                    else:
-                        uQty[-1] = int(uleft)
-                    xQty = [round(u/uQty_bought,1) for u in uQty]
+                if nPTs > 1:
+                    ord_stat, ord_inf = self.get_order_info(int(STC_ordID))
+                    iord_qty = ord_inf.get('quantity')
+                    if iord_qty is None:
+                        iord_qty = ord_inf['childOrderStrategies'][0]['quantity']
+                    if uQty[ii - 1] != iord_qty:
+                        uQty[ii - 1] = int(iord_qty)
+                        uleft = uQty_bought - sum(uQty[:ii])
+                        if uleft == 0:
+                            break
+                        nPts = len(uQty) - ii
+                        if nPts !=0:
+                            uQty = uQty[:ii] + [round(uleft/nPts)]*nPts
+                            uQty[-1] = int(uQty_bought - sum(uQty[:-1]))
+                        else:
+                            uQty[-1] = int(uleft)
+                        xQty = [round(u/uQty_bought,1) for u in uQty]
 
             else:
                 SL = exit_plan["SL"]
