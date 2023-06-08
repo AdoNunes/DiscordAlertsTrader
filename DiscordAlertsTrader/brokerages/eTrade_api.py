@@ -13,7 +13,7 @@ import functools
 from ..configurator import cfg
 from . import BaseBroker
 
-def retry_on_exception(retries=3, do_raise=False):
+def retry_on_exception(retries=3, do_raise=False, fallback_method=None):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -22,6 +22,13 @@ def retry_on_exception(retries=3, do_raise=False):
                     return func(*args, **kwargs)
                 except Exception as e:
                     print(f"Exception occurred: {e}. Retrying... (Attempt {attempt}/{retries})")
+            
+            # if fallback_method:
+            #     try:
+            #         fallback_method()
+            #         return func(*args, **kwargs)
+            #     except Exception as e:
+            #         print("Could not execute renew access method.", e)
             if do_raise:
                 raise Exception(f"Method {func.__name__} failed after {retries} retries.")
             else:
@@ -74,6 +81,8 @@ class eTrade(BaseBroker):
             self.account_session = pyetrade.ETradeAccounts(**kwargs)
             self.market_session = pyetrade.ETradeMarket(**kwargs)     
             self.order_session = pyetrade.ETradeOrder(**kwargs)
+            kwargs.pop('dev')
+            self.accessmanager = pyetrade.ETradeAccessManager(**kwargs)
             self._get_account()
             return True
         
@@ -100,7 +109,11 @@ class eTrade(BaseBroker):
             json.dump(self.tokens, f)
         return sessions() 
 
-    # @retry_on_exception()
+    def renew_access(self):
+        """Renews access token"""
+        self.accessmanager.renew_access_token()
+        
+    @retry_on_exception()
     def _get_account(self):
         """
         Calls account list API to retrieve a list of the user's E*TRADE accounts
@@ -320,8 +333,11 @@ class eTrade(BaseBroker):
         return order_response, order_id
     
     @retry_on_exception()
-    def cancel_order(self, order_id:int):        
-        return self.order_session.cancel_order(self.accountIdKey,order_id, resp_format='xml')
+    def cancel_order(self, order_id:int):
+        time.sleep(.5)  # sleep as order status change is not instant
+        resp = self.order_session.cancel_order(self.accountIdKey,order_id, resp_format='xml')
+        time.sleep(.5)
+        return resp
 
     def make_BTO_lim_order(self, Symbol:str, uQty:int, price:float, **kwarg):
         "Buy with a limit order"
@@ -442,66 +458,6 @@ class eTrade(BaseBroker):
     def get_orders(self):
         orders = self.order_session.list_orders(self.accountIdKey, resp_format='json')
         orders = orders['OrdersResponse']['Order']
-        """   {'orderId': 3,
-    'details': 'https://api.etrade.com/v1/accounts/kx-cz1Rmn1w_MMgg2K7wCA/orders/3.json',
-    'orderType': 'EQ',
-    'OrderDetail': [{'placedTime': 1684804106634,
-      'executedTime': 1178021968,
-      'orderValue': 1.0098,
-      'status': 'CANCELLED',
-      'orderTerm': 'GOOD_UNTIL_CANCEL',
-      'priceType': 'TRAILING_STOP_PRCT',
-      'priceValue': 'Tsp * 1.01',
-      'limitPrice': 0,
-      'stopPrice': 0,
-      'offsetType': 'TRAILING_STOP_PRCT',
-      'offsetValue': 40,
-      'marketSession': 'REGULAR',
-      'bracketedLimitPrice': 0,
-      'initialStopPrice': 1.01,
-      'trailPrice': 0,
-      'triggerPrice': 0,
-      'allOrNone': False,
-      'netPrice': 0,
-      'netBid': 0,
-      'netAsk': 0,
-      'gcd': 0,
-      'ratio': '',
-      'Instrument': [{'symbolDescription': 'VERB TECHNOLOGY CO INC COM NEW',
-        'orderAction': 'SELL',
-        'quantityType': 'QUANTITY',
-        'orderedQuantity': 1,
-        'filledQuantity': 0.0,
-        'estimatedCommission': 0.0001,
-        'estimatedFees': 0.0,
-        'Product': {'symbol': 'VERB', 'securityType': 'EQ'}}]}]},
-   {'orderId': 2,
-    'details': 'https://api.etrade.com/v1/accounts/kx-cz1Rmn1w_MMgg2K7wCA/orders/2.json',
-    'orderType': 'EQ',
-    'OrderDetail': [{'placedTime': 1684414597753,
-      'executedTime': 1684416602677,
-      'orderValue': 1.75,
-      'status': 'EXECUTED',
-      'orderTerm': 'GOOD_FOR_DAY',
-      'priceType': 'MARKET',
-      'limitPrice': 0,
-      'stopPrice': 0,
-      'marketSession': 'REGULAR',
-      'allOrNone': False,
-      'netPrice': 0,
-      'netBid': 0,
-      'netAsk': 0,
-      'gcd': 0,
-      'ratio': '',
-      'Instrument': [{'symbolDescription': 'VERB TECHNOLOGY CO INC COM NEW',
-        'orderAction': 'BUY',
-        'quantityType': 'QUANTITY',
-        'orderedQuantity': 1,
-        'filledQuantity': 1.0,
-        'averageExecutionPrice': 1.76,
-        'estimatedCommission': 0.0,
-        'estimatedFees': 0.0,
-        'Product': {'symbol': 'VERB', 'securityType': 'EQ'}}]}]},"""
         return orders
 
 
