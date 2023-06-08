@@ -162,11 +162,12 @@ class AlertsTrader():
                 username=cfg['discord']['webhook_name'], 
                 content=f'{msg.upper()}', 
                 rate_limit_retry=True)
-            response = webhook.execute()
-            print("webhook sent, response:", response.json())
+            webhook.execute()
+            print("webhook sent")
         
         if self.discord_channel is not None:
-            self.discord_channel.send(msg.upper())
+            # self.discord_send(msg, self.discord_channel)
+            # self.discord_channel.send(msg.upper())
             print("discord channel message sent")
 
     def price_now(self, symbol, price_type="BTO", pflag=0):

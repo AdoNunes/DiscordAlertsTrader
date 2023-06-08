@@ -49,7 +49,7 @@ class DiscordBot(discord.Client):
         self.tracker = AlertsTracker(brokerage=brokerage, portfolio_fname=tracker_portfolio_fname)
         self.load_data()        
 
-        if live_quotes and brokerage is not None:
+        if live_quotes and brokerage is not None: # and brokerage.name == 'tda':
             self.thread_liveq =  threading.Thread(target=self.track_live_quotes)
             self.thread_liveq.start()
 
@@ -115,11 +115,17 @@ class DiscordBot(discord.Client):
     async def on_ready(self):
         print('Logged on as', self.user , '\n loading previous messages')
         # pass channel object to trader
-        if self.bksession is not None and cfg['discord'].getboolean('notify_alerts') and \
+        if self.bksession is not None and cfg['discord'].getboolean('notify_alerts_to_discord') and \
             len(cfg['discord'].get('send_alerts_to_chan')):
-            self.trader.discord_channel = self.fetch_channel(cfg['discord'].get('send_alerts_to_chan'))
+            self.trader.discord_channel = await self.fetch_channel(cfg['discord'].get('send_alerts_to_chan'))
+            self.trader.discord_send = self.send_msg            
         await self.load_previous_msgs()
 
+    async def send_msg(self, msg, channel=None):
+        if channel is None:
+            # channel = await self.fetch_channel(cfg['discord'].get('send_alerts_to_chan'))
+            await channel.send(msg)
+    
     async def on_message(self, message):
         # handle fend bot messages
         if with_fend:
@@ -137,6 +143,7 @@ class DiscordBot(discord.Client):
         if not len(message.content):
             return
         self.new_msg_acts(message)
+        
 
     async def on_message_edit(self, before, after):
         # Ignore if the message is not from a user or if the bot itself edited the message
@@ -166,7 +173,7 @@ class DiscordBot(discord.Client):
             print("In", channel)
             async for message in iterator:
                 self.new_msg_acts(message)
-        print("Done")
+        print("Done")        
         self.tracker.close_expired()
 
     def new_msg_acts(self, message, from_disc=True):
