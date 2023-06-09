@@ -71,6 +71,35 @@ def parse_trade_alert(msg, asset=None):
         
         return pars, order
     else:
+        # try exit update
+        pattern = r'\b(exit[ ]?update)\b\s*([A-Z]+)\s*(\d+[.\d+]*[cp]?)?\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?\s*'
+        match = re.search(pattern, msg, re.IGNORECASE)
+        if match:
+            action, ticker, strike, expDate = match.groups()
+            
+            asset_type = 'option' if strike and expDate else 'stock'
+            symbol =  ticker.upper()
+        
+            order = {
+            'action': "ExitUpdate",
+            'Symbol': symbol,
+            'asset': asset_type
+            }
+            str_ext = f'ExitUpdate: {symbol} '
+            if asset_type == 'option':
+                # fix missing strike, assume Call            
+                if "c" not in strike.lower() and "p" not in strike.lower():
+                    strike = strike + "c"
+                    order['strike'] = strike.upper()
+                    str_ext = " No direction found in option strike, assuming Call"
+
+                order['strike'] = strike.upper()
+                order['expDate'] = expDate
+                order['Symbol'] = fix_index_symbols(symbol)            
+                order['Symbol'] = make_optionID(**order)
+                str_ext += f"{strike.upper()} {expDate}"
+            order, str_ext = make_order_exits(order, msg, str_ext, asset_type)
+            return str_ext, order
         return None, None
 
 def fix_index_symbols(symbol):
@@ -91,7 +120,7 @@ def ordersymb_to_str(symbol):
             symbol, date, type, strike = match.groups()
             symbol = f"{symbol} {strike}{type} {date[:2]}/{date[2:4]}"
     return symbol
-    
+
 def parser_alerts(msg, asset=None):
     msg = msg.replace("STc", "STC").replace("StC", "STC").replace("stC", "STC").replace("STc", "STC")
     msg = msg.replace("BtO", "BTO").replace("btO", "BTO").replace("bTO", "BTO").replace("BTo", "BTO")
@@ -204,7 +233,10 @@ def set_exit_price_type(exit_price, order):
     """Option or stock price decided with smallest distance"""
     if exit_price is None:
         return exit_price
-    if isinstance(exit_price, str): exit_price = eval(exit_price)
+    if isinstance(exit_price, str) and ("TS" in exit_price or "%" in exit_price): 
+        return exit_price
+    if isinstance(exit_price, str): 
+        exit_price = eval(exit_price)
 
     price_strk = float(order['strike'][:-1])
     order_price = order.get('price', exit_price )  # IF NO ORDER PRICE TAKE EXIT!
@@ -359,15 +391,17 @@ def parse_avg(msg):
     return avg, avg_inf.span()
 
 def parse_exits_vals(msg, expr):
-    re_comp= re.compile(expr + "[:]?[ ]*[$]*(\d+[\.]*[\d]*)(TS[\d+\.]*)?", re.IGNORECASE) 
+    re_comp= re.compile(expr + "[:]?[ ]*[$]*(\d+[\.]*[\d]*[%]?)(TS[\d+\.]*)?", re.IGNORECASE) 
     exit_inf = re_comp.search(msg)
 
     if exit_inf is None:
-        re_comp= re.compile("(" + expr.lower() + "[:]?[ ]*[$]*(\d+[\.]*[\d]*))")
+        re_comp= re.compile("(" + expr.lower() + "[:]?[ ]*[$]*(\d+[\.]*[\d]*[%]?))", re.IGNORECASE)
         exit_inf = re_comp.search(msg)        
 
         if exit_inf is None:
             return None
+        elif "%" in exit_inf.groups()[-1]:
+            return exit_inf.groups()[-1]
         return float(exit_inf.groups()[-1].replace("..", ""))
     exit_v = exit_inf.group(1) + (exit_inf.group(2) if exit_inf.group(2) else "")
     return exit_v
