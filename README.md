@@ -41,7 +41,8 @@ Invite link to BullTrades with referral: [https://discord.gg/bulltrades](https:/
  ______________________________
 
 It requires a user discord token, once installed the package save the token in config.ini[discord], as well as the channel ID where alerts are posted.
-To get discord token and channels IDs follow the instructions in: https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Token-and-IDs.md
+To get discord token follow the instructions: https://www.androidauthority.com/get-discord-token-3149920/
+To get channel ID, in discord right click on the channel and click "Copy Channel ID"
 
 
 ## Installation and Setup
