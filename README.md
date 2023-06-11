@@ -27,9 +27,11 @@ This package's GUI capabilities include:
 - Supporting manual trade execution through prompts if auto_trade is set to False in config.ini.
 
 **Currently, the package is for parsing signals of the discord server BullTrades.** 
-
 Invite link to BullTrades with referral: [https://discord.gg/bulltrades](https://bulltrades.net/?ref=ndrjogi)
+It can also work with any server with structured signals BTO and STC with alerts as a message content (not embedded)
 
+Let me know if you find the package useful by dropping me an email
+ 
 <img src="media/GUI_analysts_portfolio.PNG" alt="Analysts Portfolio" width="500" height="300">
 <img src="media/GUI_messages.PNG" alt="Channel message history" width="500" height="300">
 (older version shots)

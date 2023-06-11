@@ -186,7 +186,7 @@ class DiscordBot(discord.Client):
             else:
                 chn = None
             msg = pd.Series({'AuthorID': message.author.id,
-                            'Author': f"{message.author.name}#{message.author.discriminator}",
+                            'Author': f"{message.author.name}#{message.author.discriminator}".replace("#0", ""),
                             'Date': msg_date_f, 
                             'Content': message.content,
                             'Channel': chn
