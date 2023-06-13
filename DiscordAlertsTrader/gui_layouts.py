@@ -134,7 +134,10 @@ def layout_stats(data_n_headers, font_body, font_header):
                       sg.Text('Symbols: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_sym',tooltip=tip),
                       sg.Text('Channels: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_chn',tooltip=tip),
                       ],
-                     [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-stat_")]])
+                     [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-stat_")],
+                     [sg.Text("PnL-actual = PnL from prices at the moment of alerted trade (as opposed to the prices claimed in the alert) \n" + \
+                         "diff = difference between actual and alerted, high BTO and low STC diffs is bad, alerts are delayed"
+                         )]])
                     ],
          [sg.Column([[sg.Table(values=values,
                         headings=data_n_headers[1],

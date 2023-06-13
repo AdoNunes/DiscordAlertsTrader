@@ -272,12 +272,19 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
         data['STC-PnL$-current'] = data['STC-PnL$-current'].round()
 
     data['PnL diff'] = data['STC-PnL-current'] - data['STC-PnL']
+    data['BTO diff'] = 100*(data['Price-current'] - data['Price'])/ data['Price']
+    data['STC diff'] = 100*(data['STC-Price-current'] - data['STC-Price'])/ data['STC-Price']
+    data = data.rename({'STC-PnL-current': 'STC-PnL-Actual', 
+                        'STC-PnL$-current': 'STC-PnL$-Actual', 
+                        }, axis=1)
     # Define the aggregation functions for each column
     agg_funcs = {'STC-PnL$': 'sum',
-                 'STC-PnL$-current': 'sum',
+                 'STC-PnL$-Actual': 'sum',
                  'STC-PnL': 'mean',
-                 'STC-PnL-current': 'mean',
+                 'STC-PnL-Actual': 'mean',
                  'PnL diff' : "mean",
+                 'BTO diff' : "mean",
+                 'STC diff' : "mean",
                  'Date': ['count', 'min', 'max']
                  }
     # Perform the groupby operation and apply the aggregation functions

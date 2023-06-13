@@ -110,7 +110,7 @@ layout = [[sg.TabGroup([
            sg.Button("Trigger alert", key="-subm-alert", tooltip="Will generate alert in portfolio and tracker, useful to close or open a position", size= (20,1))]
         ]
 print(3)
-window = sg.Window('Discord Alerts Trader for BullTrades', layout,size=(100, 800), # force_toplevel=True,
+window = sg.Window('Discord Alerts Trader', layout,size=(100, 800), # force_toplevel=True,
                     auto_size_text=True, resizable=True)
 print(4)
 def mprint_queue(queue_item_list, subscribed_author=False):
@@ -359,7 +359,7 @@ def gui():
     client_thread = threading.Thread(target=run_client, daemon=True)
 
     # start the threads
-    client_thread.start()
+    # client_thread.start()
     run_gui()
 
     # close the GUI window
