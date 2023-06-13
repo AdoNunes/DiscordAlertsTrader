@@ -90,14 +90,14 @@ class AlertsTrader():
             self.update_orders()
             self.activate_trade_updater()
 
-    def activate_trade_updater(self, refresh_rate=30):
+    def activate_trade_updater(self, refresh_rate=10):
         self.update_portfolio = True
         self.updater = threading.Thread(target=self.trade_updater, args=[refresh_rate], daemon=True)
         self.updater.start()
         self.queue_prints.put([f"Updating portfolio orders every {refresh_rate} secs", "", "green"])
         print(Back.GREEN + f"Updating portfolio orders every {refresh_rate} secs")
 
-    def trade_updater_reset(self, refresh_rate=30):
+    def trade_updater_reset(self, refresh_rate=10):
         """ Will stop threding updater and restart.
         To avoid delays or parallel updatings. """
         self.update_portfolio = False
@@ -108,7 +108,7 @@ class AlertsTrader():
         "Lazy trick to stop updater threading"
         self.update_portfolio = False
 
-    def trade_updater(self, refresh_rate=30):
+    def trade_updater(self, refresh_rate=10):
         while self.update_portfolio is True:
             if self.update_paused is False:
                 try:
