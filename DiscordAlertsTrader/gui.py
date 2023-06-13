@@ -345,8 +345,13 @@ def run_gui():
             pass
 
 
-
 def run_client():
+    if len(cfg['discord']['discord_token']) < 50:
+        str_prt = "Discord token not provided, no discord messages will be received. Add user token in config.ini"
+        print(str_prt)
+        time.sleep(3)
+        trade_events.put([str_prt,"", "red"])
+        return
     alistner.run(cfg['discord']['discord_token'])
 
 
