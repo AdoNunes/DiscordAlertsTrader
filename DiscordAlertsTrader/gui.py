@@ -335,7 +335,8 @@ def run_gui():
             if event_feedb[1] == "blue":
                 if any(a in event_feedb[0] for a in auth_subs):
                     subs_auth_msg = True
-                elif any([c in event_feedb[0] for c in cfg['discord']['channelwise_subscription'].split(",")]):
+                elif cfg['discord']['channelwise_subscription'].split(",") != [""] and \
+                    any([c in event_feedb[0] for c in cfg['discord']['channelwise_subscription'].split(",")]):
                     subs_auth_msg = True
                 else:
                     subs_auth_msg = False
