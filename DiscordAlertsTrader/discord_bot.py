@@ -248,7 +248,7 @@ class DiscordBot(discord.Client):
 
     def do_trade_alert(self, author, channel):
         "Decide if alert should be traded"
-        if author in cfg['discord']['authors_subscribed'] and self.bksession is not None:
+        if author in cfg['discord']['authors_subscribed'].split(",") and self.bksession is not None:
             return True
         elif channel in cfg['discord']['channelwise_subscription'].split(",") and self.bksession is not None:
             return True

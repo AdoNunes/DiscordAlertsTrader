@@ -34,7 +34,7 @@ def max_dig_len(values, decim=2):
     len_tot = len_int + len_dig + 1 if len_dig else  len_int + len_dig
     return len_tot, len_int, len_dig
 
-def pd_col_str_frmt(pd_Series, max_decim=2, remove_zero=True):
+def pd_col_str_frmt(pd_Series, max_decim=2, remove_zero=False):
     slen,_, decim = max_dig_len(pd_Series.to_numpy(), max_decim)
     return pd_Series.apply(lambda x: formt_num_2str(x,decim, slen, remove_zero))
 

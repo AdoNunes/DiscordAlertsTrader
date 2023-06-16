@@ -12,16 +12,18 @@ dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
 
 port = port[port['isOpen']==0]
 
-delayed_entry = -.1
+delayed_entry = 0
 not_entred = []
 pnls, pnlus = [], []
 port['STC-PnL-strategy'] = np.nan
 port['STC-PnL$-strategy'] = np.nan
 
+no_quote = []
 for idx, row in port.iterrows():
     
     fquote = f"{dir_quotes}/{row['Symbol']}.csv"
     if not op.exists(fquote):
+        no_quote.append(row['Symbol'])
         continue
 
     quotes = pd.read_csv(fquote, on_bad_lines='skip')
