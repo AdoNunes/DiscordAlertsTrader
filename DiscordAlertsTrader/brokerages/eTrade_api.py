@@ -134,26 +134,32 @@ class eTrade(BaseBroker):
         """
         Call portfolio API to retrieve a list of positions held in the specified account
         """
-        data = self.account_session.get_account_balance(self.accountIdKey, resp_format='json')        
-
-        balance= {
-            'liquidationValue': data['BalanceResponse'].get("Computed").get("RealTimeValues").get("totalAccountValue"),
-            'cashBalance': data['BalanceResponse'].get("Computed").get('cashBalance'),
-            'availableFunds': data['BalanceResponse'].get("Computed").get('cashAvailableForInvestment'),
-            }
-
-        data = self.account_session.get_account_portfolio(self.accountIdKey, resp_format='json')
-                
+        data = self.account_session.get_account_balance(self.accountIdKey, resp_format='json') 
         acc_inf ={
             'securitiesAccount':{   
                 'positions':[],
                 'accountId' : self.accountId,
                 'currentBalances':{
-                    'liquidationValue': balance.get('liquidationValue'),
-                    'cashBalance': balance.get('cashBalance'),
-                    'availableFunds': balance.get('availableFunds'),
+                    'liquidationValue': data['BalanceResponse'].get("Computed").get("RealTimeValues").get("totalAccountValue"),
+                    'cashBalance': data['BalanceResponse'].get("Computed").get('cashBalance'),
+                    'availableFunds': data['BalanceResponse'].get("Computed").get('cashAvailableForInvestment'),
                     },
         }}
+        
+        # get orders and add them to acc_inf
+        orders = self.get_orders()
+        orders_inf =[]
+        for order in orders:
+            order_status = order['OrderDetail'][0]['status'].upper()
+            if order_status in ['CANCELLED', 'REJECTED', 'EXPIRED']:
+                continue
+            orders_inf.append(self.format_order(order))
+        acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
+        
+        try:
+            data = self.account_session.get_account_portfolio(self.accountIdKey, resp_format='json')
+        except:
+            return acc_inf    
         # Handle and parse response
         if data is not None and "PortfolioResponse" in data and "AccountPortfolio" in data["PortfolioResponse"]:
             for acctPortfolio in data["PortfolioResponse"]["AccountPortfolio"]:
@@ -176,15 +182,6 @@ class eTrade(BaseBroker):
         else:
             print("No portfolio")
             
-        # get orders and add them to acc_inf
-        orders = self.get_orders()
-        orders_inf =[]        
-        for order in orders:
-            order_status = order['OrderDetail'][0]['status'].upper().replace('EXECUTED','FILLED').replace('OPEN','WORKING')
-            if order_status in ['CANCELLED', 'REJECTED', 'EXPIRED']:
-                continue
-            orders_inf.append(self.format_order(order))
-        acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
         return acc_inf
 
     def get_positions_orders(self):
