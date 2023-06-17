@@ -451,6 +451,8 @@ def get_pos(acc_inf):
         # pnl = pos['currentDayProfitLoss']
         pnl_p = pos['currentDayProfitLossPercentage'] * 100
         uQty = pos['longQuantity']
+        if uQty == 0:
+            uQty = pos['shortQuantity']
         cost = round(price * uQty, 2)
         last = round(pos["marketValue"] / uQty, 2)
         sym = pos['instrument']['symbol']
