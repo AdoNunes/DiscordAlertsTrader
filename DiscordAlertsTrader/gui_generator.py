@@ -5,7 +5,7 @@ Created on Fri Apr  9 09:53:44 2021
 
 @author: adonay
 """
-
+import math
 import os.path as op
 import pandas as pd
 from datetime import datetime
@@ -26,7 +26,7 @@ def formt_num_2str(x, decim=2, str_len=6, remove_zero=True):
 
 def max_dig_len(values, decim=2):
     # Gives interger and decimal lengths in an array-like values
-    values_s = [str(round(v, decim)) if v %1 else str(round(v)) for v in values]
+    values_s = [str(round(v, decim)) if v % 1 else str(round(v))  for v in values if not math.isnan(v) and not math.isinf(v)]
     tmp_int = [len(v.split('.')[0]) for v in values_s]
     len_int = max(tmp_int) if tmp_int else 1
     tmp_dig = [len(v.split('.')[-1]) if "." in v else 0 for v in values_s]
@@ -417,7 +417,7 @@ def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
     if filt_author:
         data = data[data['Author'].str.contains(filt_author, case=False)]
     if filt_date_frm:
-        data = data[data['Date'] > filt_date_frm]
+        data = data[data['Date'] >= filt_date_frm]
     if filt_date_to:
         data = data[data['Date'] < filt_date_to]
     if filt_cont:

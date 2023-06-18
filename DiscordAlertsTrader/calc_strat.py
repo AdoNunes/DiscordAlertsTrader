@@ -228,6 +228,38 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
     plt.show(block=False)
     return roi
 
+def parse_option_info(symbol):
+    option_inf = {
+    "symbol": symbol.split('_')[0],
+    "date": symbol.split('_')[1][:6],
+    "otype": symbol.split('_')[1][6],
+    "strike": symbol.split('_')[1][7:],
+    }
+    return option_inf
+
+def calculate_days_to_expiration(row):
+    option_date_str = parse_option_info(row['Symbol'])['date']
+    option_date = datetime.strptime(option_date_str, '%m%d%y').date()
+    expiration_date = pd.to_datetime(row['Date']).date()
+    days_to_expiration = (option_date - expiration_date).days
+    return days_to_expiration
+
+def port_max_per_trade(port, max_per_trade:float):
+    "Limit the max amount per trade"
+    option_mult = (port['Asset'] == 'option').astype(int)
+    option_mult[option_mult==1] = 100
+    trade_value = port['Amount'] * port['Price'] * option_mult
+    exceeds_cap = trade_value > max_per_trade
+    port.loc[exceeds_cap, 'Amount'] = np.floor(max_per_trade / (port['Price'] * option_mult)) 
+    port = port[port['Amount'] * port['Price'] * option_mult <= max_per_trade]
+    mult =(port['Asset'] == 'option').astype(int) 
+    mult[mult==0] = .01  # pnl already in %
+    port['STC-PnL$'] = port['Amount'] * port['STC-PnL'] * port['Price'] * mult
+    port['STC-PnL$-current'] = port['Amount'] * port['STC-PnL-current'] * port['Price-current'] * mult
+    port['STC-PnL$'] = port['STC-PnL$'].round()
+    port['STC-PnL$-current'] = port['STC-PnL$-current'].round()
+    return port
+
 fname_port = cfg['portfolio_names']['tracker_portfolio_name']
 port = pd.read_csv(fname_port)
 dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
@@ -237,6 +269,17 @@ print(f"From {len(port)} trades, removing open trades: {(~(port['isOpen']==0)).s
     f"{(~(port['Asset']=='option')).sum()} and with no current price: {port['Price-current'].isna().sum()}")
 
 port = port[(port['isOpen']==0) & (port['Asset']=='option') & ~port['Price-current'].isna()]
+
+odte_only = True
+port['days_to_expiration'] = port.apply(calculate_days_to_expiration, axis=1)
+if odte_only:
+    print("Keeping only trades with 0 dtoe, removing: ", (port['days_to_expiration']!=0).sum())
+    port = port[port['days_to_expiration']==0]
+
+print(f"Setting trades to a max of $1000, removing {len(port)- len(port_max_per_trade(port, 1000))} trades")
+port = port_max_per_trade(port, 1000)
+
+
 # strategies: PT and SL, delayed entry
 print(f"Calculating strategy pnl... with {len(port)} trades")
 
@@ -278,12 +321,12 @@ for idx, row in port.iterrows():
     price_curr = row['Price-current']
     
     # roi_alert, = calc_roi(quotes_vals, PT=1.75, TS=0, SL=.5, do_plot=False, initial_prices=price_alert)
-    roi_current, = calc_roi(quotes_vals, PT=1.75, TS=0, SL=.5, do_plot=False, initial_prices=price_curr)
+    roi_current, = calc_roi(quotes_vals, PT=1.45, TS=0, SL=0, do_plot=False, initial_prices=price_curr)
     
     pnl = roi_current[2]
     mult = .1 if row['Asset'] == 'stock' else 1
-    if mult == .1: pdd
-    pnlu = pnl*row['STC-Amount']*roi_current[0]*mult
+    if mult == .1: raise Exception("There should be no stocks in the portfolio")
+    pnlu = pnl*row['Amount']*roi_current[0]*mult
     
 #     # price_delayed = price_curr + (price_curr*(price_curr/100))
 #     # if delayed_entry > 0:
