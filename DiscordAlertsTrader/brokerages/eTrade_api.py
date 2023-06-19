@@ -83,6 +83,7 @@ class eTrade(BaseBroker):
             self.order_session = pyetrade.ETradeOrder(**kwargs)
             kwargs.pop('dev')
             self.accessmanager = pyetrade.ETradeAccessManager(**kwargs)
+            self.accessmanager.renew_access_token()
             self._get_account()
             return True
         
