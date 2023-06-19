@@ -105,7 +105,7 @@ class TDA(BaseBroker):
                                         "Price", "action"])
         return df_pos, df_ordr
 
-    def make_BTO_lim_order(self, Symbol:str, uQty:int, price:float, strike=None, **kwarg):
+    def make_BTO_lim_order(self, Symbol:str, uQty:int, price:float, strike=None, action="BTO", **kwarg):
         new_order=Order()
         new_order.order_strategy_type("TRIGGER")
         new_order.order_type("LIMIT")
@@ -116,33 +116,24 @@ class TDA(BaseBroker):
         order_leg = OrderLeg()
 
         if strike is not None:
-            order_leg.order_leg_instruction(instruction="BUY_TO_OPEN")
+            if action == "BTO":
+                order_leg.order_leg_instruction(instruction="BUY_TO_OPEN")
+            elif action == "STO":
+                order_leg.order_leg_instruction(instruction="SELL_TO_OPEN")
             order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
         else:
-            order_leg.order_leg_instruction(instruction="BUY")
+            if action == "BTO":
+                order_leg.order_leg_instruction(instruction="BUY")
+            elif action == "STO":
+                order_leg.order_leg_instruction(instruction="SELL_SHORT")
             order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
 
         order_leg.order_leg_quantity(quantity=int(uQty))
         new_order.add_order_leg(order_leg=order_leg)
         return new_order
 
-
-    def make_BTO_PT_SL_order(self, Symbol:str, uQty:int, price:float, PTs:list=None,
-                            PTs_Qty:list=None, SL:float=None, SL_stop:float=None, **kwarg):
-        new_order= self.make_BTO_lim_order(Symbol, uQty, price)
-
-        if PTs == [None]:
-            return new_order
-
-        PTs_Qty = [ round(uQty * pqty) for pqty in PTs_Qty]
-        for PT, pqty in zip(PTs, PTs_Qty):
-            new_child_order = new_order.create_child_order_strategy()
-            new_child_order = self.make_Lim_SL_order(Symbol, pqty, PT, SL, SL_stop, new_child_order)
-            new_order.add_child_order_strategy(child_order_strategy=new_child_order)
-        return new_order
-
-
-    def make_Lim_SL_order(self, Symbol:str, uQty:int,  PT:float, SL:float, SL_stop:float=None, new_order=None, strike=None, **kwarg):
+    def make_Lim_SL_order(self, Symbol:str, uQty:int,  PT:float, SL:float, SL_stop:float=None,
+                          new_order=None, strike=None, action="STC",**kwarg):
         if new_order is None:
             new_order = Order()
         new_order.order_strategy_type("OCO")
@@ -158,10 +149,16 @@ class TDA(BaseBroker):
 
         child_order_leg.order_leg_quantity(quantity=uQty)
         if strike is not None:
-            child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+            if action == "STC":
+                child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+            elif action == "BTC":
+                child_order_leg.order_leg_instruction(instruction="BUY_TO_CLOSE")
             child_order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
         else:
-            child_order_leg.order_leg_instruction(instruction="SELL")
+            if action == "STC":
+                child_order_leg.order_leg_instruction(instruction="SELL")
+            elif action == "BTC":
+                child_order_leg.order_leg_instruction(instruction="BUY_TO_COVER")
             child_order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
 
         child_order1.add_order_leg(order_leg=child_order_leg)
@@ -184,8 +181,7 @@ class TDA(BaseBroker):
         new_order.add_child_order_strategy(child_order_strategy=child_order2)
         return new_order
 
-
-    def make_STC_lim(self, Symbol:str, uQty:int, price:float, strike=None, **kwarg):
+    def make_STC_lim(self, Symbol:str, uQty:int, price:float, strike=None, action="STC", **kwarg):
         new_order=Order()
         new_order.order_strategy_type("SINGLE")
         new_order.order_type("LIMIT")
@@ -197,17 +193,23 @@ class TDA(BaseBroker):
 
         if strike is not None:
             new_order.order_session('NORMAL')
-            order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+            if action == "STC":
+                order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+            elif action == "BTC":
+                order_leg.order_leg_instruction(instruction="BUY_TO_CLOSE")
             order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
         else:
             new_order.order_session('SEAMLESS')
-            order_leg.order_leg_instruction(instruction="SELL")
+            if action == "STC":
+                order_leg.order_leg_instruction(instruction="SELL")
+            elif action == "BTC":
+                order_leg.order_leg_instruction(instruction="BUY_TO_COVER")
             order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
         new_order.add_order_leg(order_leg=order_leg)
         return new_order
 
     def make_STC_SL(self, Symbol:str, uQty:int, SL:float, strike=None,
-                    SL_stop:float=None, new_order=Order(), **kwarg):
+                    SL_stop:float=None, new_order=Order(), action="STC", **kwarg):
         new_order=Order()
         new_order.order_strategy_type("SINGLE")
 
@@ -225,15 +227,21 @@ class TDA(BaseBroker):
         order_leg = OrderLeg()
         order_leg.order_leg_quantity(quantity=int(uQty))
         if strike is not None:
-            order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+            if action == "STC":
+                order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+            elif action == "BTC":
+                order_leg.order_leg_instruction(instruction="BUY_TO_CLOSE")
             order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
         else:
-            order_leg.order_leg_instruction(instruction="SELL")
+            if action == "STC":
+                order_leg.order_leg_instruction(instruction="SELL")
+            elif action == "BTC":
+                order_leg.order_leg_instruction(instruction="BUY_TO_COVER")
             order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
         new_order.add_order_leg(order_leg=order_leg)
         return new_order
 
-    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_const:float, new_order=None, **kwarg):
+    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_const:float, new_order=None, action="STC", **kwarg):
         if new_order is None:
             new_order = Order()
         new_order.order_strategy_type("SINGLE")
@@ -248,10 +256,16 @@ class TDA(BaseBroker):
         child_order_leg = OrderLeg()
         child_order_leg.order_leg_quantity(quantity=uQty)
         if len(Symbol.split("_")) > 1:
-            child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+            if action == "STC":
+                child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+            elif action == "BTC":
+                child_order_leg.order_leg_instruction(instruction="BUY_TO_CLOSE")
             child_order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
         else:
-            child_order_leg.order_leg_instruction(instruction="SELL")
+            if action == "STC":
+                child_order_leg.order_leg_instruction(instruction="SELL")
+            elif action == "BTC":
+                child_order_leg.order_leg_instruction(instruction="BUY_TO_COVER")
             child_order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
         new_order.add_order_leg(order_leg=child_order_leg)
         return new_order
