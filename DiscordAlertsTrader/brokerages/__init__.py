@@ -63,8 +63,14 @@ def get_brokerage(name=cfg['general']['BROKERAGE']):
         tda = TDA(accountId=accountId)
         tda.get_session()
         return tda
-    elif name == "webull":
-        NotImplemented
+    elif name.lower() == "webull":
+        from .weBull_api import weBull
+        wb = weBull()
+        success = wb.get_session()
+        if success:
+            return wb
+        else:
+            raise Exception("Failed to get session for weBull")
     elif name.lower() == 'etrade':
         from .eTrade_api import eTrade
         accountId = cfg['etrade']['accountId']

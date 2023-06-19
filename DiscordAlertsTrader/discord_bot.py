@@ -49,7 +49,7 @@ class DiscordBot(discord.Client):
         self.tracker = AlertsTracker(brokerage=brokerage, portfolio_fname=tracker_portfolio_fname)
         self.load_data()        
 
-        if live_quotes and brokerage is not None: # and brokerage.name == 'tda':
+        if live_quotes and brokerage is not None and brokerage.name != 'webull':
             self.thread_liveq =  threading.Thread(target=self.track_live_quotes)
             self.thread_liveq.start()
 
