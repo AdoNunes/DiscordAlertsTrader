@@ -426,16 +426,17 @@ class AlertsTrader():
             self.queue_prints.put([f"Updated {symb} exit plan from :{old_plan} to {renew_plan}", "", "green"])
             return
 
-        if not isOpen and order["action"] == "BTO":
+        elif not isOpen and order["action"] in ["BTO", "STO"]:
             alert_price = order['price']
-
+            action = order["action"]
             order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_BTO_lim_order)
+    
             self.save_logs("port")
             if order_response is None:  #Assume trade not accepted
-                log_alert['action'] = "BTO-notAccepted"                
+                log_alert['action'] = action+"-notAccepted"                
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
-                str_msg = "BTO not accepted by user, order response is none"
+                str_msg = action+" not accepted by user, order response is none"
                 print(Back.GREEN + str_msg)
                 self.queue_prints.put([str_msg, "", "green"])
                 return
@@ -445,8 +446,8 @@ class AlertsTrader():
                 log_alert['action'] = "REJECTED"
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
-                print(Back.GREEN + "BTO REJECTED")
-                self.queue_prints.put(["BTO REJECTED", "", "green"])
+                print(Back.GREEN + action+" REJECTED")
+                self.queue_prints.put([action+" REJECTED", "", "green"])
                 return
             
             exit_plan = parse_exit_plan(order)
@@ -456,7 +457,7 @@ class AlertsTrader():
                          'BTO-Status' : order_status,
                          "uQty": order_info['quantity'],
                          "Asset" : order["asset"],
-                         "Type" : "BTO",
+                         "Type" : action,
                          "Price" : order_info["price"],
                          "Price-Alert" : alert_price,
                          "Price-Current": order["price_current"],
@@ -474,12 +475,12 @@ class AlertsTrader():
                 self.portfolio.loc[ot, "Price"] = order_info['price']
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
                 self.disc_notifier(order_info)
-            str_msg = f"BTO {order['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
+            str_msg = f"{action} {order['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
             print(Back.GREEN + str_msg)
             self.queue_prints.put([str_msg, "", "green"])
             
             #Log portfolio, trades_log
-            log_alert['action'] = "BTO"
+            log_alert['action'] = action
             log_alert["portfolio_idx"] = len(self.portfolio) - 1
             self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
             self.save_logs()
@@ -543,13 +544,14 @@ class AlertsTrader():
             print(Back.RED + str_act)
             self.queue_prints.put([str_act, "", "red"])
 
-        elif order["action"] == "STC" and isOpen == 0:
+        elif order["action"] in ["STC", "BTC"] and isOpen == 0:
             open_trade, _ = find_last_trade(order, self.portfolio, open_only=False)
             if open_trade is None:
-                log_alert['action'] = str_msg = f"STC-alerted without open position"
+                log_alert['action'] = str_msg = f"{order['action']}-alerted without open position"
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs()
-                if cfg['general'].getboolean('DO_BTO_TRADES'):
+                if( cfg['general'].getboolean('DO_BTO_TRADES') and order["action"] == "STC") or \
+                    (cfg['general'].getboolean('DO_STO_TRADES') and order["action"] == "BTC"):
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
                 return
@@ -570,14 +572,17 @@ class AlertsTrader():
                         self.save_logs()
                     return
 
-            str_act = "STC without BTO, maybe alredy sold"
-            log_alert['action'] = "STC-Null-notOpen"
+            if order["action"] == "STC":
+                str_act = "STC without BTO, maybe alredy sold"
+            elif order["action"] == "BTC":
+                str_act = "BTC without STO, maybe alredy bought"
+            log_alert['action'] = f"{order['action']}-Null-notOpen"
             self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
             self.save_logs(["alert"])
             print(Back.RED + str_act)
             self.queue_prints.put([str_act, "", "red"])
 
-        elif order["action"] == "STC":
+        elif order["action"] in ["STC", "BTC"]:
             position = self.portfolio.iloc[open_trade]
             if order.get("amnt_left"):
                 order, changed = amnt_left(order, position)
@@ -609,10 +614,10 @@ class AlertsTrader():
                     break
 
             else:
-                str_STC = "How many STC already?"
+                str_STC = f"How many {order['action']} already?"
                 print (Back.RED + str_STC)
                 self.queue_prints.put([str_STC, "", "red"])
-                log_alert['action'] = "STC-TooMany"
+                log_alert['action'] = f"{order['action']}-TooMany"
                 log_alert["portfolio_idx"] = open_trade
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
@@ -641,7 +646,7 @@ class AlertsTrader():
                 print(Back.GREEN + f"Order Cancelled {order['Symbol']}, closed before fill")
                 self.queue_prints.put([f"Order Cancelled {order['Symbol']}, closed before fill", "", "green"])
 
-                log_alert['action'] = "STC-ClosedBeforeFill"
+                log_alert['action'] = f"{order['action']}-ClosedBeforeFill"
                 log_alert["portfolio_idx"] = open_trade
                 self.save_logs()
                 # self.activate_trade_updater()
@@ -654,7 +659,7 @@ class AlertsTrader():
                 str_msg = f"Exit Plan {order['Symbol']} updated, with PT{STC[-1]}: {order['price']}"
                 print(Back.GREEN + str_msg)
                 self.queue_prints.put([str_msg,"", "green"])
-                log_alert['action'] = "STC-partial-BeforeFill-ExUp"
+                log_alert['action'] = f"{order['action']}-partial-BeforeFill-ExUp"
                 log_alert["portfolio_idx"] = open_trade
                 return
 
@@ -698,11 +703,12 @@ class AlertsTrader():
             log_alert["portfolio_idx"] = open_trade
 
             if order_response is None:  # Assume trade rejected by user
-                log_alert['action'] = "STC-notAccepted"
+                log_alert['action'] = f"{order['action']}-notAccepted"
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
-                print(Back.GREEN + "STC not accepted by user, order response null")
-                self.queue_prints.put(["STC not accepted by user, order response null", "", "green"])
+                msg_str = f"{order['action']} not accepted by user, order response null"
+                print(Back.GREEN + msg_str)
+                self.queue_prints.put([msg_str, "", "green"])
                 self.update_paused = False
                 return
 
@@ -868,12 +874,12 @@ class AlertsTrader():
                 if order_status == 'CANCELED':
                     # Try next order number. OCO gets chancelled when one of child ordergets filled.
                     # This is for TDA OCO
-                    order_status, _ =  self.get_order_info(STC_ordID + 1)
+                    order_status, order_info =  self.get_order_info(STC_ordID + 1)
                     if order_status == 'FILLED':
                         STC_ordID = STC_ordID + 1
                         self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID
                     else: # try the other one
-                        order_status, _ =  self.get_order_info(STC_ordID + 2)
+                        order_status, order_info =  self.get_order_info(STC_ordID + 2)
                         if order_status == 'FILLED':
                             STC_ordID = STC_ordID + 2
                             self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID
