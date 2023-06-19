@@ -337,11 +337,14 @@ class eTrade(BaseBroker):
         time.sleep(.5)
         return resp
 
-    def make_BTO_lim_order(self, Symbol:str, uQty:int, price:float, **kwarg):
+    def make_BTO_lim_order(self, Symbol:str, uQty:int, price:float, action="BTO", **kwarg):
         "Buy with a limit order"
         kwargs = {}
         kwargs['symbol'] = Symbol
-        kwargs['orderAction'] = "BUY"
+        if action == "BTO":
+            kwargs['orderAction'] = "BUY"
+        elif action == "STO":
+            kwargs['orderAction'] = "SELL_SHORT"
         if len(Symbol.split("_"))>1:
             Symbol = self.format_option(Symbol)            
             symbol, year, month, day, optype, strike = Symbol.split(":")
@@ -350,7 +353,10 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = optype
             kwargs["securityType"] = "OPTN"
-            kwargs['orderAction'] = 'BUY_OPEN'        
+            if action == "BTO":
+                kwargs['orderAction'] = 'BUY_OPEN'
+            elif action == "STO":
+                kwargs['orderAction'] = 'SELL_OPEN'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'LIMIT'
         kwargs['limitPrice'] = price    
@@ -360,11 +366,14 @@ class eTrade(BaseBroker):
         kwargs['marketSession'] = 'REGULAR'
         return kwargs
 
-    def make_Lim_SL_order(self, Symbol:str, uQty:int,  PT:float, SL:float,  **kwarg):
+    def make_Lim_SL_order(self, Symbol:str, uQty:int,  PT:float, SL:float, action="STC",  **kwarg):
         """Sell with a limit order and a stop loss order"""
         kwargs = {}
         kwargs['symbol'] = Symbol
-        kwargs['orderAction'] = "SELL"
+        if action == "STC":
+            kwargs['orderAction'] = "SELL"
+        elif action == "STO":
+            kwargs['orderAction'] = "BUY_TO_COVER"
         if len(Symbol.split("_"))>1:
             Symbol = self.format_option(Symbol)            
             symbol, year, month, day, optype, strike = Symbol.split(":")
@@ -373,7 +382,10 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = optype
             kwargs["securityType"] = "OPTN"
-            kwargs['orderAction'] = 'SELL_CLOSE'
+            if action == "STC":
+                kwargs['orderAction'] = 'SELL_CLOSE'
+            elif action == "STO":
+                kwargs['orderAction'] = 'BUY_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'STOP_LIMIT'
         kwargs['limitPrice'] = PT
@@ -384,11 +396,14 @@ class eTrade(BaseBroker):
         kwargs['marketSession'] = 'REGULAR'
         return kwargs
 
-    def make_STC_lim(self, Symbol:str, uQty:int, price:float, strike=None, **kwarg):
+    def make_STC_lim(self, Symbol:str, uQty:int, price:float, strike=None, action="STC", **kwarg):
         """Sell with a limit order and a stop loss order"""
         kwargs = {}
         kwargs['symbol'] = Symbol
-        kwargs['orderAction'] = "SELL"
+        if action == "STC":
+            kwargs['orderAction'] = "SELL"
+        elif action == "STO":
+            kwargs['orderAction'] = "BUY_TO_COVER"
         if len(Symbol.split("_"))>1:
             Symbol = self.format_option(Symbol)            
             symbol, year, month, day, optype, strike = Symbol.split(":")
@@ -397,7 +412,10 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = optype
             kwargs["securityType"] = "OPTN"
-            kwargs['orderAction'] = 'SELL_CLOSE'
+            if action == "STC":
+                kwargs['orderAction'] = 'SELL_CLOSE'
+            elif action == "STO":
+                kwargs['orderAction'] = 'BUY_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'LIMIT'
         kwargs['limitPrice'] = price
@@ -407,11 +425,14 @@ class eTrade(BaseBroker):
         kwargs['marketSession'] = 'REGULAR'
         return kwargs
 
-    def make_STC_SL(self, Symbol:str, uQty:int, SL:float, **kwarg):
+    def make_STC_SL(self, Symbol:str, uQty:int, SL:float, action="STC", **kwarg):
         """Sell with a stop loss order"""
         kwargs = {}
         kwargs['symbol'] = Symbol
-        kwargs['orderAction'] = "SELL"
+        if action == "STC":
+            kwargs['orderAction'] = "SELL"
+        elif action == "STO":
+            kwargs['orderAction'] = "BUY_TO_COVER"
         if len(Symbol.split("_"))>1:
             Symbol = self.format_option(Symbol)            
             symbol, year, month, day, optype, strike = Symbol.split(":")
@@ -420,7 +441,10 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = optype
             kwargs["securityType"] = "OPTN"
-            kwargs['orderAction'] = 'SELL_CLOSE'
+            if action == "STC":
+                kwargs['orderAction'] = 'SELL_CLOSE'
+            elif action == "STO":
+                kwargs['orderAction'] = 'BUY_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'STOP'
         kwargs['stopPrice'] = int(SL)
@@ -429,11 +453,14 @@ class eTrade(BaseBroker):
         kwargs['orderTerm'] = "GOOD_UNTIL_CANCEL"
         kwargs['marketSession'] = 'REGULAR'
 
-    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_const:float, **kwarg):
+    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_const:float, action="STC", **kwarg):
         "trail_stop_const"
         kwargs = {}
         kwargs['symbol'] = Symbol
-        kwargs['orderAction'] = "SELL"
+        if action == "STC":
+            kwargs['orderAction'] = "SELL"
+        elif action == "STO":
+            kwargs['orderAction'] = "BUY_TO_COVER"
         if len(Symbol.split("_"))>1:
             Symbol = self.format_option(Symbol)            
             symbol, year, month, day, optype, strike = Symbol.split(":")
@@ -442,7 +469,10 @@ class eTrade(BaseBroker):
             kwargs['strikePrice'] = float(strike)
             kwargs['callPut'] = optype
             kwargs["securityType"] = "OPTN"
-            kwargs['orderAction'] = 'SELL_CLOSE'       
+            if action == "STC":
+                kwargs['orderAction'] = 'SELL_CLOSE'
+            elif action == "STO":
+                kwargs['orderAction'] = 'BUY_CLOSE'    
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'TRAILING_STOP_CNST'
         kwargs['stopPrice'] = trail_stop_const

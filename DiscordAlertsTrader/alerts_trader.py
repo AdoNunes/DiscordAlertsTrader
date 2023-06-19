@@ -131,14 +131,14 @@ class AlertsTrader():
 
     def order_to_pars(self, order):
         pars_str = f"{order['action']} {order['Symbol']} @{order['price']}"
-        if {order['action']} == "BTO":
+        if order['action'] in ["BTO", "STO"]:
             for i in range(1, 4):
                 pt = f"PT{i}"
                 if pt in order.keys() and order[pt] is not None:
                     pars_str = pars_str + f" {pt}: {order[pt]}"
                 if "SL" in order.keys() and order["SL"] is not None:
                     pars_str = pars_str + f" SL: {order['SL']}"
-        elif {order['action']} == "STC":
+        elif order['action'] in ["STC", "BTC"]:
             pars_str = pars_str + f" Qty:{order['uQty']}({int(order['xQty']*100)}%)"
         return pars_str
 
@@ -152,7 +152,15 @@ class AlertsTrader():
             print("order in notifier not filled")
             return
         
-        action = "BTO" if order_info['orderLegCollection'][0]['instruction'].startswith("BUY") else "STC"
+        if order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_OPEN", "BUY"]:
+            action = "BTO"
+        elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_CLOSE", "SELL"]:
+            action = "STC"
+        elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_OPEN", "SELL_SHORT"]:
+            action = "STO"
+        elif order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_CLOSE", "BUY_TO_COVER"]:
+            action = "BTC"
+
         symbol = ordersymb_to_str(order_info['orderLegCollection'][0]['instrument']['symbol'])
         msg = f"{action} {order_info['filledQuantity']} {symbol} @{order_info['price']}"
         

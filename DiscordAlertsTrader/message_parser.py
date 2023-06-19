@@ -11,7 +11,7 @@ from datetime import datetime
 import numpy as np
 
 def parse_trade_alert(msg, asset=None):
-    pattern = r'\b(BTO|STC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[.\d+]*[cp]?)?\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
+    pattern = r'\b(BTO|STC|STO|BTC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[.\d+]*[cp]?)?\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
     match = re.search(pattern, msg, re.IGNORECASE)
     
     if match:
@@ -47,7 +47,7 @@ def parse_trade_alert(msg, asset=None):
             if el is not None:
                 pars.append(el)
         pars = " ".join(pars)
-        if action.upper() == "BTO":
+        if action.upper() in ["BTO", "STO"]:
             if "avg" in msg.lower() or "average" in msg.lower():
                 avg_price, _ = parse_avg(msg)
                 pars = pars + f"AVG to {avg_price} "
@@ -63,7 +63,7 @@ def parse_trade_alert(msg, asset=None):
             order["n_PTs"] = n_pts
             order["PTs_Qty"] = pts_qty
 
-        elif action.upper() == "STC":
+        elif action.upper() in ["STC", "BTC"]:
             xamnt = parse_sell_ratio_amount(msg, asset_type)
             if order["uQty"] is None:
                 pars = pars + f" xamount: {xamnt}"
