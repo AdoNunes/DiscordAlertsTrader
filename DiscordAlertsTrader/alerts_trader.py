@@ -225,6 +225,47 @@ class AlertsTrader():
             elif resp in ["no", "n"]:
                 return None, None, order, None
 
+    def short_orders(self, order, pars):
+        if cfg['shorting'].getboolean('DO_STO_TRADES') is True and order['action'] == "STO":
+            if cfg['shorting']['STO_trailingstop'] != "":
+                order["trail_stop_const"] = float(cfg['shorting']['STO_trailingstop'])*order["price_current"]
+            else:
+                # if price diff not too high, use current price
+                pdiff = round((order['price']-order["price_current"])/order['price']*100,1)
+                if pdiff < eval(cfg['shorting']['max_price_diff']):
+                    order['price'] = order["price_current"]
+                else:
+                    str_msg = f"STO alert price diff too high: {pdiff}% at {order['price_current']}, keeping original price of {order['price']}"
+                    print(Back.GREEN + str_msg)
+                    self.queue_prints.put([str_msg, "", "green"])
+            # Handle missing quantity
+            if 'uQty' not in order.keys() or order['uQty'] is None:
+                        if cfg['shorting']['default_sto_qty'] == "buy_one":
+                            order['uQty'] = 1                    
+                        elif cfg['shorting']['default_sto_qty'] == "trade_capital":
+                            order['uQty'] =  int(max(round(float(cfg['shorting']['trade_capital'])/order['price']), 1))
+            # Handle trade too expensive
+            max_trade_val = float(cfg['shorting']['max_trade_capital'])
+            if order['price'] * order['uQty'] > max_trade_val:
+                uQty_ori = order['uQty']
+                order['uQty'] =  int(max(max_trade_val//order['price'], 1))
+                if order['price'] * order['uQty'] <= max_trade_val:
+                    str_msg = f"STO trade exeeded max_trade_capital of ${max_trade_val}, order quantity reduced to {order['uQty']} from {uQty_ori}"
+                    print(Back.GREEN + str_msg)
+                    self.queue_prints.put([str_msg, "", "green"])
+                else:
+                    str_msg = f"cancelled STO: trade exeeded max_trade_capital of ${max_trade_val}"
+                    print(Back.RED + str_msg)
+                    self.queue_prints.put([str_msg, "", "red"])
+                    return "no", order, False
+            return "yes", order, False
+        # decide if do BTC based on alert
+        elif cfg['shorting'].getboolean('DO_BTC_TRADES') is True and order['action'] == "BTC":
+            return "yes", order, False
+        else:
+            return "no", order, False
+
+
     def notify_alert(self, order, pars):
         price_now = self.price_now
         symb = order['Symbol']
@@ -243,7 +284,10 @@ class AlertsTrader():
             pdiff = round(pdiff*100,1)
 
             question = f"{pars_ori} {price_now(symb, act)}"
-            if cfg['order_configs'].getboolean('sell_current_price'):
+            if order['action'] in ["STO", "BTC"]:
+                return self.short_orders(order, pars)
+            
+            elif cfg['order_configs'].getboolean('sell_current_price'):
                 if pdiff < eval(cfg['order_configs']['max_price_diff'])[order["asset"]]:
                     order['price'] = price_now(symb, act, 1)
                     pars = self.order_to_pars(order)
@@ -1097,7 +1141,7 @@ class AlertsTrader():
             return
         optdate = option_date(trade['Symbol'])
         if optdate.date() < date.today():
-            expdate = date.today().strftime("%Y-%m-%dT%H:%M:%S+0000")
+            expdate = date.today().strftime("%Y-%m-%d %H:%M:%S+0000")
             usold = np.nansum([trade[f"STC{i}-uQty"] for i in range(1,4)])
             for stci in range(1,4):
                 if pd.isnull(trade[f"STC{stci}-uQty"]):
