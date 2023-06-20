@@ -289,7 +289,7 @@ pnls, pnlus = [], []
 port['STC-PnL-strategy'] = np.nan
 port['STC-PnL$-strategy'] = np.nan
 
-no_quote = []
+trades_min, no_quote, trades_max, percentage_return = [], [], [], []
 for idx, row in port.iterrows():
     
     # Load data
@@ -306,8 +306,6 @@ for idx, row in port.iterrows():
     except TypeError:
         stc_date = row['STC-Date'].replace("T00:00:00+0000", " 16:00:00.000000")
         msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(stc_date))) & (quotes[' quote'] > 0)
-        # print("error with dates", row['Symbol'], row['STC-Date'])
-        # continue
     
     if not msk.any():
         print("quotes outside with dates", row['Symbol'])
@@ -319,14 +317,21 @@ for idx, row in port.iterrows():
     
     price_alert = row['Price']
     price_curr = row['Price-current']
-    
+    trades_min.append(100*(quotes_vals.min()-row['Price-current'])/row['Price-current'])
+    trades_max.append(100*(quotes_vals.max()-row['Price-current'])/row['Price-current'])
+    percentage_return.append(100*(row['STC-Price-current']-row['Price-current'])/row['Price-current'])
     # roi_alert, = calc_roi(quotes_vals, PT=1.75, TS=0, SL=.5, do_plot=False, initial_prices=price_alert)
-    roi_current, = calc_roi(quotes_vals, PT=1.45, TS=0, SL=0, do_plot=False, initial_prices=price_curr)
+    roi_current, = calc_roi(quotes_vals, PT=1.5, TS=0, SL=.75, do_plot=False, initial_prices=price_curr)
     
     pnl = roi_current[2]
     mult = .1 if row['Asset'] == 'stock' else 1
     if mult == .1: raise Exception("There should be no stocks in the portfolio")
     pnlu = pnl*row['Amount']*roi_current[0]*mult
+    
+    # pnl = 100*(row['STC-Price-current']-row['Price-current'])/row['Price-current']
+    # mult = .1 if row['Asset'] == 'stock' else 1
+    # if mult == .1: raise Exception("There should be no stocks in the portfolio")
+    # pnlu = pnl*row['Amount']*row['Price-current']*mult
     
 #     # price_delayed = price_curr + (price_curr*(price_curr/100))
 #     # if delayed_entry > 0:
@@ -365,3 +370,54 @@ pnls_m = np.nanmean(np.array(pnls) , axis=0)
 print("Pnl alert: %.2f, Pnl current: %.2f, Pnl strategy: %.2f" % (pnls_m[0], pnls_m[1], pnls_m[2]))
 pnlus_m = np.nansum(np.array(pnlus) , axis=0)
 print("Pnl $ alert: %.2f, Pnl $ current: %.2f, Pnl $ strategy: %.2f" % (pnlus_m[0], pnlus_m[1], pnlus_m[2]))
+
+agg_funcs = {'STC-PnL$': 'sum',
+                'STC-PnL$-current': 'sum',
+                'STC-PnL': 'mean',
+                'STC-PnL-current': 'mean',
+                'STC-PnL-strategy': 'mean',
+                'STC-PnL$-strategy': 'sum',    
+                "Price": ['mean', 'median'],            
+                'Date': ['count', 'min', 'max']
+                }
+# Perform the groupby operation and apply the aggregation functions
+result_td = port.groupby('Trader').agg(agg_funcs).sort_values(by=('Date', 'count'), ascending=False)
+print(result_td)
+    
+# Calculate mean values
+mean_min = np.mean(trades_min)
+mean_max = np.mean(trades_max)
+
+# Create a figure and subplots
+fig, axs = plt.subplots(1, 3, figsize=(10, 5))
+
+# Plot histogram for trades_min
+axs[0].hist(trades_min, bins=100, color='blue')
+axs[0].set_title('trades_min Histogram')
+axs[0].set_xlabel('Value')
+axs[0].set_ylabel('Frequency')
+axs[0].axvline(x=mean_min, color='red', linestyle='--', label=f'Mean: {mean_min:.2f}')
+axs[0].legend()
+
+# Plot histogram for trades_max
+axs[1].hist(trades_max, bins=100, color='red')
+axs[1].set_title('trades_max Histogram')
+axs[1].set_xlabel('Value')
+axs[1].set_ylabel('Frequency')
+axs[1].axvline(x=mean_max, color='blue', linestyle='--', label=f'Mean: {mean_max:.2f}')
+axs[1].legend()
+
+# Plot scatter plot for trades_min and trades_max
+
+axs[2].scatter(trades_min, trades_max, c=percentage_return, cmap='coolwarm')
+axs[2].set_title('trades_min vs trades_max')
+axs[2].set_xlabel('trades_min')
+axs[2].set_ylabel('trades_max')
+cbar = plt.colorbar(axs[2].scatter([], [], c=[], cmap='coolwarm'))
+cbar.set_label('Percentage Return')
+
+# Adjust the spacing between subplots
+plt.tight_layout()
+
+# Show the plot
+plt.show()
