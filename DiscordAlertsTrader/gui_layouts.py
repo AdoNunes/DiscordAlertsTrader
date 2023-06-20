@@ -210,6 +210,8 @@ def layout_account(bksession, font_body, font_header):
         return [[sg.T("No brokerage API provided in config.ini")]]
     acc_inf, ainf = gg.get_acc_bals(bksession)
     pos_tab, pos_headings = gg.get_pos(acc_inf)
+    if not len(pos_tab):
+        pos_tab = ["No post"]
     ord_tab, ord_headings, _= gg.get_orders(acc_inf)
 
     layout = [[sg.Column([
