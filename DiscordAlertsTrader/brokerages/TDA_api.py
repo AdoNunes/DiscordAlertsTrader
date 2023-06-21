@@ -106,6 +106,11 @@ class TDA(BaseBroker):
         return df_pos, df_ordr
 
     def make_BTO_lim_order(self, Symbol:str, uQty:int, price:float, strike=None, action="BTO", **kwarg):
+        # iftrailing stop in STO, do a STO with trailstop
+        if action == 'STO' and "trail_stop_const" in kwarg:
+            print("STO with trail_stop_const")
+            return self.make_STC_SL_trailstop(Symbol, uQty, action=action, **kwarg)
+
         new_order=Order()
         new_order.order_strategy_type("TRIGGER")
         new_order.order_type("LIMIT")

@@ -54,18 +54,18 @@ class AlertsTracker():
         if order.get('uQty') is None:
             order['uQty'] = 1
         
-        if order["action"] in ["BTO", "STC"] and live_alert:
+        if order["action"] in ["BTO", "STC",'STO', 'BTC'] and live_alert:
             if order.get('Actual Cost', 'None') == 'None':
                 order["Actual Cost"] = self.price_now(order["Symbol"], order["action"])
 
-        if open_trade is None and order["action"] == "BTO":
+        if open_trade is None and order["action"] in ["BTO", 'STO']:
             str_act = self.make_BTO(order, channel)
-        elif order["action"] == "BTO":
+        elif order["action"] in ["BTO", 'STO']:
             # str_act = "BTO averaging disabled as it is mostly wrong alert messages"
             str_act = self.make_BTO_Avg(order, open_trade)
-        elif order["action"] == "STC" and open_trade is None:
-            str_act = "STC without BTO"
-        elif order["action"] == "STC":
+        elif order["action"] in ["STC", "BTC"] and open_trade is None:
+            str_act = order["action"] + "without BTO"
+        elif order["action"] in ["STC", "BTC"]:
             str_act = self.make_STC(order, open_trade)
         elif order["action"] == "ExitUpdate":
             if open_trade is not None:
@@ -87,7 +87,7 @@ class AlertsTracker():
             "Symbol": order['Symbol'],
             'isOpen': 1,
             "Asset": order["asset"],
-            "Type": "BTO",
+            "Type": order["action"],
             "Price": order["price"],
             "Amount": order['uQty'],
             "Price-current": order.get("Actual Cost"),
@@ -97,7 +97,7 @@ class AlertsTracker():
             }        
         self.portfolio =pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)
 
-        str_act = f"BTO {order['Symbol']} {order['price']}"
+        str_act = f"{order['action']} {order['Symbol']} {order['price']}"
         if order['SL'] is not None:
             str_act += f", SL:{order['SL']}"
         return str_act
@@ -132,7 +132,7 @@ class AlertsTracker():
         if order.get("SL"):
             self.portfolio.loc[open_trade, "SL"] =  order.get("SL")
         
-        str_act = f"BTO {order['Symbol']} {current_Avg}th averging down @ {order['price']}"
+        str_act = f"{order['action']} {order['Symbol']} {current_Avg}th averging down @ {order['price']}"
         return str_act
 
     def make_STC(self, order, open_trade, check_trail=False):
@@ -153,7 +153,7 @@ class AlertsTracker():
             self.portfolio.loc[open_trade, "isOpen"] = 0
             
         if stc_price == "none" or stc_price is None:
-            str_STC = f"STC {order['Symbol']}  ({order['uQty']}), no price provided" + suffx
+            str_STC = f"{order['action']} {order['Symbol']}  ({order['uQty']}), no price provided" + suffx
         else:
             # str_STC = f"STC {order['Symbol']} ({order['uQty']}),{suffx} @{stc_price:.2f}"
             str_STC = ""
@@ -237,8 +237,6 @@ class AlertsTracker():
                 str_prt = f"{trade['Symbol']} option expired -100%"
                 print(str_prt)
         self.portfolio.to_csv(self.portfolio_fname, index=False)
-
-
 
 def calc_stc_prices(trade, order=None):
     # if order is None = expired option

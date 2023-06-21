@@ -208,10 +208,10 @@ class DiscordBot(discord.Client):
         else:
             if order['asset'] == "option":
                 # get option date with year
-                opt_dt = datetime.strptime(f"{order['expDate']} {datetime.now().year}" , "%m/%d %Y")
-                today = datetime.now().date()
-                past = opt_dt.date() < today
-                if past:
+                exp_dt = datetime.strptime(f"{order['expDate']}/{datetime.now().year}" , "%m/%d/%Y").date()
+                dt = datetime.now().date()
+                order['dte'] =  (exp_dt - dt).days
+                if order['dte']<0:
                     str_msg = f"Option date in the past: {order['expDate']}"
                     self.queue_prints.put([f"\t {str_msg}", "green"])
                     print(Fore.GREEN + f"\t {str_msg}")
@@ -220,7 +220,7 @@ class DiscordBot(discord.Client):
                         self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
                         self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
                     return
-                
+
             order['Trader'], order["Date"] = msg['Author'], msg["Date"]
             order_date = datetime.strptime(order["Date"], "%Y-%m-%d %H:%M:%S.%f")
             date_diff = datetime.now() - order_date
@@ -235,10 +235,9 @@ class DiscordBot(discord.Client):
             
             track_out = self.tracker.trade_alert(order, live_alert, chn)
             self.queue_prints.put([f"{track_out}", "red"])
-            if self.do_trade_alert(msg['Author'], msg['Channel']):
+            do_trade, order = self.do_trade_alert(msg['Author'], msg['Channel'], order)
+            if do_trade and date_diff.seconds < 120:
                 order["Trader"] = msg['Author']
-                if len(cfg["order_configs"]["default_trailstop"]) and order.get("SL") is None and order.get("PT1") is None:
-                    order['SL'] = cfg["order_configs"]["default_trailstop"] + "%"
                 self.trader.new_trade_alert(order, pars, msg['Content'])
         
         if self.chn_hist.get(chn) is not None:
@@ -246,15 +245,24 @@ class DiscordBot(discord.Client):
             self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
             self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
 
-    def do_trade_alert(self, author, channel):
+    def do_trade_alert(self, author, channel, order):
         "Decide if alert should be traded"
         if author in cfg['discord']['authors_subscribed'].split(",") and self.bksession is not None:
-            return True
+            return True, order
         elif channel in cfg['discord']['channelwise_subscription'].split(",") and self.bksession is not None:
-            return True
+            return True, order
+        elif author in cfg['shorting']['authors_subscribed'].split(",") and self.bksession is not None:
+            if order['asset'] != "option":
+                return False, None
+            # Make it STO
+            order["action"] = "STO"
+            if len(cfg['shorting']['max_dte']):
+                if order['dte'] <= int(cfg['shorting']['max_dte']):
+                    return True, order
         else:
-            return False
+            return False, None
 
+                
 if __name__ == '__main__':
     client = DiscordBot()
     client.run(cfg['discord']['discord_token'])
