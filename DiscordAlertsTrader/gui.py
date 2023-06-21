@@ -341,6 +341,9 @@ def run_gui():
                 elif cfg['discord']['channelwise_subscription'].split(",") != [""] and \
                     any([c in event_feedb[0] for c in cfg['discord']['channelwise_subscription'].split(",")]):
                     subs_auth_msg = True
+                elif cfg['discord']['auhtorwise_subscription'].split(",") != [""] and \
+                    any([c in event_feedb[0] for c in cfg['discord']['auhtorwise_subscription'].split(",")]):
+                    subs_auth_msg = True
                 else:
                     subs_auth_msg = False
             
