@@ -22,6 +22,9 @@ from DiscordAlertsTrader import gui_layouts as gl
 from DiscordAlertsTrader.discord_bot import DiscordBot
 from DiscordAlertsTrader.configurator import cfg, channel_ids
 
+# A fix for Macs
+os.environ['QT_MAC_WANTS_LAYER'] = '1'
+
 def match_authors(author_str:str)->str:
     """Author have an identifier in discord, it will try to find full author name
 
