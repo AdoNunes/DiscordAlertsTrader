@@ -259,8 +259,8 @@ class DiscordBot(discord.Client):
             if len(cfg['shorting']['max_dte']):
                 if order['dte'] <= int(cfg['shorting']['max_dte']):
                     return True, order
-        else:
-            return False, None
+                
+        return False, None
 
                 
 if __name__ == '__main__':

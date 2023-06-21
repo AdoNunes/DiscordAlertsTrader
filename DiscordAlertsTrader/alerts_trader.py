@@ -482,6 +482,7 @@ class AlertsTrader():
             return
 
         elif not isOpen and order["action"] in ["BTO", "STO"]:
+            alert_price = order["price"]
             action = order["action"]
             order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_BTO_lim_order)
     
