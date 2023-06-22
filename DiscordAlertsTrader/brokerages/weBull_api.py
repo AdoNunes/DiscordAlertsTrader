@@ -47,24 +47,23 @@ class weBull:
                     },
         }}
         positions = data['positions']
-        for position in positions: # positions["Position"]:
-            assetType = position['Product']["securityType"].replace('EQ', 'stock').replace('OPTN', 'OPTION')
+        for position in positions:
             pos = {
-                "longQuantity" : position['quantity'] if position['positionType'] == 'LONG' else 0,
-                "symbol": position['Product']["symbol"],
+                "longQuantity" : position['position'],
+                "symbol": position['ticker']["symbol"],
                 "marketValue": position['marketValue'],
-                "assetType": assetType,
-                "averagePrice": position['costPerShare'],
-                "currentDayProfitLoss": position['totalGainPct'],
-                "currentDayProfitLossPercentage": position['totalGainPct'],
-                'instrument': {'symbol': position['Product']["symbol"],
-                                'assetType': assetType,
+                "assetType": position['assetType'],
+                "averagePrice": position['costPrice'],
+                "currentDayProfitLoss": position['unrealizedProfitLoss'],
+                "currentDayProfitLossPercentage": position['unrealizedProfitLoss']/100,
+                'instrument': {'symbol': position['ticker']["symbol"],
+                                'assetType': position['assetType'],
                                 }
             }
             acc_inf['securitiesAccount']['positions'].append(pos)
         else:
             acc_inf['securitiesAccount']['positions'] = []
-            print("No portfolio")
+        print("No portfolio")
 
         # get orders and add them to acc_inf
         orders = self.session.get_history_orders(count=10)
@@ -88,9 +87,13 @@ class weBull:
         return None, None
 
     def format_order(self, order:dict):
-        """ output format for order_response.Order, mimicks the order_info from TDA API"""
+        """ output format for order_response. Order, mimicks the order_info from TDA API"""
         stopPrice= order['orders'][0].get('stpPrice')
         
+        price = order['orders'][0].get('avgFilledPrice')
+        if price is None:
+            price = order['orders'][0].get('lmtPrice')
+            
         timestamp = int(order['orders'][0]['createTime0'])/1000
         enteredTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00")
         timestamp = int(order['orders'][0]['updateTime0'])/1000
@@ -100,15 +103,16 @@ class weBull:
             yer, mnt, day = order['orders'][0]['optionExpireDate'].split("-")
             otype = "C" if order['orders'][0]['optionType'][0].upper() =="CALL" else "P"
             symbol = f"{order['orders'][0]['symbol']}_{mnt}{day}{yer[2:]}{otype}{order['orders'][0]['optionExercisePrice']}".replace(".00","")
+            symbol = self.fix_symbol(symbol, "out")
         else:
             symbol = order['orders'][0]['symbol']
         status = order['status'].upper()
         order_info = {
             'status': status,
-            'quantity': int(order['quantity']),
-            'filledQuantity': int(order['filledQuantity']),
-            'price': order.get('avgFilledPrice'),
-            'orderStrategyType': 'SINGLE',
+            'quantity': int(order['orders'][0]['totalQuantity']),
+            'filledQuantity': int(order['orders'][0]['filledQuantity']),
+            'price': float(price),
+            'orderStrategyType': order['optionStrategy'].upper(),
             "order_id" : order['orders'][0]['orderId'],
             "orderId": order['orders'][0]['orderId'],
             "stopPrice": stopPrice if stopPrice else None,
@@ -117,7 +121,7 @@ class weBull:
             "closeTime": closeTime,
             'orderLegCollection':[{
                 'instrument':{'symbol': symbol},
-                'instruction': order['action'],
+                'instruction': order['orders'][0]['action'],
                 'quantity': int(order['filledQuantity']),
             }]             
         }    
@@ -148,53 +152,56 @@ class weBull:
 
     def get_option_id(self, symb:str):
         "Get option id from option symb with standard format"
-        
-        opt_info = self.format_option(symb)
-        if opt_info:
-            options_data = self.session.get_options(stock=opt_info['ticker'],
-                                                    direction=opt_info['direction'], 
-                                                    expireDate=opt_info['date'])
-            filtered_options_data = [option for option in options_data if option['strikePrice'] == opt_info['strike'] and \
-                option[opt_info['direction']]['expireDate'] == opt_info['date']]
-            option_id = filtered_options_data[0][opt_info['direction']]['tickerId']
-            return option_id
-        return None
+        if self.option_ids.get(symb) is None:
+            opt_info = self.format_option(symb)
+            if opt_info:
+                options_data = self.session.get_options(stock=opt_info['ticker'],
+                                                        direction=opt_info['direction'], 
+                                                        expireDate=opt_info['date'])
+                filtered_options_data = [option for option in options_data if option['strikePrice'] == opt_info['strike'] and \
+                    option[opt_info['direction']]['expireDate'] == opt_info['date']]
+                option_id = filtered_options_data[0][opt_info['direction']]['tickerId']
+                self.option_ids[symb] = str(option_id)
+                return option_id
+            else:
+                return None
+        else:
+            return self.option_ids[symb]
+
+    def fix_symbol(self, symbol:str, direction:str):
+        "Fix symbol for options, direction in or out of webull format"
+        if direction == 'in':
+            return symbol.replace("SPXW", "SPX")
+        elif direction == 'out':
+            return symbol.replace("SPX", "SPXW")
 
     def get_quotes(self, symbol:list) -> dict:  
         resp = {}
         for symb in symbol:        
             if "_" in symb:
-                symb = symb.replace("SPXW", "SPX")
+                symb = self.fix_symbol(symb, "in")
                 opt_info = self.format_option(symb)
                 if opt_info:
                     try:
-                        if self.option_ids.get(symb) is None:
-                            options_data = self.session.get_options(stock=opt_info['ticker'],
-                                                                    direction=opt_info['direction'], 
-                                                                    expireDate=opt_info['date'])
-                            filtered_options_data = [option for option in options_data if option['strikePrice'] == opt_info['strike'] and \
-                                option[opt_info['direction']]['expireDate'] == opt_info['date']]
-
-                            option_id = filtered_options_data[0][opt_info['direction']]['tickerId']
-                            self.option_ids[symb] = str(option_id)
-                        
-                        quote = self.session.get_option_quote(stock=opt_info['ticker'], optionId=str(option_id))
+                        option_id = self.get_option_id(symb)
+                        quote = self.session.get_option_quote(stock=opt_info['ticker'], optionId=option_id)
                         
                         ts = quote['data'][0]['tradeStamp']
                         ask = eval(quote['data'][0]['askList'][0]['price'])
                         bid = eval(quote['data'][0]['bidList'][0]['price'])
-                        ticker = self.reformat_option(opt_info).replace("SPX", "SPXW")
+                        ticker = self.fix_symbol(self.reformat_option(opt_info), 'out')
                         
                         resp[ticker] = {
                                         'symbol' : ticker,
-                                        'description': str(option_id),
+                                        'description': option_id,
                                         'askPrice': ask,  
                                         'bidPrice': bid,    
                                         'quoteTimeInLong': ts
                                         }
                     except Exception as e:
-                        print("Error getting quote for", symb, e)
-                        resp[symb] = {'symbol' :symb,
+                        sym_out = self.fix_symbol(symb, "out")
+                        print("Error getting quote for",  sym_out, e)
+                        resp[sym_out] = {'symbol': sym_out,
                                         'description':'Symbol not found'
                                         }
             else:
@@ -256,7 +263,7 @@ class weBull:
         elif action == "STO":
             print("STO not available for WeBull")
             return
-        
+        Symbol = self.fix_symbol(Symbol, "in")
         if "_" in Symbol:
             kwargs['asset'] = 'option'
             optionId = self.get_option_id(Symbol)
@@ -284,6 +291,7 @@ class weBull:
             print("BTC not available for WeBull")
             return
         
+        Symbol = self.fix_symbol(Symbol, "in")
         if "_" in Symbol:
             kwargs['asset'] = 'option'
             optionId = self.get_option_id(Symbol)
@@ -317,6 +325,7 @@ class weBull:
             print("BTC not available for WeBull")
             return
         
+        Symbol = self.fix_symbol(Symbol, "in")
         if "_" in Symbol:
             kwargs['asset'] = 'option'
             optionId = self.get_option_id(Symbol)
@@ -344,6 +353,7 @@ class weBull:
             print("BTC not available for WeBull")
             return
         
+        Symbol = self.fix_symbol(Symbol, "in")
         if "_" in Symbol:
             kwargs['asset'] = 'option'
             optionId = self.get_option_id(Symbol)
@@ -371,6 +381,7 @@ class weBull:
             print("BTC not available for WeBull")
             return
         
+        Symbol = self.fix_symbol(Symbol, "in")
         if "_" in Symbol:
             print("WARNING webull does not support trailing stop for options")
             return {}        
