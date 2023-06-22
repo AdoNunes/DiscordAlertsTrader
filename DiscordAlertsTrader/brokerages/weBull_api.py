@@ -10,6 +10,7 @@ class weBull:
         self._webull = paper_webull() if (paper_trading) else webull()
         self._loggedin = False
         self.name = 'webull'
+        self.option_ids = {}
 
     def get_session(self, use_workaround: bool = True) -> bool:
         wb = self._webull
@@ -142,7 +143,7 @@ class weBull:
     def reformat_option(self, opt_info:dict)->str:
         "From dict to standard option format ticker_monthdayyear[callput]strike"      
         yer, mnt, day = opt_info['date'].split("-")
-        otype = "C" if opt_info['direction'][0].upper() =="CALL" else "P"
+        otype = opt_info['direction'][0].upper()
         return f"{opt_info['ticker']}_{mnt}{day}{yer[2:]}{otype}{opt_info['strike']}"
 
     def get_option_id(self, symb:str):
@@ -160,49 +161,58 @@ class weBull:
         return None
 
     def get_quotes(self, symbol:list) -> dict:  
-      resp = {}
-      for symb in symbol:        
-        if "_" in symb:
-            opt_info = self.format_option(symb)
-            if opt_info:
-                try:
-                    options_data = self.session.get_options(stock=opt_info['ticker'],
-                                                            direction=opt_info['direction'], 
-                                                            expireDate=opt_info['date'])
-                    filtered_options_data = [option for option in options_data if option['strikePrice'] == opt_info['strike'] and \
-                        option[opt_info['direction']]['expireDate'] == opt_info['date']]
+        resp = {}
+        for symb in symbol:        
+            if "_" in symb:
+                symb = symb.replace("SPXW", "SPX")
+                opt_info = self.format_option(symb)
+                if opt_info:
+                    try:
+                        if self.option_ids.get(symb) is None:
+                            options_data = self.session.get_options(stock=opt_info['ticker'],
+                                                                    direction=opt_info['direction'], 
+                                                                    expireDate=opt_info['date'])
+                            filtered_options_data = [option for option in options_data if option['strikePrice'] == opt_info['strike'] and \
+                                option[opt_info['direction']]['expireDate'] == opt_info['date']]
 
-                    ask = filtered_options_data[0][opt_info['direction']]['askList'][0]['price']
-                    bid = filtered_options_data[0][opt_info['direction']]['bidList'][0]['price']
-                    ticker = self.reformat_option(opt_info)
-                    option_id = filtered_options_data[0][opt_info['direction']]['tickerId']
-                    resp[ticker] = {
-                                    'symbol' : ticker,
-                                    'description': str(option_id),
-                                    'askPrice': ask,  
-                                    'bidPrice': bid,    
-                                    'quoteTimeInLong': round(time.time()*1000),
-                                    }
-                except:
+                            option_id = filtered_options_data[0][opt_info['direction']]['tickerId']
+                            self.option_ids[symb] = str(option_id)
+                        
+                        quote = self.session.get_option_quote(stock=opt_info['ticker'], optionId=str(option_id))
+                        
+                        ts = quote['data'][0]['tradeStamp']
+                        ask = eval(quote['data'][0]['askList'][0]['price'])
+                        bid = eval(quote['data'][0]['bidList'][0]['price'])
+                        ticker = self.reformat_option(opt_info).replace("SPX", "SPXW")
+                        
+                        resp[ticker] = {
+                                        'symbol' : ticker,
+                                        'description': str(option_id),
+                                        'askPrice': ask,  
+                                        'bidPrice': bid,    
+                                        'quoteTimeInLong': ts
+                                        }
+                    except Exception as e:
+                        print("Error getting quote for", symb, e)
+                        resp[symb] = {'symbol' :symb,
+                                        'description':'Symbol not found'
+                                        }
+            else:
+                quote = self.session.get_quote(symb)
+                if quote and quote['template']=='stock':                
+                    resp[symb] = {
+                                'symbol' : quote['symbol'],
+                                'description': quote['disSymbol'],
+                                'askPrice': quote['askList'][0]['price'],
+                                'bidPrice': quote['bidList'][0]['price'],
+                                'quoteTimeInLong': round(time.time()*1000),
+                            }
+                else:
+                    print(symb, "not found", quote['template'])
                     resp[symb] = {'symbol' :symb,
                                     'description':'Symbol not found'
                                     }
-        else:
-            quote = self.session.get_quote(symb)
-            if quote and quote['template']=='stock':                
-                resp[symb] = {
-                            'symbol' : quote['symbol'],
-                            'description': quote['disSymbol'],
-                            'askPrice': quote['askList'][0]['price'],
-                            'bidPrice': quote['bidList'][0]['price'],
-                            'quoteTimeInLong': round(time.time()*1000),
-                        }
-            else:
-                print(symb, "not found", quote['template'])
-                resp[symb] = {'symbol' :symb,
-                                'description':'Symbol not found'
-                                }
-      return resp
+        return resp
 
     def send_order(self, new_order:dict):
         if new_order['asset'] == 'option':
