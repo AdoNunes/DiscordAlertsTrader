@@ -177,6 +177,7 @@ class AlertsTracker():
         
         quotes = pd.read_csv(fname, on_bad_lines='skip')
         # start after BTO date
+        quotes = quotes.dropna()
         dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
         msk = dates >= pd.to_datetime(trade['Date'])
         quotes = quotes[msk].reset_index(drop=True)
