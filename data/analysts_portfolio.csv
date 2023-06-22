@@ -856,5 +856,5 @@ Date,Symbol,Trader,Channel,isOpen,Asset,Type,Price,Amount,Price-current,Prices,P
 2023-06-21 15:44:24.613000,BA_072123C230,avi9896,analyst-alerts,1,option,BTO,1.31,6,1.36,,,,,,,,,,,,,,,,
 2023-06-21 15:44:38.162000,QQQ_072123C369,cedar_trades,analyst-alerts,1,option,BTO,5.06,1,5.05,,,,,,,,,,,,,,,,
 2023-06-21 15:51:03.935000,SPY_072123C438,cedar_trades,analyst-alerts,1,option,BTO,5.21,1,5.35,,,,,,,,,,,,,,,,
-2023-06-21 18:04:51.033000,ESU,catyline,combine-alerts,1,stock,BTO,4412.25,1,,,,,,,,,,,,,,,,,
+2023-06-21 18:04:51.033000,ESU,catyline,combine-alerts,0,stock,BTO,4412.25,1,,,,,1.0,4405.0,,4405.0,,-0.16431525865488128,,-7.249999999999999,,2023-06-21 22:15:35.966000,,,
 2023-06-21 20:47:25.700000,MNQU,001993,combine-alerts,0,stock,BTO,15039.75,20,,,,,20.0,15033.25,,15033.25,,-0.04321880350404761,,-130.0,,2023-06-21 20:55:50.463000,,,
