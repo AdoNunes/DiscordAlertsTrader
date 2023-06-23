@@ -304,9 +304,15 @@ for idx, row in port.iterrows():
     try:
         msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(row['STC-Date']))) & (quotes[' quote'] > 0)
     except TypeError:
+        # continue
         stc_date = row['STC-Date'].replace("T00:00:00+0000", " 16:00:00.000000")
         msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(stc_date))) & (quotes[' quote'] > 0)
-    
+        # qm = quotes[msk]
+        # print(round(row['STC-PnL']), round(row['STC-PnL-current']), 
+        #      round( 100*(qm.iloc[-1][' quote'] -  row['Price'])/ row['Price']), 
+        #     round(100*(qm.iloc[-1][' quote'] -  row['Price-current'])/ row['Price-current']), qm.iloc[-1][' quote'], 
+        #     dates.iloc[-1], row['Date'], idx,row['Symbol'])
+
     if not msk.any():
         print("quotes outside with dates", row['Symbol'])
         continue
@@ -320,8 +326,9 @@ for idx, row in port.iterrows():
     trades_min.append(100*(quotes_vals.min()-row['Price-current'])/row['Price-current'])
     trades_max.append(100*(quotes_vals.max()-row['Price-current'])/row['Price-current'])
     percentage_return.append(100*(row['STC-Price-current']-row['Price-current'])/row['Price-current'])
-    # roi_alert, = calc_roi(quotes_vals, PT=1.75, TS=0, SL=.5, do_plot=False, initial_prices=price_alert)
-    roi_current, = calc_roi(quotes_vals, PT=1.5, TS=0, SL=.75, do_plot=False, initial_prices=price_curr)
+    # roi_current, = calc_roi(quotes_vals, PT=1.5, TS=0, SL=.4, do_plot=False, initial_prices=price_alert)
+    trigger_price, trigger_index, pt_index = calc_trailingstop(quotes_vals, price_curr,price_curr*.05)
+    roi_current, = calc_roi(quotes_vals.loc[trigger_index:], PT=1.8, TS=0, SL=.25, do_plot=False, initial_prices=trigger_price)
     
     pnl = roi_current[2]
     mult = .1 if row['Asset'] == 'stock' else 1
@@ -382,42 +389,42 @@ agg_funcs = {'STC-PnL$': 'sum',
                 }
 # Perform the groupby operation and apply the aggregation functions
 result_td = port.groupby('Trader').agg(agg_funcs).sort_values(by=('Date', 'count'), ascending=False)
-print(result_td)
+# print(result_td)
     
-# Calculate mean values
-mean_min = np.mean(trades_min)
-mean_max = np.mean(trades_max)
+# # Calculate mean values
+# mean_min = np.mean(trades_min)
+# mean_max = np.mean(trades_max)
 
-# Create a figure and subplots
-fig, axs = plt.subplots(1, 3, figsize=(10, 5))
+# # Create a figure and subplots
+# fig, axs = plt.subplots(1, 3, figsize=(10, 5))
 
-# Plot histogram for trades_min
-axs[0].hist(trades_min, bins=100, color='blue')
-axs[0].set_title('trades_min Histogram')
-axs[0].set_xlabel('Value')
-axs[0].set_ylabel('Frequency')
-axs[0].axvline(x=mean_min, color='red', linestyle='--', label=f'Mean: {mean_min:.2f}')
-axs[0].legend()
+# # Plot histogram for trades_min
+# axs[0].hist(trades_min, bins=100, color='blue')
+# axs[0].set_title('trades_min Histogram')
+# axs[0].set_xlabel('Value')
+# axs[0].set_ylabel('Frequency')
+# axs[0].axvline(x=mean_min, color='red', linestyle='--', label=f'Mean: {mean_min:.2f}')
+# axs[0].legend()
 
-# Plot histogram for trades_max
-axs[1].hist(trades_max, bins=100, color='red')
-axs[1].set_title('trades_max Histogram')
-axs[1].set_xlabel('Value')
-axs[1].set_ylabel('Frequency')
-axs[1].axvline(x=mean_max, color='blue', linestyle='--', label=f'Mean: {mean_max:.2f}')
-axs[1].legend()
+# # Plot histogram for trades_max
+# axs[1].hist(trades_max, bins=100, color='red')
+# axs[1].set_title('trades_max Histogram')
+# axs[1].set_xlabel('Value')
+# axs[1].set_ylabel('Frequency')
+# axs[1].axvline(x=mean_max, color='blue', linestyle='--', label=f'Mean: {mean_max:.2f}')
+# axs[1].legend()
 
-# Plot scatter plot for trades_min and trades_max
+# # Plot scatter plot for trades_min and trades_max
 
-axs[2].scatter(trades_min, trades_max, c=percentage_return, cmap='coolwarm')
-axs[2].set_title('trades_min vs trades_max')
-axs[2].set_xlabel('trades_min')
-axs[2].set_ylabel('trades_max')
-cbar = plt.colorbar(axs[2].scatter([], [], c=[], cmap='coolwarm'))
-cbar.set_label('Percentage Return')
+# axs[2].scatter(trades_min, trades_max, c=percentage_return, cmap='coolwarm')
+# axs[2].set_title('trades_min vs trades_max')
+# axs[2].set_xlabel('trades_min')
+# axs[2].set_ylabel('trades_max')
+# cbar = plt.colorbar(axs[2].scatter([], [], c=[], cmap='coolwarm'))
+# cbar.set_label('Percentage Return')
 
-# Adjust the spacing between subplots
-plt.tight_layout()
+# # Adjust the spacing between subplots
+# plt.tight_layout()
 
-# Show the plot
-plt.show()
+# # Show the plot
+# plt.show()
