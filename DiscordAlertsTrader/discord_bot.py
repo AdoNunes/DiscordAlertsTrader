@@ -2,7 +2,7 @@
 import os
 import time
 import pandas as pd
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 import threading
 from colorama import Fore, init
 import discord # this is discord.py-self package not discord
@@ -66,13 +66,23 @@ class DiscordBot(discord.Client):
             # Skip closed market
             now = datetime.now()
             weekday, hour = now.weekday(), now.hour
-            if  weekday >= 5 or (hour < 9 and hour >= 17):  
+            after_hr, before_hr = cfg['general']['off_hours'].split(",")
+            if  weekday >= 5 or (hour < int(before_hr) or hour >= int(after_hr)):  
                 time.sleep(60)
                 continue
 
-            # get unique symbols  from portfolios
-            track_symb = set(self.tracker.portfolio.loc[self.tracker.portfolio['isOpen']==1, 'Symbol'].to_list() + \
-                self.trader.portfolio.loc[self.trader.portfolio['isOpen']==1, 'Symbol'].to_list())
+            # get unique symbols  from portfolios, either options or all, open or alerted today
+            tk_day = pd.to_datetime(self.tracker.portfolio['Date']).dt.date == date.today()
+            td_day = pd.to_datetime(self.trader.portfolio['Date']).dt.date == date.today()
+            msk_tk = (self.tracker.portfolio['isOpen']==1 | tk_day) 
+            msk_td = (self.trader.portfolio['isOpen']==1 | td_day) 
+            
+            if cfg['general']['live_quotes_options_only']:
+                msk_tk = msk_tk & (self.tracker.portfolio['Asset']=='option')
+                msk_td = msk_td & (self.trader.portfolio['Asset']=='option')
+            
+            track_symb = set(self.tracker.portfolio.loc[msk_tk, 'Symbol'].to_list() + \
+                self.trader.portfolio.loc[msk_td, 'Symbol'].to_list())
             # save quotes to file
             try:
                 quote = self.bksession.get_quotes(track_symb)
@@ -86,11 +96,27 @@ class DiscordBot(discord.Client):
                 if quote[q]['description'] == 'Symbol not found':
                     continue
                 timestamp = quote[q]['quoteTimeInLong']//1000  # in ms
-                do_header = not os.path.exists(f"{dir_quotes}/{quote[q]['symbol']}.csv")
-                with open(f"{dir_quotes}/{quote[q]['symbol']}.csv", "a+") as f:
+
+                # Read the last line of the file and get the last recorded timestamp for the symbol
+                file_path = f"{dir_quotes}/{quote[q]['symbol']}.csv"
+                last_line = ""
+                do_header = True
+                if os.path.exists(file_path):
+                    do_header = False
+                    with open(file_path, "r") as f:
+                        lines = f.readlines()
+                        if lines:
+                            last_line = lines[-1].strip()
+                
+                #if last recorded timestamp is the same as current, skip
+                if last_line.split(",")[0] == str(timestamp):
+                    continue
+                
+                # Write the new line to the file
+                with open(file_path, "a+") as f:
                     if do_header:
                         f.write(f"timestamp, quote\n")
-                    f.write(f"{timestamp}, {quote[q]['askPrice']}\n")
+                    f.write(f"{timestamp}, {quote[q]['bidPrice']}\n")
             
             # Sleep for up to 5 secs    
             toc = (datetime.now() - now).total_seconds()
