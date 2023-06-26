@@ -861,7 +861,8 @@ class AlertsTrader():
                     continue
 
                 # Get status exit orders
-                STC_ordID = int(float(STC_ordID))  # Might be read as a float
+                if isinstance(STC_ordID, str) and STC_ordID.isdigit():
+                    STC_ordID = int(float(STC_ordID))  # Might be read as a float
 
                 order_status, order_info =  self.get_order_info(STC_ordID)
 
