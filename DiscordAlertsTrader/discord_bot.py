@@ -74,8 +74,8 @@ class DiscordBot(discord.Client):
             # get unique symbols  from portfolios, either options or all, open or alerted today
             tk_day = pd.to_datetime(self.tracker.portfolio['Date']).dt.date == date.today()
             td_day = pd.to_datetime(self.trader.portfolio['Date']).dt.date == date.today()
-            msk_tk = (self.tracker.portfolio['isOpen']==1 | tk_day) 
-            msk_td = (self.trader.portfolio['isOpen']==1 | td_day) 
+            msk_tk = ((self.tracker.portfolio['isOpen']==1) | tk_day) 
+            msk_td = ((self.trader.portfolio['isOpen']==1) | td_day) 
             
             if cfg['general']['live_quotes_options_only']:
                 msk_tk = msk_tk & (self.tracker.portfolio['Asset']=='option')
