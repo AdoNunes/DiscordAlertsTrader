@@ -270,12 +270,13 @@ print(f"From {len(port)} trades, removing open trades: {(~(port['isOpen']==0)).s
 
 port = port[(port['isOpen']==0) & (port['Asset']=='option') & ~port['Price-current'].isna()]
 
-odte_only = True
+odte_only = False
 port['days_to_expiration'] = port.apply(calculate_days_to_expiration, axis=1)
 if odte_only:
     print("Keeping only trades with 0 dtoe, removing: ", (port['days_to_expiration']!=0).sum())
     port = port[port['days_to_expiration']==0]
 
+port = port[~port['Symbol'].str.contains('SPX')]
 print(f"Setting trades to a max of $1000, removing {len(port)- len(port_max_per_trade(port, 1000))} trades")
 port = port_max_per_trade(port, 1000)
 
@@ -302,11 +303,17 @@ for idx, row in port.iterrows():
     # get quotes within trade dates
     dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
     try:
-        msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(row['STC-Date']))) & (quotes[' quote'] > 0)
+        # msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(row['STC-Date']))) & (quotes[' quote'] > 0)
+        stc_date = pd.to_datetime(row['STC-Date']).replace(hour=16, minute=0, second=0, microsecond=0)
+        msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= stc_date)) & (quotes[' quote'] > 0)
     except TypeError:
         # continue
         stc_date = row['STC-Date'].replace("T00:00:00+0000", " 16:00:00.000000")
+        stc_date = pd.to_datetime(stc_date).replace(hour=16, minute=0, second=0, microsecond=0)
         msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(stc_date))) & (quotes[' quote'] > 0)
+        
+        
+        
         # qm = quotes[msk]
         # print(round(row['STC-PnL']), round(row['STC-PnL-current']), 
         #      round( 100*(qm.iloc[-1][' quote'] -  row['Price'])/ row['Price']), 
@@ -327,13 +334,13 @@ for idx, row in port.iterrows():
     trades_max.append(100*(quotes_vals.max()-row['Price-current'])/row['Price-current'])
     percentage_return.append(100*(row['STC-Price-current']-row['Price-current'])/row['Price-current'])
     # roi_current, = calc_roi(quotes_vals, PT=1.5, TS=0, SL=.4, do_plot=False, initial_prices=price_alert)
-    trigger_price, trigger_index, pt_index = calc_trailingstop(quotes_vals, price_curr,price_curr*.05)
-    roi_current, = calc_roi(quotes_vals.loc[trigger_index:], PT=1.8, TS=0, SL=.25, do_plot=False, initial_prices=trigger_price)
+    trigger_price, trigger_index, pt_index = calc_trailingstop(quotes_vals, price_curr,price_curr*.1)
+    roi_current, = calc_roi(quotes_vals.loc[trigger_index:], PT=1.85, TS=0, SL=.70, do_plot=False, initial_prices=trigger_price)
     
     pnl = roi_current[2]
     mult = .1 if row['Asset'] == 'stock' else 1
     if mult == .1: raise Exception("There should be no stocks in the portfolio")
-    pnlu = pnl*row['Amount']*roi_current[0]*mult
+    pnlu = pnl*roi_current[0]*mult
     
     # pnl = 100*(row['STC-Price-current']-row['Price-current'])/row['Price-current']
     # mult = .1 if row['Asset'] == 'stock' else 1
@@ -385,7 +392,8 @@ agg_funcs = {'STC-PnL$': 'sum',
                 'STC-PnL-strategy': 'mean',
                 'STC-PnL$-strategy': 'sum',    
                 "Price": ['mean', 'median'],            
-                'Date': ['count', 'min', 'max']
+                # 'Date': ['count', 'min', 'max']
+                'Date': ['count']
                 }
 # Perform the groupby operation and apply the aggregation functions
 result_td = port.groupby('Trader').agg(agg_funcs).sort_values(by=('Date', 'count'), ascending=False)
