@@ -233,8 +233,19 @@ class DiscordBot(discord.Client):
             return
         else:
             if order['asset'] == "option":
-                # get option date with year
-                exp_dt = datetime.strptime(f"{order['expDate']}/{datetime.now().year}" , "%m/%d/%Y").date()
+                try:
+                    # get option date with year
+                    exp_dt = datetime.strptime(f"{order['expDate']}/{datetime.now().year}" , "%m/%d/%Y").date()
+                except ValueError:
+                    str_msg = f"Option date is wrong: {order['expDate']}"
+                    self.queue_prints.put([f"\t {str_msg}", "green"])
+                    print(Fore.GREEN + f"\t {str_msg}")
+                    msg['Parsed'] = str_msg
+                    if self.chn_hist.get(chn) is not None:
+                        self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
+                        self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
+                    return
+                    
                 dt = datetime.now().date()
                 order['dte'] =  (exp_dt - dt).days
                 if order['dte']<0:
