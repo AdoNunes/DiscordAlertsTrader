@@ -9,7 +9,7 @@ import re
 import os.path as op
 import numpy as np
 import pandas as pd
-from datetime import datetime, date
+from datetime import datetime, timedelta, date
 import time
 import threading
 import queue
@@ -440,7 +440,6 @@ class AlertsTrader():
                      }
 
         if order['action'] == "ExitUpdate" and isOpen:
-            #TODO : REMOVE
             # Pause updater to avoid overlapping
             self.update_paused = True
 
@@ -528,9 +527,9 @@ class AlertsTrader():
                 if price is None: 
                     price = order_info['activationPrice']
                 if len(cfg['shorting']['BTC_PT']) and exit_plan.get("PT1") is None:
-                    exit_plan['PT1'] = price * (1 + float(cfg['shorting']['BTC_PT'])/100)
+                    exit_plan['PT1'] = round(price * (1 + float(cfg['shorting']['BTC_PT'])/100),2)
                 if len(cfg['shorting']['BTC_SL']) and exit_plan.get("SL") is None:
-                    exit_plan['SL'] = price * (1 - float(cfg['shorting']['BTC_SL'])/100)
+                    exit_plan['SL'] = round(price * (1 - float(cfg['shorting']['BTC_SL'])/100),2)
 
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
@@ -556,6 +555,16 @@ class AlertsTrader():
                 self.portfolio.loc[ot, "Price"] = order_info['price']
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
                 self.disc_notifier(order_info)
+                if self.portfolio.loc[ot, "Type"] == "STO":
+                    price = order_info.get("price")
+                    if price is None: 
+                        price = order_info['activationPrice']
+                    if len(cfg['shorting']['BTC_PT']) and exit_plan.get("PT1") is None:
+                        exit_plan['PT1'] = round(price * (1 + float(cfg['shorting']['BTC_PT'])/100),2)
+                    if len(cfg['shorting']['BTC_SL']) and exit_plan.get("SL") is None:
+                        exit_plan['SL'] = round(price * (1 - float(cfg['shorting']['BTC_SL'])/100),2)
+                    self.portfolio.loc[ot,"exit_plan"]= str(exit_plan)
+                    
             str_msg = f"{action} {order['Symbol']} executed @ {order_info.get('price')}. Status: {order_status}"
             print(Back.GREEN + str_msg)
             self.queue_prints.put([str_msg, "", "green"])
@@ -925,6 +934,15 @@ class AlertsTrader():
                     str_msg = f"BTO {order_info['orderLegCollection'][0]['instrument']['symbol']} executed @ {price}. Status: {order_status}"
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
+                    
+                    if self.portfolio.loc[i, "Type"] == "STO":
+                        exit_plan = eval(self.portfolio.loc[i,"exit_plan"])
+                        if len(cfg['shorting']['BTC_PT']) and exit_plan.get("PT1") is None:
+                            exit_plan['PT1'] = round(price * (1 + float(cfg['shorting']['BTC_PT'])/100),2)
+                        if len(cfg['shorting']['BTC_SL']) and exit_plan.get("SL") is None:
+                            exit_plan['SL'] = round(price * (1 - float(cfg['shorting']['BTC_SL'])/100),2)
+                        self.portfolio.loc[i,"exit_plan"]= str(exit_plan)
+                        
                 self.portfolio.loc[i, "filledQty"] = order_info['filledQuantity']
                 self.portfolio.loc[i, "BTO-Status"] = order_info['status']
 
@@ -949,6 +967,33 @@ class AlertsTrader():
                     self.queue_prints.put([str_msg, "", "green"])
                     self.disc_notifier(order_info)
 
+            # For short positions if closed end of day           
+            if trade['Type'] == 'STO' and cfg['shorting']["BTC_EOD"].getboolean():
+                time_now = datetime.now().time()
+                time_closed = datetime.strptime(cfg['general']["off_hours"].split(",")[0], "%H")
+                time_quarter = time_closed - timedelta(minutes=15)
+                time_five = time_closed - timedelta(minutes=5)
+                # Change exits before 15 min to close
+                if time_now >= time_quarter.time() and time_now < time_five.time() and \
+                    len(cfg['shorting']['BTC_EOD_PT_SL']):
+                        exit_plan = eval(trade["exit_plan"])                        
+                        SL, PT = cfg['shorting']['BTC_EOD_PT_SL'].split(",")
+                        SL, PT = eval(SL)/100, eval(PT)/100
+                        
+                        # check if not already updated, assume 5-10% exits are the updated 
+                        if not round((1 - SL) * exit_plan['PT1'],2) == round((1 + PT) * exit_plan['SL'],2):
+                            quote = self.price_now(trade["Symbol"], "BTC", 1)
+                            exit_plan = {
+                                "PT1": round(PT * quote, 2),
+                                "SL": round(SL * quote, 2)
+                                }
+                            redo_orders = True
+                # Close position 5 min to close
+                elif time_now >= time_five.time() and time_now < time_closed.time():
+                    quote = self.price_now(trade["Symbol"], "BTC", 1)
+                    exit_plan = {"PT1": quote}
+                    redo_orders = True
+                    
             if redo_orders:
                 self.close_open_exit_orders(i)
 
