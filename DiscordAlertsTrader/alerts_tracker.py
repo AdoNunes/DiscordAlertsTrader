@@ -16,7 +16,8 @@ class AlertsTracker():
 
     def __init__(self, brokerage=None,
                  portfolio_fname=cfg['portfolio_names']["tracker_portfolio_name"],
-                 dir_quotes = cfg['general']['data_dir'] + '/live_quotes' ):
+                 dir_quotes = cfg['general']['data_dir'] + '/live_quotes',
+                 cfg=cfg):
 
         self.portfolio_fname = portfolio_fname  
         self.dir_quotes = dir_quotes
@@ -25,7 +26,7 @@ class AlertsTracker():
         if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
-            self.portfolio = pd.DataFrame(columns=cfg["col_names"]['tracker_portfolio'].split(",") )
+            self.portfolio = pd.DataFrame(columns=self.cfg["col_names"]['tracker_portfolio'].split(",") )
             self.portfolio.to_csv(self.portfolio_fname, index=False)
 
     def price_now(self, symbol:str, price_type="BTO"):
@@ -158,7 +159,7 @@ class AlertsTracker():
             # str_STC = f"STC {order['Symbol']} ({order['uQty']}),{suffx} @{stc_price:.2f}"
             str_STC = ""
             if stc_info['STC-Price-current'] is not None:           
-                       str_STC += f"\t@{stc_price:.2f}, actual: {stc_info['STC-Price-current']:.2f} " 
+                str_STC += f"\t@{stc_price:.2f}, actual: {stc_info['STC-Price-current']:.2f} " 
             if stc_info["STC-PnL"] is not None:
                 str_STC += f'\tPnL:{round(stc_info["STC-PnL"])}% ${round(stc_info["STC-PnL$"])}' 
             if stc_info["STC-PnL-current"] is not None:
