@@ -1,5 +1,6 @@
 # DiscordAlertsTrader: *Discord Alerts Trader Bot*
 ________________________
+![PyPI](https://img.shields.io/pypi/v/DiscordAlertsTrader)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/DiscordAlertsTrader)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/DiscordAlertsTrader)
 ![GitHub](https://img.shields.io/github/license/AdoNunes/DiscordAlertsTrader)
