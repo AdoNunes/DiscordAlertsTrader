@@ -1,50 +1,55 @@
 # DiscordAlertsTrader: *Discord Alerts Trader Bot*
 ________________________
+![PyPI - Downloads](https://img.shields.io/pypi/dm/DiscordAlertsTrader)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/DiscordAlertsTrader)
+![GitHub](https://img.shields.io/github/license/AdoNunes/DiscordAlertsTrader)
+[![Discord](https://img.shields.io/discord/1123242366980075570.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/Zb4ymtF "realtime support / chat with the community and the team.")
 
 
-DiscordAlertsTrader is a Python package that automates trading of alerts shared in a Discord server by analysts.
+A Python package to automate trades from alerts shared in a Discord channel by analysts.
 The package parses these messages and executes trades from traders specified in the configuration file. 
-It tracks messages from all channels, monitors the portfolios of analysts and the bot itself, providing 
-a comprehensive overview of trades executed and performance. 
+It tracks messages from all the channels, generates a portfolio from analysts and from trades executed, 
+provides live quotes to see actual alert profits (rather than prices stated in the alert), and can trigger
+an alert to open long or short a position, close it or update exits (target profit, stop loss).
 
-DiscordAlertsTrader streamlines the trading process by integrating Discord trade alerts,
-message parsing, and trade execution, offering a convenient solution for automated trading.
+Trades are done through APIs of TDAmeritrade (full functionality), eTrade (long positions for now) or webull (long, no OCO, live quotes).
+If no brokerage API key is provided, it will just print the discord messages and track the 
+analysts portfolio. With an API key, it will track the current price of the alerts, besides executing trades.
 
-Trades are done through TDAmeritrade or eTrade API, weBull is being implemented. If no 
-brokerage API key is provided, it will just print the discord messages and track the 
-analysts portfolio. With an API key, it will track current price of the alerts, besides executing trades.
-
-If in config.ini DO_BTO_TRADES = false, not trades will be executed. 
+If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed. 
 
 
-This package's GUI capabilities include:
+## GUI capabilities ##
 
 - Parsing trading signals from messages (e.g., BTO, STC, SL, PT).
-- Tracking trading signals and performance using message history and real-time prices.
-- Closing open trades, viewing current trades, analyst trades.
-- Calculate analysts stats and provide options to test stats with maximum capital 
-- Executing and canceling orders, checking order and account status, and accessing current ticker prices.
-- Supporting manual trade execution through prompts if auto_trade is set to False in config.ini.
+- Tracking trading signals with a message history tab for the channel
+- Tracking performance with real-time actual prices and returns.
+- Opening, closing, and updating trades through the GUI.
+- Calculate analysts' stats and provide options to test stats with maximum capital 
+- Checking order and account status, and accessing current ticker prices.
+- Supporting manual trade execution through prompts if `auto_trade` is set to False in `config.ini`.
 
 **Currently, the package is for parsing signals of the discord server BullTrades.** 
 Invite link to BullTrades with referral: [https://discord.gg/bulltrades](https://bulltrades.net/?ref=ndrjogi)
-It can also work with any server with structured signals BTO and STC with alerts as a message content (not embedded)
 
-Let me know if you find the package useful by dropping me an email
- 
+It can also work with any server with structured signals BTO and STC with alerts as message content (not embedded)
+
+Let me know if you find the package useful or need support by dropping me an email or visiting the [discord server](https://discord.gg/9ejghcjpar)
+
+ ________________________
 <img src="media/GUI_analysts_portfolio.PNG" alt="Analysts Portfolio" width="500" height="300">
 <img src="media/GUI_messages.PNG" alt="Channel message history" width="500" height="300">
 (older version shots)
-<img src="media/xtrader_console.png" alt="Console with discord mesages" width="500" height="300">
+<img src="media/xtrader_console.png" alt="Console with discord messages" width="500" height="300">
 <img src="media/xtrader_portfolio.png" alt="Portfolio" width="500" height="300">
 
 
  ## Discord user token and channel IDs
  ______________________________
 
-It requires a user discord token, once installed the package save the token in config.ini[discord], as well as the channel ID where alerts are posted.
-To get discord token follow the instructions: https://www.androidauthority.com/get-discord-token-3149920/
-To get channel ID, in discord right click on the channel and click "Copy Channel ID"
+It requires a user discord token, once installed the package saves the token in config.ini[discord], as well as the channel ID where alerts are posted.
+To get the discord token follow the instructions: https://www.androidauthority.com/get-discord-token-3149920/
+To get the channel ID, in Discord right click on the channel and click "Copy Channel ID"
 
 
 ## Installation and Setup
@@ -107,6 +112,7 @@ Make sure to keep the terminal or command prompt window open while the applicati
 To stop the DiscordAlertsTrader application, simply close the terminal or command prompt window where it is running.
 
 ## Etrade API
+____________
 
 Create a sandbox (mock) api key:
 https://us.etrade.com/etx/ris/apikey
@@ -118,6 +124,14 @@ Make sure to select free real-time quote data:
 https://us.etrade.com/etx/hw/subscriptioncenter#/subscription
 
 Before running the package and send orders, in etrade make a trailing stop order and preview to sign an Advanced Order Disclosure, otherwise an error will rise when posting the order
+
+## Webull API
+____________
+
+You will need to get a device ID, follow these steps to get DID, and then save it in the config.ini, along with credential details: 
+https://github.com/tedchou12/webull/wiki/Workaround-for-Login-Method-2
+
+Trading pin is the 6 digit code used to unlock webull
 
 ## TDAmeritrade
 _______________
