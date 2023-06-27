@@ -320,7 +320,7 @@ def run_gui():
             author = match_authors(author.strip())
             # let pass no identifier if no match
             author = author.replace("#No match, find author identifier#1234", "")
-            msg = msg.strip()
+            msg = msg.strip().replace("SPXW", "SPX")
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             new_msg = pd.Series({
                 'AuthorID': None,

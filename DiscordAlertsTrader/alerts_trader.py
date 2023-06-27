@@ -452,7 +452,7 @@ class AlertsTrader():
                 new_plan["price"] = self.portfolio.loc[open_trade, "Price"]
                 sym_inf = self.portfolio.loc[open_trade, "Symbol"].split("_")[1]
                 strike = re.split("C|P", sym_inf)[1]
-                new_plan["strike"] = strike + "C"
+                new_plan["strike"] = strike + "C" if "C" in sym_inf else strike + "P"
                 for i in range(1,4):
                     exit_price = new_plan.get(f"PT{i}")
                     if exit_price is not None:

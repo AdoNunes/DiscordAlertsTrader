@@ -292,6 +292,9 @@ class DiscordBot(discord.Client):
         spy_q = self.bksession.get_quotes(["SPY"])["SPY"]["bidPrice"]
         rat = spx_q/spy_q
         
+        if order.get('strike') is None or order.get('price') is None:
+            return
+        
         strike = f"{round(int(order['strike'][:-1])/rat)}{order['strike'][-1]}"        
         alert = f"{order['action']} {order['uQty']} SPY {strike} {order['expDate']} @ {round(order['price']/rat, 2)}"
         msg['Content'] = alert
