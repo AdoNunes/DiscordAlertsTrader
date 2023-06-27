@@ -152,6 +152,12 @@ class AlertsTrader():
             print("order in notifier not filled")
             return
         
+        if order_info.get('orderLegCollection') is None:            
+            if order_info['childOrderStrategies'][0]['status'] == "FILLED":
+                order_info = order_info['childOrderStrategies'][0]
+            elif order_info['childOrderStrategies'][1]['status'] == "FILLED":
+                order_info = order_info['childOrderStrategies'][1]
+            
         if order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_OPEN", "BUY"]:
             action = "BTO"
         elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_CLOSE", "SELL"]:
@@ -162,7 +168,7 @@ class AlertsTrader():
             action = "BTC"
 
         symbol = ordersymb_to_str(order_info['orderLegCollection'][0]['instrument']['symbol'])
-        msg = f"{action} {order_info['filledQuantity']} {symbol} @{order_info['price']}"
+        msg = f"{action} {order_info['filledQuantity']} {symbol} @{order_info.get('price')}"
         
         if len(cfg['discord']['webhook']):
             webhook = DiscordWebhook(
@@ -227,6 +233,13 @@ class AlertsTrader():
 
     def short_orders(self, order, pars):
         if cfg['shorting'].getboolean('DO_STO_TRADES') is True and order['action'] == "STO":
+            strike = re.split("C|P", order['Symbol'].split("_")[1])[1]
+            if eval(strike) > eval(cfg['shorting']['max_strike']):
+                str_msg = f"STO strike too high: {strike}, order aborted"
+                print(Back.RED + str_msg)
+                self.queue_prints.put([str_msg, "", "red"])
+                return "no", order, False
+            
             if cfg['shorting']['STO_trailingstop'] != "":
                 trail = (float(cfg['shorting']['STO_trailingstop'])/100)*order["price_current"]  
                 order["trail_stop_const"] = round(trail / 0.01) * 0.01
@@ -511,10 +524,13 @@ class AlertsTrader():
                 if len(cfg["order_configs"]["default_trailstop"]) and exit_plan.get("SL") is None:
                     exit_plan['SL'] = cfg["order_configs"]["default_trailstop"] + "%"
             elif order['action'] == "STO":
-                if len(cfg['shorting']['BTC_PT']) and exit_plan.get("PT") is None:
-                    exit_plan['PT'] = order_info["price"] * (1 + float(cfg['shorting']['BTC_PT'])/100)
-                if len(cfg['shorting']['BTC_SL']) and exit_plan.get("PT") is None:
-                    exit_plan['SL'] = order_info["price"] * (1 - float(cfg['shorting']['BTC_SL'])/100)
+                price = order_info.get("price")
+                if price is None: 
+                    price = order_info['activationPrice']
+                if len(cfg['shorting']['BTC_PT']) and exit_plan.get("PT1") is None:
+                    exit_plan['PT1'] = price * (1 + float(cfg['shorting']['BTC_PT'])/100)
+                if len(cfg['shorting']['BTC_SL']) and exit_plan.get("SL") is None:
+                    exit_plan['SL'] = price * (1 - float(cfg['shorting']['BTC_SL'])/100)
 
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
@@ -523,7 +539,7 @@ class AlertsTrader():
                          "uQty": order_info['quantity'],
                          "Asset": order["asset"],
                          "Type": action,
-                         "Price": order_info["price"],
+                         "Price": order_info.get("price"),
                          "Price-Alert": alert_price,
                          "Price-Current": order["price_current"],
                          "ordID": order_id,
@@ -540,7 +556,7 @@ class AlertsTrader():
                 self.portfolio.loc[ot, "Price"] = order_info['price']
                 self.portfolio.loc[ot, "filledQty"] = order_info['filledQuantity']
                 self.disc_notifier(order_info)
-            str_msg = f"{action} {order['Symbol']} executed @ {order_info['price']}. Status: {order_status}"
+            str_msg = f"{action} {order['Symbol']} executed @ {order_info.get('price')}. Status: {order_status}"
             print(Back.GREEN + str_msg)
             self.queue_prints.put([str_msg, "", "green"])
             
@@ -798,7 +814,14 @@ class AlertsTrader():
 
     def log_filled_STC(self, order_id, open_trade, STC):
         order_status, order_info = self.get_order_info(order_id)
-        sold_unts = order_info['orderLegCollection'][0]['quantity']
+        if order_info.get('orderLegCollection'):
+            sold_unts = order_info['orderLegCollection'][0]['quantity']
+        else: # OCO shorting TDA
+            if order_info['childOrderStrategies'][0]['status'] == "FILLED":
+                order_info = order_info['childOrderStrategies'][0]
+            elif order_info['childOrderStrategies'][1]['status'] == "FILLED":
+                order_info = order_info['childOrderStrategies'][1]
+            sold_unts = order_info['orderLegCollection'][0]['quantity']
 
         if 'price' in order_info.keys():
             stc_price = order_info['price']
@@ -814,7 +837,11 @@ class AlertsTrader():
         bto_price = self.portfolio.loc[open_trade, "Price"]
         bto_price_alert = self.portfolio.loc[open_trade, "Price-Alert"]
         bto_price_current = self.portfolio.loc[open_trade, "Price-Current"]
-        stc_PnL = float((stc_price - bto_price)/bto_price) *100
+        
+        if self.portfolio.loc[open_trade, "Type"] == "BTO":
+            stc_PnL = float((stc_price - bto_price)/bto_price) *100
+        elif self.portfolio.loc[open_trade, "Type"] == "STO":
+            stc_PnL = float((bto_price - stc_price)/stc_price) *100
 
         xQty = sold_unts/ self.portfolio.loc[open_trade, "uQty"]
 
@@ -832,15 +859,25 @@ class AlertsTrader():
         sold_tot = np.nansum([trade[f"STC{i}-uQty"] for i in range(1,4)])
         stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
         self.portfolio.loc[open_trade, "PnL"] = stc_PnL_all
-        stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-Alerted"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
-        stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-Current"] - bto_price_current)/bto_price_current) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+    
+        if self.portfolio.loc[open_trade, "Type"] == "BTO":
+            stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-Alerted"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+            stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-Current"] - bto_price_current)/bto_price_current) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+        elif self.portfolio.loc[open_trade, "Type"] == "STO":
+            stc_PnL_all_alert =  np.nansum([(float((bto_price_alert - trade[f"STC{i}-Price-Alerted"])/trade[f"STC{i}-Price-Alerted"]) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+            stc_PnL_all_curr = np.nansum([(float((bto_price_current - trade[f"STC{i}-Price-Current"])/trade[f"STC{i}-Price-Current"]) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+
         self.portfolio.loc[open_trade, "PnL-Alert"] = stc_PnL_all_alert
         self.portfolio.loc[open_trade, "PnL-Current"] = stc_PnL_all_curr
         
         mutipl = 1 if trade['Asset'] == "option" else .01  # pnl already in %
-        self.portfolio.loc[open_trade, "$PnL"] =  stc_PnL_all* bto_price *mutipl*sold_tot
-        self.portfolio.loc[open_trade, "$PnL-Alert"] =  stc_PnL_all_alert* bto_price_alert *mutipl*sold_tot
-        self.portfolio.loc[open_trade, "$PnL-Current"] =  stc_PnL_all_curr* bto_price_current *mutipl*sold_tot
+        if self.portfolio.loc[open_trade, "Type"] == "BTO":
+            init_price = bto_price
+        elif self.portfolio.loc[open_trade, "Type"] == "STO":
+            init_price = np.nanmean([trade[f"STC{i}-Price"]  for i in range(1,4)])
+        self.portfolio.loc[open_trade, "$PnL"] =  stc_PnL_all* init_price *mutipl*sold_tot
+        self.portfolio.loc[open_trade, "$PnL-Alert"] =  stc_PnL_all_alert* init_price *mutipl*sold_tot
+        self.portfolio.loc[open_trade, "$PnL-Current"] =  stc_PnL_all_curr* init_price *mutipl*sold_tot
         
         symb = self.portfolio.loc[open_trade, 'Symbol']
 
@@ -868,7 +905,7 @@ class AlertsTrader():
             if trade["isOpen"] == 0:
                 continue
 
-            if trade["BTO-Status"]  in ["QUEUED", "WORKING", 'OPEN']:
+            if trade["BTO-Status"]  in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION']:
                 order_status, order_info = self.get_order_info(trade['ordID'])
 
                 # Check if number filled Qty changed
@@ -880,9 +917,12 @@ class AlertsTrader():
                     redo_orders = True
                 
                 if order_status in ["FILLED", "EXECUTED"]:
-                    self.portfolio.loc[i, "Price"] = order_info['price']
+                    price = order_info.get("price")
+                    if price is None: 
+                        price = order_info['activationPrice']
+                    self.portfolio.loc[i, "Price"] = price
                     self.disc_notifier(order_info)
-                    str_msg = f"BTO {order_info['orderLegCollection'][0]['instrument']['symbol']} executed @ {order_info['price']}. Status: {order_status}"
+                    str_msg = f"BTO {order_info['orderLegCollection'][0]['instrument']['symbol']} executed @ {price}. Status: {order_status}"
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
                 self.portfolio.loc[i, "filledQty"] = order_info['filledQuantity']
@@ -1090,7 +1130,7 @@ class AlertsTrader():
                     order["SL"] = exit_plan["SL"]
                     order['uQty'] = uQty[ii - 1]
                     order['xQty'] = xQty[ii - 1]
-                    order['action'] = trade["Type"]
+                    order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
 
                 # Lim order
                 elif exit_plan[f"PT{ii}"] is not None and SL is None:
@@ -1098,7 +1138,7 @@ class AlertsTrader():
                     order["price"] = exit_plan[f"PT{ii}"]
                     order['uQty'] = uQty[ii - 1]
                     order['xQty'] = xQty[ii - 1]
-                    order['action'] = trade["Type"]
+                    order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
 
                 # SL order
                 elif ii == 1 and SL is not None:
@@ -1111,7 +1151,7 @@ class AlertsTrader():
                     
                     order['uQty'] = int(trade['uQty'])
                     order['xQty'] = 1
-                    order['action'] = trade["Type"]
+                    order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
 
                 elif ii > 1 and SL is not None:
                     break
@@ -1120,8 +1160,9 @@ class AlertsTrader():
                     raise("Case not caught")
 
                 # Check that is below current price
-                if order.get("SL") is not None and isinstance(order.get("SL"), (int, float)):
-                    order = self.SL_below_market(order)
+                if trade["Type"] == "BTO":
+                    if order.get("SL") is not None and isinstance(order.get("SL"), (int, float)):
+                        order = self.SL_below_market(order)
 
                 if ord_func is not None and order['uQty'] > 0:
                     _, STC_ordID = self.bksession.send_order(ord_func(**order))
@@ -1141,7 +1182,7 @@ class AlertsTrader():
             order = self.calculate_stoploss(order, trade, exit_plan["SL"])
             order['uQty'] = int(trade['uQty'])
             order['xQty'] = 1
-            order['action'] = trade["Type"]
+            order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
             _, STC_ordID = self.bksession.send_order(self.bksession.make_STC_SL_trailstop(**order))
             str_prt = f"STC1 {order['Symbol']} Trailing stop of {exit_plan['SL']} constant $ sent during order update"            
             print(Back.GREEN + str_prt)

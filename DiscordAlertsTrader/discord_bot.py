@@ -163,6 +163,7 @@ class DiscordBot(discord.Client):
         author = f"{message.author.name}#{message.author.discriminator}"    
         if message.channel.id not in self.channel_IDS.values() and \
             author not in cfg['discord']['auhtorwise_subscription'].split(","):
+            # print(author, message.channel.name, message.channel.id, message.guild.name)
             return
         if message.content == 'ping':
             await message.channel.send('pong')
@@ -265,12 +266,27 @@ class DiscordBot(discord.Client):
             if do_trade and date_diff.seconds < 120:
                 order["Trader"] = msg['Author']
                 self.trader.new_trade_alert(order, pars, msg['Content'])
+            if order is not None:
+                self.track_spx_spy(order, msg)
         
         if self.chn_hist.get(chn) is not None:
             msg['Parsed'] = pars
             self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
             self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
 
+    def track_spx_spy(self, order, msg):
+        if order['Symbol'].split("_")[0] != "SPXW" or self.bksession is None:
+            return
+        spx_q = self.bksession.get_quotes(["$SPX.X"])["$SPX.X"]['lastPrice']
+        spy_q = self.bksession.get_quotes(["SPY"])["SPY"]["bidPrice"]
+        rat = spx_q/spy_q
+        
+        strike = f"{round(int(order['strike'][:-1])/rat)}{order['strike'][-1]}"        
+        alert = f"{order['action']} {order['uQty']} SPY {strike} {order['expDate']} @ {round(order['price']/rat, 2)}"
+        msg['Content'] = alert
+        msg['Author'] = msg['Author']+"_SPX/SPY"
+        self.new_msg_acts(msg, from_disc=False)
+    
     def do_trade_alert(self, author, channel, order):
         "Decide if alert should be traded"
         if author in cfg['discord']['authors_subscribed'].split(",") and self.bksession is not None:
@@ -279,14 +295,14 @@ class DiscordBot(discord.Client):
             return True, order
         elif author in cfg['shorting']['authors_subscribed'].split(",") and self.bksession is not None:
             if order['asset'] != "option":
-                return False, None
+                return False, order
             # Make it STO
-            order["action"] = "STO"
+            order["action"] = "STO" if order["action"] == "BTO" else "BTC" if order["action"] == "STC" else order["action"]
             if len(cfg['shorting']['max_dte']):
                 if order['dte'] <= int(cfg['shorting']['max_dte']):
                     return True, order
                 
-        return False, None
+        return False, order
 
                 
 if __name__ == '__main__':
