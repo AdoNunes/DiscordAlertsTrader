@@ -267,7 +267,7 @@ class TDA(BaseBroker):
                 child_order_leg.order_leg_instruction(instruction="BUY_TO_CLOSE")
             elif action == "STO":
                 child_order_leg.order_leg_instruction(instruction="SELL_TO_OPEN")
-                new_order.stop_price_link_basis('ASK')
+                new_order.stop_price_link_basis('BID')
             child_order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
         else:
             if action == "STC":

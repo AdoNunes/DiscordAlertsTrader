@@ -243,7 +243,7 @@ class AlertsTrader():
             
             if self.cfg['shorting']['STO_trailingstop'] != "":
                 trail = (float(self.cfg['shorting']['STO_trailingstop'])/100)*order["price_current"]  
-                order["trail_stop_const"] = round(trail / 0.01) * 0.01
+                order["trail_stop_const"] = -round(trail / 0.01) * 0.01
             else:
                 # if price diff not too high, use current price
                 pdiff = round((order['price']-order["price_current"])/order['price']*100,1)
@@ -254,6 +254,7 @@ class AlertsTrader():
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
             
+            order['uQty'] = 1
             # Handle missing quantity
             if 'uQty' not in order.keys() or order['uQty'] is None:
                 if self.cfg['shorting']['default_sto_qty'] == "buy_one":
@@ -528,9 +529,9 @@ class AlertsTrader():
                 if price is None: 
                     price = order_info['activationPrice']
                 if len(self.cfg['shorting']['BTC_PT']) and exit_plan.get("PT1") is None:
-                    exit_plan['PT1'] = round(price * (1 + float(self.cfg['shorting']['BTC_PT'])/100),2)
+                    exit_plan['PT1'] = round(price * (1 - float(self.cfg['shorting']['BTC_PT'])/100),2)
                 if len(self.cfg['shorting']['BTC_SL']) and exit_plan.get("SL") is None:
-                    exit_plan['SL'] = round(price * (1 - float(self.cfg['shorting']['BTC_SL'])/100),2)
+                    exit_plan['SL'] = round(price * (1 + float(self.cfg['shorting']['BTC_SL'])/100),2)
 
             new_trade = {"Date": date,
                          "Symbol": order['Symbol'],
@@ -561,9 +562,9 @@ class AlertsTrader():
                     if price is None: 
                         price = order_info['activationPrice']
                     if len(self.cfg['shorting']['BTC_PT']) and exit_plan.get("PT1") is None:
-                        exit_plan['PT1'] = round(price * (1 + float(self.cfg['shorting']['BTC_PT'])/100),2)
+                        exit_plan['PT1'] = round(price * (1 - float(self.cfg['shorting']['BTC_PT'])/100),2)
                     if len(self.cfg['shorting']['BTC_SL']) and exit_plan.get("SL") is None:
-                        exit_plan['SL'] = round(price * (1 - float(self.cfg['shorting']['BTC_SL'])/100),2)
+                        exit_plan['SL'] = round(price * (1 + float(self.cfg['shorting']['BTC_SL'])/100),2)
                     self.portfolio.loc[ot,"exit_plan"]= str(exit_plan)
                     
             str_msg = f"{action} {order['Symbol']} executed @ {order_info.get('price')}. Status: {order_status}"
@@ -939,9 +940,9 @@ class AlertsTrader():
                     if self.portfolio.loc[i, "Type"] == "STO":
                         exit_plan = eval(self.portfolio.loc[i,"exit_plan"])
                         if len(self.cfg['shorting']['BTC_PT']) and exit_plan.get("PT1") is None:
-                            exit_plan['PT1'] = round(price * (1 + float(self.cfg['shorting']['BTC_PT'])/100),2)
+                            exit_plan['PT1'] = round(price * (1 - float(self.cfg['shorting']['BTC_PT'])/100),2)
                         if len(self.cfg['shorting']['BTC_SL']) and exit_plan.get("SL") is None:
-                            exit_plan['SL'] = round(price * (1 - float(self.cfg['shorting']['BTC_SL'])/100),2)
+                            exit_plan['SL'] = round(price * (1 + float(self.cfg['shorting']['BTC_SL'])/100),2)
                         self.portfolio.loc[i,"exit_plan"]= str(exit_plan)
                         
                 self.portfolio.loc[i, "filledQty"] = order_info['filledQuantity']
@@ -969,7 +970,7 @@ class AlertsTrader():
                     self.disc_notifier(order_info)
 
             # For short positions if closed end of day           
-            if trade['Type'] == 'STO' and self.cfg['shorting']["BTC_EOD"].getboolean():
+            if trade['Type'] == 'STO' and self.cfg['shorting'].getboolean("BTC_EOD"):
                 time_now = datetime.now().time()
                 time_closed = datetime.strptime(self.cfg['general']["off_hours"].split(",")[0], "%H")
                 time_quarter = time_closed - timedelta(minutes=15)
