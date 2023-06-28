@@ -30,10 +30,12 @@ If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed.
 - Checking order and account status, and accessing current ticker prices.
 - Supporting manual trade execution through prompts if `auto_trade` is set to False in `config.ini`.
 
-**Currently, the package is for parsing signals of the discord server BullTrades.** 
-Invite link to BullTrades with referral: [https://discord.gg/bulltrades](https://bulltrades.net/?ref=ndrjogi)
 
-It can also work with any server with structured signals BTO and STC with alerts as message content (not embedded)
+Supports any Discord channel with structured alerts BTO and STC as message contents (not embedded)
+
+**Currently, version control for analysts portfolio is from server BullTrades.[you can see all historical stats]** 
+  - Invite link to BullTrades: [https://discord.gg/bulltrades](https://bulltrades.net/?ref=ndrjogi)
+
 
 Let me know if you find the package useful or need support by dropping me an email or visiting the [discord server](https://discord.gg/9ejghcjpar)
 
