@@ -8,7 +8,7 @@ Created on Fri Apr  9 09:53:44 2021
 import math
 import os.path as op
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import numpy as np
 from .configurator import cfg
 from .alerts_tracker import calc_stc_prices
@@ -88,6 +88,13 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     except:
         data = pd.read_csv(fname_port,sep=",")
 
+    try:
+        data = filter_data(data,exclude, port_filt_author, port_filt_date_frm,
+                        port_filt_date_to, port_filt_chn)
+    except Exception as e:
+        print("error during portfolio filter data", e)
+        pass
+    
     data['Amount'] = data['uQty']
     data['STC-Amount'] = data[['STC1-uQty', 'STC2-uQty', 'STC3-uQty']].sum(axis=1)
     data['Price-current'] = data['Price-Current']
@@ -139,11 +146,7 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
     
-    try:
-        data = filter_data(data,exclude, port_filt_author, port_filt_date_frm,
-                        port_filt_date_to, port_filt_chn)
-    except:
-        pass
+
     cols = ['isOpen', "PnL", "$PnL", 'Date', 'Symbol', 'Trader', 'BTO-Status', 'Price',
             'Price-Alert', "Price-Current", 'uQty', 'filledQty', 'N Alerts',"PnL-Alert",
             "$PnL-Alert","PnL-Current","$PnL-Current", 
@@ -199,7 +202,8 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     try:
         data = filter_data(data,exclude, track_filt_author, track_filt_date_frm,
                         track_filt_date_to, track_filt_sym, track_exc_author, track_exc_chn)
-    except:
+    except Exception as e:
+        print("error during tracker filter data", e)
         pass
     cols = ['isOpen','STC-PnL','STC-PnL-current', 'STC-PnL$','STC-PnL$-current', 'Date', 'Symbol', 'Trader', 'Price',
             "Price-current", 'Amount', 'N Alerts','STC-Amount','STC-Price','STC-Price-current','STC-Date','Channel'
@@ -244,7 +248,8 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
     try:
         data = filter_data(data,exclude, stat_filt_author, stat_filt_date_frm,
                         stat_filt_date_to, stat_filt_sym, stat_exc_author, stat_exc_chn, stat_exc_sym)
-    except:
+    except Exception as e:
+        print("error during stats filter data", e)
         pass
     if stat_max_qty != "" or stat_max_trade_cap != "":
         if stat_max_qty != "" and stat_max_qty.isnumeric():
@@ -319,9 +324,32 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
     data = result_td.values.tolist()
     return data, header_list
 
+def period_to_date(period):
+    "Convert str to date. Period can be today, yesterday, week, biweek, month, mtd. ytd"
+    possible_periods = ['today', 'yesterday', 'week', 'biweek', 'month', "mtd", "ytd"]
+    if period not in possible_periods:
+        return period
+    # Get the current date
+    current_date = date.today()
 
-def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
-                track_filt_date_to='', track_filt_sym='', track_exc_author='', track_exc_chn='', stat_exc_sym=''):
+    if period == 'today':
+        return current_date
+    elif period == 'yesterday':
+        return current_date - timedelta(days=1)
+    elif period == 'week':
+        return current_date - timedelta(days=7)
+    elif period == 'biweek':
+        return current_date - timedelta(days=14)
+    elif period == 'month':
+        return current_date - timedelta(days=30)
+    elif period == 'mtd':
+        return current_date.replace(day=1)
+    elif period == 'ytd':
+        return current_date.replace(month=1, day=1)
+
+
+def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='', track_filt_date_to='',
+                track_filt_sym='', track_exc_author='', track_exc_chn='', stat_exc_sym='', msg_cont=''):
     if len(exclude):
         for k, v in exclude.items():
             if k == "Cancelled" and v and k in data.columns:
@@ -347,9 +375,13 @@ def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
         msk = [x.strip() for x in track_filt_author.split(",")]
         data = data[data['Trader'].str.contains('|'.join(msk), case=False)]
     if track_filt_date_frm:
-        data = data[data['Date'] >= track_filt_date_frm]
+        track_filt_date_frm = period_to_date(track_filt_date_frm)
+        msk = pd.to_datetime(data['Date']).dt.date >= pd.to_datetime(track_filt_date_frm).date()
+        data = data[msk]
     if track_filt_date_to:
-        data = data[data['Date'] <= track_filt_date_to]
+        track_filt_date_to =  period_to_date(track_filt_date_to)
+        msk = pd.to_datetime(data['Date']).dt.date <= pd.to_datetime(track_filt_date_to).date()
+        data = data[msk]
     if track_filt_sym:
         msk = [x.strip() for x in track_filt_sym.split(",")]
         data = data[data['Symbol'].str.contains('|'.join(msk), case=False)]
@@ -362,6 +394,9 @@ def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='',
     if stat_exc_sym:
         msk = [x.strip() for x in stat_exc_sym.split(",")]
         data = data[~data['Symbol'].str.contains('|'.join(msk), case=False)]
+    if msg_cont:
+        data = data[data['Content'].str.contains(msg_cont, case=False)]
+
     return data
 
 def get_live_quotes(portfolio):
@@ -404,25 +439,15 @@ def get_live_quotes(portfolio):
 def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
                   filt_cont='', chan_name="option_alerts", **kwargs):
     # Provide arguments to filter
+    data = pd.read_csv(op.join(cfg['general']['data_dir'] , f"{chan_name}_message_history.csv"),
+                       usecols=['Author', 'Date', 'Content', 'Parsed'])
+    data = data.rename({"Author": "Trader"}, axis=1)
 
-    data = pd.read_csv(op.join(cfg['general']['data_dir'] , f"{chan_name}_message_history.csv"))
-    cols = ['Author', 'Date', 'Content', 'Parsed']
-    data = data[cols]
-
-    data = data[~data['Author'].str.contains('Xcapture')]
-    data['Author'] = data['Author'].apply(lambda x: x.split('#')[0])
+    data = filter_data(data,{}, filt_author, filt_date_frm, filt_date_to, msg_cont=filt_cont)
+    data['Trader'] = data['Trader'].apply(lambda x: x.split('#')[0])
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
 
     data = data.fillna("")
-    if filt_author:
-        data = data[data['Author'].str.contains(filt_author, case=False)]
-    if filt_date_frm:
-        data = data[data['Date'] >= filt_date_frm]
-    if filt_date_to:
-        data = data[data['Date'] < filt_date_to]
-    if filt_cont:
-        data = data[data['Content'].str.contains(filt_cont, case=False)]
-
     header_list = data.columns.tolist()
     return data.values.tolist(), header_list
 

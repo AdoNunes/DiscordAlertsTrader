@@ -11,6 +11,7 @@ from . import gui_generator as gg
 
 
 tip = "coma separed patterns, e.g. string1,string2"
+tlp_date = "Date can be:\n-a date mm/dd/yyyy, mm/dd\n-a period: today, yesterday, week, biweek, month, mtd, ytd"
 
 def layout_console(ttl='Discord messages from subscribed channels', 
                    key='-MLINE-__WRITE ONLY__'):
@@ -28,8 +29,8 @@ def layout_portfolio(data_n_headers, font_body, font_header):
     layout = [
          [sg.Column([[
             sg.Text('Include:  Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_filt_author',tooltip=tip),
-            sg.Text('Date from: '), sg.Input(key=f'port_filt_date_frm', size=(16, 1), default_text='05/10/2023'),
-            sg.Text(' To: '), sg.Input(key=f'port_filt_date_to', size=(16, 1)),
+            sg.Text('Date from: ', tooltip=tlp_date), sg.Input(key=f'port_filt_date_frm', size=(16, 1), default_text='week', tooltip=tlp_date),
+            sg.Text(' To: ', tooltip=tlp_date), sg.Input(key=f'port_filt_date_to', size=(16, 1), tooltip=tlp_date),
             sg.Text(' Symbols: ', tooltip=tip), sg.Input(key=f'port_filt_sym', tooltip=tip),
             sg.Text(' Channels: ',tooltip=tip), sg.Input(key=f'port_filt_chn',tooltip=tip)
             ],                                        
@@ -73,8 +74,9 @@ def layout_traders(data_n_headers, font_body, font_header):
         sg.Column([
             [
             sg.Text('Include:  Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_filt_author',tooltip=tip),
-            sg.Text('Date from: '), sg.Input(key=f'track_filt_date_frm', default_text='05/10/2023', size=(16, 1)),
-            sg.Text(' To: '), sg.Input(key=f'track_filt_date_to', size=(16, 1)),
+            sg.Text('Date from: ', tooltip=tlp_date), 
+            sg.Input(key=f'track_filt_date_frm', default_text='week', size=(16, 1), tooltip=tlp_date),
+            sg.Text(' To: ', tooltip=tlp_date), sg.Input(key=f'track_filt_date_to', size=(16, 1), tooltip=tlp_date),
             sg.Text(' Symbols: ',tooltip=tip), sg.Input(key=f'track_filt_sym',tooltip=tip),
             sg.Text(' Channels: ',tooltip=tip), sg.Input(key=f'track_filt_chn',tooltip=tip)
             ],[ 
@@ -117,11 +119,13 @@ def layout_stats(data_n_headers, font_body, font_header):
     
     layout = [
         [sg.Column([[sg.Text('Include:  Authors: ', auto_size_text=True, tooltip=tip), sg.Input(key=f'stat_filt_author', tooltip=tip),
-                     sg.Text('Date from:'), sg.Input(key=f'stat_filt_date_frm', size=(16, 1), default_text='05/10/2023'),
-                     sg.Text(' To:', size=(5, 1)), sg.Input(key=f'stat_filt_date_to', size=(16, 1)),
+                     sg.Text('Date from:', tooltip=tlp_date), 
+                     sg.Input(key=f'stat_filt_date_frm', size=(16, 1), default_text='week', tooltip=tlp_date),
+                     sg.Text(' To:', size=(5, 1), tooltip=tlp_date), 
+                     sg.Input(key=f'stat_filt_date_to', size=(16, 1), tooltip=tlp_date),
                      sg.Text(' Symbols:'), sg.Input(key=f'stat_filt_sym', tooltip=tip),
                      sg.Text(' Max $:', tooltip="calculate stats limiting trades to max $"), 
-                     sg.Input(key=f'stat_max_trade_cap', tooltip="calculate stats limiting trades to max $"),
+                     sg.Input(key=f'stat_max_trade_cap', tooltip="calculate stats limiting trades to max $ amount"),
                      sg.Text(' Max quantity:', tooltip="calculate stats limiting trades to max quantity"), 
                      sg.Input(key=f'stat_max_qty', tooltip="calculate stats limiting trades to max quantity"),
                      ],
@@ -163,11 +167,11 @@ def layout_chan_msg(chn, data_n_headers, font_body, font_header):
     layout = [
         [sg.Text('Filter:  Authors: '), sg.Input(key=f'{chn}_filt_author'),
            # sg.Text(' '*2),
-         sg.Text('Date from: '), sg.Input(key=f'{chn}_filt_date_frm', default_text='05/09/23'),
-         sg.Text(' To: '), sg.Input(key=f'{chn}_filt_date_to'),
+         sg.Text('Date from: ', tooltip=tlp_date), 
+         sg.Input(key=f'{chn}_filt_date_frm', default_text='week', tooltip=tlp_date),
+         sg.Text(' To: ', tooltip=tlp_date), sg.Input(key=f'{chn}_filt_date_to', tooltip=tlp_date),
           # sg.Text(' '*1),
          sg.Text('Message contains: '), sg.Input(key=f'{chn}_filt_cont'),
-         sg.Text('Num. rows display: '), sg.Input(key=f'{chn}_n_rows'),
          ],
         [sg.ReadFormButton("Update", button_color=('white', 'black'), key=f'{chn}_UPD', bind_return_key=True)],
         [sg.Column([[sg.Table(values=values,

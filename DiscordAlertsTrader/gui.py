@@ -162,7 +162,7 @@ print(6)
 event, values = window.read(.1)
 print(7)
 trade_events = queue.Queue(maxsize=20)
-alistner = DiscordBot(trade_events, brokerage=bksession)
+alistner = DiscordBot(trade_events, brokerage=bksession, cfg=cfg)
 print(8)
 threading.Thread(target=update_portfolios_thread, args=(window,), daemon=True).start()
 print(9)
@@ -188,7 +188,7 @@ fit_table_elms(window.Element("_track_").Widget)
 dt, hdr = gg.get_portf_data(port_exc)
 window.Element('_portfolio_').Update(values=dt)
 fit_table_elms(window.Element("_portfolio_").Widget)
-dt, hdr = gg.get_stats_data(port_exc)
+dt, hdr = gg.get_stats_data(stat_exc)
 window.Element('_stat_').Update(values=dt)
 fit_table_elms(window.Element("_stat_").Widget)
 
@@ -212,13 +212,15 @@ def run_gui():
                 qty = dt[pix][hdr.index('filledQty')]
             else:
                 pix = values['_track_'][0]
-                dt, hdr = gg.get_tracker_data(port_exc, **values)
+                dt, hdr = gg.get_tracker_data(track_exc, **values)
                 qty = dt[pix][hdr.index('Amount')]  
             qty = qty if qty == "" else int(qty)            
             symb = dt[pix][hdr.index('Symbol')]
             auth = match_authors(dt[pix][hdr.index('Trader')])
             
             price = dt[pix][hdr.index('S-Price-current')]
+            if price == "":
+                price = dt[pix][hdr.index('S-Price')]
             price = price if price == "" else float(price)
             if "_" in symb:
                 # option
@@ -290,12 +292,7 @@ def run_gui():
                 if k[:len(chn)] == chn:
                     args[k[len(chn)+1:]] = v
             dt, _  = gg.get_hist_msgs(chan_name=chn, **args)
-            if args['n_rows'] != "":
-                n_rows = eval(args['n_rows'])
-                n_rows = max(1, n_rows)
-                window.Element(f"{chn}_table").Update(values=dt,  num_rows=n_rows)
-            else:
-                window.Element(f"{chn}_table").Update(values=dt)
+            window.Element(f"{chn}_table").Update(values=dt)
 
             fit_table_elms(window.Element(f"{chn}_table").Widget)
             window.Element(f'{chn}_UPD').Update(button_color=ori_col)

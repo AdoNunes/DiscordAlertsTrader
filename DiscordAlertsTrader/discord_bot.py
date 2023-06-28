@@ -37,16 +37,18 @@ class DiscordBot(discord.Client):
                  queue_prints=dummy_queue(maxsize=10), 
                  live_quotes=True, 
                  brokerage=None,
-                 tracker_portfolio_fname=cfg['portfolio_names']["tracker_portfolio_name"]):
+                 tracker_portfolio_fname=cfg['portfolio_names']["tracker_portfolio_name"],
+                 cfg = cfg):
         super().__init__()
         self.channel_IDS = channel_ids
         self.time_strf = "%Y-%m-%d %H:%M:%S.%f"
         self.queue_prints = queue_prints
         self.bksession = brokerage
         self.live_quotes = live_quotes
+        self.cfg = cfg
         if brokerage is not None:
-            self.trader = AlertsTrader(queue_prints=self.queue_prints, brokerage=brokerage)       
-        self.tracker = AlertsTracker(brokerage=brokerage, portfolio_fname=tracker_portfolio_fname)
+            self.trader = AlertsTrader(queue_prints=self.queue_prints, brokerage=brokerage, cfg=self.cfg)       
+        self.tracker = AlertsTracker(brokerage=brokerage, portfolio_fname=tracker_portfolio_fname, cfg=self.cfg)
         self.load_data()        
 
         if live_quotes and brokerage is not None and brokerage.name != 'webull':
@@ -59,14 +61,14 @@ class DiscordBot(discord.Client):
             self.live_quotes = False
 
     def track_live_quotes(self):
-        dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
+        dir_quotes = self.cfg['general']['data_dir'] + '/live_quotes'
         os.makedirs(dir_quotes, exist_ok=True)
 
         while self.live_quotes:
             # Skip closed market
             now = datetime.now()
             weekday, hour = now.weekday(), now.hour
-            after_hr, before_hr = cfg['general']['off_hours'].split(",")
+            after_hr, before_hr = self.cfg['general']['off_hours'].split(",")
             if  weekday >= 5 or (hour < int(before_hr) or hour >= int(after_hr)):  
                 time.sleep(60)
                 continue
@@ -77,7 +79,7 @@ class DiscordBot(discord.Client):
             msk_tk = ((self.tracker.portfolio['isOpen']==1) | tk_day) 
             msk_td = ((self.trader.portfolio['isOpen']==1) | td_day) 
             
-            if cfg['general']['live_quotes_options_only']:
+            if self.cfg['general']['live_quotes_options_only']:
                 msk_tk = msk_tk & (self.tracker.portfolio['Asset']=='option')
                 msk_td = msk_td & (self.trader.portfolio['Asset']=='option')
             
@@ -127,11 +129,11 @@ class DiscordBot(discord.Client):
         self.chn_hist= {}
         self.chn_hist_fname = {}
         for ch in self.channel_IDS.keys():
-            dt_fname = f"{cfg['general']['data_dir']}/{ch}_message_history.csv"
+            dt_fname = f"{self.cfg['general']['data_dir']}/{ch}_message_history.csv"
             if not os.path.exists(dt_fname):
-                ch_dt = pd.DataFrame(columns=cfg['col_names']['chan_hist'].split(","))
+                ch_dt = pd.DataFrame(columns=self.cfg['col_names']['chan_hist'].split(","))
                 ch_dt.to_csv(dt_fname, index=False)
-                ch_dt.to_csv(f"{cfg['general']['data_dir']}/{ch}_message_history_temp.csv", index=False)
+                ch_dt.to_csv(f"{self.cfg['general']['data_dir']}/{ch}_message_history_temp.csv", index=False)
             else:
                 ch_dt = pd.read_csv(dt_fname)
 
@@ -141,7 +143,7 @@ class DiscordBot(discord.Client):
     async def on_ready(self):
         print('Logged on as', self.user , '\n loading previous messages')
         # pass channel object to trader
-        # if self.bksession is not None and cfg['discord'].getboolean('notify_alerts_to_discord') and \
+        # if self.bksession is not None and self.cfg['discord'].getboolean('notify_alerts_to_discord') and \
         #     len(cfg['discord'].get('send_alerts_to_chan')):
             # self.trader.discord_channel = await self.fetch_channel(cfg['discord'].get('send_alerts_to_chan'))
             # self.trader.discord_send = self.send_msg            
@@ -162,7 +164,7 @@ class DiscordBot(discord.Client):
         # only respond to channels in config or authorwise subscription
         author = f"{message.author.name}#{message.author.discriminator}"    
         if message.channel.id not in self.channel_IDS.values() and \
-            author not in cfg['discord']['auhtorwise_subscription'].split(","):
+            author not in self.cfg['discord']['auhtorwise_subscription'].split(","):
             # print(author, message.channel.name, message.channel.id, message.guild.name)
             return
         if message.content == 'ping':
@@ -303,17 +305,17 @@ class DiscordBot(discord.Client):
     
     def do_trade_alert(self, author, channel, order):
         "Decide if alert should be traded"
-        if author in cfg['discord']['authors_subscribed'].split(",") and self.bksession is not None:
+        if author in self.cfg['discord']['authors_subscribed'].split(",") and self.bksession is not None:
             return True, order
-        elif channel in cfg['discord']['channelwise_subscription'].split(",") and self.bksession is not None:
+        elif channel in self.cfg['discord']['channelwise_subscription'].split(",") and self.bksession is not None:
             return True, order
-        elif author in cfg['shorting']['authors_subscribed'].split(",") and self.bksession is not None:
+        elif author in self.cfg['shorting']['authors_subscribed'].split(",") and self.bksession is not None:
             if order['asset'] != "option":
                 return False, order
             # Make it STO
             order["action"] = "STO" if order["action"] == "BTO" else "BTC" if order["action"] == "STC" else order["action"]
-            if len(cfg['shorting']['max_dte']):
-                if order['dte'] <= int(cfg['shorting']['max_dte']):
+            if len(self.cfg['shorting']['max_dte']):
+                if order['dte'] <= int(self.cfg['shorting']['max_dte']):
                     return True, order
                 
         return False, order
