@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import numpy as np
 from DiscordAlertsTrader.configurator import cfg
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -244,6 +244,10 @@ def calculate_days_to_expiration(row):
     days_to_expiration = (option_date - expiration_date).days
     return days_to_expiration
 
+def calc_underlying_price(row):
+    option_date_str = eval(parse_option_info(row['Symbol'])["strike"])
+    return option_date_str
+
 def port_max_per_trade(port, max_per_trade:float):
     "Limit the max amount per trade"
     option_mult = (port['Asset'] == 'option').astype(int)
@@ -262,6 +266,9 @@ def port_max_per_trade(port, max_per_trade:float):
 
 fname_port = cfg['portfolio_names']['tracker_portfolio_name']
 port = pd.read_csv(fname_port)
+
+msk = pd.to_datetime(port['Date']).dt.date >= pd.to_datetime(date.today()- timedelta(days=3)).date()
+port = port[msk]
 dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
 ntrades = len(port)
 
@@ -270,6 +277,10 @@ print(f"From {len(port)} trades, removing open trades: {(~(port['isOpen']==0)).s
 
 port = port[(port['isOpen']==0) & (port['Asset']=='option') & ~port['Price-current'].isna()]
 
+max_underlying_price = 500
+port['strike'] = port.apply(calc_underlying_price, axis=1)
+port = port[port['strike'] <= max_underlying_price]
+
 odte_only = False
 port['days_to_expiration'] = port.apply(calculate_days_to_expiration, axis=1)
 if odte_only:
@@ -277,6 +288,7 @@ if odte_only:
     port = port[port['days_to_expiration']==0]
 
 port = port[~port['Symbol'].str.contains('SPX')]
+port = port[~port['Trader'].str.contains('enhancedmarket|SPY')]
 print(f"Setting trades to a max of $1000, removing {len(port)- len(port_max_per_trade(port, 1000))} trades")
 port = port_max_per_trade(port, 1000)
 
@@ -302,6 +314,7 @@ for idx, row in port.iterrows():
     
     # get quotes within trade dates
     dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
+    print(row['Symbol'], dates.iloc[-1])
     try:
         # msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(row['STC-Date']))) & (quotes[' quote'] > 0)
         stc_date = pd.to_datetime(row['STC-Date']).replace(hour=16, minute=0, second=0, microsecond=0)
@@ -334,43 +347,14 @@ for idx, row in port.iterrows():
     trades_max.append(100*(quotes_vals.max()-row['Price-current'])/row['Price-current'])
     percentage_return.append(100*(row['STC-Price-current']-row['Price-current'])/row['Price-current'])
     # roi_current, = calc_roi(quotes_vals, PT=1.5, TS=0, SL=.4, do_plot=False, initial_prices=price_alert)
-    trigger_price, trigger_index, pt_index = calc_trailingstop(quotes_vals, price_curr,price_curr*.1)
-    roi_current, = calc_roi(quotes_vals.loc[trigger_index:], PT=1.85, TS=0, SL=.70, do_plot=False, initial_prices=trigger_price)
+    trigger_price, trigger_index, pt_index = calc_trailingstop(quotes_vals, price_curr,price_curr*.05)
+    roi_current, = calc_roi(quotes_vals.loc[trigger_index:], PT=1.5, TS=0, SL=.5, do_plot=False, initial_prices=price_curr)
     
     pnl = roi_current[2]
     mult = .1 if row['Asset'] == 'stock' else 1
     if mult == .1: raise Exception("There should be no stocks in the portfolio")
     pnlu = pnl*roi_current[0]*mult
     
-    # pnl = 100*(row['STC-Price-current']-row['Price-current'])/row['Price-current']
-    # mult = .1 if row['Asset'] == 'stock' else 1
-    # if mult == .1: raise Exception("There should be no stocks in the portfolio")
-    # pnlu = pnl*row['Amount']*row['Price-current']*mult
-    
-#     # price_delayed = price_curr + (price_curr*(price_curr/100))
-#     # if delayed_entry > 0:
-#     #     msk = quotes[' quote'] >= price_delayed
-#     # elif delayed_entry < 0:
-#     #     msk = quotes[' quote'] <= price_delayed
-#     # else:
-#     #     msk = quotes[' quote'] == price_curr
-#     # if not msk.any():
-#     #     not_entred.append(row['Symbol'])
-#     #     continue
-    
-
-#     # price_delayed = quotes.loc[msk.idxmax(), ' quote']
-
-#     sell_curr = row['STC-Price-current']
-#     if pd.isna(row['STC-Price-current']):        
-#         sell_curr = quotes.iloc[-1][' quote']
-#         if not (pd.to_datetime(row['STC-Date']) - datetime.fromtimestamp(quotes.iloc[-1]['timestamp'])) < timedelta(seconds=300):
-#             print ('date not matched by {} seconds'.format((pd.to_datetime(row['STC-Date']) - datetime.fromtimestamp(quotes.iloc[-1]['timestamp'])).seconds))
-#             continue
-    
-    # pnl = (sell_curr - price_delayed)/price_delayed*100
-    # mult = .1 if row['Asset'] == 'stock' else 1
-    # pnlu = pnl*row['STC-Amount']*price_delayed*mult
     
     port.loc[idx, 'STC-PnL-strategy'] = pnl
     port.loc[idx, 'STC-PnL$-strategy'] = pnlu
@@ -436,3 +420,33 @@ result_td = port.groupby('Trader').agg(agg_funcs).sort_values(by=('Date', 'count
 
 # # Show the plot
 # plt.show()
+
+    # pnl = 100*(row['STC-Price-current']-row['Price-current'])/row['Price-current']
+    # mult = .1 if row['Asset'] == 'stock' else 1
+    # if mult == .1: raise Exception("There should be no stocks in the portfolio")
+    # pnlu = pnl*row['Amount']*row['Price-current']*mult
+    
+#     # price_delayed = price_curr + (price_curr*(price_curr/100))
+#     # if delayed_entry > 0:
+#     #     msk = quotes[' quote'] >= price_delayed
+#     # elif delayed_entry < 0:
+#     #     msk = quotes[' quote'] <= price_delayed
+#     # else:
+#     #     msk = quotes[' quote'] == price_curr
+#     # if not msk.any():
+#     #     not_entred.append(row['Symbol'])
+#     #     continue
+    
+
+#     # price_delayed = quotes.loc[msk.idxmax(), ' quote']
+
+#     sell_curr = row['STC-Price-current']
+#     if pd.isna(row['STC-Price-current']):        
+#         sell_curr = quotes.iloc[-1][' quote']
+#         if not (pd.to_datetime(row['STC-Date']) - datetime.fromtimestamp(quotes.iloc[-1]['timestamp'])) < timedelta(seconds=300):
+#             print ('date not matched by {} seconds'.format((pd.to_datetime(row['STC-Date']) - datetime.fromtimestamp(quotes.iloc[-1]['timestamp'])).seconds))
+#             continue
+    
+    # pnl = (sell_curr - price_delayed)/price_delayed*100
+    # mult = .1 if row['Asset'] == 'stock' else 1
+    # pnlu = pnl*row['STC-Amount']*price_delayed*mult
