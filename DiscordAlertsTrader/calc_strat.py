@@ -132,7 +132,7 @@ def calc_PT(data:pd.Series, pt:float):
         pt_val = data.loc[pt_index]
         return pt_val, pt_index, pt_index
     return None, None, None
-    
+
 def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False, initial_prices=None, sl_update:list=None)->list:
     """Calculate roi for a given series of quotes
 
@@ -269,38 +269,56 @@ def port_max_per_trade(port, max_per_trade:float):
     return port
 
 fname_port = cfg['portfolio_names']['tracker_portfolio_name']
+
+last_days = 3
+max_underlying_price = 500
+min_price = 50
+max_dte = 100
+max_capital = 1000
+exclude_traders = ['enhancedmarket', 'SPY']
+exclude_symbols = ['SPX', 'SPY', 'QQQ']
+PT=50
+TS=0
+SL=50
+TS_buy = 5
+
+pt = 1 + PT/100
+ts = TS/100
+sl = 1 - SL/100
+ts_buy = TS_buy/100
+
 port = pd.read_csv(fname_port)
 
-msk = pd.to_datetime(port['Date']).dt.date >= pd.to_datetime(date.today()- timedelta(days=3)).date()
+msk = pd.to_datetime(port['Date']).dt.date >= pd.to_datetime(date.today()- timedelta(days=last_days)).date()
 port = port[msk]
 dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
-ntrades = len(port)
+
 
 print(f"From {len(port)} trades, removing open trades: {(~(port['isOpen']==0)).sum()} open, not options: " +\
     f"{(~(port['Asset']=='option')).sum()} and with no current price: {port['Price-current'].isna().sum()}")
 
-port = port[(port['isOpen']==0) & (port['Asset']=='option') & ~port['Price-current'].isna()]
+port = port[(port['isOpen']==0) & (port['Asset']=='option') & (~port['Price-current'].isna()) & ((port['Price']*100)>=min_price)]
+if len(port) == 0:
+    print("No trades to calculate")
+    exit()
 
-max_underlying_price = 500
 port['strike'] = port.apply(calc_underlying_price, axis=1)
 port = port[port['strike'] <= max_underlying_price]
 
-max_dte = 100
+
 port['days_to_expiration'] = port.apply(calculate_days_to_expiration, axis=1)
 if max_dte:
     print("Keeping only trades with 0 dtoe, removing: ", (port['days_to_expiration']>max_dte).sum())
     port = port[port['days_to_expiration']<=max_dte]
 
-port = port[~port['Symbol'].str.contains('SPX')]
-port = port[~port['Trader'].str.contains('enhancedmarket|SPY')]
-print(f"Setting trades to a max of $1000, removing {len(port)- len(port_max_per_trade(port, 1000))} trades")
-port = port_max_per_trade(port, 1000)
-
+port = port[~port['Symbol'].str.contains("|".join(exclude_symbols))]
+port = port[~port['Trader'].str.contains("|".join(exclude_traders))]
+print(f"Setting trades to a max of $1000, removing {len(port)- len(port_max_per_trade(port, max_capital))} trades")
+port = port_max_per_trade(port, max_capital)
 
 # strategies: PT and SL, delayed entry
 print(f"Calculating strategy pnl... with {len(port)} trades")
 
-delayed_entry = 0
 not_entred = []
 pnls, pnlus = [], []
 port['STC-PnL-strategy'] = np.nan
@@ -322,7 +340,7 @@ for idx, row in port.iterrows():
     
     # get quotes within trade dates
     dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
-    print(row['Symbol'], dates.iloc[-1])
+    # print(row['Symbol'], dates.iloc[-1])
     try:
         # msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(row['STC-Date']))) & (quotes[' quote'] > 0)
         stc_date = pd.to_datetime(row['STC-Date']).replace(hour=16, minute=0, second=0, microsecond=0)
@@ -332,14 +350,6 @@ for idx, row in port.iterrows():
         stc_date = row['STC-Date'].replace("T00:00:00+0000", " 16:00:00.000000")
         stc_date = pd.to_datetime(stc_date).replace(hour=16, minute=0, second=0, microsecond=0)
         msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(stc_date))) & (quotes[' quote'] > 0)
-        
-        
-        
-        # qm = quotes[msk]
-        # print(round(row['STC-PnL']), round(row['STC-PnL-current']), 
-        #      round( 100*(qm.iloc[-1][' quote'] -  row['Price'])/ row['Price']), 
-        #     round(100*(qm.iloc[-1][' quote'] -  row['Price-current'])/ row['Price-current']), qm.iloc[-1][' quote'], 
-        #     dates.iloc[-1], row['Date'], idx,row['Symbol'])
 
     if not msk.any():
         print("quotes outside with dates", row['Symbol'])
@@ -355,15 +365,16 @@ for idx, row in port.iterrows():
     trades_max.append(100*(quotes_vals.max()-row['Price-current'])/row['Price-current'])
     percentage_return.append(100*(row['STC-Price-current']-row['Price-current'])/row['Price-current'])
     # roi_current, = calc_roi(quotes_vals, PT=1.5, TS=0, SL=.4, do_plot=False, initial_prices=price_alert)
-    trigger_price, trigger_index, pt_index = calc_trailingstop(quotes_vals, price_curr,price_curr*.05)
-    roi_current, = calc_roi(quotes_vals.loc[trigger_index:], PT=1.5, TS=0, SL=.5, do_plot=False, initial_prices=price_curr)
+
+    if ts_buy:
+        price_curr, trigger_index, pt_index = calc_trailingstop(quotes_vals, price_curr,price_curr*ts_buy)
+    roi_current, = calc_roi(quotes_vals.loc[trigger_index:], PT=pt, TS=ts, SL=sl, do_plot=False, initial_prices=price_curr)
     
     port.loc[idx, 'strategy-close_date'] = dates.iloc[roi_current[-1]]
     pnl = roi_current[2]
     mult = .1 if row['Asset'] == 'stock' else 1
     if mult == .1: raise Exception("There should be no stocks in the portfolio")
     pnlu = pnl*roi_current[0]*mult
-    
     
     port.loc[idx, 'STC-PnL-strategy'] = pnl
     port.loc[idx, 'STC-PnL$-strategy'] = pnlu
@@ -380,8 +391,8 @@ print("Pnl alert: %.2f, Pnl current: %.2f, Pnl strategy: %.2f" % (pnls_m[0], pnl
 pnlus_m = np.nansum(np.array(pnlus) , axis=0)
 print("Pnl $ alert: %.2f, Pnl $ current: %.2f, Pnl $ strategy: %.2f" % (pnlus_m[0], pnlus_m[1], pnlus_m[2]))
 
-print(port[['Date','Symbol','Trader', 'STC-PnL', 'STC-PnL-current', 'STC-PnL-strategy','STC-PnL$', 'STC-PnL$-current',
-            'STC-PnL$-strategy','strategy-entry','strategy-exit', 'strategy-close_date']])
+# print(port[['Date','Symbol','Trader', 'STC-PnL', 'STC-PnL-current', 'STC-PnL-strategy','STC-PnL$', 'STC-PnL$-current',
+#             'STC-PnL$-strategy','strategy-entry','strategy-exit', 'strategy-close_date']])
 
 agg_funcs = {'STC-PnL$': 'sum',
                 'STC-PnL$-current': 'sum',
