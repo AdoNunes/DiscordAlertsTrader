@@ -63,13 +63,13 @@ class CustomUser:
         self.name = name
         self.discriminator = discriminator
 
-def make_message(content=None):
+def make_message(content=None, cfg=cfg):
     message = load_message(root_dir+"/data/discord_message.json")
     if content is not None:
         message.content = content
     else:
         message.content = 'BTO 5 AI 25c 12/09 @ 1 <@&940418825235619910> swinging'
-    author = cfg['discord']['authors_subscribed'].split(",")[0]
+    author = "BestTrader#1234"
     message.author.name, message.author.discriminator = author.split("#")
     return message
 

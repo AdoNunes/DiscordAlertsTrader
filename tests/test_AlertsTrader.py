@@ -3,12 +3,14 @@ from unittest.mock import create_autospec
 import os
 from datetime import datetime
 from colorama import  init
+import queue
 
 from DiscordAlertsTrader.alerts_trader import AlertsTrader
 from DiscordAlertsTrader.configurator import cfg 
 from DiscordAlertsTrader.message_parser import parse_trade_alert
 from DiscordAlertsTrader.brokerages.TDA_api import TDA
 from DiscordAlertsTrader.brokerages.eTrade_api import eTrade
+from DiscordAlertsTrader.brokerages.weBull_api import weBull
 from mock_discord_message import make_message
 
 init(autoreset=True)
@@ -27,10 +29,15 @@ class TestAlertsTrader(unittest.TestCase):
         if os.path.exists(self.trader_log_fname):
             os.remove(self.trader_log_fname)
         
+        cfg['order_configs']['max_trade_capital'] = '1000'
+        cfg['discord']['notify_alerts_to_discord'] = 'false'
+        
         trader = AlertsTrader(brokerage, 
                               portfolio_fname=self.trader_portfolio_fname,
                               alerts_log_fname=self.trader_log_fname,
                               update_portfolio=False,
+                              queue_prints=queue.Queue(maxsize=50),
+                              cfg=cfg
                               )
         
         # Expected values
@@ -118,6 +125,8 @@ class TestAlertsTrader(unittest.TestCase):
         # assert expected values
         trade = trader.portfolio.loc[0]
         for exp, val in expected.items():
+            if not trade[exp] == val:
+                print(f"Expected {exp} = {val} but got {trade[exp]}")
             if isinstance(trade[exp], float):
                 self.assertAlmostEqual(trade[exp], val, places=2)
             else:
@@ -134,7 +143,10 @@ class TestAlertsTrader(unittest.TestCase):
     def test_tracker_etrade(self):
         mock_brokerage = create_autospec(eTrade)
         self.tracker_order(mock_brokerage)
-        
+
+    def test_tracker_webull(self):
+        mock_brokerage = create_autospec(weBull)
+        self.tracker_order(mock_brokerage)
 
 # @patch('DiscordAlertsTrader.brokerages.TDA_api.TDA')
 if __name__ == '__main__':

@@ -62,14 +62,13 @@ class AlertsTrader():
                  alerts_log_fname=cfg['portfolio_names']['alerts_log_fname'],
                  queue_prints=queue.Queue(maxsize=10),
                  update_portfolio=True,
-                 send_alert_to_discord=cfg['discord'].getboolean('notify_alerts_to_discord'),
                  cfg=cfg
                  ):
         self.bksession = brokerage
         self.portfolio_fname = portfolio_fname
         self.alerts_log_fname = alerts_log_fname
         self.queue_prints = queue_prints
-        self.send_alert_to_discord = send_alert_to_discord
+        self.send_alert_to_discord = cfg['discord'].getboolean('notify_alerts_to_discord')
         self.discord_channel = None # discord channel object to post trade alerts, passed on_ready discord
         self.cfg = cfg
         # load port and log
@@ -852,7 +851,7 @@ class AlertsTrader():
         if self.portfolio.loc[open_trade, "Type"] == "BTO":
             stc_PnL = float((stc_price - bto_price)/bto_price) *100
         elif self.portfolio.loc[open_trade, "Type"] == "STO":
-            stc_PnL = float((bto_price - stc_price)/stc_price) *100
+            stc_PnL = float((bto_price - stc_price)/bto_price) *100
 
         xQty = sold_unts/ self.portfolio.loc[open_trade, "uQty"]
 
@@ -875,21 +874,18 @@ class AlertsTrader():
             stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-Alerted"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
             stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-Current"] - bto_price_current)/bto_price_current) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
         elif self.portfolio.loc[open_trade, "Type"] == "STO":
-            stc_PnL_all_alert =  np.nansum([(float((bto_price_alert - trade[f"STC{i}-Price-Alerted"])/trade[f"STC{i}-Price-Alerted"]) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
-            stc_PnL_all_curr = np.nansum([(float((bto_price_current - trade[f"STC{i}-Price-Current"])/trade[f"STC{i}-Price-Current"]) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+            stc_PnL_all_alert =  np.nansum([(float((bto_price_alert - trade[f"STC{i}-Price-Alerted"])/bto_price_alert) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
+            stc_PnL_all_curr = np.nansum([(float((bto_price_current - trade[f"STC{i}-Price-Current"])/bto_price_current) *100) * trade[f"STC{i}-uQty"] for i in range(1,4)])/sold_tot
 
         self.portfolio.loc[open_trade, "PnL-Alert"] = stc_PnL_all_alert
         self.portfolio.loc[open_trade, "PnL-Current"] = stc_PnL_all_curr
         
         mutipl = 1 if trade['Asset'] == "option" else .01  # pnl already in %
-        if self.portfolio.loc[open_trade, "Type"] == "BTO":
-            init_price = bto_price
-        elif self.portfolio.loc[open_trade, "Type"] == "STO":
-            init_price = np.nanmean([trade[f"STC{i}-Price"]  for i in range(1,4)])
-        self.portfolio.loc[open_trade, "$PnL"] =  stc_PnL_all* init_price *mutipl*sold_tot
-        self.portfolio.loc[open_trade, "$PnL-Alert"] =  stc_PnL_all_alert* init_price *mutipl*sold_tot
-        self.portfolio.loc[open_trade, "$PnL-Current"] =  stc_PnL_all_curr* init_price *mutipl*sold_tot
-        
+
+        self.portfolio.loc[open_trade, "$PnL"] =  stc_PnL_all* bto_price *mutipl*sold_tot
+        self.portfolio.loc[open_trade, "$PnL-Alert"] =  stc_PnL_all_alert* bto_price_alert *mutipl*sold_tot
+        self.portfolio.loc[open_trade, "$PnL-Current"] =  stc_PnL_all_curr* bto_price_current *mutipl*sold_tot
+
         symb = self.portfolio.loc[open_trade, 'Symbol']
 
         sold_Qty =  self.portfolio.loc[open_trade, [f"STC{i}-uQty" for i in range(1,4)]].sum()

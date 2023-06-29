@@ -5,6 +5,7 @@ import os
 from datetime import datetime, timedelta
 from DiscordAlertsTrader.discord_bot import DiscordBot
 from mock_discord_message import make_message
+from DiscordAlertsTrader.configurator import cfg
 
 root_dir  =  os.path.abspath(os.path.dirname(__file__))
 
@@ -15,7 +16,8 @@ class TestDiscordBot(unittest.TestCase):
 
         queue_prints = MagicMock()
         bot = DiscordBot(queue_prints=queue_prints, live_quotes=False, brokerage=None,
-                         tracker_portfolio_fname=self.tracker_portfolio_fname)
+                         tracker_portfolio_fname=self.tracker_portfolio_fname,
+                         cfg=cfg)
         
         message = make_message()
         bot.new_msg_acts(message, from_disc=True)
