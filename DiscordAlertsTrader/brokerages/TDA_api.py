@@ -67,6 +67,15 @@ class TDA(BaseBroker):
             order_status = order_info['status']
         else:
             raise TypeError("Not sure type order. Check")
+        
+        # add price for stop orders        
+        if order_info.get("price") is None:                        
+            if "orderActivityCollection" in order_info.keys():
+                prics = []
+                for ind in order_info["orderActivityCollection"]:
+                    prics.append([ind['quantity'], ind['executionLegs'][0]['price']])
+                    n_tot= sum([i[0] for i in prics])
+                order_info['price'] =  sum([i[0]*i[1] for i in prics])/ n_tot
         return order_status, order_info
 
     def get_quotes(self, symbol:list):
