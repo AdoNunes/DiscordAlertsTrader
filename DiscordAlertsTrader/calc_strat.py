@@ -272,14 +272,14 @@ fname_port = cfg['portfolio_names']['tracker_portfolio_name']
 
 last_days = 3
 max_underlying_price = 500
-min_price = 50
-max_dte = 100
+min_price = 5
+max_dte = 5
 max_capital = 1000
 exclude_traders = ['enhancedmarket', 'SPY']
 exclude_symbols = ['SPX', 'SPY', 'QQQ']
 PT=50
 TS=0
-SL=50
+SL=40
 TS_buy = 5
 
 pt = 1 + PT/100
@@ -366,6 +366,7 @@ for idx, row in port.iterrows():
     percentage_return.append(100*(row['STC-Price-current']-row['Price-current'])/row['Price-current'])
     # roi_current, = calc_roi(quotes_vals, PT=1.5, TS=0, SL=.4, do_plot=False, initial_prices=price_alert)
 
+    trigger_index = 0
     if ts_buy:
         price_curr, trigger_index, pt_index = calc_trailingstop(quotes_vals, price_curr,price_curr*ts_buy)
     roi_current, = calc_roi(quotes_vals.loc[trigger_index:], PT=pt, TS=ts, SL=sl, do_plot=False, initial_prices=price_curr)
