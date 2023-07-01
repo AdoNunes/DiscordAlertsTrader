@@ -279,6 +279,7 @@ class DiscordBot(discord.Client):
             if do_trade and date_diff.seconds < 120:
                 order["Trader"] = msg['Author']
                 self.trader.new_trade_alert(order, pars, msg['Content'])
+            
             if order is not None:
                 self.track_spx_spy(order, msg)
         
@@ -290,6 +291,7 @@ class DiscordBot(discord.Client):
     def track_spx_spy(self, order, msg):
         if order['Symbol'].split("_")[0] != "SPXW" or self.bksession is None or self.bksession.name != 'tda':
             return
+        msg = msg.copy()
         spx_q = self.bksession.get_quotes(["$SPX.X"])["$SPX.X"]['lastPrice']
         spy_q = self.bksession.get_quotes(["SPY"])["SPY"]["bidPrice"]
         rat = spx_q/spy_q

@@ -270,13 +270,13 @@ def port_max_per_trade(port, max_per_trade:float):
 
 fname_port = cfg['portfolio_names']['tracker_portfolio_name']
 
-last_days = 3
+last_days = 1
 max_underlying_price = 500
 min_price = 5
 max_dte = 5
 max_capital = 1000
 exclude_traders = ['enhancedmarket', 'SPY']
-exclude_symbols = ['SPX', 'SPY', 'QQQ']
+exclude_symbols = ['SPX',  'QQQ']
 PT=50
 TS=0
 SL=40
@@ -308,7 +308,7 @@ port = port[port['strike'] <= max_underlying_price]
 
 port['days_to_expiration'] = port.apply(calculate_days_to_expiration, axis=1)
 if max_dte:
-    print("Keeping only trades with 0 dtoe, removing: ", (port['days_to_expiration']>max_dte).sum())
+    print(f"Keeping only trades with max {max_dte} dtoe, removing: ", (port['days_to_expiration']>max_dte).sum())
     port = port[port['days_to_expiration']<=max_dte]
 
 port = port[~port['Symbol'].str.contains("|".join(exclude_symbols))]
@@ -386,7 +386,7 @@ for idx, row in port.iterrows():
     pnlus.append([row['STC-PnL$'], row['STC-PnL$-current'], pnlu])
 
 print(f"N trades with no quote: {len(no_quote)}, N trades with no entry: {len(not_entred)}")
-print(f"Strategy with {len(pnlus)} trades")
+print(f"\nStrategy with {len(pnlus)} trades, excluded symbols: {exclude_symbols}, PT: {PT}, TS: {TS}, SL: {SL}, TS_buy: {TS_buy}")
 pnls_m = np.nanmean(np.array(pnls) , axis=0)
 print("Pnl alert: %.2f, Pnl current: %.2f, Pnl strategy: %.2f" % (pnls_m[0], pnls_m[1], pnls_m[2]))
 pnlus_m = np.nansum(np.array(pnlus) , axis=0)
