@@ -288,7 +288,7 @@ class DiscordBot(discord.Client):
             self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
 
     def track_spx_spy(self, order, msg):
-        if order['Symbol'].split("_")[0] != "SPXW" or self.bksession is None:
+        if order['Symbol'].split("_")[0] != "SPXW" or self.bksession is None or self.bksession.name != 'tda':
             return
         spx_q = self.bksession.get_quotes(["$SPX.X"])["$SPX.X"]['lastPrice']
         spy_q = self.bksession.get_quotes(["SPY"])["SPY"]["bidPrice"]

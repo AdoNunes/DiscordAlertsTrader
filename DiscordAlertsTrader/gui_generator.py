@@ -375,10 +375,14 @@ def filter_data(data,exclude={}, track_filt_author='', track_filt_date_frm='', t
         msk = [x.strip() for x in track_filt_author.split(",")]
         data = data[data['Trader'].str.contains('|'.join(msk), case=False)]
     if track_filt_date_frm:
+        if len(track_filt_date_frm.split("/")) == 2:
+            track_filt_date_frm = f"{track_filt_date_frm}/{str(date.today().year)[2:]}"
         track_filt_date_frm = period_to_date(track_filt_date_frm)
         msk = pd.to_datetime(data['Date']).dt.date >= pd.to_datetime(track_filt_date_frm).date()
         data = data[msk]
     if track_filt_date_to:
+        if len(track_filt_date_to.split("/")) == 2:
+            track_filt_date_to = f"{track_filt_date_to}/{str(date.today().year)[2:]}"
         track_filt_date_to =  period_to_date(track_filt_date_to)
         msk = pd.to_datetime(data['Date']).dt.date <= pd.to_datetime(track_filt_date_to).date()
         data = data[msk]

@@ -21,7 +21,8 @@ class AlertsTracker():
 
         self.portfolio_fname = portfolio_fname  
         self.dir_quotes = dir_quotes
-        self.bksession = brokerage    
+        self.bksession = brokerage
+        self.cfg = cfg
 
         if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
