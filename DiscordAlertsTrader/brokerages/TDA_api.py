@@ -250,7 +250,6 @@ class TDA(BaseBroker):
         if new_order is None:
             new_order = Order()
         new_order.order_strategy_type("SINGLE")
-        new_order.order_strategy_type("SINGLE")
         new_order.order_type("TRAILING_STOP")
         new_order.order_session('NORMAL')
         new_order.order_duration('GOOD_TILL_CANCEL')
@@ -263,6 +262,7 @@ class TDA(BaseBroker):
         if len(Symbol.split("_")) > 1:
             if action == "STC":
                 child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
+                new_order.stop_price_link_basis('MARK')
             elif action == "BTC":
                 child_order_leg.order_leg_instruction(instruction="BUY_TO_CLOSE")
             elif action == "STO":

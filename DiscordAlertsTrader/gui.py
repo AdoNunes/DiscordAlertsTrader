@@ -310,10 +310,27 @@ def run_gui():
             ori_col = window.Element("-subm-alert").ButtonColor
             window.Element("-subm-alert").Update(button_color=("black", "white"))
             event, values = window.read(.1)
-            try:        
+            
+            #extra comas
+            if len(values['-subm-msg'].split(','))>1:
+                splt = values['-subm-msg'].split(',')
+                author = splt[0]
+                msg = ",".join(splt[1:])
+            # one coma
+            elif len(values['-subm-msg'].split(','))==1:
                 author, msg = values['-subm-msg'].split(',')
-            except ValueError:
-                author, msg = values['-subm-msg'].split(':')
+            # one colon
+            elif len(values['-subm-msg'].split(':'))==1:
+                author, msg = values['-subm-msg'].split(',')
+            # extra colons
+            elif len(values['-subm-msg'].split(':'))>1:
+                splt = values['-subm-msg'].split(':')
+                author = splt[0]
+                msg = ":".join(splt[1:])
+            # no colon or coma
+            else:
+                print("No colon or coma in message, author not found")
+                
             author = match_authors(author.strip())
             # let pass no identifier if no match
             author = author.replace("#No match, find author identifier#1234", "")

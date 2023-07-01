@@ -482,6 +482,9 @@ class AlertsTrader():
                     renew_plan[k] = new_plan[k]
             else:
                 renew_plan = new_plan
+                
+            # Cancel orders previous plan if any
+            self.close_open_exit_orders(open_trade)
 
             self.portfolio.loc[open_trade, "exit_plan"] = str(renew_plan)
             self.update_paused = False
@@ -1121,13 +1124,13 @@ class AlertsTrader():
                     TS = TS + "%" if "%" not in TS else TS
                     quote_opt = self.price_now(trade['Symbol'], "STC", 1)
                     if quote_opt >= trigger:
-                        self.close_open_exit_orders(ii)
+                        self.close_open_exit_orders(open_trade)
                         ord_func = self.bksession.make_STC_SL_trailstop
                         order = {'Symbol': trade['Symbol']}
                         order = self.calculate_stoploss(order, trade, TS)                                            
                         order['uQty'] = int(trade['uQty'])
                         order['xQty'] = 1
-                        order['action'] = trade["Type"]
+                        order['action'] = trade["Type"].replace("BTO", "STC").replace("STO", "BTC")
                         
                         _, STC_ordID = self.bksession.send_order(ord_func(**order))
                         if order.get("price"):
