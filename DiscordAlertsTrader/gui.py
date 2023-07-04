@@ -204,8 +204,9 @@ def run_gui():
         if event == sg.WINDOW_CLOSED:
             break
 
+        # Prefill trigger alert message
         if ('_portfolio_' in event and values['_portfolio_'] != []) or \
-            ('_track_' in event and values['_track_'] != []):  # Prefill trigger alert message
+            ('_track_' in event and values['_track_'] != []):  
             if '_portfolio_' in event:
                 pix = values['_portfolio_'][0] 
                 dt, hdr = gg.get_portf_data(port_exc, **values)
@@ -218,7 +219,11 @@ def run_gui():
             symb = dt[pix][hdr.index('Symbol')]
             auth = match_authors(dt[pix][hdr.index('Trader')])
             
-            price = dt[pix][hdr.index('S-Price-actual')]
+            price = ""
+            if "Live" in hdr:
+                price = dt[pix][hdr.index('Live')]
+            if price == "":
+                price = dt[pix][hdr.index('S-Price-actual')]
             if price == "":
                 price = dt[pix][hdr.index('S-Price')]
             price = price if price == "" else float(price)

@@ -97,6 +97,7 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
         pass
     
     live_col = False
+    data['Live'] = np.nan
     if not exclude.get("live PnL", False):
         data =  get_live_quotes(data)
         if 'Live' in data.columns:
@@ -130,6 +131,7 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
         data[f'STC{i}-PnL'] = pd_col_str_frmt(data[f'STC{i}-PnL'])
         data[f'STC{i}-Qty'] = pd_col_str_frmt(data[f'STC{i}-Qty'])
 
+    
     if live_col:
         data['Live'] = pd_col_str_frmt(data['Live'])
 
@@ -148,8 +150,7 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
             "STC-Prices","STC-Prices-actual", "STC-Prices-alert",
             'STC1-Status','STC1-Qty', 'STC2-Status', 'STC2-Qty', 'STC3-Status',  'STC3-Qty',                      
             ]
-    if live_col:
-        cols = ['Live'] + cols
+    cols = ['Live'] + cols
         
     data = data[cols]
     data.fillna("", inplace=True)
@@ -195,6 +196,7 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
     
     live_col = False
+    data['Live'] = np.nan
     if not exclude.get("live PnL", False):
         data =  get_live_quotes(data)
         if 'Live' in data.columns:
@@ -211,8 +213,7 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     cols = ['isOpen','PnL','PnL-actual', 'PnL$','PnL$-actual', 'Date', 'Symbol', 'Trader', 'Price',
             "Price-actual", 'Qty', 'N Alerts','STC-Qty','STC-Price','STC-Price-actual','STC-Date','Channel'
             ]
-    if live_col:
-        cols = ['Live'] + cols
+    cols = ['Live'] + cols
 
     data = data[cols]
     data.fillna("", inplace=True)
