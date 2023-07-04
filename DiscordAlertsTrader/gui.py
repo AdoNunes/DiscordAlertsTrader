@@ -213,12 +213,12 @@ def run_gui():
             else:
                 pix = values['_track_'][0]
                 dt, hdr = gg.get_tracker_data(track_exc, **values)
-                qty = dt[pix][hdr.index('Amount')]  
+                qty = dt[pix][hdr.index('Qty')]  
             qty = qty if qty == "" else int(qty)            
             symb = dt[pix][hdr.index('Symbol')]
             auth = match_authors(dt[pix][hdr.index('Trader')])
             
-            price = dt[pix][hdr.index('S-Price-current')]
+            price = dt[pix][hdr.index('S-Price-actual')]
             if price == "":
                 price = dt[pix][hdr.index('S-Price')]
             price = price if price == "" else float(price)

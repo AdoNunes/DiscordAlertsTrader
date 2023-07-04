@@ -300,7 +300,7 @@ class DiscordBot(discord.Client):
             return
         
         strike = f"{round(int(order['strike'][:-1])/rat)}{order['strike'][-1]}"        
-        alert = f"{order['action']} {order['uQty']} SPY {strike} {order['expDate']} @ {round(order['price']/rat, 2)}"
+        alert = f"{order['action']} {order['Qty']} SPY {strike} {order['expDate']} @ {round(order['price']/rat, 2)}"
         msg['Content'] = alert
         msg['Author'] = msg['Author']+"_SPX/SPY"
         self.new_msg_acts(msg, from_disc=False)

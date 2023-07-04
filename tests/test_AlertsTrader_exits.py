@@ -71,7 +71,7 @@ class TestAlertsTrader(unittest.TestCase):
             "STC-SL-ordID": 1,
             "STC-orderID": 100,
             'Asset': order['asset'],
-            'uQty': order['uQty'],
+            'Qty': order['Qty'],
             'exit_plan': {'PT1': order['PT1'], 'PT2': order['PT2'], 'PT3': order['PT3'], 'SL': order['SL']},
             
             }
@@ -84,9 +84,9 @@ class TestAlertsTrader(unittest.TestCase):
         brokerage.send_order.return_value = ["WORKING",expected["ordID"]]
         brokerage.get_order_info.return_value = [
             "WORKING",
-            {'quantity': expected["uQty"],
+            {'quantity': expected["Qty"],
              "price": expected['Price'],
-             'filledQuantity': expected["uQty"],
+             'filledQuantity': expected["Qty"],
              'status': "WORKING",
              'orderLegCollection':[
                 {'instrument': {'symbol': expected['Symbol']},
@@ -102,18 +102,18 @@ class TestAlertsTrader(unittest.TestCase):
         # Buy alert filled, send exit orders
         brokerage.get_order_info.side_effect = [
         ["FILLED",
-        {'quantity': expected["uQty"],
+        {'quantity': expected["Qty"],
             "price": expected['Price'],
-            'filledQuantity': expected["uQty"],
+            'filledQuantity': expected["Qty"],
             'status': "FILLED",
             'orderLegCollection':[
             {'instrument': {'symbol': expected['Symbol']},
                 'instruction': "BUY"},  
         ]}], # for BTO
         ["WAITING",
-        {'quantity': expected["uQty"],
+        {'quantity': expected["Qty"],
             "price": expected['Price'],
-            'filledQuantity': expected["uQty"],
+            'filledQuantity': expected["Qty"],
             'status': "WAITING",
             'orderLegCollection':[
             {'instrument': {'symbol': expected['Symbol']},
@@ -133,9 +133,9 @@ class TestAlertsTrader(unittest.TestCase):
         brokerage.get_order_info.side_effect = [[ 
             # for SL
             "WORKING",
-            {'quantity': expected["uQty"],
+            {'quantity': expected["Qty"],
              "price": expected['Price'],
-             'filledQuantity': expected["uQty"],
+             'filledQuantity': expected["Qty"],
              'status': "WORKING",
              'orderLegCollection':[
                 {'instrument': {'symbol': expected['Symbol']},
@@ -145,25 +145,25 @@ class TestAlertsTrader(unittest.TestCase):
             [ 
             # for TS filled 
             "FILLED",
-            {'quantity': expected["uQty"],
+            {'quantity': expected["Qty"],
              "price": pt_target - ts_target,
-             'filledQuantity': expected["uQty"],
+             'filledQuantity': expected["Qty"],
              'status': "FILLED",
              'orderLegCollection':[
                 {'instrument': {'symbol': expected['Symbol']},
-                'quantity': expected["uQty"],
+                'quantity': expected["Qty"],
                 'instruction': "BUY"}  
             ]}],
             [ 
             # for log_filled_STC 
             "FILLED",
-            {'quantity': expected["uQty"],
+            {'quantity': expected["Qty"],
              "price": pt_target + ts_target,
-             'filledQuantity': expected["uQty"],
+             'filledQuantity': expected["Qty"],
              'status': "FILLED",
              'orderLegCollection':[
                 {'instrument': {'symbol': expected['Symbol']},
-                'quantity': expected["uQty"],
+                'quantity': expected["Qty"],
                  'instruction': "BUY"},],
              "closeTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
              }]

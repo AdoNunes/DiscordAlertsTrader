@@ -69,7 +69,7 @@ def format_exitplan(plan):
 
 def calculate_weighted_mean(row, sufix="Price"):
     prices = row[[f'STC1-{sufix}', f'STC2-{sufix}', f'STC3-{sufix}',]].values
-    uqtys = row[['STC1-uQty', 'STC2-uQty', 'STC3-uQty']].values
+    uqtys = row[['STC1-Qty', 'STC2-Qty', 'STC3-Qty']].values
     valid_indices = ~pd.isna(prices) & ~pd.isna(uqtys)
     if np.any(valid_indices):
         try:
@@ -96,64 +96,61 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
         print("error during portfolio filter data", e)
         pass
     
-    data['Amount'] = data['uQty']
-    data['STC-Amount'] = data[['STC1-uQty', 'STC2-uQty', 'STC3-uQty']].sum(axis=1)
-    data['Price-current'] = data['Price-Current']
+    live_col = False
+    if not exclude.get("live PnL", False):
+        data =  get_live_quotes(data)
+        if 'Live' in data.columns:
+            live_col = True
+
+    data['STC-Qty'] = data[['STC1-Qty', 'STC2-Qty', 'STC3-Qty']].sum(axis=1)
+    data['Price-actual'] = data['Price-actual']
     
-    for price in ['Price', 'Price-Alerted', 'Price-Current']:
-        data[f'STC-{price.replace("Current", "current")}'] = data.apply(calculate_weighted_mean, args=(price,), axis=1)
+    for price in ['Price', 'Price-alert', 'Price-actual']:
+        data[f'STC-{price.replace("Current", "actual")}'] = data.apply(calculate_weighted_mean, args=(price,), axis=1)
     
     data["STC-Price"] = data.apply(calculate_weighted_mean, args=('Price',), axis=1)
-    data["STC-Price-current"] = data.apply(calculate_weighted_mean, args=('Price-Current',), axis=1)
-    data["STC-Price-Alerted"] = data.apply(calculate_weighted_mean, args=('Price-Alerted',), axis=1)
+    data["STC-Price-actual"] = data.apply(calculate_weighted_mean, args=('Price-actual',), axis=1)
+    data["STC-Price-alert"] = data.apply(calculate_weighted_mean, args=('Price-alert',), axis=1)
         
     data["STC-Prices"] = data[['STC1-Price', 'STC2-Price', 'STC3-Price']].apply(
         lambda x: "/".join(x.astype(str)).replace("/nan", ""), axis=1)
-    data["STC-Prices-current"] = data[['STC1-Price-Current', 'STC2-Price-Current', 'STC3-Price-Current']].apply(
+    data["STC-Prices-actual"] = data[['STC1-Price-actual', 'STC2-Price-actual', 'STC3-Price-actual']].apply(
         lambda x: "/".join(x.astype(str)).replace("/nan", ""), axis=1)
-    data["STC-Prices-Alerted"] = data[['STC1-Price-Alerted', 'STC2-Price-Alerted', 'STC3-Price-Alerted']].apply(
+    data["STC-Prices-alert"] = data[['STC1-Price-alert', 'STC2-Price-alert', 'STC3-Price-alert']].apply(
         lambda x: "/".join(x.astype(str)).replace("/nan", ""), axis=1)
     
-    if exclude.get("live PnL", False):
-        # alerted not calculated, so tmp chage name to price
-        data =  get_live_quotes(data)
-        data["STC-Price_o"] = data["STC-Price"]
-        data["STC-Prices_o"] = data["STC-Prices"]
-        data["STC-Price"] = data["STC-Price-Alerted"]
-        data["STC-Prices"] = data["STC-Prices-Alerted"]
-        
-        data =  get_live_quotes(data)
-        data["STC-Price-Alerted"] = data["STC-Price"]
-        data["STC-Prices-Alerted"] = data["STC-Prices"]
-        data["STC-Price"] = data["STC-Price_o"]
-        data["STC-Prices"] = data["STC-Prices_o"]
-        
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
     data['exit_plan']= data['exit_plan'].apply(lambda x: format_exitplan(x))
     data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
-    alerts = data[['STC1-Alerted', 'STC2-Alerted', 'STC3-Alerted']].sum(1)
+    alerts = data[['STC1-alerted', 'STC2-alerted', 'STC3-alerted']].sum(1)
     data["N Alerts"]= alerts.astype(int)
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
 
     for i in range(1,4):
         data[f'STC{i}-PnL'] = pd_col_str_frmt(data[f'STC{i}-PnL'])
-        data[f'STC{i}-uQty'] = pd_col_str_frmt(data[f'STC{i}-uQty'])
+        data[f'STC{i}-Qty'] = pd_col_str_frmt(data[f'STC{i}-Qty'])
 
-    frm_cols = ['Price', 'Price-Alert', "Price-Current", 'uQty', 'filledQty', 'N Alerts', 
-                "PnL", "$PnL","PnL-Alert", "$PnL-Alert","PnL-Current","$PnL-Current", 
-                "STC-Price", "STC-Price-current", "STC-Price-Alerted", 
+    if live_col:
+        data['Live'] = pd_col_str_frmt(data['Live'])
+
+    frm_cols = ['Price', 'Price-alert', "Price-actual", 'Qty', 'filledQty', 'N Alerts', 
+                "PnL", "PnL$","PnL-alert", "PnL$-alert","PnL-actual","PnL$-actual", 
+                "STC-Price", "STC-Price-actual", "STC-Price-alert", 
                 ]
     
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
 
-    cols = ['isOpen', "PnL", "$PnL", 'Date', 'Symbol', 'Trader', 'BTO-Status', 'Price',
-            'Price-Alert', "Price-Current", 'uQty', 'filledQty', 'N Alerts',"PnL-Alert",
-            "$PnL-Alert","PnL-Current","$PnL-Current", 
-            "STC-Price", "STC-Price-current", "STC-Price-Alerted",
-            "STC-Prices","STC-Prices-current", "STC-Prices-Alerted",
-            'STC1-Status','STC1-uQty', 'STC2-Status', 'STC2-uQty', 'STC3-Status',  'STC3-uQty',                      
+    cols = ['isOpen', "PnL", "PnL$", 'Date', 'Symbol', 'Trader', 'BTO-Status', 'Price',
+            'Price-alert', "Price-actual", 'Qty', 'filledQty', 'N Alerts',"PnL-alert",
+            "PnL$-alert","PnL-actual","PnL$-actual", 
+            "STC-Price", "STC-Price-actual", "STC-Price-alert",
+            "STC-Prices","STC-Prices-actual", "STC-Prices-alert",
+            'STC1-Status','STC1-Qty', 'STC2-Status', 'STC2-Qty', 'STC3-Status',  'STC3-Qty',                      
             ]
+    if live_col:
+        cols = ['Live'] + cols
+        
     data = data[cols]
     data.fillna("", inplace=True)
     header_list = data.columns.tolist()
@@ -161,9 +158,9 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     data = data.astype(str)
     if len(data):
         sumtotal = {c:"" for c in data.columns}
-        for sumcol in ["PnL","PnL-Alert","PnL-Current"]:
+        for sumcol in ["PnL","PnL-alert","PnL-actual"]:
             sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).mean():.2f}'
-        for sumcol in [ "$PnL","$PnL-Alert","$PnL-Current"]:
+        for sumcol in [ "PnL$","PnL$-alert","PnL$-actual"]:
             sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).sum():.2f}'
         sumtotal['Date'] = data.iloc[len(data)-1]['Date']
         sumtotal['Symbol'] = "Total Average"
@@ -179,44 +176,53 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     fname_port = cfg['portfolio_names']['tracker_portfolio_name']
     if not op.exists(fname_port):
         return [],[]
-    
+        
     try:
         data = pd.read_csv(fname_port, sep=",")
     except:
         return [[]],[]
 
-    data['Date'] = data['Date'].apply(lambda x: short_date(x))
-    data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
-    data["N Alerts"]= data['Avged']
-    data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
-    
-    if not exclude.get("live PnL", False):
-        data =  get_live_quotes(data)
-    
-    frm_cols = ['Amount', 'N Alerts', 'STC-Amount','STC-Price','STC-Price-current','STC-PnL','STC-PnL-current',
-                'STC-PnL$','STC-PnL$-current', 'Price', 'Price-current']
-    for cfrm in frm_cols:
-        data[cfrm] = pd_col_str_frmt(data[cfrm])
-    
     try:
         data = filter_data(data,exclude, track_filt_author, track_filt_date_frm,
                         track_filt_date_to, track_filt_sym, track_exc_author, track_exc_chn)
     except Exception as e:
         print("error during tracker filter data", e)
         pass
-    cols = ['isOpen','STC-PnL','STC-PnL-current', 'STC-PnL$','STC-PnL$-current', 'Date', 'Symbol', 'Trader', 'Price',
-            "Price-current", 'Amount', 'N Alerts','STC-Amount','STC-Price','STC-Price-current','STC-Date','Channel'
+    
+    data['Date'] = data['Date'].apply(lambda x: short_date(x))
+    data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
+    data["N Alerts"]= data['Avged']
+    data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
+    
+    live_col = False
+    if not exclude.get("live PnL", False):
+        data =  get_live_quotes(data)
+        if 'Live' in data.columns:
+            live_col = True
+
+    frm_cols = ['Qty', 'N Alerts', 'STC-Qty','STC-Price','STC-Price-actual','PnL','PnL-actual',
+                'PnL$','PnL$-actual', 'Price', 'Price-actual']
+    for cfrm in frm_cols:
+        data[cfrm] = pd_col_str_frmt(data[cfrm])
+    
+    if live_col:
+        data['Live'] = pd_col_str_frmt(data['Live'])
+    
+    cols = ['isOpen','PnL','PnL-actual', 'PnL$','PnL$-actual', 'Date', 'Symbol', 'Trader', 'Price',
+            "Price-actual", 'Qty', 'N Alerts','STC-Qty','STC-Price','STC-Price-actual','STC-Date','Channel'
             ]
-    # data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
+    if live_col:
+        cols = ['Live'] + cols
+
     data = data[cols]
     data.fillna("", inplace=True)
     header_list = data.columns.tolist()
     header_list = [d.replace('STC', 'S') for d in header_list]
     if len(data):
         sumtotal = {c:None for c in data.columns}
-        for sumcol in ['STC-PnL','STC-PnL-current']:
+        for sumcol in ['PnL','PnL-actual']:
             sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).mean():.2f}'
-        for sumcol in ['STC-PnL$','STC-PnL$-current']:
+        for sumcol in ['PnL$','PnL$-actual']:
             sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).sum():.2f}'
         sumtotal['Date'] = data.iloc[len(data)-1]['Date']
         sumtotal['Symbol'] = "Total Average"
@@ -253,17 +259,17 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
         print("error during stats filter data", e)
         pass
 
-    data['PnL diff'] = data['STC-PnL-current'] - data['STC-PnL']
-    data['BTO diff'] = 100*(data['Price-current'] - data['Price'])/ data['Price']
-    data['STC diff'] = 100*(data['STC-Price-current'] - data['STC-Price'])/ data['STC-Price']
-    data = data.rename({'STC-PnL-current': 'STC-PnL-Actual', 
-                        'STC-PnL$-current': 'STC-PnL$-Actual', 
+    data['PnL diff'] = data['PnL-actual'] - data['PnL']
+    data['BTO diff'] = 100*(data['Price-actual'] - data['Price'])/ data['Price']
+    data['STC diff'] = 100*(data['STC-Price-actual'] - data['STC-Price'])/ data['STC-Price']
+    data = data.rename({'PnL-actual': 'PnL-Actual', 
+                        'PnL$-actual': 'PnL$-Actual', 
                         }, axis=1)
     # Define the aggregation functions for each column
-    agg_funcs = {'STC-PnL$': 'sum',
-                 'STC-PnL$-Actual': 'sum',
-                 'STC-PnL': 'mean',
-                 'STC-PnL-Actual': 'mean',
+    agg_funcs = {'PnL$': 'sum',
+                 'PnL$-Actual': 'sum',
+                 'PnL': 'mean',
+                 'PnL-Actual': 'mean',
                  'PnL diff' : "mean",
                  'BTO diff' : "mean",
                  'STC diff' : "mean",
@@ -302,7 +308,7 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
     return data, header_list
 
 
-def get_live_quotes(portfolio):
+def get_live_quotes(portfolio, trader_port=False):
     dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
     track_symb = portfolio.loc[portfolio['isOpen']=='Yes', 'Symbol'].to_list()
     
@@ -320,21 +326,76 @@ def get_live_quotes(portfolio):
     
     for sym in quotes_sym:
         live_price = quotes_sym[sym]
+        if live_price == 0:
+            continue
         msk = (portfolio['Symbol']==sym) & (portfolio['isOpen']=='Yes')
         trades = portfolio.loc[msk]
         
-        for _, trade in trades.iterrows():
+        for ix, trade in trades.iterrows():
             order= {
-                "uQty": trade['Amount'] if pd.isnull(trade.get("STC-Amount")) else trade['Amount']- trade["STC-Amount"],
+                "Qty": trade['Qty'] if pd.isnull(trade.get("STC-Qty")) else trade['Qty']- trade["STC-Qty"],
                 "price": live_price,
                 "Actual Cost": live_price,
-                }                 
-            stc_info = calc_stc_prices(trade, order)
-            for k, v in stc_info.items():
-                if k == "STC-Amount":
-                    continue
-                portfolio.loc[msk,k] = v
+                } 
+            portfolio.loc[ix, 'Live'] = live_price
+            if trader_port:
+                trade = compute_live_trader_port(trade, order)
+                portfolio.loc[ix] = trade
+            else:                 
+                stc_info = calc_stc_prices(trade, order)
+                for k, v in stc_info.items():
+                    if k == "STC-Qty":
+                        continue
+                    portfolio.loc[msk,k] = v
     return portfolio
+
+
+def compute_live_trader_port(trade, order):
+    "Workaround to get live trade Pnl for trader portfolio"
+    stc_price = order['price']
+
+    bto_price = trade["Price"]
+    bto_price_alert = trade["Price-alert"]
+    bto_price_actual = trade["Price-actual"]
+
+    if trade["Type"] == "BTO":
+        stc_PnL = float((stc_price - bto_price)/bto_price) *100
+    elif trade["Type"] == "STO":
+        stc_PnL = float((bto_price - stc_price)/bto_price) *100
+
+    sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
+    # get STC number not yet filled
+    for i in range(1,4):
+        STC = f"STC{i}"
+        if pd.isnull(trade[f"STC{i}-Qty"]):
+            break
+
+    #Log portfolio
+    trade[ STC + "-Price"] = stc_price
+    trade[ STC + "-Price-alert"] = stc_price
+    trade[ STC + "-Price-actual"] = stc_price
+    trade[ STC + "-PnL"] = stc_PnL
+
+    sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
+    stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+    trade[ "PnL"] = stc_PnL_all
+
+    if trade[ "Type"] == "BTO":
+        stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-alert"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+        stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-actual"] - bto_price_actual)/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+    elif trade[ "Type"] == "STO":
+        stc_PnL_all_alert =  np.nansum([(float((bto_price_alert - trade[f"STC{i}-Price-alert"])/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+        stc_PnL_all_curr = np.nansum([(float((bto_price_actual - trade[f"STC{i}-Price-actual"])/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+
+    trade[ "PnL-alert"] = stc_PnL_all_alert
+    trade[ "PnL-actual"] = stc_PnL_all_curr
+
+    mutipl = 1 if trade['Asset'] == "option" else .01  # pnl already in %
+    trade[ "PnL$"] =  stc_PnL_all* bto_price *mutipl*sold_tot
+    trade[ "PnL$-alert"] =  stc_PnL_all_alert* bto_price_alert *mutipl*sold_tot
+    trade[ "PnL$-actual"] =  stc_PnL_all_curr* bto_price_actual *mutipl*sold_tot
+
+    return trade
 
 def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
                   filt_cont='', chan_name="option_alerts", **kwargs):
@@ -373,19 +434,19 @@ def get_pos(acc_inf):
     pos_headings = ["Sym", "Last", "price", "PnL_%", "PnL","Qty", "Val", "Cost"]
     for pos in positions:
         price= round(pos['averagePrice'], 2)
-        # pnl = pos['currentDayProfitLoss']
+        # pnl = pos['actualDayProfitLoss']
         pnl_p = pos['currentDayProfitLossPercentage'] * 100
-        uQty = pos['longQuantity']
-        if uQty == 0:
-            uQty = pos['shortQuantity']
-        cost = round(price * uQty, 2)
-        last = round(pos["marketValue"] / uQty, 2)
+        Qty = pos['longQuantity']
+        if Qty == 0:
+            Qty = pos['shortQuantity']
+        cost = round(price * Qty, 2)
+        last = round(pos["marketValue"] / Qty, 2)
         sym = pos['instrument']['symbol']
         asset = pos['instrument']['assetType']
         val = pos["marketValue"]
         if pos['instrument']['assetType'] == "OPTION":
-            cost = round(price * uQty * 100, 2)
-            last = round(pos["marketValue"] / uQty, 2)/100
+            cost = round(price * Qty * 100, 2)
+            last = round(pos["marketValue"] / Qty, 2)/100
 
         pnl_t = round(val - cost, 2)
         if  cost == 0:
@@ -393,7 +454,7 @@ def get_pos(acc_inf):
         else:
             pnl_p_t = round((val -cost)*100 / cost, 2)
 
-        pos_vals = [sym, last, price, pnl_p_t ,pnl_t, uQty, val , cost]
+        pos_vals = [sym, last, price, pnl_p_t ,pnl_t, Qty, val , cost]
         pos_tab.append(pos_vals)
 
     db = pd.DataFrame(data=pos_tab, columns=pos_headings)

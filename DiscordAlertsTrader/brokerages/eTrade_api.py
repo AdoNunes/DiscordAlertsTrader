@@ -337,7 +337,7 @@ class eTrade(BaseBroker):
         time.sleep(.5)
         return resp
 
-    def make_BTO_lim_order(self, Symbol:str, uQty:int, price:float, action="BTO", **kwarg):
+    def make_BTO_lim_order(self, Symbol:str, Qty:int, price:float, action="BTO", **kwarg):
         "Buy with a limit order"
         kwargs = {}
         kwargs['symbol'] = Symbol
@@ -361,12 +361,12 @@ class eTrade(BaseBroker):
         kwargs['priceType'] = 'LIMIT'
         kwargs['limitPrice'] = price    
         kwargs['allOrNone'] = False
-        kwargs['quantity'] = uQty       
+        kwargs['quantity'] = Qty       
         kwargs['orderTerm'] = "GOOD_FOR_DAY"
         kwargs['marketSession'] = 'REGULAR'
         return kwargs
 
-    def make_Lim_SL_order(self, Symbol:str, uQty:int,  PT:float, SL:float, action="STC",  **kwarg):
+    def make_Lim_SL_order(self, Symbol:str, Qty:int,  PT:float, SL:float, action="STC",  **kwarg):
         """Sell with a limit order and a stop loss order"""
         kwargs = {}
         kwargs['symbol'] = Symbol
@@ -391,12 +391,12 @@ class eTrade(BaseBroker):
         kwargs['limitPrice'] = PT
         kwargs['stopPrice'] = SL
         kwargs['allOrNone'] = False
-        kwargs['quantity'] = uQty       
+        kwargs['quantity'] = Qty       
         kwargs['orderTerm'] = "GOOD_UNTIL_CANCEL"
         kwargs['marketSession'] = 'REGULAR'
         return kwargs
 
-    def make_STC_lim(self, Symbol:str, uQty:int, price:float, strike=None, action="STC", **kwarg):
+    def make_STC_lim(self, Symbol:str, Qty:int, price:float, strike=None, action="STC", **kwarg):
         """Sell with a limit order and a stop loss order"""
         kwargs = {}
         kwargs['symbol'] = Symbol
@@ -420,12 +420,12 @@ class eTrade(BaseBroker):
         kwargs['priceType'] = 'LIMIT'
         kwargs['limitPrice'] = price
         kwargs['allOrNone'] = False
-        kwargs['quantity'] = uQty       
+        kwargs['quantity'] = Qty       
         kwargs['orderTerm'] = "GOOD_UNTIL_CANCEL"
         kwargs['marketSession'] = 'REGULAR'
         return kwargs
 
-    def make_STC_SL(self, Symbol:str, uQty:int, SL:float, action="STC", **kwarg):
+    def make_STC_SL(self, Symbol:str, Qty:int, SL:float, action="STC", **kwarg):
         """Sell with a stop loss order"""
         kwargs = {}
         kwargs['symbol'] = Symbol
@@ -449,11 +449,11 @@ class eTrade(BaseBroker):
         kwargs['priceType'] = 'STOP'
         kwargs['stopPrice'] = int(SL)
         kwargs['allOrNone'] = False
-        kwargs['quantity'] = uQty       
+        kwargs['quantity'] = Qty       
         kwargs['orderTerm'] = "GOOD_UNTIL_CANCEL"
         kwargs['marketSession'] = 'REGULAR'
 
-    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_const:float, action="STC", **kwarg):
+    def make_STC_SL_trailstop(self, Symbol:str, Qty:int,  trail_stop_const:float, action="STC", **kwarg):
         "trail_stop_const"
         kwargs = {}
         kwargs['symbol'] = Symbol
@@ -477,7 +477,7 @@ class eTrade(BaseBroker):
         kwargs['priceType'] = 'TRAILING_STOP_CNST'
         kwargs['stopPrice'] = trail_stop_const
         kwargs['allOrNone'] = False
-        kwargs['quantity'] = uQty       
+        kwargs['quantity'] = Qty       
         kwargs['orderTerm'] = "GOOD_UNTIL_CANCEL"
         kwargs['marketSession'] = 'REGULAR'
         return kwargs

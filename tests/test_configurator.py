@@ -4,9 +4,10 @@ from DiscordAlertsTrader.configurator import cfg
 
 class TestConfigurator(unittest.TestCase):
 
-    def test_trailstop_val(self):
-        trailstop_val = cfg['order_configs']['default_trailstop']
-        self.assertTrue(trailstop_val == '' or eval(trailstop_val) > .9)
+    def test_defaul_exit(self):
+        trailstop_val = eval(cfg['order_configs']['default_exits'])
+        vals = list(trailstop_val.keys())
+        self.assertTrue(["PT1", "PT2", "PT3", "SL"] ==  vals)
 
     def test_general_options(self):
         cfg['general'].getboolean('DO_BTO_TRADES')

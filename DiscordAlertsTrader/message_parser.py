@@ -22,7 +22,7 @@ def parse_trade_alert(msg, asset=None):
         order = {
             'action': action.upper(),
             'Symbol': symbol,
-            'uQty': int(quantity) if quantity else 1,
+            'Qty': int(quantity) if quantity else 1,
             'price': float(price.replace(',', '.')) if price else None,
             'asset': asset_type
         }
@@ -65,7 +65,7 @@ def parse_trade_alert(msg, asset=None):
 
         elif action.upper() in ["STC", "BTC"]:
             xamnt = parse_sell_ratio_amount(msg, asset_type)
-            if order["uQty"] is None:
+            if order["Qty"] is None:
                 pars = pars + f" xamount: {xamnt}"
             order["xQty"] = xamnt
         
@@ -170,7 +170,7 @@ def parser_alerts(msg, asset=None):
              "Symbol": Symbol,
              "price": mark,
              "asset": asset,
-             "uQty": amnt,
+             "Qty": amnt,
              "risk": risk_level}
 
     str_prt = f"{act} {Symbol} @{mark} amount: {amnt}"
@@ -205,7 +205,7 @@ def parser_alerts(msg, asset=None):
 
     elif act == "STC":
         xamnt = parse_sell_ratio_amount(msg, asset)
-        if order["uQty"] is None:
+        if order["Qty"] is None:
             str_prt = str_prt + f" xamount: {xamnt}"
         order["xQty"] = xamnt
     return str_prt, order
@@ -493,7 +493,7 @@ def make_optionID(Symbol:str, expDate:str, strike=str, **kwarg):
     strike, opt_type = float(strike[:-1]), strike[-1]
     date_elms = expDate.split("/")
     date_frm = f"{int(date_elms[0]):02d}{int(date_elms[1]):02d}"
-    if len(date_elms) == 2: # MM/DD, year = current year
+    if len(date_elms) == 2: # MM/DD, year = actual year
         year = str(datetime.today().year)[-2:]
         date_frm = date_frm + year
     elif len(date_elms) == 3:
