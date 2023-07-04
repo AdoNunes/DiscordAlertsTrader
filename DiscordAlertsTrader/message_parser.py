@@ -233,7 +233,8 @@ def set_exit_price_type(exit_price, order):
     """Option or stock price decided with smallest distance"""
     if exit_price is None:
         return exit_price
-    if isinstance(exit_price, str) and ("TS" in exit_price or "%" in exit_price): 
+    if (isinstance(exit_price, str) and ("TS" in exit_price or "%" in exit_price)) or \
+        (isinstance(exit_price, str) and not exit_price): 
         return exit_price
     if isinstance(exit_price, str): 
         exit_price = eval(exit_price)
