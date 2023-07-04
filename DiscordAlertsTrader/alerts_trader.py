@@ -232,6 +232,7 @@ class AlertsTrader():
 
     def short_orders(self, order, pars):
         if self.cfg['shorting'].getboolean('DO_STO_TRADES') is True and order['action'] == "STO":
+            # check strike
             strike = re.split("C|P", order['Symbol'].split("_")[1])[1]
             if eval(strike) > eval(self.cfg['shorting']['max_strike']):
                 str_msg = f"STO strike too high: {strike}, order aborted"
@@ -239,11 +240,32 @@ class AlertsTrader():
                 self.queue_prints.put([str_msg, "", "red"])
                 return "no", order, False
             
+            # check DTE
+            if len(self.cfg['shorting']['max_dte']):
+                if order.get('dte') is None:
+                    exp_dt = datetime.strptime(f"{order['expDate']}/{datetime.now().year}" , "%m/%d/%Y").date()
+                    dt = datetime.now().date()
+                    order['dte'] =  (exp_dt - dt).days
+                if order['dte'] <= int(self.cfg['shorting']['max_dte']):
+                    str_msg = f"STO {order['dte']} DTE larger than max in config: {self.cfg['shorting']['max_dte']}, order aborted"
+                    print(Back.RED + str_msg)
+                    self.queue_prints.put([str_msg, "", "red"])
+                    return "no", order, False
+            
+            # check if above min price
+            if len(self.cfg['shorting']['min_price']):
+                min_price = float(self.cfg['shorting']['min_price'])
+                if (order['price']*100) < min_price:
+                    str_msg = f"STO price too low: {order['price']*100}, order aborted"
+                    print(Back.RED + str_msg)
+                    self.queue_prints.put([str_msg, "", "red"])
+                    return "no", order, False
+            
             if self.cfg['shorting']['STO_trailingstop'] != "":
                 trail = (float(self.cfg['shorting']['STO_trailingstop'])/100)*order["price_actual"]  
                 order["trail_stop_const"] = -round(trail / 0.01) * 0.01
             else:
-                # if price diff not too high, use actual price
+                # if price diff not too high, use current price
                 pdiff = round((order['price']-order["price_actual"])/order['price']*100,1)
                 if pdiff < eval(self.cfg['shorting']['max_price_diff']):
                     order['price'] = order["price_actual"]
@@ -1013,7 +1035,7 @@ class AlertsTrader():
                 if time_now >= time_quarter.time() and time_now < time_five.time() and \
                     len(self.cfg['shorting']['BTC_EOD_PT_SL']):
                         exit_plan = eval(trade["exit_plan"])                        
-                        SL, PT = self.cfg['shorting']['BTC_EOD_PT_SL'].split(",")
+                        PT, SL = self.cfg['shorting']['BTC_EOD_PT_SL'].split(",")
                         SL, PT = eval(SL)/100, eval(PT)/100
                         
                         # check if not already updated, assume 5-10% exits are the updated 

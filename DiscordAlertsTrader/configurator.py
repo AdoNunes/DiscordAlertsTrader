@@ -4,9 +4,7 @@ import os.path as op
 import pandas as pd
 import json
 
-def update_port_cols():
-    
-    
+def update_port_cols():   
     portfolio_newcols = {"Price-Current":"Price-actual", "PnL-Current":"PnL-actual", "$PnL-Current":"PnL$-actual","$PnL":"PnL$",
                         "Price-Alert":"Price-alert", "PnL-Alert":"PnL-alert", "$PnL-Alert":"PnL$-alert",'uQty':'Qty',
                         "STC1-Alerted":"STC1-alerted", "STC1-uQty":"STC1-Qty","STC1-Price-Alerted":"STC1-Price-alert",
