@@ -314,8 +314,10 @@ class DiscordBot(discord.Client):
         elif author in self.cfg['shorting']['authors_subscribed'].split(",") and self.bksession is not None:
             if order['asset'] != "option":
                 return False, order
-            # Make it STO
+            # Make it short
             order["action"] = "STO" if order["action"] == "BTO" else "BTC" if order["action"] == "STC" else order["action"]
+            if order["action"] == "BTC" and not self.cfg['shorting'].getboolean('DO_BTC_TRADES'):
+                return False, order
             if len(self.cfg['shorting']['max_dte']):
                 if order['dte'] <= int(self.cfg['shorting']['max_dte']):
                     return True, order
