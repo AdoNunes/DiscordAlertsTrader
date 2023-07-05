@@ -1,4 +1,4 @@
-Date,Symbol,Trader,Channel,isOpen,Asset,Type,Price,Amount,Price-current,Prices,Prices-current,Avged,STC-Amount,STC-Price,STC-Price-current,STC-Prices,STC-Prices-current,STC-PnL,STC-PnL-current,STC-PnL$,STC-PnL$-current,STC-Date,SL,TrailStats
+Date,Symbol,Trader,Channel,isOpen,Asset,Type,Price,Qty,Price-actual,Prices,Prices-actual,Avged,STC-Qty,STC-Price,STC-Price-actual,STC-Prices,STC-Prices-actual,PnL,PnL-actual,PnL$,PnL$-actual,STC-Date,SL,TrailStats
 2023-05-10 11:02:56.260000,BABA_051923C88,tradewithnando#7294,analyst-alerts,0,option,BTO,1.32,3,1.47,,,,5.0,2.35,2.14,2.35,2.14,78.030303030303,45.578231292517,515.0,335.0,2023-05-11 09:37:43.365000,,
 2023-05-10 11:10:26.917000,STX_051923C57.5,AVI#9896,analyst-alerts,1,option,BTO,1.37,4,1.39,,,,,,,,,,,,,,,
 2023-05-10 11:11:19.307000,BABA_051223C85,tradewithnando#7294,analyst-alerts,0,option,BTO,0.76,3,0.76,,,,6.0,1.08,1.03,1.08,1.03,42.1052631578948,35.5263157894737,192.0,162.0,2023-05-11 09:33:58.983000,,

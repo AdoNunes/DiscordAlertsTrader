@@ -114,11 +114,11 @@ class TDA(BaseBroker):
                                         "Price", "action"])
         return df_pos, df_ordr
 
-    def make_BTO_lim_order(self, Symbol:str, uQty:int, price:float, strike=None, action="BTO", **kwarg):
+    def make_BTO_lim_order(self, Symbol:str, Qty:int, price:float, strike=None, action="BTO", **kwarg):
         # iftrailing stop in STO, do a STO with trailstop
         if action == 'STO' and "trail_stop_const" in kwarg:
             print("STO with trail_stop_const")
-            return self.make_STC_SL_trailstop(Symbol, uQty, action=action, **kwarg)
+            return self.make_STC_SL_trailstop(Symbol, Qty, action=action, **kwarg)
 
         new_order=Order()
         new_order.order_strategy_type("TRIGGER")
@@ -142,11 +142,11 @@ class TDA(BaseBroker):
                 order_leg.order_leg_instruction(instruction="SELL_SHORT")
             order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
 
-        order_leg.order_leg_quantity(quantity=int(uQty))
+        order_leg.order_leg_quantity(quantity=int(Qty))
         new_order.add_order_leg(order_leg=order_leg)
         return new_order
 
-    def make_Lim_SL_order(self, Symbol:str, uQty:int,  PT:float, SL:float, SL_stop:float=None,
+    def make_Lim_SL_order(self, Symbol:str, Qty:int,  PT:float, SL:float, SL_stop:float=None,
                           new_order=None, strike=None, action="STC",**kwarg):
         if new_order is None:
             new_order = Order()
@@ -161,7 +161,7 @@ class TDA(BaseBroker):
 
         child_order_leg = OrderLeg()
 
-        child_order_leg.order_leg_quantity(quantity=uQty)
+        child_order_leg.order_leg_quantity(quantity=Qty)
         if strike is not None:
             if action == "STC":
                 child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
@@ -195,7 +195,7 @@ class TDA(BaseBroker):
         new_order.add_child_order_strategy(child_order_strategy=child_order2)
         return new_order
 
-    def make_STC_lim(self, Symbol:str, uQty:int, price:float, strike=None, action="STC", **kwarg):
+    def make_STC_lim(self, Symbol:str, Qty:int, price:float, strike=None, action="STC", **kwarg):
         new_order=Order()
         new_order.order_strategy_type("SINGLE")
         new_order.order_type("LIMIT")
@@ -203,7 +203,7 @@ class TDA(BaseBroker):
         new_order.order_price(float(price))
 
         order_leg = OrderLeg()
-        order_leg.order_leg_quantity(quantity=int(uQty))
+        order_leg.order_leg_quantity(quantity=int(Qty))
 
         if strike is not None:
             new_order.order_session('NORMAL')
@@ -222,7 +222,7 @@ class TDA(BaseBroker):
         new_order.add_order_leg(order_leg=order_leg)
         return new_order
 
-    def make_STC_SL(self, Symbol:str, uQty:int, SL:float, strike=None,
+    def make_STC_SL(self, Symbol:str, Qty:int, SL:float, strike=None,
                     SL_stop:float=None, new_order=Order(), action="STC", **kwarg):
         new_order=Order()
         new_order.order_strategy_type("SINGLE")
@@ -239,7 +239,7 @@ class TDA(BaseBroker):
         new_order.order_duration('GOOD_TILL_CANCEL')
 
         order_leg = OrderLeg()
-        order_leg.order_leg_quantity(quantity=int(uQty))
+        order_leg.order_leg_quantity(quantity=int(Qty))
         if strike is not None:
             if action == "STC":
                 order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
@@ -255,7 +255,7 @@ class TDA(BaseBroker):
         new_order.add_order_leg(order_leg=order_leg)
         return new_order
 
-    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_const:float, new_order=None, action="STC", **kwarg):
+    def make_STC_SL_trailstop(self, Symbol:str, Qty:int,  trail_stop_const:float, new_order=None, action="STC", **kwarg):
         if new_order is None:
             new_order = Order()
         new_order.order_strategy_type("SINGLE")
@@ -267,7 +267,7 @@ class TDA(BaseBroker):
         new_order.stop_price_link_basis('BID')
         
         child_order_leg = OrderLeg()
-        child_order_leg.order_leg_quantity(quantity=uQty)
+        child_order_leg.order_leg_quantity(quantity=Qty)
         if len(Symbol.split("_")) > 1:
             if action == "STC":
                 child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")

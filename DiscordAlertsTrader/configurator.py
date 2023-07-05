@@ -1,8 +1,34 @@
 import configparser
 import os
 import os.path as op
+import pandas as pd
 import json
 
+def update_port_cols():   
+    portfolio_newcols = {"Price-Current":"Price-actual", "PnL-Current":"PnL-actual", "$PnL-Current":"PnL$-actual","$PnL":"PnL$",
+                        "Price-Alert":"Price-alert", "PnL-Alert":"PnL-alert", "$PnL-Alert":"PnL$-alert",'uQty':'Qty',
+                        "STC1-Alerted":"STC1-alerted", "STC1-uQty":"STC1-Qty","STC1-Price-Alerted":"STC1-Price-alert",
+                        "STC1-Price-Current":"STC1-Price-actual",
+                        "STC2-Alerted":"STC2-alerted", "STC2-uQty":"STC2-Qty","STC2-Price-Alerted":"STC2-Price-alert",
+                        "STC2-Price-Current":"STC2-Price-actual",
+                        "STC3-Alerted":"STC3-alerted", "STC3-uQty":"STC3-Qty","STC3-Price-Alerted":"STC3-Price-alert",
+                        "STC3-Price-Current":"STC3-Price-actual",
+                        }
+    
+    tracker_newcols = {'Amount':'Qty', "Price-current":"Price-actual", "Prices-current":"Prices-actual",
+                        "PnL-current":"PnL-actual", "PnL$-current":"PnL$-actual", 'STC-Amount':'STC-Qty', 
+                        'STC-Price-current':'STC-Price-actual', 'STC-Prices-current':'STC-Prices-actual',
+                        'STC-PnL-current':'PnL-actual', 'STC-PnL$-current':'PnL$-actual', 'STC-PnL$':'PnL$',
+                        'STC-PnL':'PnL'}
+
+    trader = pd.read_csv(cfg['portfolio_names']['portfolio_fname'])    
+    trader = trader.rename(columns=portfolio_newcols)
+    trader.to_csv(cfg['portfolio_names']['portfolio_fname'], index=False)
+    
+    tracker = pd.read_csv(cfg['portfolio_names']['tracker_portfolio_name'])
+    tracker = tracker.rename(columns=tracker_newcols)
+    tracker.to_csv(cfg['portfolio_names']['tracker_portfolio_name'], index=False)
+    
 package_dir = os.path.abspath(os.path.dirname(__file__))
 
 config_path = package_dir + '/config.ini'
@@ -30,28 +56,31 @@ for k, v in cfg['portfolio_names'].items():
 cfg['portfolio_names']['mock_portfolio_fname'] = './tests/trader_portfolio_simulated.csv'
 cfg['portfolio_names']['mock_alerts_log_fname'] = './tests/trader_logger_simulated.csv'
 
+
 # Define column names for portfolios and hist messages
 portfolio_cols = ",".join([
-                "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Price-Alert", "Price-Current",
-                "uQty", "filledQty", "Avged", "Avged-prices", "exit_plan", "ordID", "Risk", "SL_mental","PnL", "$PnL",
-                "PnL-Alert", "$PnL-Alert","PnL-Current","$PnL-Current"
+                "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Price-alert", "Price-actual",
+                "Qty", "filledQty", "Avged", "Avged-prices", "exit_plan", "ordID", "Risk", "SL_mental","PnL", "PnL$",
+                "PnL-alert", "PnL$-alert","PnL-actual","PnL$-actual"
                 ] + [
                     "STC%d-%s"% (i, v) for v in
-                    ["Alerted", "Status", "xQty", "uQty", "Price", "Price-Alerted", "Price-Current", "PnL","Date", "ordID"]
+                    ["alerted", "Status", "Qty", "xQty", "Price", "Price-alert", "Price-actual", "PnL","Date", "ordID"]
                     for i in range(1,4)])
 
 tracker_portfolio_cols = ",".join([
-                "Date", "Symbol", "Trader", 'Channel', "isOpen", "Asset", "Type", "Price", "Amount", "Price-current", "Prices", "Prices-current", "Avged"
+                "Date", "Symbol", "Trader", 'Channel', "isOpen", "Asset", "Type", "Price", "Qty", "Price-actual", 
+                "Prices", "Prices-actual", "Avged", "PnL", "PnL-actual","PnL$", "PnL$-actual"
                 ] + [ f"STC-{v}" for v in
-                    ["Amount", "Price", "Price-current", "Prices", "Prices-current", "PnL", "PnL-current","PnL$", "PnL$-current", "Date"]
+                    ["Qty", "Price", "Price-actual", "Prices", "Prices-actual", "Date"]
                     for i in range(1,2)] + ["TrailStats"])
 cfg["col_names"] = {
     'portfolio': portfolio_cols,
     'alerts_log': 'Date,Symbol,Trader,action,parsed,msg,portfolio_idx',
     "tracker_portfolio": tracker_portfolio_cols,
     "chan_hist": 'AuthorID,Author,Date,Content,Parsed'
-    } 
-
+    }
+# for leagacy ports
+update_port_cols()
 # get chan IDs in a dict format
 channel_ids_str = cfg.get('discord', 'channel_IDS')
 channel_ids = json.loads(channel_ids_str.replace("\n", "").replace(",}", "}"))

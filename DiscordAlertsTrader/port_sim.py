@@ -68,8 +68,8 @@ def port_cap_trades(data, max_trade_val:int=None, min_con_val:int=None, max_u_qt
         data = data[~msk_out]
 
     if max_u_qty is not None:
-        exceeds_cap = data['Amount'] > max_u_qty
-        data.loc[exceeds_cap, 'Amount'] = max_u_qty
+        exceeds_cap = data['Qty'] > max_u_qty
+        data.loc[exceeds_cap, 'Qty'] = max_u_qty
 
     if min_con_val is not None:
         option_mult = (data['Asset'] == 'option').astype(int)
@@ -80,19 +80,19 @@ def port_cap_trades(data, max_trade_val:int=None, min_con_val:int=None, max_u_qt
     if max_trade_val is not None:
         option_mult = (data['Asset'] == 'option').astype(int)
         option_mult[option_mult==1] = 100
-        trade_value = data['Amount'] * data['Price'] * option_mult
+        trade_value = data['Qty'] * data['Price'] * option_mult
         exceeds_cap = trade_value > max_trade_val
-        data.loc[exceeds_cap, 'Amount'] = np.floor(max_trade_val / (data['Price'] * option_mult))
-        data = data[data['Amount'] * data['Price'] * option_mult <= max_trade_val]
+        data.loc[exceeds_cap, 'Qty'] = np.floor(max_trade_val / (data['Price'] * option_mult))
+        data = data[data['Qty'] * data['Price'] * option_mult <= max_trade_val]
 
     # recalculates pnls
     if any([max_u_qty, max_trade_val]):
         mult =(data['Asset'] == 'option').astype(int) 
         mult[mult==0] = .01  # pnl already in %
-        data.loc[:,'STC-PnL$'] = data['Amount'] * data['STC-PnL'] * data['Price'] * mult
-        data.loc[:,'STC-PnL$-current'] = data['Amount'] * data['STC-PnL-current'] * data['Price-current'] * mult
-        data.loc[:,'STC-PnL$'] = data['STC-PnL$'].round()
-        data.loc[:,'STC-PnL$-current'] = data['STC-PnL$-current'].round()
+        data.loc[:,'PnL$'] = data['Qty'] * data['PnL'] * data['Price'] * mult
+        data.loc[:,'PnL$-actual'] = data['Qty'] * data['PnL-actual'] * data['Price-actual'] * mult
+        data.loc[:,'PnL$'] = data['PnL$'].round()
+        data.loc[:,'PnL$-actual'] = data['PnL$-actual'].round()
     return data
 
 def filter_data(data,exclude={}, filt_author='', filt_date_frm='', filt_date_to='',
@@ -108,11 +108,11 @@ def filter_data(data,exclude={}, filt_author='', filt_date_frm='', filt_date_to=
             elif k == "Open" and v:
                 data = data[data["isOpen"] !="Yes"]
             elif k == "NegPnL" and v:
-                col = "PnL" if "PnL" in data else 'STC-PnL'                
+                col = "PnL" if "PnL" in data else 'PnL'                
                 pnl = data[col].apply(lambda x: np.nan if x =="" else eval(x) if isinstance(x, str) else x)     
                 data = data[pnl > 0 ]
             elif k == "PosPnL" and v:
-                col = "PnL" if "PnL" in data else 'STC-PnL' 
+                col = "PnL" if "PnL" in data else 'PnL' 
                 pnl = data[col].apply(lambda x: np.nan if x =="" else eval(x) if isinstance(x, str) else x)
                 data = data[pnl < 0 ]
             elif k == "stocks" and v:
@@ -191,14 +191,14 @@ def calc_trailingstop(data:pd.Series, pt:float, ts:float):
         trailing_stop = max_value - ts
         trigger_index = None
         for i in range(1, len(filtered_quotes)):
-            current_value = filtered_quotes.iloc[i]
+            actual_value = filtered_quotes.iloc[i]
             # new high
-            if current_value > max_value:
-                max_value = current_value  # Update the maximum value
+            if actual_value > max_value:
+                max_value = actual_value  # Update the maximum value
                 trailing_stop = max_value - ts
 
             # Trailing stop triggered
-            if current_value <= trailing_stop:
+            if actual_value <= trailing_stop:
                 trigger_index = i
                 break
 

@@ -254,7 +254,7 @@ class weBull:
             orders_all.append(self.format_order(order))
         return orders
 
-    def make_BTO_lim_order(self, Symbol:str, uQty:int, price:float, action="BTO", **kwarg):
+    def make_BTO_lim_order(self, Symbol:str, Qty:int, price:float, action="BTO", **kwarg):
         "Buy with a limit order"
         
         kwargs = {}
@@ -277,12 +277,12 @@ class weBull:
             kwargs['stock'] = Symbol
         
         kwargs['enforce'] ='GTC'
-        kwargs['quant'] = uQty  
+        kwargs['quant'] = Qty  
         kwargs['orderType'] = 'LMT' 
         kwargs['lmtPrice'] = price
         return kwargs
 
-    def make_Lim_SL_order(self, Symbol:str, uQty:int,  PT:float, SL:None, action="STC", **kwarg):
+    def make_Lim_SL_order(self, Symbol:str, Qty:int,  PT:float, SL:None, action="STC", **kwarg):
         """Sell with a limit order and a stop loss order"""        
         kwargs = {}
         if action == "STC":
@@ -305,7 +305,7 @@ class weBull:
             kwargs['stock'] = Symbol
         
         kwargs['enforce'] ='GTC'
-        kwargs['quant'] = uQty 
+        kwargs['quant'] = Qty 
         if SL is not None:
             print("WARNING: webull api does not support OCO, setting a SL only, do not provide SL to send PT")
             kwargs['orderType'] = 'STP' 
@@ -316,7 +316,7 @@ class weBull:
             kwargs['lmtPrice'] = PT
         return kwargs
 
-    def make_STC_lim(self, Symbol:str, uQty:int, price:float, strike=None, action="STC", **kwarg):
+    def make_STC_lim(self, Symbol:str, Qty:int, price:float, strike=None, action="STC", **kwarg):
         """Sell with a limit order and a stop loss order"""        
         kwargs = {}
         if action == "STC":
@@ -339,12 +339,12 @@ class weBull:
             kwargs['stock'] = Symbol
         
         kwargs['enforce'] ='GTC'
-        kwargs['quant'] = uQty  
+        kwargs['quant'] = Qty  
         kwargs['orderType'] = 'LMT' 
         kwargs['lmtPrice'] = price
         return kwargs
 
-    def make_STC_SL(self, Symbol:str, uQty:int, SL:float, action="STC", **kwarg):
+    def make_STC_SL(self, Symbol:str, Qty:int, SL:float, action="STC", **kwarg):
         """Sell with a stop loss order"""
         kwargs = {}
         if action == "STC":
@@ -367,12 +367,12 @@ class weBull:
             kwargs['stock'] = Symbol
 
         kwargs['enforce'] ='GTC'
-        kwargs['quant'] = uQty 
+        kwargs['quant'] = Qty 
         kwargs['orderType'] = 'STP' 
         kwargs['lmtPrice'] = SL
         return kwargs
 
-    def make_STC_SL_trailstop(self, Symbol:str, uQty:int,  trail_stop_const:float, action="STC", **kwarg):
+    def make_STC_SL_trailstop(self, Symbol:str, Qty:int,  trail_stop_const:float, action="STC", **kwarg):
         "trail_stop_const"
         kwargs = {}
         if action == "STC":
@@ -390,7 +390,7 @@ class weBull:
         kwargs['outsideRegularTradingHour'] = True
         kwargs['stock'] = Symbol
         kwargs['enforce'] ='GTC'
-        kwargs['quant'] = uQty 
+        kwargs['quant'] = Qty 
         kwargs['orderType'] = 'STP TRAIL'
         kwargs['trial_value'] = trail_stop_const
         kwargs['trial_type'] = 'DOLLAR'

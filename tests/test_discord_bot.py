@@ -27,16 +27,16 @@ class TestDiscordBot(unittest.TestCase):
         self.assertEqual(port['Price'], 1.0)
         self.assertEqual(port['Symbol'], 'AI_120923C25')
         self.assertEqual(port['Trader'], f"{message.author.name}#{message.author.discriminator}")
-        self.assertEqual(port['Amount'], 5)
+        self.assertEqual(port['Qty'], 5)
         # sell
         message.content = 'STC 5 AI 25c 12/09 @ 2 <@&940418825235619910> swinging'
         bot.new_msg_acts(message, from_disc=True)
         port = bot.tracker.portfolio.loc[0]
         self.assertEqual(port['isOpen'], 0)
-        self.assertEqual(port['STC-Amount'], 5)
+        self.assertEqual(port['STC-Qty'], 5)
         self.assertEqual(port['STC-Price'], 2.0)
         self.assertEqual(port['STC-Price'], 2.0)
-        self.assertEqual(port['STC-PnL'], 100.0)
+        self.assertEqual(port['PnL'], 100.0)
         
         # Delete the generated file
         os.remove(self.tracker_portfolio_fname)

@@ -167,20 +167,20 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         quotes_vals = quotes[' quote']
 
         trigger_index = 0
-        price_curr = row['Price-current']
+        price_curr = row['Price-actual']
         if ts_buy:
             price_curr, trigger_index, pt_index = calc_trailingstop(quotes_vals, price_curr,price_curr*ts_buy)
-        roi_current, = calc_roi(quotes_vals.loc[trigger_index:], PT=pt, TS=ts, SL=sl, do_plot=False, initial_prices=price_curr)
+        roi_actual, = calc_roi(quotes_vals.loc[trigger_index:], PT=pt, TS=ts, SL=sl, do_plot=False, initial_prices=price_curr)
         
-        port.loc[idx, 'strategy-close_date'] = dates.iloc[roi_current[-1]]
-        pnl = roi_current[2]
+        port.loc[idx, 'strategy-close_date'] = dates.iloc[roi_actual[-1]]
+        pnl = roi_actual[2]
         mult = .1 if row['Asset'] == 'stock' else 1
-        pnlu = pnl*roi_current[0]*mult*row['Amount']
+        pnlu = pnl*roi_actual[0]*mult*row['Qty']
         
         port.loc[idx, 'strategy-PnL'] = pnl
         port.loc[idx, 'strategy-PnL$'] = pnlu
-        port.loc[idx,'strategy-entry'] = roi_current[0]
-        port.loc[idx,'strategy-exit'] = roi_current[1]
+        port.loc[idx,'strategy-entry'] = roi_actual[0]
+        port.loc[idx,'strategy-exit'] = roi_actual[1]
         
     return port, no_quote, param
 
@@ -195,16 +195,16 @@ def generate_report(port, param={}, no_quote=None, verbose=True):
         print(msg_str)
         
     port = port[port['strategy-PnL'].notnull()]
-    print("Pnl alert: %.2f, Pnl current: %.2f, Pnl strategy: %.2f" % (
-        port['STC-PnL'].mean(), port['STC-PnL-current'].mean(), port['strategy-PnL'].mean()))
-    print("Pnl $ alert: $%.2f, Pnl current: $%.2f, Pnl strategy: $%.2f" % (
-        port['STC-PnL$'].sum(), port['STC-PnL$-current'].sum(), port['strategy-PnL$'].sum()))
+    print("Pnl alert: %.2f, Pnl actual: %.2f, Pnl strategy: %.2f" % (
+        port['PnL'].mean(), port['PnL-actual'].mean(), port['strategy-PnL'].mean()))
+    print("Pnl $ alert: $%.2f, Pnl actual: $%.2f, Pnl strategy: $%.2f" % (
+        port['PnL$'].sum(), port['PnL$-actual'].sum(), port['strategy-PnL$'].sum()))
 
     # Perform the groupby operation and apply the aggregation functions
-    agg_funcs = {'STC-PnL$': 'sum',
-                'STC-PnL$-current': 'sum',
-                'STC-PnL': 'mean',
-                'STC-PnL-current': 'mean',
+    agg_funcs = {'PnL$': 'sum',
+                'PnL$-actual': 'sum',
+                'PnL': 'mean',
+                'PnL-actual': 'mean',
                 'strategy-PnL': 'mean',
                 'strategy-PnL$': 'sum',    
                 "Price": ['mean', 'median'],

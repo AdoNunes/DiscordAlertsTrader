@@ -109,10 +109,10 @@ class TestTDA(unittest.TestCase):
 
     def test_make_BTO_lim_order(self):
         symbol = 'AAPL'
-        uQty = 10
+        Qty = 10
         price = 150
 
-        new_order = self.tda.make_BTO_lim_order(Symbol=symbol, uQty=uQty, price=price)
+        new_order = self.tda.make_BTO_lim_order(Symbol=symbol, Qty=Qty, price=price)
 
         self.assertIsInstance(new_order, Order)
         self.assertEqual(new_order._grab_order()['orderStrategyType'], 'TRIGGER')
@@ -125,7 +125,7 @@ class TestTDA(unittest.TestCase):
         order_leg = new_order.order_legs_collection['order_leg_1']
         self.assertEqual(order_leg['instruction'], 'BUY')
         self.assertEqual(order_leg['instrument'], {'assetType': 'EQUITY', 'symbol': symbol})
-        self.assertEqual(order_leg['quantity'], uQty)
+        self.assertEqual(order_leg['quantity'], Qty)
 
 
 if __name__ == '__main__':

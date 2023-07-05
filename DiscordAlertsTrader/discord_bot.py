@@ -268,8 +268,20 @@ class DiscordBot(discord.Client):
 
             live_alert = True if date_diff.seconds < 90 else False
             str_msg = pars
-            if live_alert and self.bksession is not None: 
-                str_msg += " " + self.trader.price_now(order['Symbol'], order["action"], pflag=0)
+            if live_alert and self.bksession is not None:
+                quote = self.trader.price_now(order['Symbol'], order["action"], pflag=0)
+                act_diff = (order['price'] - quote)/ quote
+                # Check if actual price is too far from alerted price
+                if quote > 0 and act_diff > 2:
+                    str_msg = f"Alerted price is {act_diff} times larger than current price of {quote}, skipping alert"
+                    self.queue_prints.put([f"\t {str_msg}", "green"])
+                    print(Fore.GREEN + f"\t {str_msg}")
+                    msg['Parsed'] = str_msg
+                    if self.chn_hist.get(chn) is not None:
+                        self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
+                        self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
+                
+                str_msg += " " + f"{quote}, % diff {act_diff}"
             self.queue_prints.put([f"\t {str_msg}", "green"])
             print(Fore.GREEN + f"\t {str_msg}")
             
@@ -300,7 +312,7 @@ class DiscordBot(discord.Client):
             return
         
         strike = f"{round(int(order['strike'][:-1])/rat)}{order['strike'][-1]}"        
-        alert = f"{order['action']} {order['uQty']} SPY {strike} {order['expDate']} @ {round(order['price']/rat, 2)}"
+        alert = f"{order['action']} {order['Qty']} SPY {strike} {order['expDate']} @ {round(order['price']/rat, 2)}"
         msg['Content'] = alert
         msg['Author'] = msg['Author']+"_SPX/SPY"
         self.new_msg_acts(msg, from_disc=False)
@@ -314,6 +326,9 @@ class DiscordBot(discord.Client):
         elif author in self.cfg['shorting']['authors_subscribed'].split(",") and self.bksession is not None:
             if order['asset'] != "option":
                 return False, order
+            # BTC order sent manullay from gui
+            if order["action"] == "BTC" and "GUI" in channel:
+                return True, order
             # Make it short
             order["action"] = "STO" if order["action"] == "BTO" else "BTC" if order["action"] == "STC" else order["action"]
             if order["action"] == "BTC" and not self.cfg['shorting'].getboolean('DO_BTC_TRADES'):
