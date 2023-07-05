@@ -6,3 +6,4 @@ colorama
 discord.py-self
 pyetrade
 discord_webhook
+webull
