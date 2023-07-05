@@ -1316,6 +1316,7 @@ class AlertsTrader():
         if optdate.date() < date.today():
             expdate = date.today().strftime("%Y-%m-%d %H:%M:%S+0000")
             usold = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
+            STC =  f"STC3" # default to max stc
             for stci in range(1,4):
                 if pd.isnull(trade[f"STC{stci}-Qty"]):
                     STC = f"STC{stci}"
