@@ -1,4 +1,4 @@
-Date,Symbol,Trader,Channel,isOpen,Asset,Type,Price,Qty,Price-actual,Prices,Prices-actual,Avged,STC-Qty,STC-Price,STC-Price-actual,STC-Prices,STC-Prices-actual,PnL,PnL-actual,PnL$,PnL$-actual,STC-Date,SL,TrailStats,STC-xQty,STC-PnL,STC-PnL-actual,STC-PnL$,STC-PnL$-actual
+Date,Symbol,Trader,Channel,isOpen,Asset,Type,Price,Qty,Price-actual,Prices,Prices-actual,Avged,STC-Qty,STC-Price,STC-Price-actual,STC-Prices,STC-Prices-actual,PnL,PnL-actual,PnL$,PnL$-actual,STC-Date,SL,TrailStats,STC-xQty,PnL.1,STC-PnL-actual,PnL$.1,STC-PnL$-actual
 2023-05-10 11:02:56.260000,BABA_051923C88,tradewithnando,analyst-alerts,0,option,BTO,1.32,3,1.47,,,,5.0,2.35,2.14,2.35,2.14,78.030303030303,45.578231292517,515.0,335.0,2023-05-11 09:37:43.365000,,,,,,,
 2023-05-10 11:10:26.917000,STX_051923C57.5,avi9896,analyst-alerts,0,option,BTO,1.37,4,1.39,,,,4.0,1.545,0.98,1.56/1.5,0.98/0.98,12.7737226277372,-29.4964028776978,69.9999999999999,-164.0,2023-05-15 09:38:09.118000,,"min,-64.03%,$0.5,in 1 days 00:38:34| max,5.04%,$1.46,in 00:34:00| | TS:0.2,-16.55%,$1.16,in 00:52:36| TS:0.3,-28.06%,$1.0,in 02:14:27| TS:0.4,-50.36%,$0.69,in 22:19:35| TS:0.5,-50.36%,$0.69,in 22:19:35",,,,,
 2023-05-10 11:11:19.307000,BABA_051223C85,tradewithnando,analyst-alerts,0,option,BTO,0.76,3,0.76,,,,6.0,1.08,1.03,1.08,1.03,42.1052631578948,35.5263157894737,192.0,162.0,2023-05-11 09:33:58.983000,,,,,,,
@@ -1177,3 +1177,4 @@ Date,Symbol,Trader,Channel,isOpen,Asset,Type,Price,Qty,Price-actual,Prices,Price
 2023-07-03 12:56:10.107,PYPL_072123C70,ghost878.,analyst-alerts,1,option,BTO,1.11,2,1.12,1.11/1.11,1.12,1.0,,,,,,,,,,,,,,,,,
 2023-07-03 19:08:19.958000,AAP,cedar_trader,analyst-alerts,0,stock,BTO,69.32,100,,,,,100.0,69.32,,69.32,,,,,,2023-07-03 19:12:13.841000,,,,0.0,,0.0,
 2023-07-03 19:11:41.260000,TGT_091523C140,cedar_trader,analyst-alerts,1,option,BTO,6.3,1,,,,,,,,,,,,,,,,,,,,,
+2023-07-05 09:03:07.827000,GOOGL_072123P115,tyler0777,jr-analyst-alerts,1,option,BTO,0.88,20,,0.96/0.79,,1.0,,,,,,,,,,,,,,,,,

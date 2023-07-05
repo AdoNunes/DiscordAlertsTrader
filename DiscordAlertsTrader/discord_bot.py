@@ -269,7 +269,7 @@ class DiscordBot(discord.Client):
             live_alert = True if date_diff.seconds < 90 else False
             str_msg = pars
             if live_alert and self.bksession is not None:
-                quote = self.trader.price_now(order['Symbol'], order["action"], pflag=0)
+                quote = self.trader.price_now(order['Symbol'], order["action"], pflag=1)
                 act_diff = (order['price'] - quote)/ quote
                 # Check if actual price is too far from alerted price
                 if quote > 0 and act_diff > 2:
@@ -280,8 +280,9 @@ class DiscordBot(discord.Client):
                     if self.chn_hist.get(chn) is not None:
                         self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
                         self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
+                    return
                 
-                str_msg += " " + f"{quote}, % diff {act_diff}"
+                str_msg += f" Actual:{quote}, diff {round(act_diff*100)}%"
             self.queue_prints.put([f"\t {str_msg}", "green"])
             print(Fore.GREEN + f"\t {str_msg}")
             
