@@ -161,10 +161,10 @@ class AlertsTracker():
             str_STC = ""
             if stc_info['STC-Price-actual'] is not None:           
                 str_STC += f"\t@{stc_price:.2f}, actual: {stc_info['STC-Price-actual']:.2f} " 
-            if stc_info["STC-PnL"] is not None:
-                str_STC += f'\tPnL:{round(stc_info["STC-PnL"])}% ${round(stc_info["STC-PnL$"])}' 
-            if stc_info["STC-PnL-actual"] is not None:
-                str_STC += f' Actual:{round(stc_info["STC-PnL-actual"])}% ${round(stc_info["STC-PnL$-actual"])}\n\t\t'
+            if stc_info["PnL"] is not None:
+                str_STC += f'\tPnL:{round(stc_info["PnL"])}% ${round(stc_info["PnL$"])}' 
+            if stc_info["PnL-actual"] is not None:
+                str_STC += f' Actual:{round(stc_info["PnL-actual"])}% ${round(stc_info["PnL$-actual"])}\n\t\t'
 
         if eval(order.get('# Closed', "0"))==1 :
             self.portfolio.loc[open_trade, "isOpen"]=0
@@ -310,9 +310,9 @@ def calc_stc_prices(trade, order=None):
                 "STC-Price": stc_price,
                 "STC-Price-actual": stc_price_al,
                 "STC-Qty": stc_utotal,
-                "STC-PnL": stc_pnl,
-                "STC-PnL-actual": stc_pnl_al,
-                "STC-PnL$": stc_pnl_u,
-                "STC-PnL$-actual": stc_pnl_al_u,
+                "PnL": stc_pnl,
+                "PnL-actual": stc_pnl_al,
+                "PnL$": stc_pnl_u,
+                "PnL$-actual": stc_pnl_al_u,
                 }
     return stc_info

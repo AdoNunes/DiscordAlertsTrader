@@ -246,7 +246,7 @@ class AlertsTrader():
                     exp_dt = datetime.strptime(f"{order['expDate']}/{datetime.now().year}" , "%m/%d/%Y").date()
                     dt = datetime.now().date()
                     order['dte'] =  (exp_dt - dt).days
-                if order['dte'] <= int(self.cfg['shorting']['max_dte']):
+                if order['dte'] > int(self.cfg['shorting']['max_dte']):
                     str_msg = f"STO {order['dte']} DTE larger than max in config: {self.cfg['shorting']['max_dte']}, order aborted"
                     print(Back.RED + str_msg)
                     self.queue_prints.put([str_msg, "", "red"])

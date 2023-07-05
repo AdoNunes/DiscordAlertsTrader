@@ -147,6 +147,7 @@ class TestAlertsTrader(unittest.TestCase):
         
         cfg['order_configs']['max_trade_capital'] = '1000'
         cfg['discord']['notify_alerts_to_discord'] = 'false'
+        cfg['shorting']['max_dte'] = '100'
         cfg['shorting']['DO_STO_TRADES'] = 'true'
         cfg['shorting']['DO_BTC_TRADES'] = 'true'
         cfg['shorting']['BTC_SL'] = '50'

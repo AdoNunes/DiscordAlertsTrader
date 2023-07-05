@@ -21,7 +21,7 @@ class TestDiscordBot(unittest.TestCase):
         
         message = make_message()
         bot.new_msg_acts(message, from_disc=True)
-        print("portfolio after:", bot.tracker.portfolio)
+        # print("portfolio after:", bot.tracker.portfolio)
         port = bot.tracker.portfolio.loc[0]
         self.assertEqual(port['isOpen'], 1)
         self.assertEqual(port['Price'], 1.0)
