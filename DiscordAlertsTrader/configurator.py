@@ -21,13 +21,14 @@ def update_port_cols():
                         'STC-PnL-current':'PnL-actual', 'STC-PnL$-current':'PnL$-actual', 'STC-PnL$':'PnL$',
                         'STC-PnL':'PnL'}
 
-    trader = pd.read_csv(cfg['portfolio_names']['portfolio_fname'])    
-    trader = trader.rename(columns=portfolio_newcols)
-    trader.to_csv(cfg['portfolio_names']['portfolio_fname'], index=False)
-    
-    tracker = pd.read_csv(cfg['portfolio_names']['tracker_portfolio_name'])
-    tracker = tracker.rename(columns=tracker_newcols)
-    tracker.to_csv(cfg['portfolio_names']['tracker_portfolio_name'], index=False)
+    if os.path.exists(cfg['portfolio_names']['portfolio_fname']):
+        trader = pd.read_csv(cfg['portfolio_names']['portfolio_fname'])    
+        trader = trader.rename(columns=portfolio_newcols)
+        trader.to_csv(cfg['portfolio_names']['portfolio_fname'], index=False)
+    if os.path.exists(cfg['portfolio_names']['tracker_portfolio_name']):
+        tracker = pd.read_csv(cfg['portfolio_names']['tracker_portfolio_name'])
+        tracker = tracker.rename(columns=tracker_newcols)
+        tracker.to_csv(cfg['portfolio_names']['tracker_portfolio_name'], index=False)
     
 package_dir = os.path.abspath(os.path.dirname(__file__))
 
