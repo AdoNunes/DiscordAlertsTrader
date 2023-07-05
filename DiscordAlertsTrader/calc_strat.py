@@ -22,7 +22,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 TS=0,
                 SL=45,
                 TS_buy= 10,
-                max_margin = None
+                max_margin = None,
+                verbose= True
                 ):
     """simulate trade and get returns
 
@@ -58,6 +59,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         trailing stop percent before opening position (for shorting), by default 10
     max_margin : int, optional
         max margin to use for shorting, by default None
+    verbose: bool, optional
+        print verbose, by default False
 
     Returns
     -------
@@ -125,10 +128,11 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             open_trades = port.iloc[:idx][(port.iloc[:idx]['strategy-close_date'] >= trade_open_date)]
             margin = open_trades['margin'].sum() + trade_margin
             if margin > max_margin:
-                print(f"skipping trade {row['Symbol']} due to margin too high at {margin}")
+                if verbose:
+                    print(f"skipping trade {row['Symbol']} due to margin too high at {margin}")
                 continue
-            else:
-                print("margin", margin, "trade margin", trade_margin, "symbol", row['Symbol'])
+            # else:
+                # print("margin", margin, "trade margin", trade_margin, "symbol", row['Symbol'])
         
         # Load data
         fquote = f"{dir_quotes}/{row['Symbol']}.csv"
@@ -151,7 +155,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(stc_date))) & (quotes[' quote'] > 0)
 
         if not msk.any():
-            print("quotes outside with dates", row['Symbol'])
+            if verbose:
+                print("quotes outside with dates", row['Symbol'])
             continue
         
         if do_margin:
@@ -208,26 +213,64 @@ def generate_report(port, param={}, no_quote=None, verbose=True):
     result_td = port.groupby('Trader').agg(agg_funcs).sort_values(by=('Date', 'count'), ascending=False)
     return result_td
 
+def grid_search(port, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25], max_margin=25000):
+    
+    res = []
+    for pt in PT:
+        for sl in SL:
+            for ts_buy in TS_buy:
+                port, no_quote, param = calc_returns(
+                    fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
+                    dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
+                    last_days= 8,
+                    max_underlying_price= 500,
+                    min_price= 30,
+                    max_dte= 7,
+                    min_dte= 0,
+                    exclude_traders= ['enhancedmarket',"SPY"],
+                    exclude_symbols= ['SPX'],
+                    exclude_channs = "",
+                    PT=pt,
+                    TS=0,
+                    SL=sl,
+                    TS_buy= ts_buy,
+                    max_margin = max_margin,
+                    verbose=False
+                    )
+                
+                port = port[port['strategy-PnL'].notnull()]                 
+                res.append([pt, sl, ts_buy, port['strategy-PnL'].mean(), port['strategy-PnL$'].sum()])
+        print(f"Done with PT={pt}")
+    return res
+
+
 
 port, no_quote, param = calc_returns(
     fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
-    last_days= 7,
+    last_days= 8,
     max_underlying_price= 500,
-    min_price= 50,
-    max_dte= 5,
+    min_price= 40,
+    max_dte= 7,
     min_dte= 0,
     exclude_traders= ['enhancedmarket', 'SPY'],
-    exclude_symbols= ['SPX',  'QQQ'],
+    exclude_symbols= ['SPX',],
     exclude_channs = "",
-    PT=80,
+    PT=60,
     TS=0,
     SL=45,
     TS_buy= 10,
-    max_margin = 25000
+    max_margin = 26000
     )
 
-# print(port[['Date','Symbol','Trader', 'STC-PnL', 'STC-PnL-current', 'STC-PnL-strategy','STC-PnL$', 'STC-PnL$-current',
-    #             'STC-PnL$-strategy','strategy-entry','strategy-exit', 'strategy-close_date']])
+# print(port[['Date','Symbol','Trader', 'STC-PnL', 'STC-PnL-current', 'strategy-PnL','STC-PnL$', 'STC-PnL$-current',
+#                 'strategy-PnL$','strategy-entry','strategy-exit', 'strategy-close_date']])
 
 result_td =  generate_report(port, param, no_quote, verbose=True)
+
+# best PT 60, SL 45, TS 0, TS_buy 10
+
+
+res = grid_search(port, PT=np.arange(10,100,5), TS=[0], SL=np.arange(10,100,5), TS_buy=[5,10,15,20,25], max_margin=25000)
+
+np.stack(res)[:,-1]
