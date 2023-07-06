@@ -109,19 +109,27 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     sl = 1 - SL/100
     ts_buy = TS_buy/100
 
-    port['strategy-PNL'] = np.nan
+    port['strategy-PnL'] = np.nan
     port['strategy-PnL$'] = np.nan
     port['strategy-entry'] = np.nan
     port['strategy-exit'] = np.nan
     port['strategy-close_date'] = pd.NaT   
-
+    port['reason_skip'] = np.nan
+    
     no_quote = []
     do_margin = False if max_margin is None else True
     if do_margin:  
         port['margin'] = np.nan  
         port = port.reset_index(drop=True)
     
-    for idx, row in port.iterrows():        
+    for idx, row in port.iterrows(): 
+        if pd.isna(row['Price-actual']):
+            if verbose:
+                print("no current price, skip")
+            port.loc[idx, 'reason_skip'] = 'no current price'
+            continue
+        price_curr = row['Price-actual']
+        
         if do_margin:
             trade_margin = row['underlying'] * 100 * 0.2
             trade_open_date = pd.to_datetime(row['Date'])
@@ -130,6 +138,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             if margin > max_margin:
                 if verbose:
                     print(f"skipping trade {row['Symbol']} due to margin too high at {margin}")
+                port.loc[idx, 'reason_skip'] = 'margin too high'
                 continue
             # else:
                 # print("margin", margin, "trade margin", trade_margin, "symbol", row['Symbol'])
@@ -137,7 +146,9 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         # Load data
         fquote = f"{dir_quotes}/{row['Symbol']}.csv"
         if not op.exists(fquote):
-            no_quote.append(row['Symbol'])
+            if verbose:
+                no_quote.append(row['Symbol'])
+            port.loc[idx, 'reason_skip'] = 'no quotes'
             continue    
         quotes = pd.read_csv(fquote, on_bad_lines='skip')
         
@@ -146,32 +157,40 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
 
         try:
             # msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(row['STC-Date']))) & (quotes[' quote'] > 0)
-            stc_date = pd.to_datetime(row['STC-Date']).replace(hour=15, minute=50, second=0, microsecond=0)
+            stc_date = pd.to_datetime(row['Date']).replace(hour=15, minute=50, second=0, microsecond=0)
             msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= stc_date)) & (quotes[' quote'] > 0)
         except TypeError:
             # continue
-            stc_date = row['STC-Date'].replace("T00:00:00+0000", " 15:50:00.000000")
+            stc_date = row['Date'].replace("T00:00:00+0000", " 15:50:00.000000")
             stc_date = pd.to_datetime(stc_date).replace(hour=16, minute=0, second=0, microsecond=0)
             msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(stc_date))) & (quotes[' quote'] > 0)
 
         if not msk.any():
             if verbose:
                 print("quotes outside with dates", row['Symbol'])
+            port.loc[idx, 'reason_skip'] = 'no quotes, outside dates'
             continue
-        
-        if do_margin:
-            port.loc[idx, 'margin'] = trade_margin
 
         quotes = quotes[msk].reset_index(drop=True)
         dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
         quotes_vals = quotes[' quote']
 
         trigger_index = 0
-        price_curr = row['Price-actual']
-        if ts_buy:
-            price_curr, trigger_index, pt_index = calc_trailingstop(quotes_vals, price_curr,price_curr*ts_buy)
-        roi_actual, = calc_roi(quotes_vals.loc[trigger_index:], PT=pt, TS=ts, SL=sl, do_plot=False, initial_prices=price_curr)
         
+        if ts_buy:            
+            price_curr, trigger_index, pt_index = calc_trailingstop(quotes_vals, 0, price_curr*ts_buy)
+            if trigger_index == len(quotes_vals)-1:
+                if verbose:
+                    print("no trigger index", row['Symbol'])
+                port.loc[idx, 'reason_skip'] = 'TS buy not triggered'
+                continue
+        roi_actual, = calc_roi(quotes_vals.loc[trigger_index:], PT=pt, TS=ts, SL=sl, do_plot=False, initial_prices=price_curr)
+    
+        if do_margin:
+            port.loc[idx, 'margin'] = trade_margin
+        if roi_actual[-1] == len(quotes_vals)-1:        
+            port.loc[idx, 'last'] = 1
+            
         port.loc[idx, 'strategy-close_date'] = dates.iloc[roi_actual[-1]]
         pnl = roi_actual[2]
         mult = .1 if row['Asset'] == 'stock' else 1
@@ -225,7 +244,7 @@ def grid_search(port, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25], max_marg
                     last_days= 8,
                     max_underlying_price= 500,
                     min_price= 30,
-                    max_dte= 7,
+                    max_dte= 10,
                     min_dte= 0,
                     exclude_traders= ['enhancedmarket',"SPY"],
                     exclude_symbols= ['SPX'],
@@ -239,7 +258,7 @@ def grid_search(port, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25], max_marg
                     )
                 
                 port = port[port['strategy-PnL'].notnull()]                 
-                res.append([pt, sl, ts_buy, port['strategy-PnL'].mean(), port['strategy-PnL$'].sum()])
+                res.append([pt, sl, ts_buy, port['strategy-PnL'].mean(), port['strategy-PnL$'].sum(), len(port)])
         print(f"Done with PT={pt}")
     return res
 
@@ -248,10 +267,10 @@ def grid_search(port, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25], max_marg
 port, no_quote, param = calc_returns(
     fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
-    last_days= 8,
+    last_days= 10,
     max_underlying_price= 500,
-    min_price= 40,
-    max_dte= 7,
+    min_price= 30,
+    max_dte= 25,
     min_dte= 0,
     exclude_traders= ['enhancedmarket', 'SPY'],
     exclude_symbols= ['SPX',],
@@ -265,12 +284,14 @@ port, no_quote, param = calc_returns(
 
 # print(port[['Date','Symbol','Trader', 'STC-PnL', 'STC-PnL-current', 'strategy-PnL','STC-PnL$', 'STC-PnL$-current',
 #                 'strategy-PnL$','strategy-entry','strategy-exit', 'strategy-close_date']])
+sport = port[['Date','Symbol','Trader', 'PnL', 'PnL-actual', 'PnL$', 'PnL$-actual', 'strategy-PnL',
+               'strategy-PnL$','strategy-entry','strategy-exit', 'strategy-close_date', 'reason_skip']]
 
 result_td =  generate_report(port, param, no_quote, verbose=True)
 
 # best PT 60, SL 45, TS 0, TS_buy 10
 
 
-res = grid_search(port, PT=np.arange(10,100,5), TS=[0], SL=np.arange(10,100,5), TS_buy=[5,10,15,20,25], max_margin=25000)
+res = grid_search(port, PT=np.arange(20,120,5), TS=[0], SL=np.arange(20,100,5), TS_buy=[0,5,10,15,20,25,30], max_margin=25000)
 
-np.stack(res)[:,-1]
+# np.stack(res)[:,-1]
