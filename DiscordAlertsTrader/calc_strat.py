@@ -174,7 +174,11 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         quotes = quotes[msk].reset_index(drop=True)
         dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
         quotes_vals = quotes[' quote']
-
+        
+        # add margin even if not triggered by ts buy
+        if do_margin:
+            port.loc[idx, 'margin'] = trade_margin
+            
         trigger_index = 0
         
         if ts_buy:            
@@ -186,8 +190,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 continue
         roi_actual, = calc_roi(quotes_vals.loc[trigger_index:], PT=pt, TS=ts, SL=sl, do_plot=False, initial_prices=price_curr)
     
-        if do_margin:
-            port.loc[idx, 'margin'] = trade_margin
+
         if roi_actual[-1] == len(quotes_vals)-1:        
             port.loc[idx, 'last'] = 1
             
@@ -241,7 +244,7 @@ def grid_search(port, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25], max_marg
                 port, no_quote, param = calc_returns(
                     fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                     dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
-                    last_days= 8,
+                    last_days= 10,
                     max_underlying_price= 500,
                     min_price= 30,
                     max_dte= 10,
@@ -270,16 +273,16 @@ port, no_quote, param = calc_returns(
     last_days= 10,
     max_underlying_price= 500,
     min_price= 30,
-    max_dte= 25,
+    max_dte= 10,
     min_dte= 0,
     exclude_traders= ['enhancedmarket', 'SPY'],
     exclude_symbols= ['SPX',],
     exclude_channs = "",
-    PT=60,
+    PT=105,
     TS=0,
-    SL=45,
-    TS_buy= 10,
-    max_margin = 26000
+    SL=40,
+    TS_buy= 30,
+    max_margin = 21600
     )
 
 # print(port[['Date','Symbol','Trader', 'STC-PnL', 'STC-PnL-current', 'strategy-PnL','STC-PnL$', 'STC-PnL$-current',
@@ -291,7 +294,9 @@ result_td =  generate_report(port, param, no_quote, verbose=True)
 
 # best PT 60, SL 45, TS 0, TS_buy 10
 
+# best PT 100., SL 40,   TS_buy 30.,  pnl -27.5, pnl $ -950,   trade count 32
+# res = grid_search(port, PT=np.arange(20,120,5), TS=[0], SL=np.arange(20,100,5), TS_buy=[0,5,10,15,20,25,30], max_margin=25000)
 
-res = grid_search(port, PT=np.arange(20,120,5), TS=[0], SL=np.arange(20,100,5), TS_buy=[0,5,10,15,20,25,30], max_margin=25000)
-
-# np.stack(res)[:,-1]
+# res = np.stack(res)
+# sorted_indices = np.argsort(res[:, 4])
+# sorted_array = res[sorted_indices].astype(int)
