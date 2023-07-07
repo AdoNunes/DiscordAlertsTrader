@@ -291,7 +291,7 @@ def calc_stc_prices(trade, order=None):
         prices_curr = order.get("Actual Cost")
     
     mutipl = 1 if trade['Asset'] == "option" else .01  # pnl already in %
-    if stc_price is not None: 
+    if stc_price is not None and stc_price != 0: 
         stc_pnl = float((stc_price - bto_price)/bto_price) *100
         stc_pnl_u = stc_pnl* bto_price *mutipl*stc_utotal 
     else:

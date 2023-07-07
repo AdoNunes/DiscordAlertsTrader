@@ -273,16 +273,16 @@ port, no_quote, param = calc_returns(
     last_days= 10,
     max_underlying_price= 500,
     min_price= 30,
-    max_dte= 10,
+    max_dte= 100,
     min_dte= 0,
-    exclude_traders= ['enhancedmarket', 'SPY'],
-    exclude_symbols= ['SPX',],
+    exclude_traders= [ 'SPY', 'enhancedmarket'],
+    exclude_symbols= ['SPX'],
     exclude_channs = "",
-    PT=105,
+    PT=25,
     TS=0,
-    SL=40,
-    TS_buy= 30,
-    max_margin = 21600
+    SL=20,
+    TS_buy= 5,
+    max_margin = None
     )
 
 # print(port[['Date','Symbol','Trader', 'STC-PnL', 'STC-PnL-current', 'strategy-PnL','STC-PnL$', 'STC-PnL$-current',
@@ -295,6 +295,7 @@ result_td =  generate_report(port, param, no_quote, verbose=True)
 # best PT 60, SL 45, TS 0, TS_buy 10
 
 # best PT 100., SL 40,   TS_buy 30.,  pnl -27.5, pnl $ -950,   trade count 32
+# worst PT 25., SL 20,   TS_buy 5,  pnl 5.7, pnl $ 428,   trade count 32
 # res = grid_search(port, PT=np.arange(20,120,5), TS=[0], SL=np.arange(20,100,5), TS_buy=[0,5,10,15,20,25,30], max_margin=25000)
 
 # res = np.stack(res)
