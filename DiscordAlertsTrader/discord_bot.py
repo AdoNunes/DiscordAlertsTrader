@@ -293,8 +293,8 @@ class DiscordBot(discord.Client):
                 order["Trader"] = msg['Author']
                 self.trader.new_trade_alert(order, pars, msg['Content'])
             
-            if order is not None:
-                self.track_spx_spy(order, msg)
+            # if order is not None:
+            #     self.track_spx_spy(order, msg)
         
         if self.chn_hist.get(chn) is not None:
             msg['Parsed'] = pars
