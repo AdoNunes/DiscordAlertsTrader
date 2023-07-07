@@ -299,7 +299,7 @@ class AlertsTrader():
             
             return "yes", order, False
         # decide if do BTC based on alert
-        elif self.cfg['shorting'].getboolean('DO_BTC_TRADES') is True and order['action'] == "BTC":
+        elif order['action'] == "BTC":
             return "yes", order, False
         else:
             return "no", order, False
@@ -1048,7 +1048,7 @@ class AlertsTrader():
                                 "PT3": None,
                                 "SL": round(quote + SL * quote, 2)
                                 }
-                            self.portfolio.iloc[i, 'exit_plan'] = str(exit_plan)
+                            self.portfolio.at[i,'exit_plan'] = str(exit_plan)
                             redo_orders = True                            
                             str_msg = f'updating exits option {trade["Symbol"]} 15 min before EOD with {SL*100}% SL and {PT*100}% PT'
                             print(Back.GREEN + str_msg)
@@ -1058,12 +1058,25 @@ class AlertsTrader():
                 elif time_now >= time_five.time() and time_now < time_closed.time():
                     print(f'closing option {trade["Symbol"]} 5 min before EOD')
                     quote = self.price_now(trade["Symbol"], "BTC", 1)
-                    exit_plan = {"PT1": quote, "PT2": None, "PT3": None, "SL": None}
-                    self.portfolio.iloc[i, 'exit_plan'] = str(exit_plan)
-                    redo_orders = True
-                    str_msg = f'closing option {trade["Symbol"]} 5 min before EOD'
-                    print(Back.GREEN + str_msg)
-                    self.queue_prints.put([str_msg, "", "green"])
+                    
+                    # Close and send lim order
+                    self.close_open_exit_orders(i)       
+                    order = {}
+                    order['action'] = "BTC"
+                    order['Symbol'] = trade["Symbol"]
+                    qty_sold = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
+                    order['Qty'] =  int(trade["filledQty"]) - qty_sold
+                    order['price'] = quote
+                    self.update_paused = True
+                    _, order_id, order, _ = self.confirm_and_send(order, 'pars', self.bksession.make_STC_lim)
+                    self.update_paused = False
+                    
+                    # add order id
+                    for i in range(1,4):
+                        STC = f"STC{i}"
+                        if pd.isnull(trade[STC+"-ordID"]):
+                            break
+                    self.portfolio.loc[i, STC + "-ordID"] =  order_id
 
             if redo_orders:
                 self.close_open_exit_orders(i)
