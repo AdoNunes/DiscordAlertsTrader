@@ -268,11 +268,11 @@ class DiscordBot(discord.Client):
 
             live_alert = True if date_diff.seconds < 90 else False
             str_msg = pars
-            if live_alert and self.bksession is not None:
+            if live_alert and self.bksession is not None and (order.get('price') is not None):
                 quote = self.trader.price_now(order['Symbol'], order["action"], pflag=1)
                 act_diff = (order['price'] - quote)/ quote
-                # Check if actual price is too far from alerted price
-                if quote > 0 and act_diff > 2:
+                # Check if actual price is too far (100) from alerted price
+                if (quote > 0) and abs(act_diff > 1) and order.get('action') == 'BTO':
                     str_msg = f"Alerted price is {act_diff} times larger than current price of {quote}, skipping alert"
                     self.queue_prints.put([f"\t {str_msg}", "green"])
                     print(Fore.GREEN + f"\t {str_msg}")

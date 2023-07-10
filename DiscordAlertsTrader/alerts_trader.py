@@ -299,7 +299,7 @@ class AlertsTrader():
             
             return "yes", order, False
         # decide if do BTC based on alert
-        elif self.cfg['shorting'].getboolean('DO_BTC_TRADES') is True and order['action'] == "BTC":
+        elif order['action'] == "BTC":
             return "yes", order, False
         else:
             return "no", order, False
@@ -427,6 +427,11 @@ class AlertsTrader():
                 self.queue_prints.put([f"Cancelling {position['Symbol']} STC{i}", "", "green"])
                 _ = self.bksession.cancel_order(order_id)
 
+                self.portfolio.loc[open_trade, f"STC{i}-Status"] = np.nan
+                self.portfolio.loc[open_trade, f"STC{i}-ordID"] = np.nan                
+                self.save_logs("port")
+                
+            elif ord_stat in ["REJECTED", 'CANCELED','CANCEL_REQUESTED', 'EXPIRED']:
                 self.portfolio.loc[open_trade, f"STC{i}-Status"] = np.nan
                 self.portfolio.loc[open_trade, f"STC{i}-ordID"] = np.nan
                 self.save_logs("port")
@@ -1048,33 +1053,48 @@ class AlertsTrader():
                                 "PT3": None,
                                 "SL": round(quote + SL * quote, 2)
                                 }
-                            self.portfolio.iloc[i, 'exit_plan'] = str(exit_plan)
+                            self.portfolio.at[i,'exit_plan'] = str(exit_plan)
                             redo_orders = True                            
                             str_msg = f'updating exits option {trade["Symbol"]} 15 min before EOD with {SL*100}% SL and {PT*100}% PT'
                             print(Back.GREEN + str_msg)
                             self.queue_prints.put([str_msg, "", "green"])
+                            self.exit_percent_to_price(i)
                             
                 # Close position 5 min to close
                 elif time_now >= time_five.time() and time_now < time_closed.time():
                     print(f'closing option {trade["Symbol"]} 5 min before EOD')
                     quote = self.price_now(trade["Symbol"], "BTC", 1)
-                    exit_plan = {"PT1": quote, "PT2": None, "PT3": None, "SL": None}
-                    self.portfolio.iloc[i, 'exit_plan'] = str(exit_plan)
-                    redo_orders = True
-                    str_msg = f'closing option {trade["Symbol"]} 5 min before EOD'
-                    print(Back.GREEN + str_msg)
-                    self.queue_prints.put([str_msg, "", "green"])
+                    
+                    # Close and send lim order
+                    self.close_open_exit_orders(i)       
+                    order = {}
+                    order['action'] = "BTC"
+                    order['Symbol'] = trade["Symbol"]
+                    qty_sold = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
+                    order['Qty'] =  int(trade["filledQty"]) - qty_sold
+                    order['price'] = quote
+                    self.update_paused = True
+                    _, order_id, order, _ = self.confirm_and_send(order, 'pars', self.bksession.make_STC_lim)
+                    self.update_paused = False
+                    
+                    # add order id
+                    for i in range(1,4):
+                        STC = f"STC{i}"
+                        if pd.isnull(trade[STC+"-ordID"]):
+                            break
+                    self.portfolio.loc[i, STC + "-ordID"] =  order_id
 
             if redo_orders:
                 self.close_open_exit_orders(i)
             self.exit_percent_to_price(i)
             trade = self.portfolio.iloc[i]
             exit_plan = eval(trade["exit_plan"])
-            if  exit_plan != {}:                
+            if exit_plan != {}:                
                 if all([isinstance(e, str) and ("%" not in e and "TS" not in e) for e in exit_plan.values()]) and trade['Asset'] == 'option':
                     self.check_opt_stock_price(i, exit_plan, "STC")
                 else:
                     self.make_exit_orders(i, exit_plan)
+                self.exit_percent_to_price(i)
 
             # Go over STC orders and check status
             for ii in range(1, 4):
@@ -1136,7 +1156,7 @@ class AlertsTrader():
                 if STCn < 3 and exit_plan[f"PT{STCn+1}"] is None:
                     exit_plan[f"PT{STCn+1}"] = quote_opt * 2
             elif v[:2] == "SL" and "%" not in pt and float(pt) >= quote:
-                 exit_plan[v] = quote
+                exit_plan[v] = quote
 
         if exit_plan_ori != exit_plan:
             self.portfolio.loc[i, "exit_plan"] = str(exit_plan)
@@ -1317,6 +1337,7 @@ class AlertsTrader():
         if optdate.date() < date.today():
             expdate = date.today().strftime("%Y-%m-%d %H:%M:%S+0000")
             usold = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
+            STC =  f"STC3" # default to max stc
             for stci in range(1,4):
                 if pd.isnull(trade[f"STC{stci}-Qty"]):
                     STC = f"STC{stci}"

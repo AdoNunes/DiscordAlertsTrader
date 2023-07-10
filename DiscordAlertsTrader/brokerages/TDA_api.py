@@ -205,7 +205,7 @@ class TDA(BaseBroker):
         order_leg = OrderLeg()
         order_leg.order_leg_quantity(quantity=int(Qty))
 
-        if strike is not None:
+        if len(Symbol.split("_")) > 1:
             new_order.order_session('NORMAL')
             if action == "STC":
                 order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
@@ -271,7 +271,7 @@ class TDA(BaseBroker):
         if len(Symbol.split("_")) > 1:
             if action == "STC":
                 child_order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
-                new_order.stop_price_link_basis('MARK')
+                new_order.stop_price_link_basis('BID')
             elif action == "BTC":
                 child_order_leg.order_leg_instruction(instruction="BUY_TO_CLOSE")
             elif action == "STO":
