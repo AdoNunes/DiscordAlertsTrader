@@ -45,11 +45,11 @@ class BaseBroker(ABC):
         #     stc_price =  sum([i[0]*i[1] for i in prics])/ n_tot
 
         # bto_price = self.portfolio.loc[open_trade, "Price"]
-        # bto_price_alert = self.portfolio.loc[open_trade, "Price-Alert"]
-        # bto_price_current = self.portfolio.loc[open_trade, "Price-Current"]
+        # bto_price_alert = self.portfolio.loc[open_trade, "Price-alert"]
+        # bto_price_actual = self.portfolio.loc[open_trade, "Price-actual"]
         # stc_PnL = float((stc_price - bto_price)/bto_price) *100
 
-        # xQty = sold_unts/ self.portfolio.loc[open_trade, "uQty"]
+        # xQty = sold_unts/ self.portfolio.loc[open_trade, "Qty"]
 
         # date = order_info["closeTime"]
         pass

@@ -56,7 +56,7 @@ order = {'action': 'BTO',
     'PTs_Qty': [.33, .33, .34],
     'Trader': 'ScaredShirtless#0001',
     'PTs': [5.84],
-    'uQty': 3}
+    'Qty': 3}
 
 pars = "BTO DPW @3.7 PT1: 3.72 PT2: 4.39 PT3:5.96 SL: 3.01"
 msg = "BTO DPW @3.7 PT1 3.72 SL: 3.01"

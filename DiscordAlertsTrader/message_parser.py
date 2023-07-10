@@ -11,7 +11,7 @@ from datetime import datetime
 import numpy as np
 
 def parse_trade_alert(msg, asset=None):
-    pattern = r'\b(BTO|STC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[.\d+]*[cp]?)?\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
+    pattern = r'\b(BTO|STC|STO|BTC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[.\d+]*[cp]?)?\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
     match = re.search(pattern, msg, re.IGNORECASE)
     
     if match:
@@ -22,7 +22,7 @@ def parse_trade_alert(msg, asset=None):
         order = {
             'action': action.upper(),
             'Symbol': symbol,
-            'uQty': int(quantity) if quantity else 1,
+            'Qty': int(quantity) if quantity else 1,
             'price': float(price.replace(',', '.')) if price else None,
             'asset': asset_type
         }
@@ -47,7 +47,7 @@ def parse_trade_alert(msg, asset=None):
             if el is not None:
                 pars.append(el)
         pars = " ".join(pars)
-        if action.upper() == "BTO":
+        if action.upper() in ["BTO", "STO"]:
             if "avg" in msg.lower() or "average" in msg.lower():
                 avg_price, _ = parse_avg(msg)
                 pars = pars + f"AVG to {avg_price} "
@@ -63,9 +63,9 @@ def parse_trade_alert(msg, asset=None):
             order["n_PTs"] = n_pts
             order["PTs_Qty"] = pts_qty
 
-        elif action.upper() == "STC":
+        elif action.upper() in ["STC", "BTC"]:
             xamnt = parse_sell_ratio_amount(msg, asset_type)
-            if order["uQty"] is None:
+            if order["Qty"] is None:
                 pars = pars + f" xamount: {xamnt}"
             order["xQty"] = xamnt
         
@@ -170,7 +170,7 @@ def parser_alerts(msg, asset=None):
              "Symbol": Symbol,
              "price": mark,
              "asset": asset,
-             "uQty": amnt,
+             "Qty": amnt,
              "risk": risk_level}
 
     str_prt = f"{act} {Symbol} @{mark} amount: {amnt}"
@@ -205,7 +205,7 @@ def parser_alerts(msg, asset=None):
 
     elif act == "STC":
         xamnt = parse_sell_ratio_amount(msg, asset)
-        if order["uQty"] is None:
+        if order["Qty"] is None:
             str_prt = str_prt + f" xamount: {xamnt}"
         order["xQty"] = xamnt
     return str_prt, order
@@ -233,7 +233,8 @@ def set_exit_price_type(exit_price, order):
     """Option or stock price decided with smallest distance"""
     if exit_price is None:
         return exit_price
-    if isinstance(exit_price, str) and ("TS" in exit_price or "%" in exit_price): 
+    if (isinstance(exit_price, str) and ("TS" in exit_price or "%" in exit_price)) or \
+        (isinstance(exit_price, str) and not exit_price): 
         return exit_price
     if isinstance(exit_price, str): 
         exit_price = eval(exit_price)
@@ -391,11 +392,11 @@ def parse_avg(msg):
     return avg, avg_inf.span()
 
 def parse_exits_vals(msg, expr):
-    re_comp= re.compile(expr + "[:]?[ ]*[$]*(\d+[\.]*[\d]*[%]?)(TS[\d+\.]*)?", re.IGNORECASE) 
-    exit_inf = re_comp.search(msg)
+    re_comp= re.compile(expr + "[:]?[ ]*[$]*(\d*[\.]*[\d]*[%]?)(TS[\d+\.]*[%]?)?", re.IGNORECASE) 
+    exit_inf = re_comp.search(msg) 
 
     if exit_inf is None:
-        re_comp= re.compile("(" + expr.lower() + "[:]?[ ]*[$]*(\d+[\.]*[\d]*[%]?))", re.IGNORECASE)
+        re_comp= re.compile("(" + expr.lower() + "[:]?[ ]*[$]*(\d*[\.]*[\d]*[%]?))", re.IGNORECASE)
         exit_inf = re_comp.search(msg)        
 
         if exit_inf is None:
@@ -484,118 +485,6 @@ def parse_exit_plan(order):
             exit_plan[p] = order.get(p)
     return exit_plan
 
-def auhtor_parser(msg, author, asset):
-    if author not in ['ScaredShirtless#0001', 'Kevin (Momentum)#4441']:
-        new_order = {}
-        def stc_amount(msg):
-            ######### Leave N untis
-            units = ["one", "two", "three"]
-            units_left = f'(?:(?:L|l)eaving|leave)[ ]*(?:only|just)?[ ]*({"|".join(units)})'
-            mtch = re.compile(units_left, re.IGNORECASE)
-            mtch = mtch.search(msg)
-            if mtch is not None:
-                strnum = mtch.groups()[0]
-                qty_left, = [i for i, v in enumerate(units) if v==strnum]
-                return qty_left
-
-            ######### Leave a few untis
-            left_few = '(?:(?:L|l)eaving|leave)[ ]*(?:only|just)?[ ]*[a]? (few)'
-            mtch = re.compile(left_few, re.IGNORECASE)
-            mtch = mtch.search(msg)
-            if mtch is not None:
-                return "few"
-
-            ######### Leave % amount
-            left_perc = '(?:(?:L|l)eaving|leave) (?:about|only)?[ ]*(\d{1,2})%'
-            mtch = re.compile(left_perc, re.IGNORECASE)
-            mtch = mtch.search(msg)
-            if mtch is not None:
-                perc = mtch.groups()[0]
-                return eval(perc)/100
-
-            return None
-
-        def match_exp(exp, msg):
-            mtch = re.compile(exp, re.IGNORECASE)
-            mtch = mtch.search(msg)
-            if mtch is not None:
-                return mtch.groups()[0]
-            return None
-
-        # in STC target might not be PT2
-        if "STC" not in msg:
-            pt1_exps = ['Target: (\d+[\.]*[\d]*)', 'target: (\d+[\.]*[\d]*)', 'target[a-zA-Z\s\,\.]*(\d+[\.]*[\d]*)',
-                   '(\d+[\.]*[\d]*)[a-zA-Z\s\,\.]*target',
-                   'looking for (\d+[\.]*[\d]*)']
-            for exp in pt1_exps:
-                pt1 = match_exp(exp, msg)
-                if pt1:
-                    pt1 = pt1[:-1] if pt1[-1] == '.' else pt1
-                    new_order["PT1"] = pt1
-                    msg = msg.replace(pt1, " ")
-                    break
-
-            pt2 = "target[a-zA-Z0-9\.\s\,]*then (\d+[\.]*[\d]*)"
-            pt2 = match_exp(pt2, msg)
-            if pt2:
-                pt2 = pt2[:-1] if pt2[-1] == '.' else pt2
-                new_order["PT2"] = pt2
-                msg = msg.replace(pt2, " ")
-        else:
-            pt2 = "second target[a-zA-Z0-9\.\s\,]*(\d+[\.]*[\d]*)"
-            pt2 = match_exp(pt2, msg)
-            if pt2:
-                new_order["PT2"] = pt2
-                msg = msg.replace(pt2, " ")
-
-        sl_exps = ['Stop: (\d+[\.]*[\d]*)', 'stop: (\d+[\.]*[\d]*)', '(\d+[\.]*[\d]*)[a-zA-Z\s\,\.]{0,5}?stop',
-                   'stop[a-zA-Z\s\,\.]*(\d+[\.]*[\d]*)']
-        for exp in sl_exps:
-            sl = match_exp(exp, msg)
-            if sl:
-                sl = sl[:-1] if sl[-1] == '.' else sl
-                new_order["SL"] = sl
-                break
-
-        if "BTO" not in msg:
-            amnt_left = stc_amount(msg)
-            if amnt_left:
-                new_order["amnt_left"] = amnt_left
-
-            if "STC" not in msg:
-                stc = "([^a-z]selling|[^a-z]sold|all out|(:?(out|took)[a-zA-Z\s]*last)|sell here|took some off)"
-                mtch = re.compile(stc, re.IGNORECASE)
-                mtch = mtch.search(msg)
-                no_Sell = ["not selling yet", "Over Sold", "contracts sold", "How many sold it?", 'No need to ask me if I’m selling']
-                if mtch is not None and not any([True if s in msg else False for s  in no_Sell]):
-                    new_order['action'] = "STC"
-                    new_order["xQty"]  = parse_sell_ratio_amount(msg, asset)
-
-        if len(list(new_order.values())):
-            symbol, _ = parse_Symbol(msg, parse_action(msg))
-            if symbol:
-                new_order["Symbol"] = symbol
-            return new_order
-        else:
-            return None
-    return None
-
-def get_symb_prev_msg(df_hist, msg_ix, author):
-    # df_hist["Author"]  = df_hist["Author"].apply(lambda x: x.split("#")[0])
-
-    df_hist_auth = df_hist[df_hist["Author"]==author]
-    msg_inx_auth, = np.nonzero(df_hist_auth.index == msg_ix)
-    indexes = df_hist_auth.index.values
-
-    for n in range(1,6):
-        inx = indexes[msg_inx_auth - n]
-        msg, = df_hist_auth.loc[inx, 'Content'].values
-        if pd.isnull(msg):
-            continue
-        symbol, _ = parse_Symbol(msg, parse_action(msg))
-        if symbol is not None:
-            return symbol, inx
-    return None, None
 
 def make_optionID(Symbol:str, expDate:str, strike=str, **kwarg):
     """
@@ -604,7 +493,7 @@ def make_optionID(Symbol:str, expDate:str, strike=str, **kwarg):
     strike, opt_type = float(strike[:-1]), strike[-1]
     date_elms = expDate.split("/")
     date_frm = f"{int(date_elms[0]):02d}{int(date_elms[1]):02d}"
-    if len(date_elms) == 2: # MM/DD, year = current year
+    if len(date_elms) == 2: # MM/DD, year = actual year
         year = str(datetime.today().year)[-2:]
         date_frm = date_frm + year
     elif len(date_elms) == 3:
@@ -614,40 +503,3 @@ def make_optionID(Symbol:str, expDate:str, strike=str, **kwarg):
     if strike == int(strike):
         return f"{Symbol}_{date_frm}{opt_type}{int(strike)}"
     return f"{Symbol}_{date_frm}{opt_type}{strike}"
-
-def combine_new_old_orders(msg, order_old, pars, author, asset="option"):
-    order_author = auhtor_parser(msg, author, asset)
-    if order_author is None:
-        return order_old, pars
-
-    if order_old is not None:
-        for k in order_author.keys():
-            # If
-            if order_author[k] == order_old.get(k) and k != "Symbol" or \
-                order_author[k] != order_old.get(k) and k == "Symbol":
-                if k == "Symbol":
-                    # in case of ticker vs option symbol ID
-                    if order_author[k] == order_old[k][:len(order_author[k])]:
-                        order_author[k] = order_old[k]
-                        continue
-                resp = input(f"Found diff vals for {k}: new= {order_author[k]}, old= {order_old[k]} " +
-                             "[1- new, 2- old, 0- break and fix]")
-                if resp == '2':
-                    order_author[k] = order_old.get(k)
-                elif resp == '0':
-                    raise "error"
-        order = {**order_old, **order_author}
-    else:
-        order = order_author
-
-    if order.get("action") is None:
-        order["asset"] = asset
-        exits = ["PT1", "PT2", "PT3", "SL"]
-        if any([order.get(k) for k in exits]):
-            order['action'] = "ExitUpdate"
-            pars = f"ExitUpdate: {pars}"
-            for ex in exits:
-                val = order.get(ex)
-                if val is not None:
-                    pars = pars + f" {ex}:{val},"
-    return order, pars

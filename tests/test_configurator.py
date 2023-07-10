@@ -1,12 +1,15 @@
 
 import unittest
+import ast
 from DiscordAlertsTrader.configurator import cfg
 
 class TestConfigurator(unittest.TestCase):
 
-    def test_trailstop_val(self):
-        trailstop_val = cfg['order_configs']['default_trailstop']
-        self.assertTrue(trailstop_val == '' or eval(trailstop_val) > .9)
+    def test_defaul_exit(self):
+        print('default_exits:', cfg['order_configs']['default_exits'])
+        trailstop_val = ast.literal_eval(cfg['order_configs']['default_exits'])
+        vals = list(trailstop_val.keys())
+        self.assertTrue(["PT1", "PT2", "PT3", "SL"] ==  vals)
 
     def test_general_options(self):
         cfg['general'].getboolean('DO_BTO_TRADES')
@@ -18,7 +21,7 @@ class TestConfigurator(unittest.TestCase):
             self.assertTrue(v.endswith(".csv"))
 
     def test_cfg_options_set(self):
-        self.assertTrue(cfg['general']['BROKERAGE'] in ['', 'TDA', "webull", 'etrade'])
+        self.assertTrue(cfg['general']['BROKERAGE'].lower() in ['', 'tda', "webull", 'etrade'])
         self.assertTrue(cfg['order_configs']['default_bto_qty'] in ['buy_one', 'trade_capital'])
         
 if __name__ == '__main__':

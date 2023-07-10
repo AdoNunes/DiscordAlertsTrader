@@ -1,438 +1,303 @@
 "read symbols from port and load saved live quotes and calculate profit/loss"
 import pandas as pd
 import os.path as op
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import numpy as np
 from DiscordAlertsTrader.configurator import cfg
-import pandas as pd
-from datetime import datetime
-import matplotlib.pyplot as plt
-import numpy as np
-
-def calc_trailingstop(data:pd.Series, pt:float, ts:float):
-    """Calculate the trailing stop for a given series of quotes
-    Parameters
-    ----------
-    data : pd.Series
-        Series of quotes
-    pt : float
-        Profit target
-    ts : float
-        Trailing stop
-    Returns
-    -------
-    trigger_price : float
-        The price at which the trailing stop was triggered
-    trigger_index : int
-        The index of the quote at which the trailing stop was triggered
-    pt_index : int
-        The index of the quote at which the profit target was reached
-    """
-    start = data >= pt
-    if start.sum():
-        pt_index = start.idxmax()
-        filtered_quotes = data.loc[pt_index:]
-
-        # Loop over each point and check if new max or TS triggered
-        max_value = filtered_quotes.iloc[0]
-        trailing_stop = max_value - ts
-        trigger_index = None
-        for i in range(1, len(filtered_quotes)):
-            current_value = filtered_quotes.iloc[i]
-            # new high
-            if current_value > max_value:
-                max_value = current_value  # Update the maximum value
-                trailing_stop = max_value - ts
-
-            # Trailing stop triggered
-            if current_value <= trailing_stop:
-                trigger_index = i
-                break
-
-        if trigger_index:
-            trigger_price = filtered_quotes.iloc[trigger_index]
-            trigger_index = filtered_quotes.index[trigger_index]
-        else:
-            # If no trigger, then use the last value
-            trigger_index = filtered_quotes.index[-1]
-            trigger_price = filtered_quotes.loc[trigger_index]
-
-        return trigger_price, trigger_index, pt_index
-    else:
-        return None, None, None
+from DiscordAlertsTrader.port_sim import filter_data, calc_trailingstop, calc_roi
 
 
-def calc_SL(data:pd.Series, sl:float, update:list=None):
-    """Calculate the StopLoss for a given series of quotes
-    Parameters
-    ----------
-    data : pd.Series
-        Series of quotes
-    sl : float
-        initial stop loss
-    update : list, optional
-        List of tuples with target and new stop loss, by default None
-    Returns
-    -------
-    sl_price : float
-        The price at which the stop loss was triggered
-    sl_index : int
-        The index of the quote at which the stop loss was triggered
-    """
 
-    start = data <= sl
-    sl_inx_vals = []
-    # normal SL
-    if start.sum():
-        sl_index = start.idxmax()
-        sl_val = data.loc[sl_index]
-        sl_inx_vals.append([sl_index, sl_val])
-    # SL update after PT
-    if update is not None:
-        for pt, new_sl in update:
-            start = data >= pt
-            # if PT reached
-            if start.sum():
-                pt_index = start.idxmax()
-                filtered_quotes = data.loc[pt_index:]
-                sl_trig = filtered_quotes <= new_sl
-                # if SL reached
-                if sl_trig.sum():
-                    sl_index = sl_trig.idxmax()
-                    sl_val = data.loc[sl_index]
-                    sl_inx_vals.append([sl_index, sl_val])
-    if sl_inx_vals:
-        # get the min SL
-        inx = np.argmin([int(i[0]) for i in sl_inx_vals])
-        sl_inx_vals = sl_inx_vals[inx]
-        return sl_inx_vals
-    else:
-        return None, None
-
-def calc_PT(data:pd.Series, pt:float):
-    """Calculate the Profit Target for a given series of quotes
-    
-    Parameters
-    ----------
-    Data : pd.Series
-        Series of quotes
-    pt : float
-        Profit target
-    
-    Returns
-    -------
-    list
-        pt_value, pt_index, pt_index    
-    """
-    
-    start = data >= pt
-    # normal SL
-    if start.sum():
-        pt_index = start.idxmax()
-        pt_val = data.loc[pt_index]
-        return pt_val, pt_index, pt_index
-    return None, None, None
-    
-def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False, initial_prices=None, sl_update:list=None)->list:
-    """Calculate roi for a given series of quotes
+def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
+                dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
+                last_days= 7,
+                max_underlying_price= 500,
+                min_price= 50,
+                max_dte= 5,
+                min_dte= 0,
+                exclude_traders= ['enhancedmarket', 'SPY'],
+                exclude_symbols= ['SPX',  'QQQ'],
+                exclude_channs= "",
+                PT=80,
+                TS=0,
+                SL=45,
+                TS_buy= 10,
+                max_margin = None,
+                verbose= True
+                ):
+    """simulate trade and get returns
 
     Parameters
     ----------
-    quotes : pd.Series
-        quote values, each row is a quote, col a value
-    PT : float
-        profit target, ratio. 125% = 2.25
-    TS : float
-        trailing stop activated when PT is reached
-    SL : float
-        stop loss
-    do_plot : bool, optional
-        option to plot everyquote, by default False
-    initial_price : float, optional
-        initial price, by default None
-    sl_update : list, optional
-        list of tuples with target and new stop loss, by default None
+    fname_port : _type_, optional
+        path to portfolio, by default cfg['portfolio_names']['tracker_portfolio_name']
+    dir_quotes : _type_, optional
+        path to quotes, by default cfg['general']['data_dir']+'/live_quotes'
+    last_days : int, optional
+        subtract today to n prev days, by default 7
+    max_underlying_price : int, optional
+        max stock price of the option, by default 500
+    min_price : int, optional
+        min price of option (1 contract), by default 50
+    max_dte : int, optional
+        max days to expiration for options, by default 5
+    min_dte : int, optional
+        min days to expiration for options, by default 0
+    exclude_traders : list, optional
+        List traders to exclude, by default ['enhancedmarket', 'SPY']
+    exclude_symbols : list, optional
+        List symbols to exclude, by default ['SPX',  'QQQ']
+    exclude_channs : list, optional
+        List channels to exclude, by default ""
+    PT : int, optional
+        Profit target percent, by default 80
+    TS : int, optional
+        Trailing stop for sell, by default 0
+    SL : int, optional
+        stop loss percent, by default 45
+    TS_buy : int, optional
+        trailing stop percent before opening position (for shorting), by default 10
+    max_margin : int, optional
+        max margin to use for shorting, by default None
+    verbose: bool, optional
+        print verbose, by default False
 
     Returns
     -------
-    list
-        initial price, sell price, ROI with TS, ROI without TS
+    port : pd.DataFrame
+        new cols: 'strategy-PnL, 'strategy-PnL$','strategy-entry','strategy-exit'
+    no_quote : list
+        list of symbols with no quotes
+    params : dict
+        parameters used for simulation
     """
-    roi = []
-
-
-    quotes = quotes.dropna()
-
-    if initial_prices is None:
-        initial_price = quotes.iloc[0]
-    else:
-        initial_price = initial_prices
-
-    # Calculate the PT, SL and trailing stop levels
-    pt = initial_price * PT
-    sl = initial_price * SL
-    ts = initial_price * TS
-    if TS == 0:
-        trigger_price, trigger_index, pt_index = calc_PT(quotes, pt)
-    else:
-        trigger_price, trigger_index, pt_index = calc_trailingstop(quotes, pt, ts)
-
-    # convert SL update into price
-    new_update = None
-    if sl_update:
-        new_update = []
-        for upt, usl in sl_update:
-            new_update.append([initial_price *upt, initial_price * usl])
-        # print(f"initial {initial_price}, PT {pt} Sl {sl} update{new_update}")
-    sl_index, sl_val = calc_SL(quotes, sl, new_update)
-
-    if do_plot:
-        plt.figure()
-        quotes.apply(lambda x: (x-quotes.iloc[0])/quotes.iloc[0]).plot()
-
-    # no TP no SL, then use the last value
-    if trigger_index is None and sl_index is None:
-        sell_price = quotes.iloc[-1]
-        no_ts_sell = sell_price
-        if do_plot:
-            plt.plot(quotes.index[len(quotes)-1], (quotes.iloc[-1]-quotes.iloc[0])/quotes.iloc[0], marker='o', alpha=.5)
-    # no TP, use SL
-    elif trigger_index is None:
-        sell_price = sl_val
-        no_ts_sell = sl_val
-        if do_plot:
-            plt.plot(quotes.index.get_loc(sl_index), (sell_price-quotes.iloc[0])/quotes.iloc[0], marker='o', alpha=.5)
-    # SL before TP
-    elif sl_index is not None and int(trigger_index) > int(sl_index) :
-        sell_price = sl_val
-        no_ts_sell = sl_val
-        if do_plot:
-            plt.plot(quotes.index.get_loc(sl_index), (quotes.loc[sl_index]-quotes.iloc[0])/quotes.iloc[0], marker='o', alpha=.5)
-    # TP
-    else:
-        sell_price = trigger_price
-        no_ts_sell = quotes.loc[pt_index]
-        if do_plot:
-            plt.plot(quotes.index.get_loc(trigger_index), (quotes.loc[trigger_index]-quotes.iloc[0])/quotes.iloc[0], marker='o', alpha=.5)
-
-    if do_plot:
-        max = quotes.apply(lambda x: (x-quotes.iloc[0])/quotes.iloc[0]).max()
-        roi_ = (sell_price - initial_price)/initial_price * 100
-        plt.title(f"max: {round(max*100)}%, sell:{round(roi_)}")
-        plt.axhline(PT-1, color='green', linestyle='--', label=f'PT {(PT-1)*100}%', alpha=.5)
-        plt.axhline(SL-1, color='red', linestyle='--', label=f'SL {(SL-1)*100}%', alpha=.5)
-        plt.axhline(0, color='k', linestyle='--', label='bto', alpha=.5)
-
-    prof = [initial_price, sell_price, (sell_price - initial_price)/initial_price * 100, (no_ts_sell - initial_price)/initial_price * 100 ]
-    roi.append(prof)
-    plt.show(block=False)
-    return roi
-
-def parse_option_info(symbol):
-    option_inf = {
-    "symbol": symbol.split('_')[0],
-    "date": symbol.split('_')[1][:6],
-    "otype": symbol.split('_')[1][6],
-    "strike": symbol.split('_')[1][7:],
-    }
-    return option_inf
-
-def calculate_days_to_expiration(row):
-    option_date_str = parse_option_info(row['Symbol'])['date']
-    option_date = datetime.strptime(option_date_str, '%m%d%y').date()
-    expiration_date = pd.to_datetime(row['Date']).date()
-    days_to_expiration = (option_date - expiration_date).days
-    return days_to_expiration
-
-def port_max_per_trade(port, max_per_trade:float):
-    "Limit the max amount per trade"
-    option_mult = (port['Asset'] == 'option').astype(int)
-    option_mult[option_mult==1] = 100
-    trade_value = port['Amount'] * port['Price'] * option_mult
-    exceeds_cap = trade_value > max_per_trade
-    port.loc[exceeds_cap, 'Amount'] = np.floor(max_per_trade / (port['Price'] * option_mult)) 
-    port = port[port['Amount'] * port['Price'] * option_mult <= max_per_trade]
-    mult =(port['Asset'] == 'option').astype(int) 
-    mult[mult==0] = .01  # pnl already in %
-    port['STC-PnL$'] = port['Amount'] * port['STC-PnL'] * port['Price'] * mult
-    port['STC-PnL$-current'] = port['Amount'] * port['STC-PnL-current'] * port['Price-current'] * mult
-    port['STC-PnL$'] = port['STC-PnL$'].round()
-    port['STC-PnL$-current'] = port['STC-PnL$-current'].round()
-    return port
-
-fname_port = cfg['portfolio_names']['tracker_portfolio_name']
-port = pd.read_csv(fname_port)
-dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
-ntrades = len(port)
-
-print(f"From {len(port)} trades, removing open trades: {(~(port['isOpen']==0)).sum()} open, not options: " +\
-    f"{(~(port['Asset']=='option')).sum()} and with no current price: {port['Price-current'].isna().sum()}")
-
-port = port[(port['isOpen']==0) & (port['Asset']=='option') & ~port['Price-current'].isna()]
-
-odte_only = False
-port['days_to_expiration'] = port.apply(calculate_days_to_expiration, axis=1)
-if odte_only:
-    print("Keeping only trades with 0 dtoe, removing: ", (port['days_to_expiration']!=0).sum())
-    port = port[port['days_to_expiration']==0]
-
-port = port[~port['Symbol'].str.contains('SPX')]
-print(f"Setting trades to a max of $1000, removing {len(port)- len(port_max_per_trade(port, 1000))} trades")
-port = port_max_per_trade(port, 1000)
-
-
-# strategies: PT and SL, delayed entry
-print(f"Calculating strategy pnl... with {len(port)} trades")
-
-delayed_entry = 0
-not_entred = []
-pnls, pnlus = [], []
-port['STC-PnL-strategy'] = np.nan
-port['STC-PnL$-strategy'] = np.nan
-
-trades_min, no_quote, trades_max, percentage_return = [], [], [], []
-for idx, row in port.iterrows():
+    param = {'last_days': last_days,
+            'max_underlying_price': max_underlying_price,
+            'min_price': min_price,
+            'max_dte': max_dte,
+            'min_dte': min_dte,
+            'exclude_traders': exclude_traders,
+            'exclude_symbols': exclude_symbols,
+            'PT': PT,
+            'TS': TS,
+            'SL': SL,
+            'TS_buy': TS_buy,
+            'max_margin': max_margin,
+            }
+    port = pd.read_csv(fname_port)
+    msk = pd.to_datetime(port['Date']).dt.date >= pd.to_datetime(date.today()- timedelta(days=last_days)).date()
+    port = port[msk]
     
-    # Load data
-    fquote = f"{dir_quotes}/{row['Symbol']}.csv"
-    if not op.exists(fquote):
-        no_quote.append(row['Symbol'])
-        continue    
-    quotes = pd.read_csv(fquote, on_bad_lines='skip')
+    port = filter_data(port, 
+                    exclude={'stocks':True}, 
+                    exc_author=','.join(exclude_traders),
+                    exc_chn='', 
+                    exc_sym=','.join(exclude_symbols), 
+                    min_con_val=min_price, 
+                    max_u_qty=1, 
+                    max_underlying=max_underlying_price, 
+                    max_dte=max_dte, 
+                    min_dte=min_dte                  
+                    )
+
+    if len(port) == 0:
+        print("No trades to calculate")
+        exit()
+
+    pt = 1 + PT/100
+    ts = TS/100
+    sl = 1 - SL/100
+    ts_buy = TS_buy/100
+
+    port['strategy-PnL'] = np.nan
+    port['strategy-PnL$'] = np.nan
+    port['strategy-entry'] = np.nan
+    port['strategy-exit'] = np.nan
+    port['strategy-close_date'] = pd.NaT   
+    port['reason_skip'] = np.nan
     
-    # get quotes within trade dates
-    dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
-    try:
-        # msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(row['STC-Date']))) & (quotes[' quote'] > 0)
-        stc_date = pd.to_datetime(row['STC-Date']).replace(hour=16, minute=0, second=0, microsecond=0)
-        msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= stc_date)) & (quotes[' quote'] > 0)
-    except TypeError:
-        # continue
-        stc_date = row['STC-Date'].replace("T00:00:00+0000", " 16:00:00.000000")
-        stc_date = pd.to_datetime(stc_date).replace(hour=16, minute=0, second=0, microsecond=0)
-        msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(stc_date))) & (quotes[' quote'] > 0)
+    no_quote = []
+    do_margin = False if max_margin is None else True
+    if do_margin:  
+        port['margin'] = np.nan  
+        port = port.reset_index(drop=True)
+    
+    for idx, row in port.iterrows(): 
+        if pd.isna(row['Price-actual']):
+            if verbose:
+                print("no current price, skip")
+            port.loc[idx, 'reason_skip'] = 'no current price'
+            continue
+        price_curr = row['Price-actual']
         
+        if do_margin:
+            trade_margin = row['underlying'] * 100 * 0.2
+            trade_open_date = pd.to_datetime(row['Date'])
+            open_trades = port.iloc[:idx][(port.iloc[:idx]['strategy-close_date'] >= trade_open_date)]
+            margin = open_trades['margin'].sum() + trade_margin
+            if margin > max_margin:
+                if verbose:
+                    print(f"skipping trade {row['Symbol']} due to margin too high at {margin}")
+                port.loc[idx, 'reason_skip'] = 'margin too high'
+                continue
+            # else:
+                # print("margin", margin, "trade margin", trade_margin, "symbol", row['Symbol'])
         
+        # Load data
+        fquote = f"{dir_quotes}/{row['Symbol']}.csv"
+        if not op.exists(fquote):
+            if verbose:
+                no_quote.append(row['Symbol'])
+            port.loc[idx, 'reason_skip'] = 'no quotes'
+            continue    
+        quotes = pd.read_csv(fquote, on_bad_lines='skip')
         
-        # qm = quotes[msk]
-        # print(round(row['STC-PnL']), round(row['STC-PnL-current']), 
-        #      round( 100*(qm.iloc[-1][' quote'] -  row['Price'])/ row['Price']), 
-        #     round(100*(qm.iloc[-1][' quote'] -  row['Price-current'])/ row['Price-current']), qm.iloc[-1][' quote'], 
-        #     dates.iloc[-1], row['Date'], idx,row['Symbol'])
+        # get quotes within trade dates
+        dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
 
-    if not msk.any():
-        print("quotes outside with dates", row['Symbol'])
-        continue
+        try:
+            # msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(row['STC-Date']))) & (quotes[' quote'] > 0)
+            stc_date = pd.to_datetime(row['Date']).replace(hour=15, minute=50, second=0, microsecond=0)
+            msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= stc_date)) & (quotes[' quote'] > 0)
+        except TypeError:
+            # continue
+            stc_date = row['Date'].replace("T00:00:00+0000", " 15:50:00.000000")
+            stc_date = pd.to_datetime(stc_date).replace(hour=16, minute=0, second=0, microsecond=0)
+            msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(stc_date))) & (quotes[' quote'] > 0)
 
-    quotes = quotes[msk].reset_index(drop=True)
-    dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
-    quotes_vals = quotes[' quote']
-    
-    price_alert = row['Price']
-    price_curr = row['Price-current']
-    trades_min.append(100*(quotes_vals.min()-row['Price-current'])/row['Price-current'])
-    trades_max.append(100*(quotes_vals.max()-row['Price-current'])/row['Price-current'])
-    percentage_return.append(100*(row['STC-Price-current']-row['Price-current'])/row['Price-current'])
-    # roi_current, = calc_roi(quotes_vals, PT=1.5, TS=0, SL=.4, do_plot=False, initial_prices=price_alert)
-    trigger_price, trigger_index, pt_index = calc_trailingstop(quotes_vals, price_curr,price_curr*.1)
-    roi_current, = calc_roi(quotes_vals.loc[trigger_index:], PT=1.85, TS=0, SL=.70, do_plot=False, initial_prices=trigger_price)
-    
-    pnl = roi_current[2]
-    mult = .1 if row['Asset'] == 'stock' else 1
-    if mult == .1: raise Exception("There should be no stocks in the portfolio")
-    pnlu = pnl*roi_current[0]*mult
-    
-    # pnl = 100*(row['STC-Price-current']-row['Price-current'])/row['Price-current']
-    # mult = .1 if row['Asset'] == 'stock' else 1
-    # if mult == .1: raise Exception("There should be no stocks in the portfolio")
-    # pnlu = pnl*row['Amount']*row['Price-current']*mult
-    
-#     # price_delayed = price_curr + (price_curr*(price_curr/100))
-#     # if delayed_entry > 0:
-#     #     msk = quotes[' quote'] >= price_delayed
-#     # elif delayed_entry < 0:
-#     #     msk = quotes[' quote'] <= price_delayed
-#     # else:
-#     #     msk = quotes[' quote'] == price_curr
-#     # if not msk.any():
-#     #     not_entred.append(row['Symbol'])
-#     #     continue
+        if not msk.any():
+            if verbose:
+                print("quotes outside with dates", row['Symbol'])
+            port.loc[idx, 'reason_skip'] = 'no quotes, outside dates'
+            continue
+
+        quotes = quotes[msk].reset_index(drop=True)
+        dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
+        quotes_vals = quotes[' quote']
+        
+        # add margin even if not triggered by ts buy
+        if do_margin:
+            port.loc[idx, 'margin'] = trade_margin
+            
+        trigger_index = 0
+        
+        if ts_buy:            
+            price_curr, trigger_index, pt_index = calc_trailingstop(quotes_vals, 0, price_curr*ts_buy)
+            if trigger_index == len(quotes_vals)-1:
+                if verbose:
+                    print("no trigger index", row['Symbol'])
+                port.loc[idx, 'reason_skip'] = 'TS buy not triggered'
+                continue
+        roi_actual, = calc_roi(quotes_vals.loc[trigger_index:], PT=pt, TS=ts, SL=sl, do_plot=False, initial_prices=price_curr)
     
 
-#     # price_delayed = quotes.loc[msk.idxmax(), ' quote']
+        if roi_actual[-1] == len(quotes_vals)-1:        
+            port.loc[idx, 'last'] = 1
+            
+        port.loc[idx, 'strategy-close_date'] = dates.iloc[roi_actual[-1]]
+        pnl = roi_actual[2]
+        mult = .1 if row['Asset'] == 'stock' else 1
+        pnlu = pnl*roi_actual[0]*mult*row['Qty']
+        
+        port.loc[idx, 'strategy-PnL'] = pnl
+        port.loc[idx, 'strategy-PnL$'] = pnlu
+        port.loc[idx,'strategy-entry'] = roi_actual[0]
+        port.loc[idx,'strategy-exit'] = roi_actual[1]
+        
+    return port, no_quote, param
 
-#     sell_curr = row['STC-Price-current']
-#     if pd.isna(row['STC-Price-current']):        
-#         sell_curr = quotes.iloc[-1][' quote']
-#         if not (pd.to_datetime(row['STC-Date']) - datetime.fromtimestamp(quotes.iloc[-1]['timestamp'])) < timedelta(seconds=300):
-#             print ('date not matched by {} seconds'.format((pd.to_datetime(row['STC-Date']) - datetime.fromtimestamp(quotes.iloc[-1]['timestamp'])).seconds))
-#             continue
-    
-    # pnl = (sell_curr - price_delayed)/price_delayed*100
-    # mult = .1 if row['Asset'] == 'stock' else 1
-    # pnlu = pnl*row['STC-Amount']*price_delayed*mult
-    
-    port.loc[idx, 'STC-PnL-strategy'] = pnl
-    port.loc[idx, 'STC-PnL$-strategy'] = pnlu
-    
-    pnls.append([row['STC-PnL'], row['STC-PnL-current'], pnl])
-    pnlus.append([row['STC-PnL$'], row['STC-PnL$-current'], pnlu])
+def generate_report(port, param={}, no_quote=None, verbose=True):
+    if no_quote is not None and verbose:
+        print(f"N trades with no quote: {len(no_quote)}")
 
-print(f"N trades with no quote: {len(no_quote)}, N trades with no entry: {len(not_entred)}")
-print(f"Strategy with {len(pnlus)} trades")
-pnls_m = np.nanmean(np.array(pnls) , axis=0)
-print("Pnl alert: %.2f, Pnl current: %.2f, Pnl strategy: %.2f" % (pnls_m[0], pnls_m[1], pnls_m[2]))
-pnlus_m = np.nansum(np.array(pnlus) , axis=0)
-print("Pnl $ alert: %.2f, Pnl $ current: %.2f, Pnl $ strategy: %.2f" % (pnlus_m[0], pnlus_m[1], pnlus_m[2]))
+    if len(param) > 0 and verbose:
+        msg_str = "\nParameters used:"
+        for k,v in param.items():
+            msg_str += f"{k}: {v} "
+        print(msg_str)
+        
+    port = port[port['strategy-PnL'].notnull()]
+    print("Pnl alert: %.2f, Pnl actual: %.2f, Pnl strategy: %.2f" % (
+        port['PnL'].mean(), port['PnL-actual'].mean(), port['strategy-PnL'].mean()))
+    print("Pnl $ alert: $%.2f, Pnl actual: $%.2f, Pnl strategy: $%.2f" % (
+        port['PnL$'].sum(), port['PnL$-actual'].sum(), port['strategy-PnL$'].sum()))
 
-agg_funcs = {'STC-PnL$': 'sum',
-                'STC-PnL$-current': 'sum',
-                'STC-PnL': 'mean',
-                'STC-PnL-current': 'mean',
-                'STC-PnL-strategy': 'mean',
-                'STC-PnL$-strategy': 'sum',    
-                "Price": ['mean', 'median'],            
-                # 'Date': ['count', 'min', 'max']
+    # Perform the groupby operation and apply the aggregation functions
+    agg_funcs = {'PnL$': 'sum',
+                'PnL$-actual': 'sum',
+                'PnL': 'mean',
+                'PnL-actual': 'mean',
+                'strategy-PnL': 'mean',
+                'strategy-PnL$': 'sum',    
+                "Price": ['mean', 'median'],
                 'Date': ['count']
                 }
-# Perform the groupby operation and apply the aggregation functions
-result_td = port.groupby('Trader').agg(agg_funcs).sort_values(by=('Date', 'count'), ascending=False)
-# print(result_td)
+    result_td = port.groupby('Trader').agg(agg_funcs).sort_values(by=('Date', 'count'), ascending=False)
+    return result_td
+
+def grid_search(port, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25], max_margin=25000):
     
-# # Calculate mean values
-# mean_min = np.mean(trades_min)
-# mean_max = np.mean(trades_max)
+    res = []
+    for pt in PT:
+        for sl in SL:
+            for ts_buy in TS_buy:
+                port, no_quote, param = calc_returns(
+                    fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
+                    dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
+                    last_days= 10,
+                    max_underlying_price= 500,
+                    min_price= 30,
+                    max_dte= 10,
+                    min_dte= 0,
+                    exclude_traders= ['enhancedmarket',"SPY"],
+                    exclude_symbols= ['SPX'],
+                    exclude_channs = "",
+                    PT=pt,
+                    TS=0,
+                    SL=sl,
+                    TS_buy= ts_buy,
+                    max_margin = max_margin,
+                    verbose=False
+                    )
+                
+                port = port[port['strategy-PnL'].notnull()]                 
+                res.append([pt, sl, ts_buy, port['strategy-PnL'].mean(), port['strategy-PnL$'].sum(), len(port)])
+        print(f"Done with PT={pt}")
+    return res
 
-# # Create a figure and subplots
-# fig, axs = plt.subplots(1, 3, figsize=(10, 5))
 
-# # Plot histogram for trades_min
-# axs[0].hist(trades_min, bins=100, color='blue')
-# axs[0].set_title('trades_min Histogram')
-# axs[0].set_xlabel('Value')
-# axs[0].set_ylabel('Frequency')
-# axs[0].axvline(x=mean_min, color='red', linestyle='--', label=f'Mean: {mean_min:.2f}')
-# axs[0].legend()
 
-# # Plot histogram for trades_max
-# axs[1].hist(trades_max, bins=100, color='red')
-# axs[1].set_title('trades_max Histogram')
-# axs[1].set_xlabel('Value')
-# axs[1].set_ylabel('Frequency')
-# axs[1].axvline(x=mean_max, color='blue', linestyle='--', label=f'Mean: {mean_max:.2f}')
-# axs[1].legend()
+port, no_quote, param = calc_returns(
+    fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
+    dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
+    last_days= 10,
+    max_underlying_price= 500,
+    min_price= 30,
+    max_dte= 100,
+    min_dte= 0,
+    exclude_traders= [ 'SPY', 'enhancedmarket'],
+    exclude_symbols= ['SPX'],
+    exclude_channs = "",
+    PT=25,
+    TS=0,
+    SL=20,
+    TS_buy= 5,
+    max_margin = None
+    )
 
-# # Plot scatter plot for trades_min and trades_max
+# print(port[['Date','Symbol','Trader', 'STC-PnL', 'STC-PnL-current', 'strategy-PnL','STC-PnL$', 'STC-PnL$-current',
+#                 'strategy-PnL$','strategy-entry','strategy-exit', 'strategy-close_date']])
+sport = port[['Date','Symbol','Trader', 'PnL', 'PnL-actual', 'PnL$', 'PnL$-actual', 'strategy-PnL',
+               'strategy-PnL$','strategy-entry','strategy-exit', 'strategy-close_date', 'reason_skip']]
 
-# axs[2].scatter(trades_min, trades_max, c=percentage_return, cmap='coolwarm')
-# axs[2].set_title('trades_min vs trades_max')
-# axs[2].set_xlabel('trades_min')
-# axs[2].set_ylabel('trades_max')
-# cbar = plt.colorbar(axs[2].scatter([], [], c=[], cmap='coolwarm'))
-# cbar.set_label('Percentage Return')
+result_td =  generate_report(port, param, no_quote, verbose=True)
 
-# # Adjust the spacing between subplots
-# plt.tight_layout()
+# best PT 60, SL 45, TS 0, TS_buy 10
 
-# # Show the plot
-# plt.show()
+# best PT 100., SL 40,   TS_buy 30.,  pnl -27.5, pnl $ -950,   trade count 32
+# worst PT 25., SL 20,   TS_buy 5,  pnl 5.7, pnl $ 428,   trade count 32
+# res = grid_search(port, PT=np.arange(20,120,5), TS=[0], SL=np.arange(20,100,5), TS_buy=[0,5,10,15,20,25,30], max_margin=25000)
+
+# res = np.stack(res)
+# sorted_indices = np.argsort(res[:, 4])
+# sorted_array = res[sorted_indices].astype(int)

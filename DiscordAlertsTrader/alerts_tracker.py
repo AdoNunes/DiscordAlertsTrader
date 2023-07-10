@@ -16,16 +16,18 @@ class AlertsTracker():
 
     def __init__(self, brokerage=None,
                  portfolio_fname=cfg['portfolio_names']["tracker_portfolio_name"],
-                 dir_quotes = cfg['general']['data_dir'] + '/live_quotes' ):
+                 dir_quotes = cfg['general']['data_dir'] + '/live_quotes',
+                 cfg=cfg):
 
         self.portfolio_fname = portfolio_fname  
         self.dir_quotes = dir_quotes
-        self.bksession = brokerage    
+        self.bksession = brokerage
+        self.cfg = cfg
 
         if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
         else:
-            self.portfolio = pd.DataFrame(columns=cfg["col_names"]['tracker_portfolio'].split(",") )
+            self.portfolio = pd.DataFrame(columns=self.cfg["col_names"]['tracker_portfolio'].split(",") )
             self.portfolio.to_csv(self.portfolio_fname, index=False)
 
     def price_now(self, symbol:str, price_type="BTO"):
@@ -51,21 +53,21 @@ class AlertsTracker():
 
     def trade_alert(self, order, live_alert=True, channel=None):
         open_trade, _ = find_last_trade(order, self.portfolio, open_only=True)
-        if order.get('uQty') is None:
-            order['uQty'] = 1
+        if order.get('Qty') is None:
+            order['Qty'] = 1
         
-        if order["action"] in ["BTO", "STC"] and live_alert:
+        if order["action"] in ["BTO", "STC",'STO', 'BTC'] and live_alert:
             if order.get('Actual Cost', 'None') == 'None':
                 order["Actual Cost"] = self.price_now(order["Symbol"], order["action"])
 
-        if open_trade is None and order["action"] == "BTO":
+        if open_trade is None and order["action"] in ["BTO", 'STO']:
             str_act = self.make_BTO(order, channel)
-        elif order["action"] == "BTO":
+        elif order["action"] in ["BTO", 'STO']:
             # str_act = "BTO averaging disabled as it is mostly wrong alert messages"
             str_act = self.make_BTO_Avg(order, open_trade)
-        elif order["action"] == "STC" and open_trade is None:
-            str_act = "STC without BTO"
-        elif order["action"] == "STC":
+        elif order["action"] in ["STC", "BTC"] and open_trade is None:
+            str_act = order["action"] + "without BTO"
+        elif order["action"] in ["STC", "BTC"]:
             str_act = self.make_STC(order, open_trade)
         elif order["action"] == "ExitUpdate":
             if open_trade is not None:
@@ -80,39 +82,39 @@ class AlertsTracker():
         if order["price"] is None:
             return
         date = order.get("Date", get_date())
-        if order['uQty'] is None:
-            order['uQty'] = 1
+        if order['Qty'] is None:
+            order['Qty'] = 1
         new_trade = {
             "Date": date,
             "Symbol": order['Symbol'],
             'isOpen': 1,
             "Asset": order["asset"],
-            "Type": "BTO",
+            "Type": order["action"],
             "Price": order["price"],
-            "Amount": order['uQty'],
-            "Price-current": order.get("Actual Cost"),
+            "Qty": order['Qty'],
+            "Price-actual": order.get("Actual Cost"),
             "Trader": order['Trader'],
             "SL": order.get("SL"),
             "Channel" : chan
             }        
         self.portfolio =pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)
 
-        str_act = f"BTO {order['Symbol']} {order['price']}"
+        str_act = f"{order['action']} {order['Symbol']} {order['price']}"
         if order['SL'] is not None:
             str_act += f", SL:{order['SL']}"
         return str_act
 
     def make_BTO_Avg(self, order, open_trade):
-        current_Avg = self.portfolio.loc[open_trade, "Avged"]
-        if np.isnan(current_Avg):
-            current_Avg = 1
+        actual_Avg = self.portfolio.loc[open_trade, "Avged"]
+        if np.isnan(actual_Avg):
+            actual_Avg = 1
         else:
-            current_Avg = int(current_Avg + 1)
+            actual_Avg = int(actual_Avg + 1)
         
         old_price = self.portfolio.loc[open_trade, "Price"]
         old_price = eval(old_price) if isinstance(old_price, str) else old_price
-        old_qty = self.portfolio.loc[open_trade, "Amount"]
-        alert_price_old = self.portfolio.loc[open_trade, "Price-current"]
+        old_qty = self.portfolio.loc[open_trade, "Qty"]
+        alert_price_old = self.portfolio.loc[open_trade, "Price-actual"]
         alert_price_old = eval(alert_price_old) if isinstance(alert_price_old, str) else alert_price_old
         alert_price_old = None if pd.isnull(alert_price_old) else alert_price_old
         alert_price = order.get("Actual Cost", "None")
@@ -120,19 +122,19 @@ class AlertsTracker():
         if not len(avgs_prices_al):
             avgs_prices_al = None
     
-        self.portfolio.loc[open_trade, "Avged"] = current_Avg
-        self.portfolio.loc[open_trade, "Amount"] += order['uQty']
-        self.portfolio.loc[open_trade, "Price"] = round(((old_price*old_qty) + (order['price']*order['uQty']))/(old_qty+order['uQty']),2)
+        self.portfolio.loc[open_trade, "Avged"] = actual_Avg
+        self.portfolio.loc[open_trade, "Qty"] += order['Qty']
+        self.portfolio.loc[open_trade, "Price"] = round(((old_price*old_qty) + (order['price']*order['Qty']))/(old_qty+order['Qty']),2)
         self.portfolio.loc[open_trade, "Prices"] = f"{old_price}/{order['price']}"
         if alert_price == 'None' or alert_price is None or alert_price_old is None:
-            self.portfolio.loc[open_trade, "Price-current"] = alert_price_old
+            self.portfolio.loc[open_trade, "Price-actual"] = alert_price_old
         else:
-            self.portfolio.loc[open_trade, "Price-current"] = round(((alert_price_old*old_qty) + (alert_price*order['uQty']))/(old_qty+order['uQty']),2)
-        self.portfolio.loc[open_trade, "Prices-current"] = avgs_prices_al
+            self.portfolio.loc[open_trade, "Price-actual"] = round(((alert_price_old*old_qty) + (alert_price*order['Qty']))/(old_qty+order['Qty']),2)
+        self.portfolio.loc[open_trade, "Prices-actual"] = avgs_prices_al
         if order.get("SL"):
             self.portfolio.loc[open_trade, "SL"] =  order.get("SL")
         
-        str_act = f"BTO {order['Symbol']} {current_Avg}th averging down @ {order['price']}"
+        str_act = f"{order['action']} {order['Symbol']} {actual_Avg}th averging down @ {order['price']}"
         return str_act
 
     def make_STC(self, order, open_trade, check_trail=False):
@@ -146,23 +148,23 @@ class AlertsTracker():
         self.portfolio.loc[open_trade, "TrailStats"] = trailstat
         self.portfolio.loc[open_trade, "STC-Date"] = order["Date"]
         stc_price =  self.portfolio.loc[open_trade,"STC-Price"]
-        stc_utotal = self.portfolio.loc[open_trade,"STC-Amount"]
+        stc_utotal = self.portfolio.loc[open_trade,"STC-Qty"]
         suffx = ''
-        if stc_utotal >= trade['Amount']:
+        if stc_utotal >= trade['Qty']:
             suffx = " Closed"
             self.portfolio.loc[open_trade, "isOpen"] = 0
             
         if stc_price == "none" or stc_price is None:
-            str_STC = f"STC {order['Symbol']}  ({order['uQty']}), no price provided" + suffx
+            str_STC = f"{order['action']} {order['Symbol']}  ({order['Qty']}), no price provided" + suffx
         else:
-            # str_STC = f"STC {order['Symbol']} ({order['uQty']}),{suffx} @{stc_price:.2f}"
+            # str_STC = f"STC {order['Symbol']} ({order['Qty']}),{suffx} @{stc_price:.2f}"
             str_STC = ""
-            if stc_info['STC-Price-current'] is not None:           
-                       str_STC += f"\t@{stc_price:.2f}, actual: {stc_info['STC-Price-current']:.2f} " 
-            if stc_info["STC-PnL"] is not None:
-                str_STC += f'\tPnL:{round(stc_info["STC-PnL"])}% ${round(stc_info["STC-PnL$"])}' 
-            if stc_info["STC-PnL-current"] is not None:
-                str_STC += f' Actual:{round(stc_info["STC-PnL-current"])}% ${round(stc_info["STC-PnL$-current"])}\n\t\t'
+            if stc_info['STC-Price-actual'] is not None:           
+                str_STC += f"\t@{stc_price:.2f}, actual: {stc_info['STC-Price-actual']:.2f} " 
+            if stc_info["PnL"] is not None:
+                str_STC += f'\tPnL:{round(stc_info["PnL"])}% ${round(stc_info["PnL$"])}' 
+            if stc_info["PnL-actual"] is not None:
+                str_STC += f' Actual:{round(stc_info["PnL-actual"])}% ${round(stc_info["PnL$-actual"])}\n\t\t'
 
         if eval(order.get('# Closed', "0"))==1 :
             self.portfolio.loc[open_trade, "isOpen"]=0
@@ -183,8 +185,8 @@ class AlertsTracker():
         quotes = quotes[msk].reset_index(drop=True)
         
         # first price will be the actual
-        if not pd.isnull(trade["Price-current"]):
-            price0 = trade["Price-current"]
+        if not pd.isnull(trade["Price-actual"]):
+            price0 = trade["Price-actual"]
         else:
             price0 = trade["Price"]
         quotes.loc[0, ' quote'] = price0
@@ -239,8 +241,6 @@ class AlertsTracker():
                 print(str_prt)
         self.portfolio.to_csv(self.portfolio_fname, index=False)
 
-
-
 def calc_stc_prices(trade, order=None):
     # if order is None = expired option
     if order is None:
@@ -250,18 +250,18 @@ def calc_stc_prices(trade, order=None):
             "expired": True
             }
     bto_price = trade["Price"]
-    bto_price_al = trade["Price-current"]
+    bto_price_al = trade["Price-actual"]
     
     if not order.get('expired', False):
-        if order['uQty'] is None:
-            uQty = 1
+        if order['Qty'] is None:
+            Qty = 1
         else:
-            uQty = order['uQty']
+            Qty = order['Qty']
     else: 
-        if pd.isnull(trade["STC-Amount"]):
-            uQty = trade['Amount'] 
+        if pd.isnull(trade["STC-Qty"]):
+            Qty = trade['Qty'] 
         else:
-            uQty = trade['Amount'] - trade["STC-Amount"]
+            Qty = trade['Qty'] - trade["STC-Qty"]
     
     if isinstance(bto_price, str):
         bto_price =  np.mean(eval(bto_price.replace("/", ",")))
@@ -271,27 +271,27 @@ def calc_stc_prices(trade, order=None):
         bto_price_al =  np.mean(eval(bto_price_al.replace("/", ",")))
     
     if not pd.isnull(trade["STC-Price"]):  # previous stcs            
-        stc_wprice = trade["STC-Price"] * trade["STC-Amount"]
-        stc_utotal = trade["STC-Amount"] + uQty
-        stc_price = (order.get("price") * uQty +  stc_wprice)/stc_utotal      
+        stc_wprice = trade["STC-Price"] * trade["STC-Qty"]
+        stc_utotal = trade["STC-Qty"] + Qty
+        stc_price = (order.get("price") * Qty +  stc_wprice)/stc_utotal      
         prices = "/".join([str(trade["STC-Prices"]), str(order.get("price"))])
         
-        if pd.isnull(trade["STC-Price-current"]) or pd.isnull(order.get("Actual Cost")):
+        if pd.isnull(trade["STC-Price-actual"]) or pd.isnull(order.get("Actual Cost")):
             prices_curr = 0 if order.get('expired', False) else ""
             stc_price_al = 0 if order.get('expired', False) else None
         else:
-            stc_wprice = trade["STC-Price-current"] * trade["STC-Amount"]
-            stc_price_al = (order.get("Actual Cost") * uQty +  stc_wprice)/stc_utotal
-            prices_curr = "/".join([str(trade["STC-Prices-current"]), str(order.get("Actual Cost"))])
+            stc_wprice = trade["STC-Price-actual"] * trade["STC-Qty"]
+            stc_price_al = (order.get("Actual Cost") * Qty +  stc_wprice)/stc_utotal
+            prices_curr = "/".join([str(trade["STC-Prices-actual"]), str(order.get("Actual Cost"))])
     else:  # non-previous stcs   
         stc_price = order.get("price")
         stc_price_al = order.get("Actual Cost")
-        stc_utotal = uQty
+        stc_utotal = Qty
         prices = order.get("price")
         prices_curr = order.get("Actual Cost")
     
     mutipl = 1 if trade['Asset'] == "option" else .01  # pnl already in %
-    if stc_price is not None: 
+    if stc_price is not None and stc_price != 0: 
         stc_pnl = float((stc_price - bto_price)/bto_price) *100
         stc_pnl_u = stc_pnl* bto_price *mutipl*stc_utotal 
     else:
@@ -306,13 +306,13 @@ def calc_stc_prices(trade, order=None):
         stc_pnl_al_u = stc_pnl_al* bto_price_al *mutipl*stc_utotal 
 
     stc_info = {"STC-Prices":prices,
-                "STC-Prices-current": prices_curr,
+                "STC-Prices-actual": prices_curr,
                 "STC-Price": stc_price,
-                "STC-Price-current": stc_price_al,
-                "STC-Amount": stc_utotal,
-                "STC-PnL": stc_pnl,
-                "STC-PnL-current": stc_pnl_al,
-                "STC-PnL$": stc_pnl_u,
-                "STC-PnL$-current": stc_pnl_al_u,
+                "STC-Price-actual": stc_price_al,
+                "STC-Qty": stc_utotal,
+                "PnL": stc_pnl,
+                "PnL-actual": stc_pnl_al,
+                "PnL$": stc_pnl_u,
+                "PnL$-actual": stc_pnl_al_u,
                 }
     return stc_info

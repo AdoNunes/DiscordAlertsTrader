@@ -162,7 +162,7 @@ print(6)
 event, values = window.read(.1)
 print(7)
 trade_events = queue.Queue(maxsize=20)
-alistner = DiscordBot(trade_events, brokerage=bksession)
+alistner = DiscordBot(trade_events, brokerage=bksession, cfg=cfg)
 print(8)
 threading.Thread(target=update_portfolios_thread, args=(window,), daemon=True).start()
 print(9)
@@ -188,7 +188,7 @@ fit_table_elms(window.Element("_track_").Widget)
 dt, hdr = gg.get_portf_data(port_exc)
 window.Element('_portfolio_').Update(values=dt)
 fit_table_elms(window.Element("_portfolio_").Widget)
-dt, hdr = gg.get_stats_data(port_exc)
+dt, hdr = gg.get_stats_data(stat_exc)
 window.Element('_stat_').Update(values=dt)
 fit_table_elms(window.Element("_stat_").Widget)
 
@@ -204,21 +204,28 @@ def run_gui():
         if event == sg.WINDOW_CLOSED:
             break
 
+        # Prefill trigger alert message
         if ('_portfolio_' in event and values['_portfolio_'] != []) or \
-            ('_track_' in event and values['_track_'] != []):  # Prefill trigger alert message
+            ('_track_' in event and values['_track_'] != []):  
             if '_portfolio_' in event:
                 pix = values['_portfolio_'][0] 
                 dt, hdr = gg.get_portf_data(port_exc, **values)
                 qty = dt[pix][hdr.index('filledQty')]
             else:
                 pix = values['_track_'][0]
-                dt, hdr = gg.get_tracker_data(port_exc, **values)
-                qty = dt[pix][hdr.index('Amount')]  
+                dt, hdr = gg.get_tracker_data(track_exc, **values)
+                qty = dt[pix][hdr.index('Qty')]  
             qty = qty if qty == "" else int(qty)            
             symb = dt[pix][hdr.index('Symbol')]
             auth = match_authors(dt[pix][hdr.index('Trader')])
             
-            price = dt[pix][hdr.index('S-Price-current')]
+            price = ""
+            if "Live" in hdr:
+                price = dt[pix][hdr.index('Live')]
+            if price == "":
+                price = dt[pix][hdr.index('S-Price-actual')]
+            if price == "":
+                price = dt[pix][hdr.index('S-Price')]
             price = price if price == "" else float(price)
             if "_" in symb:
                 # option
@@ -290,12 +297,7 @@ def run_gui():
                 if k[:len(chn)] == chn:
                     args[k[len(chn)+1:]] = v
             dt, _  = gg.get_hist_msgs(chan_name=chn, **args)
-            if args['n_rows'] != "":
-                n_rows = eval(args['n_rows'])
-                n_rows = max(1, n_rows)
-                window.Element(f"{chn}_table").Update(values=dt,  num_rows=n_rows)
-            else:
-                window.Element(f"{chn}_table").Update(values=dt)
+            window.Element(f"{chn}_table").Update(values=dt)
 
             fit_table_elms(window.Element(f"{chn}_table").Widget)
             window.Element(f'{chn}_UPD').Update(button_color=ori_col)
@@ -313,14 +315,32 @@ def run_gui():
             ori_col = window.Element("-subm-alert").ButtonColor
             window.Element("-subm-alert").Update(button_color=("black", "white"))
             event, values = window.read(.1)
-            try:        
+            
+            #extra comas
+            if len(values['-subm-msg'].split(','))>2:
+                splt = values['-subm-msg'].split(',')
+                author = splt[0]
+                msg = ",".join(splt[1:])
+            # one coma
+            elif len(values['-subm-msg'].split(','))==2:
                 author, msg = values['-subm-msg'].split(',')
-            except ValueError:
+            # one colon
+            elif len(values['-subm-msg'].split(':'))==2:
                 author, msg = values['-subm-msg'].split(':')
+            # extra colons
+            elif len(values['-subm-msg'].split(':'))>2:
+                splt = values['-subm-msg'].split(':')
+                author = splt[0]
+                msg = ":".join(splt[1:])
+            # no colon or coma
+            else:
+                print("No colon or coma in message, author not found")
+                
             author = match_authors(author.strip())
             # let pass no identifier if no match
             author = author.replace("#No match, find author identifier#1234", "")
-            msg = msg.strip()
+            author = author.replace("#Multiple matches, find author identifier#1234", "")
+            msg = msg.strip().replace("SPXW", "SPX")
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             new_msg = pd.Series({
                 'AuthorID': None,

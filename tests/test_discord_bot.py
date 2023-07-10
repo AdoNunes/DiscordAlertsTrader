@@ -5,6 +5,7 @@ import os
 from datetime import datetime, timedelta
 from DiscordAlertsTrader.discord_bot import DiscordBot
 from mock_discord_message import make_message
+from DiscordAlertsTrader.configurator import cfg
 
 root_dir  =  os.path.abspath(os.path.dirname(__file__))
 
@@ -15,26 +16,27 @@ class TestDiscordBot(unittest.TestCase):
 
         queue_prints = MagicMock()
         bot = DiscordBot(queue_prints=queue_prints, live_quotes=False, brokerage=None,
-                         tracker_portfolio_fname=self.tracker_portfolio_fname)
+                         tracker_portfolio_fname=self.tracker_portfolio_fname,
+                         cfg=cfg)
         
         message = make_message()
         bot.new_msg_acts(message, from_disc=True)
-        print("portfolio after:", bot.tracker.portfolio)
+        # print("portfolio after:", bot.tracker.portfolio)
         port = bot.tracker.portfolio.loc[0]
         self.assertEqual(port['isOpen'], 1)
         self.assertEqual(port['Price'], 1.0)
         self.assertEqual(port['Symbol'], 'AI_120923C25')
         self.assertEqual(port['Trader'], f"{message.author.name}#{message.author.discriminator}")
-        self.assertEqual(port['Amount'], 5)
+        self.assertEqual(port['Qty'], 5)
         # sell
         message.content = 'STC 5 AI 25c 12/09 @ 2 <@&940418825235619910> swinging'
         bot.new_msg_acts(message, from_disc=True)
         port = bot.tracker.portfolio.loc[0]
         self.assertEqual(port['isOpen'], 0)
-        self.assertEqual(port['STC-Amount'], 5)
+        self.assertEqual(port['STC-Qty'], 5)
         self.assertEqual(port['STC-Price'], 2.0)
         self.assertEqual(port['STC-Price'], 2.0)
-        self.assertEqual(port['STC-PnL'], 100.0)
+        self.assertEqual(port['PnL'], 100.0)
         
         # Delete the generated file
         os.remove(self.tracker_portfolio_fname)
