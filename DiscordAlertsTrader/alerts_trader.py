@@ -428,6 +428,11 @@ class AlertsTrader():
                 _ = self.bksession.cancel_order(order_id)
 
                 self.portfolio.loc[open_trade, f"STC{i}-Status"] = np.nan
+                self.portfolio.loc[open_trade, f"STC{i}-ordID"] = np.nan                
+                self.save_logs("port")
+                
+            elif ord_stat in ["REJECTED", 'CANCELED','CANCEL_REQUESTED', 'EXPIRED']:
+                self.portfolio.loc[open_trade, f"STC{i}-Status"] = np.nan
                 self.portfolio.loc[open_trade, f"STC{i}-ordID"] = np.nan
                 self.save_logs("port")
 
@@ -1053,6 +1058,7 @@ class AlertsTrader():
                             str_msg = f'updating exits option {trade["Symbol"]} 15 min before EOD with {SL*100}% SL and {PT*100}% PT'
                             print(Back.GREEN + str_msg)
                             self.queue_prints.put([str_msg, "", "green"])
+                            self.exit_percent_to_price(i)
                             
                 # Close position 5 min to close
                 elif time_now >= time_five.time() and time_now < time_closed.time():
@@ -1082,11 +1088,12 @@ class AlertsTrader():
                 self.close_open_exit_orders(i)
 
             exit_plan = eval(trade["exit_plan"])
-            if  exit_plan != {}:                
+            if exit_plan != {}:                
                 if all([isinstance(e, str) and ("%" not in e and "TS" not in e) for e in exit_plan.values()]) and trade['Asset'] == 'option':
                     self.check_opt_stock_price(i, exit_plan, "STC")
                 else:
                     self.make_exit_orders(i, exit_plan)
+                self.exit_percent_to_price(i)
 
             # Go over STC orders and check status
             for ii in range(1, 4):
@@ -1148,7 +1155,7 @@ class AlertsTrader():
                 if STCn < 3 and exit_plan[f"PT{STCn+1}"] is None:
                     exit_plan[f"PT{STCn+1}"] = quote_opt * 2
             elif v[:2] == "SL" and "%" not in pt and float(pt) >= quote:
-                 exit_plan[v] = quote
+                exit_plan[v] = quote
 
         if exit_plan_ori != exit_plan:
             self.portfolio.loc[i, "exit_plan"] = str(exit_plan)
