@@ -1067,7 +1067,8 @@ class AlertsTrader():
 
             if redo_orders:
                 self.close_open_exit_orders(i)
-
+            self.exit_percent_to_price(i)
+            trade = self.portfolio.iloc[i]
             exit_plan = eval(trade["exit_plan"])
             if  exit_plan != {}:                
                 if all([isinstance(e, str) and ("%" not in e and "TS" not in e) for e in exit_plan.values()]) and trade['Asset'] == 'option':
