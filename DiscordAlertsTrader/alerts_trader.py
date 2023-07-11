@@ -939,11 +939,18 @@ class AlertsTrader():
             
             if "TS" in exit_plan[exit]:  # format val%TSval%
                 pt,ts = exit_plan[exit].split("TS")
-                ptv = round(price * (1 + float(pt.replace("%", ""))/100),2)
+                if trade["Type"] == "STO":
+                    print("\033[91mWARNING: TrailingStop in buy to close. Why? \033[0m")
+                    ptv = round(price * (1 - float(pt.replace("%", ""))/100),2)
+                else:
+                    ptv = round(price * (1 + float(pt.replace("%", ""))/100),2)
                 ts =  round(price * (float(ts.replace("%", ""))/100) ,2)
                 exit_plan[exit] = f"{ptv}TS{ts}"
             else: # format val%
-                ptv = round(price * (1 + float(exit_plan[exit].replace("%", ""))/100),2)
+                if trade["Type"] == "STO":
+                    ptv = round(price * (1 - float(exit_plan[exit].replace("%", ""))/100),2)
+                else:
+                    ptv = round(price * (1 + float(exit_plan[exit].replace("%", ""))/100),2)
                 exit_plan[exit] = ptv
         
         sl = exit_plan["SL"]
@@ -952,7 +959,10 @@ class AlertsTrader():
                 sl = round(price * (float(sl.replace("%", "").replace("TS", ""))/100),2)
                 exit_plan["SL"] = f"TS{sl}"
             else: # format val%
-                exit_plan["SL"] = round(price * (1 - float(sl.replace("%", ""))/100),2)
+                if trade["Type"] == "STO":
+                    exit_plan["SL"] = round(price * (1 + float(sl.replace("%", ""))/100),2)
+                else:
+                    exit_plan["SL"] = round(price * (1 - float(sl.replace("%", ""))/100),2)
                 
         self.portfolio.loc[open_trade, "exit_plan"] = str(exit_plan)
         
