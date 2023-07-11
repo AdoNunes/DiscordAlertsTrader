@@ -1055,7 +1055,7 @@ class AlertsTrader():
                         
                         # check if not already updated, assume 5-10% exits are the updated 
                         percentage_difference = round(abs(exit_plan['SL'] - exit_plan['PT1']) / exit_plan['PT1'], 2)
-                        if abs(percentage_difference - (SL+PT)) <= 0.01:  # accept 1% rounding error
+                        if abs(percentage_difference - (SL+PT)) <= 0.03:  # accept 3% rounding error
                             quote = self.price_now(trade["Symbol"], "BTC", 1)
                             exit_plan = {
                                 "PT1": round(quote - PT * quote, 2),

@@ -1,8 +1,10 @@
 */config.ini
 secrets_td.json
 data/*_message_history.csv
+data/trader_logger.csv
+data/trader_portfolio.csv
 data/live_quotes/
-
+tokens.json
 *.DS_Store
 .vscode/
 # Byte-compiled / optimized / DLL files
