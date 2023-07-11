@@ -196,9 +196,9 @@ fit_table_elms(window.Element("_stat_").Widget)
 def run_gui():  
     subs_auth_msg = False
     auth_subs = cfg['discord']['authors_subscribed'].split(',')
-    auth_subs = [i.split("#")[0] for i in auth_subs]
+    auth_subs = [i.split("#")[0].strip() for i in auth_subs]
     
-    while True:    
+    while True: 
         event, values = window.read(1)#.1)
 
         if event == sg.WINDOW_CLOSED:

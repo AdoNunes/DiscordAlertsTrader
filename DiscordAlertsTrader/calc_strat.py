@@ -270,19 +270,19 @@ def grid_search(port, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25], max_marg
 port, no_quote, param = calc_returns(
     fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
-    last_days= 10,
+    last_days= 16,
     max_underlying_price= 500,
-    min_price= 30,
-    max_dte= 100,
+    min_price= 50,
+    max_dte= 10,
     min_dte= 0,
     exclude_traders= [ 'SPY', 'enhancedmarket'],
     exclude_symbols= ['SPX'],
     exclude_channs = "",
-    PT=25,
+    PT=80,
     TS=0,
-    SL=20,
+    SL=40,
     TS_buy= 5,
-    max_margin = None
+    max_margin = 22900
     )
 
 # print(port[['Date','Symbol','Trader', 'STC-PnL', 'STC-PnL-current', 'strategy-PnL','STC-PnL$', 'STC-PnL$-current',

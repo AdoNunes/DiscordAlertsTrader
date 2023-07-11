@@ -87,7 +87,10 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     try:
         data = pd.read_csv(fname_port,sep=",")
     except:
-        data = pd.read_csv(fname_port,sep=",")
+        try:
+            data = pd.read_csv(fname_port,sep=",")
+        except:
+            return [],[]
 
     try:
         data = filter_data(data, exclude, port_filt_author, port_filt_date_frm,
