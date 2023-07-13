@@ -981,7 +981,7 @@ class AlertsTrader():
             if trade["isOpen"] == 0:
                 continue
 
-            if trade["BTO-Status"]  in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION']:
+            if trade["BTO-Status"]  in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION', 'AWAITING_MANUAL_REVIEW']:
                 order_status, order_info = self.get_order_info(trade['ordID'])
 
                 # Check if number filled Qty changed
