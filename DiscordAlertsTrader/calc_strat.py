@@ -280,8 +280,8 @@ port, no_quote, param = calc_returns(
     exclude_channs = "",
     PT=50,
     TS=0,
-    SL=80,
-    TS_buy= 5,
+    SL=40,
+    TS_buy= 10,
     max_margin = 22900
     )
 
