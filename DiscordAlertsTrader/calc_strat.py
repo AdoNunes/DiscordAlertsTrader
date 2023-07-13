@@ -157,12 +157,12 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
 
         try:
             # msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(row['STC-Date']))) & (quotes[' quote'] > 0)
-            stc_date = pd.to_datetime(row['Date']).replace(hour=15, minute=50, second=0, microsecond=0)
+            stc_date = pd.to_datetime(row['Date']).replace(hour=15, minute=55, second=0, microsecond=0)
             msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= stc_date)) & (quotes[' quote'] > 0)
         except TypeError:
             # continue
             stc_date = row['Date'].replace("T00:00:00+0000", " 15:50:00.000000")
-            stc_date = pd.to_datetime(stc_date).replace(hour=16, minute=0, second=0, microsecond=0)
+            stc_date = pd.to_datetime(stc_date).replace(hour=15, minute=55, second=0, microsecond=0)
             msk = (dates >= pd.to_datetime(row['Date'])) & ((dates <= pd.to_datetime(stc_date))) & (quotes[' quote'] > 0)
 
         if not msk.any():
@@ -270,7 +270,7 @@ def grid_search(port, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25], max_marg
 port, no_quote, param = calc_returns(
     fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
-    last_days= 16,
+    last_days= 17,
     max_underlying_price= 500,
     min_price= 50,
     max_dte= 10,
@@ -278,9 +278,9 @@ port, no_quote, param = calc_returns(
     exclude_traders= [ 'SPY', 'enhancedmarket'],
     exclude_symbols= ['SPX'],
     exclude_channs = "",
-    PT=80,
+    PT=50,
     TS=0,
-    SL=40,
+    SL=80,
     TS_buy= 5,
     max_margin = 22900
     )
