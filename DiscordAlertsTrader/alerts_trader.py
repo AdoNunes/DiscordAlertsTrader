@@ -939,11 +939,18 @@ class AlertsTrader():
             
             if "TS" in exit_plan[exit]:  # format val%TSval%
                 pt,ts = exit_plan[exit].split("TS")
-                ptv = round(price * (1 + float(pt.replace("%", ""))/100),2)
+                if trade["Type"] == "STO":
+                    print("\033[91mWARNING: TrailingStop in buy to close. Why? \033[0m")
+                    ptv = round(price * (1 - float(pt.replace("%", ""))/100),2)
+                else:
+                    ptv = round(price * (1 + float(pt.replace("%", ""))/100),2)
                 ts =  round(price * (float(ts.replace("%", ""))/100) ,2)
                 exit_plan[exit] = f"{ptv}TS{ts}"
             else: # format val%
-                ptv = round(price * (1 + float(exit_plan[exit].replace("%", ""))/100),2)
+                if trade["Type"] == "STO":
+                    ptv = round(price * (1 - float(exit_plan[exit].replace("%", ""))/100),2)
+                else:
+                    ptv = round(price * (1 + float(exit_plan[exit].replace("%", ""))/100),2)
                 exit_plan[exit] = ptv
         
         sl = exit_plan["SL"]
@@ -952,7 +959,10 @@ class AlertsTrader():
                 sl = round(price * (float(sl.replace("%", "").replace("TS", ""))/100),2)
                 exit_plan["SL"] = f"TS{sl}"
             else: # format val%
-                exit_plan["SL"] = round(price * (1 - float(sl.replace("%", ""))/100),2)
+                if trade["Type"] == "STO":
+                    exit_plan["SL"] = round(price * (1 + float(sl.replace("%", ""))/100),2)
+                else:
+                    exit_plan["SL"] = round(price * (1 - float(sl.replace("%", ""))/100),2)
                 
         self.portfolio.loc[open_trade, "exit_plan"] = str(exit_plan)
         
@@ -1045,7 +1055,7 @@ class AlertsTrader():
                         
                         # check if not already updated, assume 5-10% exits are the updated 
                         percentage_difference = round(abs(exit_plan['SL'] - exit_plan['PT1']) / exit_plan['PT1'], 2)
-                        if abs(percentage_difference - (SL+PT)) <= 0.01:  # accept 1% rounding error
+                        if abs(percentage_difference - (SL+PT)) <= 0.03:  # accept 3% rounding error
                             quote = self.price_now(trade["Symbol"], "BTC", 1)
                             exit_plan = {
                                 "PT1": round(quote - PT * quote, 2),
