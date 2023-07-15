@@ -439,8 +439,8 @@ class AlertsTrader():
 
     def get_order_info(self, order_id):
         try:
-             order_status, order_info = self.bksession.get_order_info(order_id)
-             return order_status, order_info
+            order_status, order_info = self.bksession.get_order_info(order_id)
+            return order_status, order_info
         except Exception as ex:
             print(f"Caught Error in order info, skipping order info retr. Error: {ex}")
             self.queue_prints.put([f"Caught Error, skipping order info retr. Error: {ex}", "", "red"])
