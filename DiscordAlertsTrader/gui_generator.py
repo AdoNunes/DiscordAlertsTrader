@@ -80,7 +80,9 @@ def calculate_weighted_mean(row, sufix="Price"):
         return np.nan
     
 def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
-                     port_filt_date_to='', port_filt_chn='', **kwargs ):
+                     port_filt_date_to='', port_filt_chn='', port_filt_sym='',
+                     port_exc_author="", port_exc_chn="",
+                     **kwargs ):
     fname_port = cfg['portfolio_names']['portfolio_fname']
     if not op.exists(fname_port):
         return [],[]
@@ -90,11 +92,18 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
         try:
             data = pd.read_csv(fname_port,sep=",")
         except:
-            return [],[]
-
+            return [],[] 
     try:
-        data = filter_data(data, exclude, port_filt_author, port_filt_date_frm,
-                        port_filt_date_to, port_filt_chn)
+        data = filter_data(data, exclude, 
+                            filt_author=port_filt_author,
+                            filt_date_frm=port_filt_date_frm,
+                            filt_date_to=port_filt_date_to,
+                            filt_sym=port_filt_sym,
+                            filt_chn=port_filt_chn,
+                            exc_author=port_exc_author,
+                            exc_chn=port_exc_chn
+                            )
+   
     except Exception as e:
         print("error during portfolio filter data", e)
         pass
@@ -134,7 +143,6 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
         data[f'STC{i}-PnL'] = pd_col_str_frmt(data[f'STC{i}-PnL'])
         data[f'STC{i}-Qty'] = pd_col_str_frmt(data[f'STC{i}-Qty'])
 
-    
     if live_col:
         data['Live'] = pd_col_str_frmt(data['Live'])
 
@@ -156,7 +164,7 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     cols = ['Live'] + cols
         
     data = data[cols]
-    data.fillna("", inplace=True)
+    data  = data.fillna("")
     header_list = data.columns.tolist()
     header_list = [d.replace('STC', 'S') for d in header_list]
     data = data.astype(str)
@@ -174,9 +182,9 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     data = data.values.tolist()
     return data, header_list
 
-def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
-                     track_filt_date_to='', track_filt_sym='', track_exc_author='',
-                     track_exc_chn='',**kwargs ):
+def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',                  
+                     track_filt_date_to='', track_filt_sym='', track_filt_chn='',
+                     track_exc_author='', track_exc_chn='',**kwargs ):
     fname_port = cfg['portfolio_names']['tracker_portfolio_name']
     if not op.exists(fname_port):
         return [],[]
@@ -184,11 +192,18 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     try:
         data = pd.read_csv(fname_port, sep=",")
     except:
-        return [[]],[]
+        return [[]],[] 
 
     try:
-        data = filter_data(data,exclude, track_filt_author, track_filt_date_frm,
-                        track_filt_date_to, track_filt_sym, track_exc_author, track_exc_chn)
+        data = filter_data(data,exclude, 
+                            filt_author=track_filt_author,
+                            filt_date_frm=track_filt_date_frm,
+                            filt_date_to=track_filt_date_to,
+                            filt_chn=track_filt_chn,
+                            filt_sym=track_filt_sym,
+                            exc_author=track_exc_author,
+                            exc_chn=track_exc_chn
+                        )
     except Exception as e:
         print("error during tracker filter data", e)
         pass
@@ -251,9 +266,6 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
     
     data = pd.read_csv(fname_port, sep=",")
     data['Date'] = data['Date'].apply(lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f").strftime("%m/%d/%Y"))
-    data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
-    data["N Alerts"]= data['Avged']
-    data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
     try:
         data = filter_data(data,exclude, stat_filt_author, stat_filt_date_frm,
                         stat_filt_date_to, stat_filt_sym, stat_exc_author, stat_exc_chn, stat_exc_sym,
@@ -263,6 +275,9 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
         print("error during stats filter data", e)
         pass
 
+    data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
+    data["N Alerts"]= data['Avged']
+    data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
     data['PnL diff'] = data['PnL-actual'] - data['PnL']
     data['BTO diff'] = 100*(data['Price-actual'] - data['Price'])/ data['Price']
     data['STC diff'] = 100*(data['STC-Price-actual'] - data['STC-Price'])/ data['STC-Price']
@@ -408,7 +423,11 @@ def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
                        usecols=['Author', 'Date', 'Content', 'Parsed'])
     data = data.rename({"Author": "Trader"}, axis=1)
 
-    data = filter_data(data,{}, filt_author, filt_date_frm, filt_date_to, msg_cont=filt_cont)
+    try:
+        data = filter_data(data,{}, filt_author, filt_date_frm, filt_date_to, msg_cont=filt_cont)
+    except Exception as e:
+        print("error during history filter data", e)
+
     data['Trader'] = data['Trader'].apply(lambda x: x.split('#')[0])
     data['Date'] = data['Date'].apply(lambda x: short_date(x))
 

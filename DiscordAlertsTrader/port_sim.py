@@ -97,16 +97,17 @@ def port_cap_trades(data, max_trade_val:int=None, min_con_val:int=None, max_u_qt
 
 def filter_data(data,exclude={}, filt_author='', filt_date_frm='', filt_date_to='',
                 filt_sym='', exc_author='', exc_chn='', exc_sym='', msg_cont='',
-                max_trade_val="", min_con_val="", max_u_qty="", max_underlying="", max_dte="", min_dte=""                  
+                max_trade_val="", min_con_val="", max_u_qty="", max_underlying="", max_dte="", min_dte="",
+                filt_chn=""                 
                 ):
     if len(exclude):
         for k, v in exclude.items():
             if k == "Cancelled" and v and k in data.columns:
                 data = data[data["BTO-Status"] !="CANCELED"]
             elif k == "Closed" and v:
-                data = data[data["isOpen"] !="No"]
+                data = data[data["isOpen"] !=0]
             elif k == "Open" and v:
-                data = data[data["isOpen"] !="Yes"]
+                data = data[data["isOpen"] !=1]
             elif k == "NegPnL" and v:
                 col = "PnL" if "PnL" in data else 'PnL'                
                 pnl = data[col].apply(lambda x: np.nan if x =="" else eval(x) if isinstance(x, str) else x)     
@@ -138,16 +139,20 @@ def filter_data(data,exclude={}, filt_author='', filt_date_frm='', filt_date_to=
     if filt_sym:
         msk = [x.strip() for x in filt_sym.split(",")]
         data = data[data['Symbol'].str.contains('|'.join(msk), case=False)]
+    if filt_chn:
+        msk = [x.strip() for x in filt_chn.split(",")]
+        data = data[data['Channel'].str.contains('|'.join(msk), case=False)]
     if exc_author:
         msk = [x.strip() for x in exc_author.split(",")]
         data = data[~data['Trader'].str.contains('|'.join(msk), case=False)]
-    if exc_chn:
+    if exc_chn and "Channel" in data.columns:
         msk = [x.strip() for x in exc_chn.split(",")]
         data = data[~data['Channel'].str.contains('|'.join(msk), case=False)]
     if exc_sym:
         msk = [x.strip() for x in exc_sym.split(",")]
         data = data[~data['Symbol'].str.contains('|'.join(msk), case=False)]
     if msg_cont:
+        data.loc[:, 'Content'] = data['Content'].fillna('')
         data = data[data['Content'].str.contains(msg_cont, case=False)]
 
     arguments = [max_trade_val, min_con_val, max_u_qty, max_underlying, max_dte, min_dte]
