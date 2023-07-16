@@ -19,6 +19,23 @@ def layout_console(ttl='Discord messages from subscribed channels',
               [sg.Multiline(size=(1200,None), key=key, autoscroll=True, enable_events=False),sg.Stretch()]]
     return layout, key
 
+def trigger_alerts_layout():
+    tp_chan = "Select portfolios to trigger alert.\'nuser' for your portfolio only. Will bypass false do_BTO and do_BTC and make the trade \n" +\
+                "'analysts' for the alerts tracker,\n'all' for both"
+    tp_trig = "Click portfolio row number to prefill the STC alert. Alerts can look like\n" +\
+                "BTO: Author#1234, BTO 1 AAA 115C 05/30 @2.5 PT 3.5TS30% PT2 4 SL TS40%, '%' for percentage, TS for Trailing Stop\n" +\
+                "STC: Author#1234, STC 1 AAA 115C 05/30 @3\n" +\
+                "STO: Author#1234, STC 1 AAA 115C 05/30 @2.5 PT 40% SL 50% \n" +\
+                "BTC: Author#1234, STC 1 AAA 115C 05/30 @2 \n" +\
+                "Exit Update: Author#1234, exit update AAA 115C 05/30 PT 80% SL 2\n"
+    lay = [sg.Text('to portfolio:', tooltip=tp_chan, size=(15,1.2)),
+           sg.Combo(['both', 'user', 'analysts'], default_value='analysts', key="_chan_trigg_",tooltip=tp_chan, readonly=True, size=(15,1.2)),
+            sg.Input(default_text="Author#1234, STC 1 AAA 115C 05/30 @2.5 [click portfolio row number to prefill]",
+                    size= (100,1.3), key="-subm-msg",
+                    tooltip=tp_trig),
+           sg.Button("Trigger alert", key="-subm-alert", 
+                     tooltip="Will generate alert in user or/and analysts portfolio, useful to close or open a position", size= (20,1.2))]
+    return lay
 
 def layout_portfolio(data_n_headers, font_body, font_header):
     if data_n_headers[0] == []: 
