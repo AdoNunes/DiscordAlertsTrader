@@ -32,7 +32,6 @@ If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed.
 - Supporting manual trade execution through prompts if `auto_trade` is set to False in `config.ini`.
 
 
-**Currently, version control for analysts portfolio is from server BullTrades.[you can see all historical stats]**
 **Current Discord servers being used**:
 - TradeProElite (good timing, profitable strategies): [invite link](https://tradeproelite.memberful.com/referral/vedpmz8)
 - BullTrades (good for shorting, see historical trades in the package): [invite link](https://bulltrades.net/?ref=ndrjogi)
@@ -40,7 +39,7 @@ If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed.
 Supports any Discord channel with structured BTP/STC alerts as message contents (not embedded, yet)
 
 
-Let me know if you find the package useful or need support by dropping me an email or visiting the [discord server](https://discord.gg/9ejghcjpar)
+Let me know if you find the package useful or need support by dropping me a DM @MinkysTradus or visiting the [discord server](https://discord.gg/9ejghcjpar)
 
  ________________________
 <img src="media/GUI_analysts_portfolio.PNG" alt="Analysts Portfolio" width="500" height="300">
