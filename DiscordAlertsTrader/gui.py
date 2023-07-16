@@ -107,10 +107,7 @@ layout = [[sg.TabGroup([
                         [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],                        
                         [sg.Tab("Account", ly_accnt)]
                         ], title_color='black')],
-          [sg.Input(default_text="Author#1234, STC 1 AAA 115C 05/30 @2.5 [click portfolio row number to prefill]",
-                    size= (110,1.5), key="-subm-msg",
-                    tooltip="Click portfolio row number to prefill the STC alert\na BTO can look like: Author#1234, BTO 1 AAA 115C 05/30 @2.5 PT 3.5 PT2 4 SL 40%, % will make it a Trailing Stop"),
-           sg.Button("Trigger alert", key="-subm-alert", tooltip="Will generate alert in portfolio and tracker, useful to close or open a position", size= (20,1))]
+            gl.trigger_alerts_layout()
         ]
 print(3)
 window = sg.Window('Discord Alerts Trader', layout,size=(100, 800), # force_toplevel=True,
@@ -342,12 +339,14 @@ def run_gui():
             author = author.replace("#Multiple matches, find author identifier#1234", "")
             msg = msg.strip().replace("SPXW", "SPX")
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+            chan = "GUI_" + values["_chan_trigg_"]
+            print(chan)
             new_msg = pd.Series({
                 'AuthorID': None,
                 'Author': author,
                 'Date': date, 
                 'Content': msg,
-                'Channel': "GUI_input"
+                'Channel': chan
                 })
             alistner.new_msg_acts(new_msg, from_disc=False)
             window.Element("-subm-alert").Update(button_color=ori_col)
@@ -386,7 +385,7 @@ def gui():
     client_thread = threading.Thread(target=run_client, daemon=True)
 
     # start the threads
-    client_thread.start()
+    # client_thread.start()
     run_gui()
 
     # close the GUI window

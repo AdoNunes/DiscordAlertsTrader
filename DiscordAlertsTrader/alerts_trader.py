@@ -71,6 +71,7 @@ class AlertsTrader():
         self.send_alert_to_discord = cfg['discord'].getboolean('notify_alerts_to_discord')
         self.discord_channel = None # discord channel object to post trade alerts, passed on_ready discord
         self.cfg = cfg
+        self.EOD = {} # end of day shorting actions
         # load port and log
         if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
@@ -231,10 +232,10 @@ class AlertsTrader():
                 return None, None, order, None
 
     def short_orders(self, order, pars):
-        if self.cfg['shorting'].getboolean('DO_STO_TRADES') is True and order['action'] == "STO":
+        if order['action'] == "STO":
             # check strike
-            strike = re.split("C|P", order['Symbol'].split("_")[1])[1]
-            if eval(strike) > eval(self.cfg['shorting']['max_strike']):
+            strike = eval(re.split("C|P", order['Symbol'].split("_")[1])[1])
+            if strike > eval(self.cfg['shorting']['max_strike']):
                 str_msg = f"STO strike too high: {strike}, order aborted"
                 print(Back.RED + str_msg)
                 self.queue_prints.put([str_msg, "", "red"])
@@ -274,14 +275,12 @@ class AlertsTrader():
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
             
-            order['Qty'] = 1
-            # Handle missing quantity
-            if 'Qty' not in order.keys() or order['Qty'] is None:
-                if self.cfg['shorting']['default_sto_qty'] == "buy_one":
-                    order['Qty'] = 1                    
-                elif self.cfg['shorting']['default_sto_qty'] == "trade_capital":
-                    order['Qty'] =  int(max(round(float(self.cfg['shorting']['trade_capital'])/order['price']), 1))
-            
+            # Handle quantity            
+            if self.cfg['shorting']['default_sto_qty'] == "buy_one":
+                order['Qty'] = 1                    
+            elif self.cfg['shorting']['default_sto_qty'] == "underlying_capital":
+                order['Qty'] = eval(self.cfg['shorting']['underlying_capital'])//strike
+
             # Handle trade too expensive
             max_trade_val = float(self.cfg['shorting']['max_trade_capital'])
             if order['price'] * order['Qty'] > max_trade_val:
@@ -296,7 +295,6 @@ class AlertsTrader():
                     print(Back.RED + str_msg)
                     self.queue_prints.put([str_msg, "", "red"])
                     return "no", order, False
-            
             return "yes", order, False
         # decide if do BTC based on alert
         elif order['action'] == "BTC":
@@ -439,8 +437,8 @@ class AlertsTrader():
 
     def get_order_info(self, order_id):
         try:
-             order_status, order_info = self.bksession.get_order_info(order_id)
-             return order_status, order_info
+            order_status, order_info = self.bksession.get_order_info(order_id)
+            return order_status, order_info
         except Exception as ex:
             print(f"Caught Error in order info, skipping order info retr. Error: {ex}")
             self.queue_prints.put([f"Caught Error, skipping order info retr. Error: {ex}", "", "red"])
@@ -937,20 +935,30 @@ class AlertsTrader():
             if exit_plan[exit] is None or not isinstance(exit_plan[exit], str)  or "%" not in exit_plan[exit]:
                 continue
             
-            if "TS" in exit_plan[exit]:  # format val%TSval%
+            if "TS" in exit_plan[exit]: 
                 pt,ts = exit_plan[exit].split("TS")
-                if trade["Type"] == "STO":
-                    print("\033[91mWARNING: TrailingStop in buy to close. Why? \033[0m")
-                    ptv = round(price * (1 - float(pt.replace("%", ""))/100),2)
-                else:
-                    ptv = round(price * (1 + float(pt.replace("%", ""))/100),2)
-                ts =  round(price * (float(ts.replace("%", ""))/100) ,2)
+                if "%" in pt:  # format val%TSval%
+                    if trade["Type"] == "STO":
+                        print("\033[91mWARNING: TrailingStop in buy to close. Why? \033[0m")
+                        if "%" in pt:
+                            ptv = round(price * (1 - float(pt.replace("%", ""))/100),2)
+                    else:
+                        ptv = round(price * (1 + float(pt.replace("%", ""))/100),2)
+                else: # format valTSval%
+                    ptv = float(pt)
+                if "%" in ts: # format TSval%
+                    ts =  round(price * (float(ts.replace("%", ""))/100) ,2)
+                else: # format TSval
+                    ts = float(ts)
                 exit_plan[exit] = f"{ptv}TS{ts}"
-            else: # format val%
-                if trade["Type"] == "STO":
-                    ptv = round(price * (1 - float(exit_plan[exit].replace("%", ""))/100),2)
+            else: # format val%                
+                if "%" in exit_plan[exit]:
+                    if trade["Type"] == "STO":
+                        ptv = round(price * (1 - float(exit_plan[exit].replace("%", ""))/100),2)
+                    else:
+                        ptv = round(price * (1 + float(exit_plan[exit].replace("%", ""))/100),2)
                 else:
-                    ptv = round(price * (1 + float(exit_plan[exit].replace("%", ""))/100),2)
+                    ptv = float(exit_plan[exit])
                 exit_plan[exit] = ptv
         
         sl = exit_plan["SL"]
@@ -1054,8 +1062,9 @@ class AlertsTrader():
                         SL, PT = eval(SL)/100, eval(PT)/100
                         
                         # check if not already updated, assume 5-10% exits are the updated 
-                        percentage_difference = round(abs(exit_plan['SL'] - exit_plan['PT1']) / exit_plan['PT1'], 2)
-                        if abs(percentage_difference - (SL+PT)) <= 0.03:  # accept 3% rounding error
+                        # percentage_difference = round(abs(exit_plan['SL'] - exit_plan['PT1']) / exit_plan['PT1'], 2)
+                        # if abs(percentage_difference - (SL+PT)) <= 0.03:  # accept 3% rounding error
+                        if self.EOD.get(trade["Symbol"]) is not "15min":
                             quote = self.price_now(trade["Symbol"], "BTC", 1)
                             exit_plan = {
                                 "PT1": round(quote - PT * quote, 2),
@@ -1069,9 +1078,10 @@ class AlertsTrader():
                             print(Back.GREEN + str_msg)
                             self.queue_prints.put([str_msg, "", "green"])
                             self.exit_percent_to_price(i)
-                            
+                            self.EOD[trade["Symbol"]] = "15min"
                 # Close position 5 min to close
-                elif time_now >= time_five.time() and time_now < time_closed.time():
+                elif time_now >= time_five.time() and time_now < time_closed.time() \
+                    and self.EOD.get(trade["Symbol"]) is not "5min":
                     print(f'closing option {trade["Symbol"]} 5 min before EOD')
                     quote = self.price_now(trade["Symbol"], "BTC", 1)
                     
@@ -1093,6 +1103,7 @@ class AlertsTrader():
                         if pd.isnull(trade[STC+"-ordID"]):
                             break
                     self.portfolio.loc[i, STC + "-ordID"] =  order_id
+                    self.EOD[trade["Symbol"]] = "5min"
 
             if redo_orders:
                 self.close_open_exit_orders(i)
@@ -1176,15 +1187,16 @@ class AlertsTrader():
 
     def SL_below_market(self, order, new_SL_ratio=.95):
         SL = order.get("SL")
-        price_now = self.price_now(order["Symbol"], "STC", 1)
+        if order['action'] == 'STC':
+            price_now = self.price_now(order["Symbol"], "STC", 1)
 
-        if SL > price_now:
-            new_SL = round(price_now * new_SL_ratio, 2)
-            print(Back.RED + f"{order['Symbol']} SL below bid price, changed from {SL} to {new_SL}")
-            self.queue_prints.put([f"{order['Symbol']} SL below bid price, changed from {SL} to {new_SL}",
-                            "", "red"])
-            order["SL"] = new_SL
-        return order
+            if SL > price_now:
+                new_SL = round(price_now * new_SL_ratio, 2)
+                print(Back.RED + f"{order['Symbol']} SL below bid price, changed from {SL} to {new_SL}")
+                self.queue_prints.put([f"{order['Symbol']} SL below bid price, changed from {SL} to {new_SL}",
+                                "", "red"])
+                order["SL"] = new_SL
+            return order
 
 
     def make_exit_orders(self, open_trade, exit_plan):
@@ -1308,6 +1320,7 @@ class AlertsTrader():
                 # Check that is below actual price
                 if trade["Type"] == "BTO":
                     if order.get("SL") is not None and isinstance(order.get("SL"), (int, float)):
+                        order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
                         order = self.SL_below_market(order)
 
                 if ord_func is not None and order['Qty'] > 0:

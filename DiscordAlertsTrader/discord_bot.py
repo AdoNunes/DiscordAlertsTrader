@@ -285,54 +285,43 @@ class DiscordBot(discord.Client):
                 str_msg += f" Actual:{quote}, diff {round(act_diff*100)}%"
             self.queue_prints.put([f"\t {str_msg}", "green"])
             print(Fore.GREEN + f"\t {str_msg}")
-            
-            track_out = self.tracker.trade_alert(order, live_alert, chn)
-            self.queue_prints.put([f"{track_out}", "red"])
+            #Tracker
+            if chn != "GUI_user":
+                track_out = self.tracker.trade_alert(order, live_alert, chn)
+                self.queue_prints.put([f"{track_out}", "red"])
+            # Trader
             do_trade, order = self.do_trade_alert(msg['Author'], msg['Channel'], order)
             if do_trade and date_diff.seconds < 120:
                 order["Trader"] = msg['Author']
                 self.trader.new_trade_alert(order, pars, msg['Content'])
-            
-            # if order is not None:
-            #     self.track_spx_spy(order, msg)
         
         if self.chn_hist.get(chn) is not None:
             msg['Parsed'] = pars
             self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
             self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
-
-    def track_spx_spy(self, order, msg):
-        if order['Symbol'].split("_")[0] != "SPXW" or self.bksession is None or self.bksession.name != 'tda':
-            return
-        msg = msg.copy()
-        spx_q = self.bksession.get_quotes(["$SPX.X"])["$SPX.X"]['lastPrice']
-        spy_q = self.bksession.get_quotes(["SPY"])["SPY"]["bidPrice"]
-        rat = spx_q/spy_q
-        
-        if order.get('strike') is None or order.get('price') is None:
-            return
-        
-        strike = f"{round(int(order['strike'][:-1])/rat)}{order['strike'][-1]}"        
-        alert = f"{order['action']} {order['Qty']} SPY {strike} {order['expDate']} @ {round(order['price']/rat, 2)}"
-        msg['Content'] = alert
-        msg['Author'] = msg['Author']+"_SPX/SPY"
-        self.new_msg_acts(msg, from_disc=False)
     
     def do_trade_alert(self, author, channel, order):
         "Decide if alert should be traded"
-        if author in self.cfg['discord']['authors_subscribed'].split(",") and self.bksession is not None:
+        if self.bksession is None or channel == "GUI_analysts":
+            return False, order
+        # in authors subs list
+        if author in self.cfg['discord']['authors_subscribed'].split(","):
             return True, order
-        elif channel in self.cfg['discord']['channelwise_subscription'].split(",") and self.bksession is not None:
+        # in channel subs list
+        elif channel in self.cfg['discord']['channelwise_subscription'].split(","):
             return True, order
-        elif author in self.cfg['shorting']['authors_subscribed'].split(",") and self.bksession is not None:
+        # in authors shorting list
+        elif author in self.cfg['shorting']['authors_subscribed'].split(","):
             if order['asset'] != "option":
                 return False, order
             # BTC order sent manullay from gui
-            if order["action"] == "BTC" and "GUI" in channel:
+            if order["action"] in ["BTC", "STO"] and channel in ["GUI_user", "GUI_both"]:
                 return True, order
-            # Make it short
+            # Make it shorting order
             order["action"] = "STO" if order["action"] == "BTO" else "BTC" if order["action"] == "STC" else order["action"]
-            if order["action"] == "BTC" and not self.cfg['shorting'].getboolean('DO_BTC_TRADES'):
+            # reject if cfg do BTO or STC is false
+            if (order["action"] == "BTC" and not self.cfg['shorting'].getboolean('DO_BTC_TRADES')) \
+                or (order["action"] == "STO" and not self.cfg['shorting'].getboolean('DO_STO_TRADES')):
                 return False, order
             if len(self.cfg['shorting']['max_dte']):
                 if order['dte'] <= int(self.cfg['shorting']['max_dte']):

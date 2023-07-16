@@ -392,7 +392,7 @@ def parse_avg(msg):
     return avg, avg_inf.span()
 
 def parse_exits_vals(msg, expr):
-    re_comp= re.compile(expr + "[:]?[ ]*[$]*(\d*[\.]*[\d]*[%]?)(TS[\d+\.]*[%]?)?", re.IGNORECASE) 
+    re_comp= re.compile("\s" +expr + "[:]?[ ]*[$]*(\d*[\.]*[\d]*[%]?)(TS[\d+\.]*[%]?)?", re.IGNORECASE) 
     exit_inf = re_comp.search(msg) 
 
     if exit_inf is None:
