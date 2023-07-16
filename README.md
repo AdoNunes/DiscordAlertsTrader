@@ -1,5 +1,6 @@
 # DiscordAlertsTrader: *Discord Alerts Trader Bot*
 ________________________
+![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/t/AdoNunes/DiscordAlertsTrader?color=red)
 ![PyPI](https://img.shields.io/pypi/v/DiscordAlertsTrader)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/DiscordAlertsTrader)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/DiscordAlertsTrader)
@@ -31,10 +32,12 @@ If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed.
 - Supporting manual trade execution through prompts if `auto_trade` is set to False in `config.ini`.
 
 
-Supports any Discord channel with structured alerts BTO and STC as message contents (not embedded)
+**Currently, version control for analysts portfolio is from server BullTrades.[you can see all historical stats]**
+**Current Discord servers being used**:
+- TradeProElite (good timing, profitable strategies): [invite link](https://tradeproelite.memberful.com/referral/vedpmz8)
+- BullTrades (good for shorting, see historical trades in the package): [invite link](https://bulltrades.net/?ref=ndrjogi)
 
-**Currently, version control for analysts portfolio is from server BullTrades.[you can see all historical stats]** 
-  - Invite link to BullTrades: [https://discord.gg/bulltrades](https://bulltrades.net/?ref=ndrjogi)
+Supports any Discord channel with structured BTP/STC alerts as message contents (not embedded, yet)
 
 
 Let me know if you find the package useful or need support by dropping me an email or visiting the [discord server](https://discord.gg/9ejghcjpar)
@@ -54,6 +57,9 @@ It requires a user discord token, once installed the package saves the token in 
 To get the discord token follow the instructions: https://www.androidauthority.com/get-discord-token-3149920/
 To get the channel ID, in Discord right click on the channel and click "Copy Channel ID"
 
+**Automation of user accounts is against Discord ToS. This package only read alerts and Discord can not detect automation behavior,
+however, if you want to follow Discords ToS, do not provide a user token and manually input the alerts at the bottom of the GUI to
+manually trigger the alerts ;)**
 
 ## Installation and Setup
  ______________________________
