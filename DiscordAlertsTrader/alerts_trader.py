@@ -1064,7 +1064,7 @@ class AlertsTrader():
                         # check if not already updated, assume 5-10% exits are the updated 
                         # percentage_difference = round(abs(exit_plan['SL'] - exit_plan['PT1']) / exit_plan['PT1'], 2)
                         # if abs(percentage_difference - (SL+PT)) <= 0.03:  # accept 3% rounding error
-                        if self.EOD.get(trade["Symbol"]) is not "15min":
+                        if self.EOD.get(trade["Symbol"]) != "15min":
                             quote = self.price_now(trade["Symbol"], "BTC", 1)
                             exit_plan = {
                                 "PT1": round(quote - PT * quote, 2),
@@ -1081,7 +1081,7 @@ class AlertsTrader():
                             self.EOD[trade["Symbol"]] = "15min"
                 # Close position 5 min to close
                 elif time_now >= time_five.time() and time_now < time_closed.time() \
-                    and self.EOD.get(trade["Symbol"]) is not "5min":
+                    and self.EOD.get(trade["Symbol"]) != "5min":
                     print(f'closing option {trade["Symbol"]} 5 min before EOD')
                     quote = self.price_now(trade["Symbol"], "BTC", 1)
                     

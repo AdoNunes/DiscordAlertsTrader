@@ -103,7 +103,6 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
                             exc_author=port_exc_author,
                             exc_chn=port_exc_chn
                             )
-   
     except Exception as e:
         print("error during portfolio filter data", e)
         pass
@@ -111,7 +110,7 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     live_col = False
     data['Live'] = np.nan
     if not exclude.get("live PnL", False):
-        data =  get_live_quotes(data)
+        data =  get_live_quotes(data, trader_port=True)
         if 'Live' in data.columns:
             live_col = True
 
@@ -154,7 +153,7 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
 
-    cols = ['isOpen', "PnL", "PnL$", 'Date', 'Symbol', 'Trader', 'BTO-Status', 'Price',
+    cols = ['isOpen', "PnL", "PnL$", 'Date', 'Symbol', 'Trader', 'BTO-Status', 'Type','Price',
             'Price-alert', "Price-actual", 'Qty', 'filledQty', 'N Alerts',"PnL-alert",
             "PnL$-alert","PnL-actual","PnL$-actual", 
             "STC-Price", "STC-Price-actual", "STC-Price-alert",
@@ -208,18 +207,18 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
         print("error during tracker filter data", e)
         pass
     
-    data['Date'] = data['Date'].apply(lambda x: short_date(x))
-    data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
-    data["N Alerts"]= data['Avged']
-    data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
-    
     live_col = False
     data['Live'] = np.nan
     if not exclude.get("live PnL", False):
         data =  get_live_quotes(data)
         if 'Live' in data.columns:
             live_col = True
-
+    
+    data['Date'] = data['Date'].apply(lambda x: short_date(x))
+    data["isOpen"] = data["isOpen"].map({1:"Yes", 0:"No"})
+    data["N Alerts"]= data['Avged']
+    data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
+    
     frm_cols = ['Qty', 'N Alerts', 'STC-Qty','STC-Price','STC-Price-actual','PnL','PnL-actual',
                 'PnL$','PnL$-actual', 'Price', 'Price-actual']
     for cfrm in frm_cols:
@@ -329,7 +328,7 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
 
 def get_live_quotes(portfolio, trader_port=False):
     dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
-    track_symb = portfolio.loc[portfolio['isOpen']=='Yes', 'Symbol'].to_list()
+    track_symb = portfolio.loc[portfolio['isOpen']==1, 'Symbol'].to_list()
     
     quotes_sym = {}
     for sym in track_symb: 
@@ -347,7 +346,7 @@ def get_live_quotes(portfolio, trader_port=False):
         live_price = quotes_sym[sym]
         if live_price == 0:
             continue
-        msk = (portfolio['Symbol']==sym) & (portfolio['isOpen']=='Yes')
+        msk = (portfolio['Symbol']==sym) & (portfolio['isOpen']==1)
         trades = portfolio.loc[msk]
         
         for ix, trade in trades.iterrows():
@@ -356,7 +355,7 @@ def get_live_quotes(portfolio, trader_port=False):
                 "price": live_price,
                 "Actual Cost": live_price,
                 } 
-            portfolio.loc[ix, 'Live'] = live_price
+
             if trader_port:
                 trade = compute_live_trader_port(trade, order)
                 portfolio.loc[ix] = trade
@@ -366,6 +365,7 @@ def get_live_quotes(portfolio, trader_port=False):
                     if k == "STC-Qty":
                         continue
                     portfolio.loc[msk,k] = v
+            portfolio.loc[ix, 'Live'] = live_price
     return portfolio
 
 

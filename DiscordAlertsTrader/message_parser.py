@@ -54,14 +54,21 @@ def parse_trade_alert(msg, asset=None):
                 order["avg"] = avg_price
             else:
                 order["avg"] = None
-            pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
-            n_pts = 3 if pt3_v else 2 if pt2_v else 1 if pt1_v else 0
-            pts_qty = set_pt_qts(n_pts)
-            order, pars = make_order_exits(order, msg, pars, asset_type)
+            try:
+                pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
+                n_pts = 3 if pt3_v else 2 if pt2_v else 1 if pt1_v else 0
+                pts_qty = set_pt_qts(n_pts)
+                order, pars = make_order_exits(order, msg, pars, asset_type)
+                order["n_PTs"] = n_pts
+                order["PTs_Qty"] = pts_qty
+            except:
+                order["PT1"] =  None
+                order["PT2"] = None
+                order["PT3"] = None
+                order["SL"] = None            
             sl_mental = True if "mental" in msg.lower() else False
             if sl_mental: order["SL_mental"] = True
-            order["n_PTs"] = n_pts
-            order["PTs_Qty"] = pts_qty
+            
 
         elif action.upper() in ["STC", "BTC"]:
             xamnt = parse_sell_ratio_amount(msg, asset_type)
