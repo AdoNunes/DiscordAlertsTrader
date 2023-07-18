@@ -406,7 +406,7 @@ def parse_exits_vals(msg, expr):
         re_comp= re.compile("(" + expr.lower() + "[:]?[ ]*[$]*(\d*[\.]*[\d]*[%]?))", re.IGNORECASE)
         exit_inf = re_comp.search(msg)        
 
-        if exit_inf is None:
+        if exit_inf is None or exit_inf.groups()[-1] =='':
             return None
         elif "%" in exit_inf.groups()[-1]:
             return exit_inf.groups()[-1]
