@@ -989,7 +989,7 @@ class AlertsTrader():
             if trade["isOpen"] == 0:
                 continue
 
-            if trade["BTO-Status"]  in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION', 'AWAITING_MANUAL_REVIEW']:
+            if trade["BTO-Status"]  in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION', 'AWAITING_MANUAL_REVIEW', "PARTIAL"]:
                 order_status, order_info = self.get_order_info(trade['ordID'])
 
                 # Check if number filled Qty changed
@@ -1066,19 +1066,23 @@ class AlertsTrader():
                         # if abs(percentage_difference - (SL+PT)) <= 0.03:  # accept 3% rounding error
                         if self.EOD.get(trade["Symbol"]) != "15min":
                             quote = self.price_now(trade["Symbol"], "BTC", 1)
-                            exit_plan = {
-                                "PT1": round(quote - PT * quote, 2),
-                                "PT2": None,
-                                "PT3": None,
-                                "SL": round(quote + SL * quote, 2)
-                                }
+                            # get the STC number to save PT
+                            STC = "STC3"
+                            for ith in range(1,4):
+                                STC = f"STC{ith}"
+                                if pd.isnull(trade[STC+"-ordID"]):
+                                    break
+                            exit_plan = {"PT1": None, "PT2": None,"PT3": None,"SL": round(quote + SL * quote, 2)}
+                            exit_plan[ith] = round(quote - PT * quote, 2)
+                            
                             self.portfolio.at[i,'exit_plan'] = str(exit_plan)
                             redo_orders = True                            
-                            str_msg = f'updating exits option {trade["Symbol"]} 15 min before EOD with {SL*100}% SL and {PT*100}% PT'
+                            str_msg = f'updating exits option {trade["Symbol"]} 15 min before EOD with {int(SL*100)}% SL and {int(PT*100)}% PT'
                             print(Back.GREEN + str_msg)
                             self.queue_prints.put([str_msg, "", "green"])
                             self.exit_percent_to_price(i)
                             self.EOD[trade["Symbol"]] = "15min"
+                    
                 # Close position 5 min to close
                 elif time_now >= time_five.time() and time_now < time_closed.time() \
                     and self.EOD.get(trade["Symbol"]) != "5min":
@@ -1094,16 +1098,17 @@ class AlertsTrader():
                     order['Qty'] =  int(trade["filledQty"]) - qty_sold
                     order['price'] = quote
                     self.update_paused = True
-                    _, order_id, order, _ = self.confirm_and_send(order, 'pars', self.bksession.make_STC_lim)
-                    self.update_paused = False
+                    _, order_id, order, _ = self.confirm_and_send(order, f'EOD {order["Symbol"]}', self.bksession.make_STC_lim)
                     
                     # add order id
-                    for i in range(1,4):
-                        STC = f"STC{i}"
+                    for ith in range(1,4):
+                        STC = f"STC{ith}"
                         if pd.isnull(trade[STC+"-ordID"]):
                             break
                     self.portfolio.loc[i, STC + "-ordID"] =  order_id
                     self.EOD[trade["Symbol"]] = "5min"
+                    self.save_logs("port")
+                    self.update_paused = False
 
             if redo_orders:
                 self.close_open_exit_orders(i)
