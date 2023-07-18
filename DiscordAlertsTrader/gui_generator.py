@@ -8,7 +8,7 @@ Created on Fri Apr  9 09:53:44 2021
 import math
 import os.path as op
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 import numpy as np
 from .configurator import cfg
 from .alerts_tracker import calc_stc_prices
@@ -328,7 +328,10 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
 
 def get_live_quotes(portfolio, trader_port=False):
     dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
-    track_symb = portfolio.loc[portfolio['isOpen']==1, 'Symbol'].to_list()
+    
+    msk = (pd.to_datetime(portfolio['Date']).dt.date == date.today()) | (portfolio['isOpen']==1)
+    
+    track_symb = portfolio.loc[msk, 'Symbol'].to_list()
     
     quotes_sym = {}
     for sym in track_symb: 
@@ -346,10 +349,13 @@ def get_live_quotes(portfolio, trader_port=False):
         live_price = quotes_sym[sym]
         if live_price == 0:
             continue
-        msk = (portfolio['Symbol']==sym) & (portfolio['isOpen']==1)
+        msk = portfolio['Symbol']==sym
         trades = portfolio.loc[msk]
         
         for ix, trade in trades.iterrows():
+            portfolio.loc[ix, 'Live'] = live_price
+            if trade['isOpen'] == 0:
+                continue
             order= {
                 "Qty": trade['Qty'] if pd.isnull(trade.get("STC-Qty")) else trade['Qty']- trade["STC-Qty"],
                 "price": live_price,
@@ -365,7 +371,7 @@ def get_live_quotes(portfolio, trader_port=False):
                     if k == "STC-Qty":
                         continue
                     portfolio.loc[msk,k] = v
-            portfolio.loc[ix, 'Live'] = live_price
+            # portfolio.loc[ix, 'Live'] = live_price
     return portfolio
 
 
@@ -374,6 +380,8 @@ def compute_live_trader_port(trade, order):
     stc_price = order['price']
 
     bto_price = trade["Price"]
+    if pd.isnull(bto_price):
+        return trade 
     bto_price_alert = trade["Price-alert"]
     bto_price_actual = trade["Price-actual"]
 
@@ -394,6 +402,7 @@ def compute_live_trader_port(trade, order):
     trade[ STC + "-Price-alert"] = stc_price
     trade[ STC + "-Price-actual"] = stc_price
     trade[ STC + "-PnL"] = stc_PnL
+    trade[ STC + "-Qty"] = order['Qty']
 
     sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
     stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
@@ -413,7 +422,6 @@ def compute_live_trader_port(trade, order):
     trade[ "PnL$"] =  stc_PnL_all* bto_price *mutipl*sold_tot
     trade[ "PnL$-alert"] =  stc_PnL_all_alert* bto_price_alert *mutipl*sold_tot
     trade[ "PnL$-actual"] =  stc_PnL_all_curr* bto_price_actual *mutipl*sold_tot
-
     return trade
 
 def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
