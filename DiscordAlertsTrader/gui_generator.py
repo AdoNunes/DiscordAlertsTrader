@@ -371,7 +371,7 @@ def get_live_quotes(portfolio, trader_port=False):
                     if k == "STC-Qty":
                         continue
                     portfolio.loc[msk,k] = v
-            # portfolio.loc[ix, 'Live'] = live_price
+            portfolio.loc[ix, 'Live'] = live_price
     return portfolio
 
 
@@ -402,9 +402,8 @@ def compute_live_trader_port(trade, order):
     trade[ STC + "-Price-alert"] = stc_price
     trade[ STC + "-Price-actual"] = stc_price
     trade[ STC + "-PnL"] = stc_PnL
-    trade[ STC + "-Qty"] = order['Qty']
+    trade[ STC + "-Qty"] = trade['filledQty'] - sold_tot
 
-    sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
     stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
     trade[ "PnL"] = stc_PnL_all
 
