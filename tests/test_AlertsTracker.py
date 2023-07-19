@@ -11,6 +11,7 @@ class TestAlertsTrader(unittest.TestCase):
                                 portfolio_fname=root_dir+'/data/analysts_portfolio.csv',
                                 dir_quotes=root_dir+'/data/live_quotes'
                                 )
+        print(root_dir)
         open_trade = tracker.portfolio.index[tracker.portfolio['Symbol'] == 'QQQ_051223C327'].to_list()[-1]
         trailstat = tracker.compute_trail(open_trade)
         print(trailstat)
