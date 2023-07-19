@@ -25,6 +25,7 @@ from DiscordAlertsTrader.configurator import cfg, channel_ids
 # A fix for Macs
 os.environ['QT_MAC_WANTS_LAYER'] = '1'
 
+
 def match_authors(author_str:str)->str:
     """Author have an identifier in discord, it will try to find full author name
 
@@ -97,7 +98,7 @@ for chn in chns:
 
 bksession = get_brokerage()
 ly_accnt = gl.layout_account(bksession, fnt_b, fnt_h)
-
+ly_conf = gl.layout_config(fnt_b, cfg)
 layout = [[sg.TabGroup([
                         [sg.Tab("Msgs Subs", ly_cons_subs, font=fnt_b)],
                         [sg.Tab("Msgs All", ly_cons, font=fnt_b)], 
@@ -105,7 +106,8 @@ layout = [[sg.TabGroup([
                         [sg.Tab('Analysts Portfolio', ly_track)],
                         [sg.Tab('Analysts Stats', ly_stats)],
                         [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],                        
-                        [sg.Tab("Account", ly_accnt)]
+                        [sg.Tab("Account", ly_accnt)],
+                        [sg.Tab("Config", ly_conf)]
                         ], title_color='black')],
             gl.trigger_alerts_layout()
         ]
@@ -244,6 +246,23 @@ def run_gui():
             fit_table_elms(window.Element("_portfolio_").Widget)
             window.Element("_upd-portfolio_").Update(button_color=ori_col)
 
+        elif event == '-slider-':
+            font_string = 'Helvitica '
+            font_string += str(int(values['-slider-']))
+            # window.Element('_portfolio_').Update(font=font_string)
+            sg.SetOptions(font=(font_string))
+            
+        elif event == "cfg_button":
+            for k, v in values.items():
+                if k.startswith("cfg"):
+                    window.Element(k).Update(text_color="black")
+                    f1,f2 = k.replace("cfg_", "").split(".")
+                    cfg[f1][f2] = str(v)
+
+        elif event.startswith("cfg"):
+            print(event)
+            window.Element(event).Update(text_color="red")
+            
         elif event == "_upd-track_": # update button in analyst alerts
             ori_col = window.Element(f'_upd-track_').ButtonColor
             window.Element("_upd-track_").Update(button_color=("black", "white"))
@@ -358,10 +377,10 @@ def run_gui():
                 if any(a in event_feedb[0] for a in auth_subs):
                     subs_auth_msg = True
                 elif cfg['discord']['channelwise_subscription'].split(",") != [""] and \
-                    any([c in event_feedb[0] for c in cfg['discord']['channelwise_subscription'].split(",")]):
+                    any([c.strip() in event_feedb[0] for c in cfg['discord']['channelwise_subscription'].split(",")]):
                     subs_auth_msg = True
                 elif cfg['discord']['auhtorwise_subscription'].split(",") != [""] and \
-                    any([c in event_feedb[0] for c in cfg['discord']['auhtorwise_subscription'].split(",")]):
+                    any([c.strip() in event_feedb[0] for c in cfg['discord']['auhtorwise_subscription'].split(",")]):
                     subs_auth_msg = True
                 else:
                     subs_auth_msg = False

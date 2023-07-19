@@ -17,7 +17,7 @@ with open(os.path.join('DiscordAlertsTrader', '__init__.py'), 'r') as fid:
 
 setup(
     name='DiscordAlertsTrader',
-    version='1.0.0',
+    version='1.0.1',
     author='Adonay Nunes',
     author_email='adonays.nunes@gmail.com',
     description='Package for automating discord trade alerts in TDA or eTrade.',
