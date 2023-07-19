@@ -28,7 +28,7 @@ def trigger_alerts_layout():
                 "STO: Author#1234, STC 1 AAA 115C 05/30 @2.5 PT 40% SL 50% \n" +\
                 "BTC: Author#1234, STC 1 AAA 115C 05/30 @2 \n" +\
                 "Exit Update: Author#1234, exit update AAA 115C 05/30 PT 80% SL 2\n"
-    lay = [sg.Text('to portfolio:', tooltip=tp_chan, size=(15,1.2)),
+    lay = [sg.Stretch(), sg.Text('to portfolio:', tooltip=tp_chan),
            sg.Combo(['both', 'user', 'analysts'], default_value='analysts', key="_chan_trigg_",tooltip=tp_chan, readonly=True, size=(15,1.2)),
             sg.Input(default_text="Author#1234, STC 1 AAA 115C 05/30 @2.5 [click portfolio row number to prefill]",
                     size= (100,1.3), key="-subm-msg",
