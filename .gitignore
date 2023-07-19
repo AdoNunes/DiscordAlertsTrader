@@ -6,6 +6,7 @@ data/trader_portfolio.csv
 data/live_quotes/
 tokens.json
 *.DS_Store
+* - Copy.csv
 .vscode/
 # Byte-compiled / optimized / DLL files
 __pycache__/

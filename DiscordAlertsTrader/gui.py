@@ -63,10 +63,9 @@ def fit_table_elms(Widget_element):
 
 # sg.theme('Dark Blue 3')
 sg.SetOptions(font=("Helvitica 10"))
-                # element_padding=(0, 0), margins=(1, 1))
 
-fnt_b = "Arial 10"
-fnt_h = "Arial 10"
+fnt_b  ="Helvitica 10"
+fnt_h  ="Helvitica 12"
 
 ly_cons, MLINE_KEY = gl.layout_console('Discord messages from all the channels',
                                        '-MLINE-')
