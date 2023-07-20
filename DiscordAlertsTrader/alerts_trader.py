@@ -791,21 +791,23 @@ class AlertsTrader():
                 return
 
             # Sell all and close waiting stc orders
-            if order['xQty'] == 1:                
+            if order['xQty'] == 1 or i == 3:
+                if i == 3 and order['xQty'] != 1:
+                    print("Selling all, max supported STC is 3")                
                 # Stop updater to avoid overlapping
                 self.update_paused = True
                 # Sell all and close waiting stc orders
                 self.close_open_exit_orders(open_trade)
+                time.sleep(1)
                 self.update_paused = False
-                # if no Qty get all remaining
-                if order['Qty'] is None:
-                    position = self.portfolio.iloc[open_trade]
-                    order['Qty'] = int(position["Qty"]) - qty_sold
+                position = self.portfolio.iloc[open_trade]
+                order['Qty'] = int(position["Qty"]) - qty_sold
 
             elif order['xQty'] < 1:  # portion
                 # Stop updater to avoid overlapping
                 self.update_paused = True
                 self.close_open_exit_orders(open_trade)
+                time.sleep(1)
                 self.update_paused = False
                 order['Qty'] = round(max(qty_bought * order['xQty'], 1))
 
