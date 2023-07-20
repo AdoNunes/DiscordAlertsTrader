@@ -244,10 +244,10 @@ def grid_search(port, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25], max_marg
                 port, no_quote, param = calc_returns(
                     fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                     dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
-                    last_days= 10,
+                    last_days= 22,
                     max_underlying_price= 500,
-                    min_price= 30,
-                    max_dte= 10,
+                    min_price= 50,
+                    max_dte= 5,
                     min_dte= 0,
                     exclude_traders= ['enhancedmarket',"SPY"],
                     exclude_symbols= ['SPX'],
@@ -270,19 +270,19 @@ def grid_search(port, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25], max_marg
 port, no_quote, param = calc_returns(
     fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
-    last_days= 22,
+    last_days= 1,
     max_underlying_price= 500,
     min_price= 50,
-    max_dte= 5,
+    max_dte= 22,
     min_dte= 0,
     exclude_traders= [ 'SPY', 'enhancedmarket'],
     exclude_symbols= ['SPX'],
     exclude_channs = "",
-    PT=70,
+    PT=50,
     TS=0,
-    SL=60,
-    TS_buy= 10,
-    max_margin = 22600
+    SL=65,
+    TS_buy= 0,
+    max_margin = None
     )
 
 # print(port[['Date','Symbol','Trader', 'STC-PnL', 'STC-PnL-current', 'strategy-PnL','STC-PnL$', 'STC-PnL$-current',
@@ -296,8 +296,8 @@ result_td =  generate_report(port, param, no_quote, verbose=True)
 
 # best PT 100., SL 40,   TS_buy 30.,  pnl -27.5, pnl $ -950,   trade count 32
 # worst PT 25., SL 20,   TS_buy 5,  pnl 5.7, pnl $ 428,   trade count 32
-# res = grid_search(port, PT=np.arange(20,120,5), TS=[0], SL=np.arange(20,100,5), TS_buy=[0,5,10,15,20,25,30], max_margin=25000)
+res = grid_search(port, PT=np.arange(20,120,5), TS=[0], SL=np.arange(20,100,5), TS_buy=[0,5,10,20,30], max_margin=None)
 
-# res = np.stack(res)
-# sorted_indices = np.argsort(res[:, 4])
-# sorted_array = res[sorted_indices].astype(int)
+res = np.stack(res)
+sorted_indices = np.argsort(res[:, 4])
+sorted_array = res[sorted_indices].astype(int)
