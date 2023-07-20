@@ -743,6 +743,7 @@ class AlertsTrader():
             if position["BTO-Status"] in ["CANCELED", "REJECTED", "EXPIRED", "CANCEL_REQUESTED"]:
                 log_alert['action'] = "Trade-already canceled"
                 log_alert["portfolio_idx"] = open_trade
+                self.portfolio.iloc[open_trade, 'isOpen'] = 0
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
                 return
@@ -797,10 +798,9 @@ class AlertsTrader():
                 # Sell all and close waiting stc orders
                 self.close_open_exit_orders(open_trade)
                 self.update_paused = False
-                # if no Qty get all remaining
-                if order['Qty'] is None:
-                    position = self.portfolio.iloc[open_trade]
-                    order['Qty'] = int(position["Qty"]) - qty_sold
+                qty_sold = np.nansum([position[f"STC{i}-Qty"] for i in range(1,4)])
+                position = self.portfolio.iloc[open_trade]
+                order['Qty'] = int(position["Qty"]) - qty_sold
 
             elif order['xQty'] < 1:  # portion
                 # Stop updater to avoid overlapping
