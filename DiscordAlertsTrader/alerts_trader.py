@@ -162,9 +162,9 @@ class AlertsTrader():
             action = "BTO"
         elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_CLOSE", "SELL", "SELL_CLOSE"]:
             action = "STC"
-        elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_OPEN", "SELL_SHORT"]:
+        elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_OPEN", "SELL_SHORT", 'SELL_OPEN']:
             action = "STO"
-        elif order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_CLOSE", "BUY_TO_COVER"]:
+        elif order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_CLOSE", "BUY_TO_COVER", 'BUY_CLOSE']:
             action = "BTC"
 
         symbol = ordersymb_to_str(order_info['orderLegCollection'][0]['instrument']['symbol'])
