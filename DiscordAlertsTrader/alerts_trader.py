@@ -279,7 +279,7 @@ class AlertsTrader():
             if self.cfg['shorting']['default_sto_qty'] == "buy_one":
                 order['Qty'] = 1                    
             elif self.cfg['shorting']['default_sto_qty'] == "underlying_capital":
-                order['Qty'] = eval(self.cfg['shorting']['underlying_capital'])//strike
+                order['Qty'] = int(eval(self.cfg['shorting']['underlying_capital'])//strike)
 
             # Handle trade too expensive
             max_trade_val = float(self.cfg['shorting']['max_trade_capital'])
@@ -1065,6 +1065,8 @@ class AlertsTrader():
                         # percentage_difference = round(abs(exit_plan['SL'] - exit_plan['PT1']) / exit_plan['PT1'], 2)
                         # if abs(percentage_difference - (SL+PT)) <= 0.03:  # accept 3% rounding error
                         if self.EOD.get(trade["Symbol"]) != "15min":
+                            # Close and send lim order
+                            self.close_open_exit_orders(i) 
                             quote = self.price_now(trade["Symbol"], "BTC", 1)
                             # get the STC number to save PT
                             STC = "STC3"
@@ -1073,7 +1075,7 @@ class AlertsTrader():
                                 if pd.isnull(trade[STC+"-ordID"]):
                                     break
                             exit_plan = {"PT1": None, "PT2": None,"PT3": None,"SL": round(quote + SL * quote, 2)}
-                            exit_plan[ith] = round(quote - PT * quote, 2)
+                            exit_plan[f"PT{ith}"] = round(quote - PT * quote, 2)
                             
                             self.portfolio.at[i,'exit_plan'] = str(exit_plan)
                             redo_orders = True                            
@@ -1342,7 +1344,8 @@ class AlertsTrader():
                 else:
                     break
         # no PTs but trailing stop
-        if nPTs == 0 and exit_plan["SL"] is not None and "TS" in exit_plan["SL"] and pd.isnull(trade["STC1-ordID"]):            
+        if nPTs == 0 and exit_plan["SL"] is not None and isinstance(exit_plan["SL"], str) and \
+            "TS" in exit_plan["SL"] and pd.isnull(trade["STC1-ordID"]):            
             order = self.calculate_stoploss(order, trade, exit_plan["SL"])
             order['Qty'] = int(trade['Qty'])
             order['xQty'] = 1

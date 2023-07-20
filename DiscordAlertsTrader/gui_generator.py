@@ -421,6 +421,10 @@ def compute_live_trader_port(trade, order):
     trade[ "PnL$"] =  stc_PnL_all* bto_price *mutipl*sold_tot
     trade[ "PnL$-alert"] =  stc_PnL_all_alert* bto_price_alert *mutipl*sold_tot
     trade[ "PnL$-actual"] =  stc_PnL_all_curr* bto_price_actual *mutipl*sold_tot
+    
+    if any([np.isinf(t) for t in trade if isinstance(t, float)]):
+        print("inf", trade)
+        trade = trade.replace([np.inf, -np.inf], 0)
     return trade
 
 def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',
