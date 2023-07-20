@@ -158,9 +158,9 @@ class AlertsTrader():
             elif order_info['childOrderStrategies'][1]['status'] == "FILLED":
                 order_info = order_info['childOrderStrategies'][1]
         
-        if order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_OPEN", "BUY"]:
+        if order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_OPEN", "BUY", 'BUY_OPEN']:
             action = "BTO"
-        elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_CLOSE", "SELL"]:
+        elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_CLOSE", "SELL", "SELL_CLOSE"]:
             action = "STC"
         elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_OPEN", "SELL_SHORT"]:
             action = "STO"

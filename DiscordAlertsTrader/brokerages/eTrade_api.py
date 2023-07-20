@@ -276,6 +276,7 @@ class eTrade(BaseBroker):
     @retry_on_exception()
     def get_order_info(self, order_id): 
         """ Get order info from order_id, mimicks the order_info from TDA API"""
+        order_id = int(order_id)
         orders = self.order_session.list_orders(self.accountIdKey, resp_format='json')        
         for order in orders['OrdersResponse']['Order']:
             if order['orderId'] == order_id:
