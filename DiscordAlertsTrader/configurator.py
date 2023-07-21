@@ -40,7 +40,7 @@ if not os.path.exists(config_path):
     config_path = package_dir + '/config_example.ini'
 
 # load configuration file
-cfg = configparser.ConfigParser()
+cfg = configparser.ConfigParser(interpolation=None)
 cfg.read(config_path, encoding='utf-8')
 cfg['root']= {'dir': package_dir}
 
