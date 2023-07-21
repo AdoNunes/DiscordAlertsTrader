@@ -326,9 +326,14 @@ class AlertsTrader():
             elif self.cfg['order_configs'].getboolean('sell_actual_price'):
                 if pdiff < eval(self.cfg['order_configs']['max_price_diff'])[order["asset"]]:
                     order['price'] = price_now(symb, act, 1)
-                    # reduce 1% to ensure fill
-                    new_price =  round(order['price']*.99,2)
-                    print(f"price reduced 1% to ensure fill from {order['price']} to {new_price}")
+                    if order['action'] in ["BTO", "STC"]:
+                        # reduce 1% to ensure fill
+                        if order['action'] == "BTO":
+                            new_price =  round(order['price']*1.01,2)
+                        elif order['action'] == "STC":
+                            new_price =  round(order['price']*.99,2)
+                        print(f"price reduced 1% to ensure fill from {order['price']} to {new_price}")
+                    
                     order['price'] = new_price
                     
                     pars = self.order_to_pars(order)
