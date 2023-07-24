@@ -137,10 +137,10 @@ def filter_data(data,exclude={}, filt_author='', filt_date_frm='', filt_date_to=
         msk = pd.to_datetime(data['Date']).dt.date <= pd.to_datetime(filt_date_to).date()
         data = data[msk]
     if filt_hour_frm:
-        msk = pd.to_datetime(data['Date']).dt.hour <= filt_hour_frm
+        msk = pd.to_datetime(data['Date']).dt.hour >= filt_hour_frm
         data = data[msk]
     if filt_hour_to:
-        msk = pd.to_datetime(data['Date']).dt.hour >= filt_hour_to
+        msk = pd.to_datetime(data['Date']).dt.hour <= filt_hour_to
         data = data[msk]
     if filt_sym:
         msk = [x.strip() for x in filt_sym.split(",")]
