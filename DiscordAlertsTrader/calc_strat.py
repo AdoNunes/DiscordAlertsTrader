@@ -15,6 +15,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 min_price= 50,
                 max_dte= 5,
                 min_dte= 0,
+                filt_hour_frm = "",
+                filt_hour_to = "",
                 exclude_traders= ['enhancedmarket', 'SPY'],
                 exclude_symbols= ['SPX',  'QQQ'],
                 exclude_channs= "",
@@ -76,6 +78,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             'min_price': min_price,
             'max_dte': max_dte,
             'min_dte': min_dte,
+            "hour_frm": filt_hour_frm,
+            "hour_to": filt_hour_to,
             'exclude_traders': exclude_traders,
             'exclude_symbols': exclude_symbols,
             'PT': PT,
@@ -97,7 +101,9 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                     max_u_qty=1, 
                     max_underlying=max_underlying_price, 
                     max_dte=max_dte, 
-                    min_dte=min_dte                  
+                    min_dte=min_dte,
+                    filt_hour_frm=filt_hour_frm,
+                    filt_hour_to=filt_hour_to                
                     )
 
     if len(port) == 0:
