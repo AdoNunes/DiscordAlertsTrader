@@ -1333,8 +1333,8 @@ class AlertsTrader():
                 elif ii > 1 and SL is not None:
                     break
 
-                else:
-                    raise("Case not caught")
+                else: # SL is None because still a %
+                    break
 
                 # Check that is below actual price
                 if trade["Type"] == "BTO":

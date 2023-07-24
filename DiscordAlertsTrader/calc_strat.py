@@ -15,6 +15,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 min_price= 50,
                 max_dte= 5,
                 min_dte= 0,
+                filt_hour_frm = "",
+                filt_hour_to = "",
                 exclude_traders= ['enhancedmarket', 'SPY'],
                 exclude_symbols= ['SPX',  'QQQ'],
                 exclude_channs= "",
@@ -76,6 +78,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             'min_price': min_price,
             'max_dte': max_dte,
             'min_dte': min_dte,
+            "hour_frm": filt_hour_frm,
+            "hour_to": filt_hour_to,
             'exclude_traders': exclude_traders,
             'exclude_symbols': exclude_symbols,
             'PT': PT,
@@ -97,7 +101,9 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                     max_u_qty=1, 
                     max_underlying=max_underlying_price, 
                     max_dte=max_dte, 
-                    min_dte=min_dte                  
+                    min_dte=min_dte,
+                    filt_hour_frm=filt_hour_frm,
+                    filt_hour_to=filt_hour_to                
                     )
 
     if len(port) == 0:
@@ -215,10 +221,13 @@ def generate_report(port, param={}, no_quote=None, verbose=True):
         for k,v in param.items():
             msg_str += f"{k}: {v} "
         print(msg_str)
-        
+    
     port = port[port['strategy-PnL'].notnull()]
-    print("Pnl alert: %.2f, Pnl actual: %.2f, Pnl strategy: %.2f" % (
-        port['PnL'].mean(), port['PnL-actual'].mean(), port['strategy-PnL'].mean()))
+    port.loc[:,'win'] = port['strategy-PnL'] > 0
+    print("Pnl alert: %.2f, Pnl actual: %.2f, Pnl strategy: %.2f, win rate: %.2f" % (
+        port['PnL'].mean(), port['PnL-actual'].mean(), port['strategy-PnL'].mean(),
+        port['win'].sum()/port['win'].count()
+        ))
     print("Pnl $ alert: $%.2f, Pnl actual: $%.2f, Pnl strategy: $%.2f" % (
         port['PnL$'].sum(), port['PnL$-actual'].sum(), port['strategy-PnL$'].sum()))
 
@@ -230,6 +239,7 @@ def generate_report(port, param={}, no_quote=None, verbose=True):
                 'strategy-PnL': 'mean',
                 'strategy-PnL$': 'sum',    
                 "Price": ['mean', 'median'],
+                'win': 'sum',
                 'Date': ['count']
                 }
     result_td = port.groupby('Trader').agg(agg_funcs).sort_values(by=('Date', 'count'), ascending=False)
@@ -275,6 +285,8 @@ port, no_quote, param = calc_returns(
     min_price= 50,
     max_dte= 22,
     min_dte= 0,
+    filt_hour_frm = "",
+    filt_hour_to = "",
     exclude_traders= [ 'SPY', 'enhancedmarket'],
     exclude_symbols= ['SPX'],
     exclude_channs = "",
@@ -296,8 +308,8 @@ result_td =  generate_report(port, param, no_quote, verbose=True)
 
 # best PT 100., SL 40,   TS_buy 30.,  pnl -27.5, pnl $ -950,   trade count 32
 # worst PT 25., SL 20,   TS_buy 5,  pnl 5.7, pnl $ 428,   trade count 32
-res = grid_search(port, PT=np.arange(20,120,5), TS=[0], SL=np.arange(20,100,5), TS_buy=[0,5,10,20,30], max_margin=None)
+# res = grid_search(port, PT=np.arange(20,120,5), TS=[0], SL=np.arange(20,100,5), TS_buy=[0,5,10,20,30], max_margin=None)
 
-res = np.stack(res)
-sorted_indices = np.argsort(res[:, 4])
-sorted_array = res[sorted_indices].astype(int)
+# res = np.stack(res)
+# sorted_indices = np.argsort(res[:, 4])
+# sorted_array = res[sorted_indices].astype(int)
