@@ -221,9 +221,9 @@ def generate_report(port, param={}, no_quote=None, verbose=True):
         for k,v in param.items():
             msg_str += f"{k}: {v} "
         print(msg_str)
-    
-    port = port[port['strategy-PnL'].notnull()]
+        
     port.loc[:,'win'] = port['strategy-PnL'] > 0
+    port = port[port['strategy-PnL'].notnull()]    
     print("Pnl alert: %.2f, Pnl actual: %.2f, Pnl strategy: %.2f, win rate: %.2f" % (
         port['PnL'].mean(), port['PnL-actual'].mean(), port['strategy-PnL'].mean(),
         port['win'].sum()/port['win'].count()
@@ -281,19 +281,19 @@ port, no_quote, param = calc_returns(
     fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
     last_days= 1,
-    max_underlying_price= 500,
+    max_underlying_price= 5000,
     min_price= 50,
-    max_dte= 22,
+    max_dte= 4,
     min_dte= 0,
     filt_hour_frm = "",
     filt_hour_to = "",
     exclude_traders= [ 'SPY', 'enhancedmarket'],
     exclude_symbols= ['SPX'],
     exclude_channs = "",
-    PT=50,
+    PT=40,
     TS=0,
-    SL=65,
-    TS_buy= 0,
+    SL=60,
+    TS_buy= 30,
     max_margin = None
     )
 

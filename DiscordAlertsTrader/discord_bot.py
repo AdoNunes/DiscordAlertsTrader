@@ -270,17 +270,18 @@ class DiscordBot(discord.Client):
             str_msg = pars
             if live_alert and self.bksession is not None and (order.get('price') is not None):
                 quote = self.trader.price_now(order['Symbol'], order["action"], pflag=1)
-                act_diff = (order['price'] - quote)/ quote
-                # Check if actual price is too far (100) from alerted price
-                if (quote > 0) and abs(act_diff > 1) and order.get('action') == 'BTO':
-                    str_msg = f"Alerted price is {act_diff} times larger than current price of {quote}, skipping alert"
-                    self.queue_prints.put([f"\t {str_msg}", "green"])
-                    print(Fore.GREEN + f"\t {str_msg}")
-                    msg['Parsed'] = str_msg
-                    if self.chn_hist.get(chn) is not None:
-                        self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
-                        self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
-                    return
+                if quote != 0:
+                    act_diff = (order['price'] - quote)/ quote
+                    # Check if actual price is too far (100) from alerted price
+                    if (quote > 0) and abs(act_diff > 1) and order.get('action') == 'BTO':
+                        str_msg = f"Alerted price is {act_diff} times larger than current price of {quote}, skipping alert"
+                        self.queue_prints.put([f"\t {str_msg}", "green"])
+                        print(Fore.GREEN + f"\t {str_msg}")
+                        msg['Parsed'] = str_msg
+                        if self.chn_hist.get(chn) is not None:
+                            self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
+                            self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
+                        return
                 
                 str_msg += f" Actual:{quote}, diff {round(act_diff*100)}%"
             self.queue_prints.put([f"\t {str_msg}", "green"])
