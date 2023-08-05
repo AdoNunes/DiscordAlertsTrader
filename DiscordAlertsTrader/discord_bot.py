@@ -7,11 +7,12 @@ import threading
 from colorama import Fore, init
 import discord # this is discord.py-self package not discord
 
-from .message_parser import parse_trade_alert
-from .configurator import cfg
-from .configurator import channel_ids
-from .alerts_trader import AlertsTrader
-from .alerts_tracker import AlertsTracker
+from DiscordAlertsTrader.message_parser import parse_trade_alert
+from DiscordAlertsTrader.configurator import cfg
+from DiscordAlertsTrader.configurator import channel_ids
+from DiscordAlertsTrader.alerts_trader import AlertsTrader
+from DiscordAlertsTrader.alerts_tracker import AlertsTracker
+from DiscordAlertsTrader.server_alert_formatting import server_formatting
 try:
     from .fend_bot import bot_msgs
     with_fend = True
@@ -169,6 +170,8 @@ class DiscordBot(discord.Client):
             return
         if message.content == 'ping':
             await message.channel.send('pong')
+        
+        message = server_formatting(message)
         if not len(message.content):
             return
         self.new_msg_acts(message)
@@ -201,6 +204,9 @@ class DiscordBot(discord.Client):
                 
             print("In", channel)
             async for message in iterator:
+                message = server_formatting(message)
+                if message is None:
+                    continue
                 self.new_msg_acts(message)
         print("Done")        
         self.tracker.close_expired()
@@ -329,9 +335,11 @@ class DiscordBot(discord.Client):
                 
         return False, order
 
-                
 if __name__ == '__main__':
-    client = DiscordBot()
+    from DiscordAlertsTrader.configurator import cfg, channel_ids
+    from DiscordAlertsTrader.brokerages import get_brokerage
+    bksession = get_brokerage()
+    client = DiscordBot(brokerage=bksession, cfg=cfg)
     client.run(cfg['discord']['discord_token'])
 
 

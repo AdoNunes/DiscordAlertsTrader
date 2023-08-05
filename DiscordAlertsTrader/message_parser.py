@@ -403,7 +403,7 @@ def parse_exits_vals(msg, expr):
     exit_inf = re_comp.search(msg) 
 
     if exit_inf is None:
-        re_comp= re.compile("(" + expr.lower() + "[:]?[ ]*[$]*(\d*[\.]*[\d]*[%]?))", re.IGNORECASE)
+        re_comp= re.compile("(\s" + expr.lower() + "[:]?[ ]*[$]*(\d*[\.]*[\d]*[%]?))", re.IGNORECASE)
         exit_inf = re_comp.search(msg)        
 
         if exit_inf is None or exit_inf.groups()[-1] =='':
@@ -474,7 +474,7 @@ def parse_risk(msg):
             'risk very high':"very high",
             'very risky':"very high",
             'risk high': "high",
-            'high risk': "high",
+            'high': "high",
             'lotto': "lotto",
             'risky': "medium",
             'yolo':"yolo"}
