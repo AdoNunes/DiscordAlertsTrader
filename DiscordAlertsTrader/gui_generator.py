@@ -380,7 +380,7 @@ def compute_live_trader_port(trade, order):
     stc_price = order['price']
 
     bto_price = trade["Price"]
-    if pd.isnull(bto_price):
+    if pd.isnull(bto_price) or trade["BTO-Status"] == "WORKING":
         return trade 
     bto_price_alert = trade["Price-alert"]
     bto_price_actual = trade["Price-actual"]
@@ -390,20 +390,22 @@ def compute_live_trader_port(trade, order):
     elif trade["Type"] == "STO":
         stc_PnL = float((bto_price - stc_price)/bto_price) *100
 
-    sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
     # get STC number not yet filled
     for i in range(1,4):
         STC = f"STC{i}"
         if pd.isnull(trade[f"STC{i}-Qty"]):
             break
 
+    sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
     #Log portfolio
     trade[ STC + "-Price"] = stc_price
     trade[ STC + "-Price-alert"] = stc_price
     trade[ STC + "-Price-actual"] = stc_price
     trade[ STC + "-PnL"] = stc_PnL
     trade[ STC + "-Qty"] = trade['filledQty'] - sold_tot
-
+    
+    
+    sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
     stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
     trade[ "PnL"] = stc_PnL_all
 
@@ -421,6 +423,10 @@ def compute_live_trader_port(trade, order):
     trade[ "PnL$"] =  stc_PnL_all* bto_price *mutipl*sold_tot
     trade[ "PnL$-alert"] =  stc_PnL_all_alert* bto_price_alert *mutipl*sold_tot
     trade[ "PnL$-actual"] =  stc_PnL_all_curr* bto_price_actual *mutipl*sold_tot
+    
+    if any([np.isinf(t) for t in trade if isinstance(t, float)]):
+        print("inf", trade)
+        trade = trade.replace([np.inf, -np.inf], 0)
     return trade
 
 def get_hist_msgs(filt_author='', filt_date_frm='', filt_date_to='',

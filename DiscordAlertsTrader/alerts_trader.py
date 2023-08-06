@@ -158,13 +158,13 @@ class AlertsTrader():
             elif order_info['childOrderStrategies'][1]['status'] == "FILLED":
                 order_info = order_info['childOrderStrategies'][1]
         
-        if order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_OPEN", "BUY"]:
+        if order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_OPEN", "BUY", 'BUY_OPEN']:
             action = "BTO"
-        elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_CLOSE", "SELL"]:
+        elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_CLOSE", "SELL", "SELL_CLOSE"]:
             action = "STC"
-        elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_OPEN", "SELL_SHORT"]:
+        elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_OPEN", "SELL_SHORT", 'SELL_OPEN']:
             action = "STO"
-        elif order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_CLOSE", "BUY_TO_COVER"]:
+        elif order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_CLOSE", "BUY_TO_COVER", 'BUY_CLOSE']:
             action = "BTC"
 
         symbol = ordersymb_to_str(order_info['orderLegCollection'][0]['instrument']['symbol'])
@@ -279,7 +279,7 @@ class AlertsTrader():
             if self.cfg['shorting']['default_sto_qty'] == "buy_one":
                 order['Qty'] = 1                    
             elif self.cfg['shorting']['default_sto_qty'] == "underlying_capital":
-                order['Qty'] = eval(self.cfg['shorting']['underlying_capital'])//strike
+                order['Qty'] = int(eval(self.cfg['shorting']['underlying_capital'])//strike)
 
             # Handle trade too expensive
             max_trade_val = float(self.cfg['shorting']['max_trade_capital'])
@@ -326,6 +326,16 @@ class AlertsTrader():
             elif self.cfg['order_configs'].getboolean('sell_actual_price'):
                 if pdiff < eval(self.cfg['order_configs']['max_price_diff'])[order["asset"]]:
                     order['price'] = price_now(symb, act, 1)
+                    if order['action'] in ["BTO", "STC"]:
+                        # reduce 1% to ensure fill
+                        if order['action'] == "BTO":
+                            new_price =  round(order['price']*1.01,2)
+                        elif order['action'] == "STC":
+                            new_price =  round(order['price']*.99,2)
+                        print(f"price reduced 1% to ensure fill from {order['price']} to {new_price}")
+                    
+                    order['price'] = new_price
+                    
                     pars = self.order_to_pars(order)
                     question += f"\n new price: {pars}"
                 else:
@@ -792,11 +802,14 @@ class AlertsTrader():
                 return
 
             # Sell all and close waiting stc orders
-            if order['xQty'] == 1:                
+            if order['xQty'] == 1 or i == 3:
+                if i == 3 and order['xQty'] != 1:
+                    print("Selling all, max supported STC is 3")                
                 # Stop updater to avoid overlapping
                 self.update_paused = True
                 # Sell all and close waiting stc orders
                 self.close_open_exit_orders(open_trade)
+                time.sleep(1)
                 self.update_paused = False
                 qty_sold = np.nansum([position[f"STC{i}-Qty"] for i in range(1,4)])
                 position = self.portfolio.iloc[open_trade]
@@ -806,6 +819,7 @@ class AlertsTrader():
                 # Stop updater to avoid overlapping
                 self.update_paused = True
                 self.close_open_exit_orders(open_trade)
+                time.sleep(1)
                 self.update_paused = False
                 order['Qty'] = round(max(qty_bought * order['xQty'], 1))
 
@@ -1065,7 +1079,8 @@ class AlertsTrader():
                         SL, PT = eval(SL)/100, eval(PT)/100
                         
                         if self.EOD.get(trade["Symbol"]) != "15min":
-                            self.close_open_exit_orders(i)   
+                            # Close and send lim order
+                            self.close_open_exit_orders(i) 
                             quote = self.price_now(trade["Symbol"], "BTC", 1)
                             # get the STC number to save PT
                             STC = "STC3"
@@ -1074,7 +1089,7 @@ class AlertsTrader():
                                 if pd.isnull(trade[STC+"-ordID"]):
                                     break
                             exit_plan = {"PT1": None, "PT2": None,"PT3": None,"SL": round(quote + SL * quote, 2)}
-                            exit_plan[ith] = round(quote - PT * quote, 2)
+                            exit_plan[f"PT{ith}"] = round(quote - PT * quote, 2)
                             
                             self.portfolio.at[i,'exit_plan'] = str(exit_plan)
                             redo_orders = True
@@ -1117,10 +1132,7 @@ class AlertsTrader():
             trade = self.portfolio.iloc[i]
             exit_plan = eval(trade["exit_plan"])
             if exit_plan != {}:                
-                if all([isinstance(e, str) and ("%" not in e and "TS" not in e) for e in exit_plan.values()]) and trade['Asset'] == 'option':
-                    self.check_opt_stock_price(i, exit_plan, "STC")
-                else:
-                    self.make_exit_orders(i, exit_plan)
+                self.make_exit_orders(i, exit_plan)
                 self.exit_percent_to_price(i)
 
             # Go over STC orders and check status
@@ -1159,36 +1171,6 @@ class AlertsTrader():
                     self.disc_notifier(order_info)
 
         self.save_logs("port")
-
-
-    def check_opt_stock_price(self, open_trade, exit_plan, act="STC"):
-        "Option exits in stock price"
-        i = open_trade
-        exit_plan_ori = exit_plan.copy()
-        trade = self.portfolio.iloc[i]
-
-        ord_inf = trade['Symbol'].split("_")
-        if len(ord_inf) != 2: return
-        symb_stock = ord_inf[0]
-
-        quote = self.price_now(symb_stock, act, 1)
-        quote_opt = self.price_now(trade['Symbol'], act, 1)
-
-        for v, pt in exit_plan.items():
-            if not isinstance(pt, str): continue
-            if v[:2] == "PT" and float(pt) <= quote:
-                exit_plan[v] = quote_opt
-                # Add another exit plan for x2
-                STCn = int(v[2])
-                if STCn < 3 and exit_plan[f"PT{STCn+1}"] is None:
-                    exit_plan[f"PT{STCn+1}"] = quote_opt * 2
-            elif v[:2] == "SL" and "%" not in pt and float(pt) >= quote:
-                exit_plan[v] = quote
-
-        if exit_plan_ori != exit_plan:
-            self.portfolio.loc[i, "exit_plan"] = str(exit_plan)
-            self.save_logs("port")
-            self.make_exit_orders(i, exit_plan)
 
 
     def SL_below_market(self, order, new_SL_ratio=.95):
@@ -1320,8 +1302,8 @@ class AlertsTrader():
                 elif ii > 1 and SL is not None:
                     break
 
-                else:
-                    raise("Case not caught")
+                else: # SL is None because still a %
+                    break
 
                 # Check that is below actual price
                 if trade["Type"] == "BTO":
@@ -1343,7 +1325,8 @@ class AlertsTrader():
                 else:
                     break
         # no PTs but trailing stop
-        if nPTs == 0 and exit_plan["SL"] is not None and "TS" in exit_plan["SL"] and pd.isnull(trade["STC1-ordID"]):            
+        if nPTs == 0 and exit_plan["SL"] is not None and isinstance(exit_plan["SL"], str) and \
+            "TS" in exit_plan["SL"] and pd.isnull(trade["STC1-ordID"]):            
             order = self.calculate_stoploss(order, trade, exit_plan["SL"])
             order['Qty'] = int(trade['Qty'])
             order['xQty'] = 1

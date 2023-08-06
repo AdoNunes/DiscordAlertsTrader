@@ -98,7 +98,7 @@ def port_cap_trades(data, max_trade_val:int=None, min_con_val:int=None, max_u_qt
 def filter_data(data,exclude={}, filt_author='', filt_date_frm='', filt_date_to='',
                 filt_sym='', exc_author='', exc_chn='', exc_sym='', msg_cont='',
                 max_trade_val="", min_con_val="", max_u_qty="", max_underlying="", max_dte="", min_dte="",
-                filt_chn=""                 
+                filt_chn="", filt_hour_frm="", filt_hour_to=""
                 ):
     if len(exclude):
         for k, v in exclude.items():
@@ -135,6 +135,12 @@ def filter_data(data,exclude={}, filt_author='', filt_date_frm='', filt_date_to=
             filt_date_to = f"{filt_date_to}/{str(date.today().year)[2:]}"
         filt_date_to =  period_to_date(filt_date_to)
         msk = pd.to_datetime(data['Date']).dt.date <= pd.to_datetime(filt_date_to).date()
+        data = data[msk]
+    if filt_hour_frm:
+        msk = pd.to_datetime(data['Date']).dt.hour >= filt_hour_frm
+        data = data[msk]
+    if filt_hour_to:
+        msk = pd.to_datetime(data['Date']).dt.hour <= filt_hour_to
         data = data[msk]
     if filt_sym:
         msk = [x.strip() for x in filt_sym.split(",")]
