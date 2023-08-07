@@ -38,7 +38,18 @@ if not os.path.exists(config_path):
     print("\033[91mWARNING: Rename DiscordAlertsTrader/config_example.ini to DiscordAlertsTrader/config.ini. \033[0m")
     print("\033[91mWARNING: Reverting to config_example.ini for now (might be necessary for testing). \033[0m")
     config_path = package_dir + '/config_example.ini'
+else:
+    # check that config.ini has same fields as in config_example.ini
+    cfg_example = configparser.ConfigParser(interpolation=None)
+    cfg_example.read(package_dir + '/config_example.ini', encoding='utf-8')
+    cfg = configparser.ConfigParser(interpolation=None)
+    cfg.read(config_path, encoding='utf-8')
+    missing_items = [(section, k) for section in cfg_example.sections() if cfg.has_section(section)
+                      for k in cfg_example[section].keys() if not cfg.has_option(section, k)]
+    if len(missing_items):
+        raise ValueError(f"config.ini is missing the following items: {missing_items}\nadd missing items to config.ini and re-run")
 
+                
 # load configuration file
 cfg = configparser.ConfigParser(interpolation=None)
 cfg.read(config_path, encoding='utf-8')

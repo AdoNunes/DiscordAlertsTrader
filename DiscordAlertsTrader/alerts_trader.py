@@ -350,6 +350,11 @@ class AlertsTrader():
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
                     return "no", order, False
+                elif self.cfg['general'].getboolean('DO_STC_TRADES') is False and order['action'] == "STC":
+                    str_msg = f"BTO not accepted by config options: DO_STC_TRADES = False"
+                    print(Back.GREEN + str_msg)
+                    self.queue_prints.put([str_msg, "", "green"])
+                    return "no", order, False
                 elif order['action'] == "BTO":
                     price = order['price']
                     if price == 0:

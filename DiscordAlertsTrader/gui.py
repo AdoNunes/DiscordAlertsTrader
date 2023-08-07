@@ -195,7 +195,7 @@ def run_gui():
     subs_auth_msg = False
     auth_subs = cfg['discord']['authors_subscribed'].split(',')
     auth_subs = [i.split("#")[0].strip() for i in auth_subs]
-    
+    ori_color = 'black'
     while True: 
         event, values = window.read(1)#.1)
 
@@ -237,13 +237,13 @@ def run_gui():
             window.Element("-subm-msg").Update(value=symb_str)
             
         if event == "_upd-portfolio_": # update button in portfolio
-            ori_col = window.Element("_upd-portfolio_").ButtonColor
-            window.Element("_upd-portfolio_").Update(button_color=("black", "white"))
-            event, values = window.read(.1)
+            ori_col = window.Element(event).ButtonColor
+            window.Element(event).Update(button_color=("black", "white"))
+            window.refresh()
             dt, _ = gg.get_portf_data(port_exc, **values)
             window.Element('_portfolio_').Update(values=dt)
             fit_table_elms(window.Element("_portfolio_").Widget)
-            window.Element("_upd-portfolio_").Update(button_color=ori_col)
+            window.Element(event).Update(button_color=ori_col)
 
         elif event == '-slider-':
             font_string = 'Helvitica '
@@ -252,33 +252,49 @@ def run_gui():
             sg.SetOptions(font=(font_string))
             
         elif event == "cfg_button":
+            ori_col = window.Element(event).ButtonColor
+            window.Element(event).Update(button_color=("black", "white"))
+            window.refresh()
             for k, v in values.items():
                 if k.startswith("cfg"):
-                    window.Element(k).Update(text_color="black")
+                    if isinstance(window[k], sg.Checkbox):
+                        continue
+                    if window.Element(k).TextColor == 'red':
+                        window.Element(k).Update(text_color=ori_color)
                     f1,f2 = k.replace("cfg_", "").split(".")
                     cfg[f1][f2] = str(v)
+            window.Element(event).Update(button_color=ori_col)
 
         elif event.startswith("cfg"):
             print(event)
-            window.Element(event).Update(text_color="red")
+            if isinstance(window[event], sg.Checkbox):
+                f1,f2 = event.replace("cfg_", "").split(".")
+                print("before", cfg[f1][f2])
+                cfg[f1][f2] = str(values[event])
+                print("after", cfg[f1][f2])
+            else:
+                cur_color = window.Element(event).TextColor
+                if cur_color != "red":
+                    ori_color = cur_color
+                window.Element(event).Update(text_color="red")
             
         elif event == "_upd-track_": # update button in analyst alerts
-            ori_col = window.Element(f'_upd-track_').ButtonColor
-            window.Element("_upd-track_").Update(button_color=("black", "white"))
-            event, values = window.read(.1)
+            ori_col = window.Element(event).ButtonColor
+            window.Element(event).Update(button_color=("black", "white"))
+            window.refresh()
             dt, _  = gg.get_tracker_data(track_exc, **values)
             window.Element('_track_').Update(values=dt)
             fit_table_elms(window.Element("_track_").Widget)
-            window.Element("_upd-track_").Update(button_color=ori_col)
+            window.Element(event).Update(button_color=ori_col)
 
         elif event == "_upd-stat_": # update button in analyst stats
-            ori_col = window.Element(f'_upd-stat_').ButtonColor
-            window.Element("_upd-stat_").Update(button_color=("black", "white"))
-            event, values = window.read(.1)
+            ori_col = window.Element(event).ButtonColor
+            window.Element(event).Update(button_color=("black", "white"))
+            window.refresh()
             dt, _  = gg.get_stats_data(stat_exc, **values)
             window.Element('_stat_').Update(values=dt)
             fit_table_elms(window.Element("_stat_").Widget)
-            window.Element("_upd-stat_").Update(button_color=ori_col)
+            window.Element(event).Update(button_color=ori_col)
 
         elif event.startswith("-port-"): # radial click, update portfolio
             key =  event.replace("-port-", "")
@@ -303,9 +319,9 @@ def run_gui():
 
         elif event[-3:] == "UPD":
             chn = event[:-4]
-            ori_col = window.Element(f'{chn}_UPD').ButtonColor
-            window.Element(f'{chn}_UPD').Update(button_color=("black", "white"))
-            event, values = window.read(.1)
+            ori_col = window.Element(event).ButtonColor
+            window.Element(event).Update(button_color=("black", "white"))
+            window.refresh()
 
             args = {}
             for k, v in values.items():
@@ -315,21 +331,21 @@ def run_gui():
             window.Element(f"{chn}_table").Update(values=dt)
 
             fit_table_elms(window.Element(f"{chn}_table").Widget)
-            window.Element(f'{chn}_UPD').Update(button_color=ori_col)
+            window.Element(event).Update(button_color=ori_col)
 
         elif event == 'acc_updt':
-            ori_col = window.Element("acc_updt").ButtonColor
-            window.Element("acc_updt").Update(button_color=("black", "white"))
-            event, values = window.read(.1)
+            ori_col = window.Element(event).ButtonColor
+            window.Element(event).Update(button_color=("black", "white"))
+            window.refresh()
             gl.update_acct_ly(bksession, window)
             fit_table_elms(window.Element(f"_positions_").Widget)
             fit_table_elms(window.Element(f"_orders_").Widget)
-            window.Element("acc_updt").Update(button_color=ori_col)
+            window.Element(event).Update(button_color=ori_col)
 
         elif event == "-subm-alert":
-            ori_col = window.Element("-subm-alert").ButtonColor
-            window.Element("-subm-alert").Update(button_color=("black", "white"))
-            event, values = window.read(.1)
+            ori_col = window.Element(event).ButtonColor
+            window.Element(event).Update(button_color=("black", "white"))
+            window.refresh()
             
             #extra comas
             if len(values['-subm-msg'].split(','))>2:
@@ -367,7 +383,7 @@ def run_gui():
                 'Channel': chan
                 })
             alistner.new_msg_acts(new_msg, from_disc=False)
-            window.Element("-subm-alert").Update(button_color=ori_col)
+            window.Element(event).Update(button_color=ori_col)
 
         try:
             event_feedb = trade_events.get(False)

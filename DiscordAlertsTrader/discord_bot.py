@@ -34,7 +34,7 @@ class dummy_queue():
 
 def split_strip(string):
     lstr = string.split(",")
-    lstr = [s.strip() for s in lstr]
+    lstr = [s.strip().lower() for s in lstr]
     return lstr
 
 class DiscordBot(discord.Client):
@@ -280,7 +280,7 @@ class DiscordBot(discord.Client):
             str_msg = pars
             if live_alert and self.bksession is not None and (order.get('price') is not None):
                 quote = self.trader.price_now(order['Symbol'], order["action"], pflag=1)
-                act_diff = max((quote - order['price']/order['price']), (order['price'] - quote)/ quote)
+                act_diff = max(((quote - order['price'])/order['price']), (order['price'] - quote)/ quote)
                 # Check if actual price is too far (100) from alerted price
                 if abs(act_diff) > 1 and order.get('action') == 'BTO':
                     str_msg = f"Alerted price is {act_diff} times larger than current price of {quote}, skipping alert"
