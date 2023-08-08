@@ -34,7 +34,8 @@ If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed.
 
 **Current Discord servers being used**:
 - TradeProElite (good timing, profitable strategies): [invite link](https://tradeproelite.memberful.com/referral/vedpmz8)
-- BullTrades (good for shorting, see historical trades in the package): [invite link](https://bulltrades.net/?ref=ndrjogi)
+- Xtrades (alerts with market data): [invite link](https://app.xtrades.net/invite/4lk91GuPz0KsoJWYP74ieg)
+- BullTrades (good for shorting (bad trades, delayed alerts), see historical trades in the package (5/10 to 8/7)): [invite link](https://bulltrades.net/?ref=ndrjogi)
 
 Supports any Discord channel with structured BTP/STC alerts as message contents (not embedded, yet)
 
