@@ -43,22 +43,22 @@ class EmbedCopy:
         self.description = original_embed.description
         self.fields = [EmbedFieldCopy(field) for field in original_embed.fields]
 
-def xtrades_formatting(message):
+def xtrades_formatting(message_):
     """
     Reformat Discord message from Xtrades to a sandard alert format
     Xtrades guild id:
     """
     # Don't do anything if not Xtrade message
-    if message.guild.id != 542224582317441034:
-        return message
-    
-    message = MessageCopy(message)
+    if message_.guild.id != 542224582317441034:
+        return message_
     
     # return None if not Xtrade bot
-    if message.guild.id == 542224582317441034 and message.author.name != 'Xcapture':
-        message.content = message.content.replace('BTO', 'BTO_msg').replace('STC', 'STC_msg')\
+    if message_.guild.id == 542224582317441034 and message_.author.name != 'Xcapture':
+        message_.content = message_.content.replace('BTO', 'BTO_msg').replace('STC', 'STC_msg')\
             .replace('STO', 'STO_msg').replace('BTC', 'BTC_msg')
-        return message
+        return message_
+    
+    message = MessageCopy(message_)
     
     # get action and author
     actions = {
@@ -73,8 +73,11 @@ def xtrades_formatting(message):
         'entered short': 'STO',        
         "entered short from the web platform.": "STO",
         'covered short from the web platform.': 'BTC',
+        "covered short": "BTC",
     }
     author_name = message.embeds[0].author.name
+    if author_name is None:
+        return message
     for action_str, action_code in actions.items():
         if action_str in author_name:
             action = action_code
@@ -89,7 +92,7 @@ def xtrades_formatting(message):
     else:
         print('ERROR: unknown action')
         print(message.embeds[0].author.name)
-        return
+        return message
 
     # format alert
     if action in ["BTO", "STC", "STO", "BTC"]:        
@@ -103,6 +106,8 @@ def xtrades_formatting(message):
             match = market_pattern.search(msg)
             if match:
                 price = match.group(1)
+            else:
+                price = f"{price} (alert price)"
             
             if strike is not None:
                 expiration_date = datetime.strptime(expiration_date, '%b %d %Y').strftime('%m/%d/%y')

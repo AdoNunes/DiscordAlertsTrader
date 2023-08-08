@@ -350,6 +350,11 @@ class AlertsTrader():
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
                     return "no", order, False
+                elif self.cfg['general'].getboolean('DO_STC_TRADES') is False and order['action'] == "STC":
+                    str_msg = f"BTO not accepted by config options: DO_STC_TRADES = False"
+                    print(Back.GREEN + str_msg)
+                    self.queue_prints.put([str_msg, "", "green"])
+                    return "no", order, False
                 elif order['action'] == "BTO":
                     price = order['price']
                     if price == 0:
@@ -751,8 +756,9 @@ class AlertsTrader():
             qty_bought = position["filledQty"]
 
             if position["BTO-Status"] in ["CANCELED", "REJECTED", "EXPIRED", "CANCEL_REQUESTED"]:
-                log_alert['action'] = "Trade-already cancelled"
+                log_alert['action'] = "Trade-already canceled"
                 log_alert["portfolio_idx"] = open_trade
+                self.portfolio.iloc[open_trade, 'isOpen'] = 0
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
                 return
@@ -810,6 +816,7 @@ class AlertsTrader():
                 self.close_open_exit_orders(open_trade)
                 time.sleep(1)
                 self.update_paused = False
+                qty_sold = np.nansum([position[f"STC{i}-Qty"] for i in range(1,4)])
                 position = self.portfolio.iloc[open_trade]
                 order['Qty'] = int(position["Qty"]) - qty_sold
 
@@ -1035,7 +1042,10 @@ class AlertsTrader():
                 
                 self.portfolio.loc[i, "filledQty"] = order_info['filledQuantity']
                 self.portfolio.loc[i, "BTO-Status"] = order_info['status']
-
+            
+                if order_status == 'REJECTED':
+                    self.portfolio.loc[i, 'isOpen'] = 0
+                    
                 trade = self.portfolio.iloc[i]
                 self.save_logs("port")
 
@@ -1060,7 +1070,7 @@ class AlertsTrader():
                     # Update exits from % to value
                     self.exit_percent_to_price(i)
 
-            # For short positions if closed end of day           
+            # For shorting positions if closed end of day           
             if trade['Type'] == 'STO' and self.cfg['shorting'].getboolean("BTC_EOD"):
                 time_now = datetime.now().time()
                 time_closed = datetime.strptime(self.cfg['general']["off_hours"].split(",")[0], "%H")
@@ -1073,9 +1083,6 @@ class AlertsTrader():
                         PT, SL = self.cfg['shorting']['BTC_EOD_PT_SL'].split(",")
                         SL, PT = eval(SL)/100, eval(PT)/100
                         
-                        # check if not already updated, assume 5-10% exits are the updated 
-                        # percentage_difference = round(abs(exit_plan['SL'] - exit_plan['PT1']) / exit_plan['PT1'], 2)
-                        # if abs(percentage_difference - (SL+PT)) <= 0.03:  # accept 3% rounding error
                         if self.EOD.get(trade["Symbol"]) != "15min":
                             # Close and send lim order
                             self.close_open_exit_orders(i) 
@@ -1090,11 +1097,11 @@ class AlertsTrader():
                             exit_plan[f"PT{ith}"] = round(quote - PT * quote, 2)
                             
                             self.portfolio.at[i,'exit_plan'] = str(exit_plan)
-                            redo_orders = True                            
+                            redo_orders = True
+                            self.exit_percent_to_price(i)
                             str_msg = f'updating exits option {trade["Symbol"]} 15 min before EOD with {int(SL*100)}% SL and {int(PT*100)}% PT'
                             print(Back.GREEN + str_msg)
                             self.queue_prints.put([str_msg, "", "green"])
-                            self.exit_percent_to_price(i)
                             self.EOD[trade["Symbol"]] = "15min"
                     
                 # Close position 5 min to close
