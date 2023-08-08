@@ -106,6 +106,8 @@ def xtrades_formatting(message_):
             match = market_pattern.search(msg)
             if match:
                 price = match.group(1)
+            else:
+                price = f"{price} (alert price)"
             
             if strike is not None:
                 expiration_date = datetime.strptime(expiration_date, '%b %d %Y').strftime('%m/%d/%y')
