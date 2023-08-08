@@ -287,3 +287,145 @@ def update_acct_ly(bksession, window):
         window.Element(el).Widget.resizeColumnsToContents()
 
 
+def layout_config(fnt_h, cfg):
+    
+    frame1 =[[sg.Checkbox("Notify alerts to discord", default=cfg['discord'].getboolean('notify_alerts_to_discord'),
+                        key="cfg_discord.notify_alerts_to_discord", 
+                        tooltip='Option to send an your trade alerts to a channel using webhook specified in config.ini')],
+            [sg.Text("off market hours:"), 
+                sg.Input(cfg['general']['off_hours'],key="cfg_general.off_hours", 
+                    tooltip='set your local hours where market is closed, e.g. 16,9 means from 4pm to 9am [eastern time],\nused for sampling quotes and shorting'),
+                sg.Stretch()],
+
+            ]
+        
+    frame2 = [
+        [sg.Checkbox('Do BTO trades', cfg['general'].getboolean('Do_BTO_trades'), 
+                    key="cfg_general.do_BTO_trades", tooltip='Accept Buy alerts and open trades', enable_events=True)],
+        [sg.Checkbox('Do STC trades', cfg['general'].getboolean('Do_STC_trades'), 
+                    key="cfg_general.do_STC_trades", tooltip='Accept Sell alerts and close trade', enable_events=True)],
+        [sg.Checkbox("Auto trade (don't ask for confirmation)",
+                    cfg['order_configs'].getboolean('auto_trade'), key="cfg_order_configs.auto_trade",
+                    tooltip='If True, it will execute the trade wihtout asking for confirmation', enable_events=True)],
+        [sg.Checkbox('Sell @ current price', cfg['order_configs'].getboolean('sell_current_price'), 
+                    key="cfg_order_configs.sell_current_price", 
+                    tooltip='When BTO alerts, sell current rather than alerted,\nif alerted is too low it will not fill', enable_events=True)],
+        [sg.Text("Authors subscribed:",
+                tooltip='list of authors to follow, e.g. me_long,trader#1234'), 
+        sg.Input(cfg['discord']['authors_subscribed'],key="cfg_discord.authors_subscribed",
+                tooltip='list of authors to follow, e.g. me_long,trader#1234', enable_events=True)],
+        [sg.Text("Channelwise subscription:",
+                tooltip='Specify a channel to follow allerts from ALL the authors, useful for challenge accounts'), 
+        sg.Input(cfg['discord']['channelwise_subscription'], key="cfg_discord.channelwise_subscription",
+                tooltip='Specify a channel to follow allerts from ALL the authors, useful for challenge accounts', enable_events=True)],
+        [sg.Text("Authorwise subscription:",
+                tooltip='The app will capture messages for this user, add it to authors substribed for following the alerts'), 
+        sg.Input(cfg['discord']['auhtorwise_subscription'], key="cfg_discord.auhtorwise_subscription", enable_events=True,
+                tooltip='The app will capture messages for this user, add it to authors substribed for following the alerts')],
+        [sg.Text("Max price diff:",
+                tooltip='For stocks and options max value diff to accept current price,\nif not will lim to alerted price'), 
+        sg.Input(cfg['order_configs']['max_price_diff'],key="cfg_order_configs.max_price_diff", enable_events=True,
+                tooltip='For stocks and options max value diff to accept current price,\nif not will lim to alerted price')],
+        [sg.Text("Default exits:",
+                tooltip='If not None, it will set up profit taking (up to 3) and stoploss if exit not provided in alert.\n' +\
+                ' can be value=1.1, percentage "30%", for PT can be "%" and a Trailing stop: "30%TS5%"\n' +\
+                'SL (stop loss) can be percentage: "30%" or trailing stop "TS30%"\n' +\
+                'add quotes to the exits values e.g. "10%"'), 
+        sg.Input(cfg['order_configs']['default_exits'], key="cfg_order_configs.default_exits",
+                tooltip='If not None, it will set up profit taking (up to 3) and stoploss if exit not provided in alert.\n' +\
+                ' can be $ value: 1.1, percentage: "30%", for PT can be "%" and a Trailing stop: "30%TS5%"\n' +\
+                'SL (stop loss) can be percentage: "30%" or trailing stop "TS30%"\n' +\
+                'add quotes to the exits values e.g. "10%"', enable_events=True,)],
+        [sg.Text("Default quantity:",
+                tooltip='If no quantity specified in the alert either "buy_one" or use "trade_capital"'), 
+        sg.Drop(values=['buy_one', 'trade_capital'] ,default_value=cfg['order_configs']['default_bto_qty'],
+                key="cfg_order_configs.default_bto_qty",
+                tooltip='if no quantity specified in the alert either "buy_one" or use "trade_capital"'),
+        sg.Stretch()],
+        [sg.Text("Trade capital: $",
+                tooltip='if default qty == trade_capital, specify the $ amount per trade, qty will be price/capital'), 
+        sg.Input(cfg['order_configs']['trade_capital'], key="cfg_order_configs.trade_capital", enable_events=True,
+                tooltip='if default qty == trade_capital, specify the $ amount per trade, qty will be price/capital'),
+        sg.Stretch()],
+        [sg.Text("Max capital per trade: $",
+                tooltip='Max investment per trade, if alert qty is higher than this, it will only buy max_trade_capital/price'), 
+        sg.Input(cfg['order_configs']['max_trade_capital'], key="cfg_order_configs.max_trade_capital", enable_events=True,
+                tooltip='Max investment per trade, if alert qty is higher than this, it will only buy max_trade_capital/price'),
+        sg.Stretch()],
+        ]
+    
+    frame3 = [
+    [sg.Checkbox('Do STO trades, sell to open', cfg['shorting'].getboolean('DO_STO_TRADES'), 
+                key="cfg_shorting.DO_STO_TRADES", tooltip='Accept Shorting Trades, \b bypassed if user manually triggers alert')],
+    [sg.Checkbox("Do BTO trades (buy to open, close trade)",
+                cfg['shorting'].getboolean('DO_BTC_TRADES'), key="cfg_shorting.DO_BTC_TRADES",
+                tooltip='If True, a close alert with BTO\b bypassed if user manually triggers alert')], 
+     
+    [sg.Text('Max price diff', 
+             tooltip='Max difference allowed between alerted price and current price, if not will lim to alerted price'),
+    sg.Input(cfg['shorting']['max_price_diff'], key="cfg_shorting.max_price_diff",  enable_events=True,
+            tooltip='Max difference allowed between alerted price and current price, if not will lim to alerted price'), sg.Stretch()],
+    
+    [sg.Text("STO Tailing Stop: %",
+            tooltip="Trail the price until it drops a %, can be empty so no trailing stop"),
+    sg.Input(cfg['shorting']['STO_trailingstop'], key="cfg_shorting.STO_trailingstop", enable_events=True,
+            tooltip="Trail the price until it drops a %, can be empty so no trailing stop"), sg.Stretch()],
+    
+    [sg.Text("BTC PT (profit target) %", tooltip="The percentage to trigger BTC at a profit, can be empty so no PT"),
+    sg.Input(cfg['shorting']['BTC_PT'], key="cfg_shorting.BTC_PT",  enable_events=True,
+             tooltip="The percentage to trigger BTC at a profit, can be empty so no PT"), sg.Stretch()],
+    
+    [sg.Text("BTC SL (stop loss) %", tooltip="The percentage to trigger BTC at a profit, can be empty so no PT"),
+    sg.Input(cfg['shorting']['BTC_SL'], key="cfg_shorting.BTC_SL",  enable_events=True,
+             tooltip="The percentage to trigger BTC at a stoploss, can be empty so no SL"), sg.Stretch()],
+    
+    [sg.Checkbox("BTC at end of day (EOD)", default=cfg['shorting'].getboolean('BTC_EOD'), key="cfg_shorting.BTC_EOD",
+                tooltip="Close at end of day, if not overnight there might be big losses"), sg.Stretch()],
+    
+    [sg.Text("EOF PT and SL %", 
+            tooltip="Before close, at 3:45 narrow the SL to 5% and PT to 10% of current price, can be empty"),
+    sg.Input(cfg['shorting']['BTC_EOD_PT_SL'], key="cfg_shorting.BTC_EOD_PT_SL", enable_events=True,
+            tooltip="Before close, at 3:45 narrow the SL to 5% and PT to 10% of current price, can be empty"), sg.Stretch()],
+    
+    [sg.Text("Qty based on", tooltip="Either 'buy_one' or use 'underlying_capital' to calculate quantity"),
+    sg.Drop(values=['buy_one', 'underlying_capital'], default_value=cfg['shorting']['default_sto_qty'], key="cfg_shorting.default_sto_qty",
+            tooltip=" Either 'buy_one' or use 'underlying_capital' to calculate quantity", size=(30,1), enable_events=True), sg.Stretch()],
+
+    [sg.Text("Undelying capital $",
+            tooltip="Specify the $ amount per underlying, if 400 and option underlying is 100, it will buy 4 contracts"),
+    sg.Input(cfg['shorting']['underlying_capital'], key="cfg_shorting.underlying_capital", enable_events=True,
+            tooltip=" Either 'buy_one' or use 'underlying_capital' to calculate quantity"), sg.Stretch()],
+    
+    [sg.Text("Max days to expiration", 
+            tooltip="0 means expiring same day (more volatile and theta decay), 1 means next day, etc"),
+    sg.Input(cfg['shorting']['max_dte'], key="cfg_shorting.max_dte", enable_events=True,
+            tooltip="0 means expiring same day (more volatile and theta decay), 1 means next day, etc"), sg.Stretch()],
+    
+    [sg.Text("Max underlying value", 
+             tooltip= "Max value of the underlying, margin is usually 100 * strike * 0.20, so SPX 4400 requires about $8k maring"),
+    sg.Input(cfg['shorting']['max_strike'], key="cfg_shorting.max_strike", enable_events=True,
+             tooltip= "Max value of the underlying, margin is usually 100 * strike * 0.20, so SPX 4400 requires about $8k maring"), sg.Stretch()],
+    
+    [sg.Text("Min price contract", tooltip="Min price contract, an option at 0.5 price is $50"),
+    sg.Input(cfg['shorting']['min_price'], key="cfg_shorting.min_price",  enable_events=True,
+            tooltip="Min price contract, an option at 0.5 price is $50"), sg.Stretch()],
+    
+    [sg.Text("Maximum $ per trade", tooltip="If the quantity is higher than this, it will only buy the max_trade_capital. If one contract is higher than this, it will not buy"),
+    sg.Input(cfg['shorting']['max_trade_capital'], key="cfg_shorting.max_trade_capital", enable_events=True,
+            tooltip="If the quantity is higher than this, it will only buy the max_trade_capital. If one contract is higher than this, it will not buy"), sg.Stretch()],
+    
+    [sg.Text("Authors subscribed:", tooltip="Traders to short, do not put the same names as in [order_configs (long)]. Me_short for GUI alert trigger")],
+    [sg.Input(cfg['shorting']['authors_subscribed'], key="cfg_shorting.authors_subscribed",  enable_events=True,
+            tooltip="Traders to short, do not put the same names as in [order_configs (long)]. Me_short for GUI alert trigger")],
+    ]
+    lay = [[sg.Text("Session Configuration (change config.ini for permanent changes)", font=(fnt_h+ ' bold'), text_color='black', justification='center')],
+        [sg.Frame('General', frame1, title_color='lightred', tooltip='General configurations')],
+        [sg.Frame('Long Trading', frame2, title_color='lightred', tooltip='Config for long trading'), 
+        sg.Frame('Short Trading', frame3, title_color='lightred', tooltip='Config for long trading')],
+        [sg.ReadButton("Save", button_color=('white', 'black'),  bind_return_key=True, key="cfg_button")]
+        ]
+    
+    return lay
+
+
+

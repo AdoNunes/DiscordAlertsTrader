@@ -32,6 +32,10 @@ class dummy_queue():
             self.queue.pop(0)
         self.queue.append(item)
 
+def split_strip(string):
+    lstr = string.split(",")
+    lstr = [s.strip().lower() for s in lstr]
+    return lstr
 
 class DiscordBot(discord.Client):
     def __init__(self, 
@@ -165,7 +169,7 @@ class DiscordBot(discord.Client):
         # only respond to channels in config or authorwise subscription
         author = f"{message.author.name}#{message.author.discriminator}"    
         if message.channel.id not in self.channel_IDS.values() and \
-            author not in self.cfg['discord']['auhtorwise_subscription'].split(","):
+            author not in split_strip(self.cfg['discord']['auhtorwise_subscription']):
             # print(author, message.channel.name, message.channel.id, message.guild.name)
             return
         if message.content == 'ping':
@@ -276,10 +280,10 @@ class DiscordBot(discord.Client):
             str_msg = pars
             if live_alert and self.bksession is not None and (order.get('price') is not None):
                 quote = self.trader.price_now(order['Symbol'], order["action"], pflag=1)
-                if quote != 0:
-                    act_diff = (order['price'] - quote)/ quote
+                if quote:
+                    act_diff = max(((quote - order['price'])/order['price']), (order['price'] - quote)/ quote)
                     # Check if actual price is too far (100) from alerted price
-                    if (quote > 0) and abs(act_diff > 1) and order.get('action') == 'BTO':
+                    if abs(act_diff) > 1 and order.get('action') == 'BTO':
                         str_msg = f"Alerted price is {act_diff} times larger than current price of {quote}, skipping alert"
                         self.queue_prints.put([f"\t {str_msg}", "green"])
                         print(Fore.GREEN + f"\t {str_msg}")
@@ -312,13 +316,13 @@ class DiscordBot(discord.Client):
         if self.bksession is None or channel == "GUI_analysts":
             return False, order
         # in authors subs list
-        if author in self.cfg['discord']['authors_subscribed'].split(","):
+        if author in split_strip(self.cfg['discord']['authors_subscribed']):
             return True, order
         # in channel subs list
-        elif channel in self.cfg['discord']['channelwise_subscription'].split(","):
+        elif channel in split_strip(self.cfg['discord']['channelwise_subscription']):
             return True, order
         # in authors shorting list
-        elif author in self.cfg['shorting']['authors_subscribed'].split(","):
+        elif author in split_strip(self.cfg['shorting']['authors_subscribed']):
             if order['asset'] != "option":
                 return False, order
             # BTC order sent manullay from gui

@@ -32,6 +32,7 @@ class TestAlertsTrader(unittest.TestCase):
         cfg['order_configs']['max_trade_capital'] = '1000'
         cfg['discord']['notify_alerts_to_discord'] = 'false'
         cfg['general']['DO_BTO_TRADES'] = 'true'
+        cfg['general']['DO_STC_TRADES'] = 'true'
         
         trader = AlertsTrader(brokerage, 
                               portfolio_fname=self.trader_portfolio_fname,
