@@ -316,12 +316,20 @@ class DiscordBot(discord.Client):
         "Decide if alert should be traded"
         if self.bksession is None or channel == "GUI_analysts":
             return False, order
-        # in authors subs list
-        if author.lower() in split_strip(self.cfg['discord']['authors_subscribed']):
-            return True, order
-        # in channel subs list
-        elif channel.lower() in split_strip(self.cfg['discord']['channelwise_subscription']):
-            return True, order
+        
+        # in authors subs list or channel subs list
+        if author.lower() in split_strip(self.cfg['discord']['authors_subscribed']) or \
+            channel.lower() in split_strip(self.cfg['discord']['channelwise_subscription']):
+            # ignore if no STC
+            if not self.cfg['general'].getboolean('DO_STC_TRADES') and order['action'] == "STC" \
+            and channel not in ["GUI_user", "GUI_both"]:        
+                str_msg = f"STC not accepted by config options: DO_STC_TRADES = False"
+                print(Fore.GREEN + str_msg)
+                self.queue_prints.put([str_msg, "", "green"])
+                return False, order
+            else:             
+                return True, order
+
         # in authors shorting list
         elif author.lower() in split_strip(self.cfg['shorting']['authors_subscribed']):
             if order['asset'] != "option":
