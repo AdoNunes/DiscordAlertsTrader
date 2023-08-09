@@ -169,7 +169,7 @@ class DiscordBot(discord.Client):
         # only respond to channels in config or authorwise subscription
         author = f"{message.author.name}#{message.author.discriminator}"    
         if message.channel.id not in self.channel_IDS.values() and \
-            author not in split_strip(self.cfg['discord']['auhtorwise_subscription']):
+            author.lower() not in split_strip(self.cfg['discord']['auhtorwise_subscription']):
             # print(author, message.channel.name, message.channel.id, message.guild.name)
             return
         if message.content == 'ping':
@@ -317,13 +317,13 @@ class DiscordBot(discord.Client):
         if self.bksession is None or channel == "GUI_analysts":
             return False, order
         # in authors subs list
-        if author in split_strip(self.cfg['discord']['authors_subscribed']):
+        if author.lower() in split_strip(self.cfg['discord']['authors_subscribed']):
             return True, order
         # in channel subs list
-        elif channel in split_strip(self.cfg['discord']['channelwise_subscription']):
+        elif channel.lower() in split_strip(self.cfg['discord']['channelwise_subscription']):
             return True, order
         # in authors shorting list
-        elif author in split_strip(self.cfg['shorting']['authors_subscribed']):
+        elif author.lower() in split_strip(self.cfg['shorting']['authors_subscribed']):
             if order['asset'] != "option":
                 return False, order
             # BTC order sent manullay from gui
