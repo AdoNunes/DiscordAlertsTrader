@@ -21,7 +21,7 @@ from DiscordAlertsTrader import gui_generator as gg
 from DiscordAlertsTrader import gui_layouts as gl
 from DiscordAlertsTrader.discord_bot import DiscordBot
 from DiscordAlertsTrader.configurator import cfg, channel_ids
-
+from DiscordAlertsTrader.message_parser import parse_trade_alert, ordersymb_to_str
 # A fix for Macs
 os.environ['QT_MAC_WANTS_LAYER'] = '1'
 
@@ -48,12 +48,60 @@ def match_authors(author_str:str)->str:
     authors = list(dict.fromkeys(authors))
     authors = [a for a in authors if author_str.lower() in a.lower()]
     if len(authors) == 0:
-        author = f"{author_str}#No match, find author identifier#1234"
+        author = author_str
     elif len(authors) > 1:
-        author = f"{author_str}#Multiple matches, find author identifier#1234"
+        author = author_str
     else:
         author = authors[0]
     return author
+
+def split_alert_message(gui_msg):
+    # extra comas
+    if len(gui_msg.split(','))>2:
+        splt = gui_msg.split(',')
+        author = splt[0]
+        msg = ",".join(splt[1:])
+    # one coma
+    elif len(gui_msg.split(','))==2:
+        author, msg = gui_msg.split(',')
+    # one colon
+    elif len(gui_msg.split(':'))==2:
+        author, msg = gui_msg.split(':')
+    # extra colons
+    elif len(gui_msg.split(':'))>2:
+        splt = gui_msg.split(':')
+        author = splt[0]
+        msg = ":".join(splt[1:])
+        
+    # no colon or coma
+    else:
+        print("No colon or coma in message, author not found")
+        author = msg = None
+    return author, msg
+
+def get_live_quotes(symbol, max_delay=None):
+    dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
+    
+    fquote = f"{dir_quotes}/{symbol}.csv"
+    if not op.exists(fquote):
+        return
+    
+    with open(fquote, "r") as f:
+        quotes = f.readlines()
+    
+    now = time.time()
+    try:
+        timestamp, quote = quotes[-1].split(',')  # in s   
+    except:
+        print("Error reading quote", symbol, quotes[-1])
+        return
+    
+    timestamp = eval(timestamp)
+    if max_delay is not None:
+        if now - timestamp > max_delay:
+            return
+    quote = quote.strip().replace('\n', '')
+    return quote
 
 def fit_table_elms(Widget_element):
     Widget_element.resizeRowsToContents()
@@ -108,8 +156,8 @@ layout = [[sg.TabGroup([
                         [sg.Tab("Account", ly_accnt)],
                         [sg.Tab("Config", ly_conf)]
                         ], title_color='black')],
-            gl.trigger_alerts_layout()
         ]
+layout += gl.trigger_alerts_layout()
 print(3)
 window = sg.Window('Discord Alerts Trader', layout,size=(100, 800), # force_toplevel=True,
                     auto_size_text=True, resizable=True)
@@ -235,7 +283,40 @@ def run_gui():
             else:
                 symb_str= f"{auth}, STC {qty} {symb} @{price}"
             window.Element("-subm-msg").Update(value=symb_str)
-            
+        # handle alert buttons
+        elif event == '-toggle':
+            state = window[event].DisplayText
+            butts = ['-alert_to-', '-alert_BTO', '-alert_STC', '-alert_STO', '-alert_BTC', '-alert_exitupdate']
+            if state == '▲':
+                window[event].update(value='▼')            
+            else:
+                window[event].update(value='▲')
+            for el in butts:
+                window[el].update(visible=state == '▲')
+                
+        elif event.startswith('-alert_' ):
+            print(event)
+            ori_col = window.Element(event).ButtonColor
+            window.Element(event).Update(button_color=("black", "white"))
+            window.refresh()            
+
+            action = event.split('_')[1]
+            author, alert = split_alert_message(values['-subm-msg'])            
+            _, order = parse_trade_alert(alert)
+
+            if order is None:
+                window.Element(event).Update(button_color=ori_col)
+                continue
+            price = get_live_quotes(order['Symbol'])
+            if price is not None:
+                price = order.get('price',0)
+            symbol = ordersymb_to_str(order['Symbol'])
+            if action != 'exitupdate':
+                msg =  f"{author}, {action} {order.get('Qty', 1)} {symbol} @{price}" 
+            else:
+                msg =  f"{author}, Exit Update {symbol} PT 50% SL 50%"
+            window.Element("-subm-msg").Update(value=msg)
+            window.Element(event).Update(button_color=ori_col)
         if event == "_upd-portfolio_": # update button in portfolio
             ori_col = window.Element(event).ButtonColor
             window.Element(event).Update(button_color=("black", "white"))
@@ -345,32 +426,9 @@ def run_gui():
         elif event == "-subm-alert":
             ori_col = window.Element(event).ButtonColor
             window.Element(event).Update(button_color=("black", "white"))
-            window.refresh()
-            
-            #extra comas
-            if len(values['-subm-msg'].split(','))>2:
-                splt = values['-subm-msg'].split(',')
-                author = splt[0]
-                msg = ",".join(splt[1:])
-            # one coma
-            elif len(values['-subm-msg'].split(','))==2:
-                author, msg = values['-subm-msg'].split(',')
-            # one colon
-            elif len(values['-subm-msg'].split(':'))==2:
-                author, msg = values['-subm-msg'].split(':')
-            # extra colons
-            elif len(values['-subm-msg'].split(':'))>2:
-                splt = values['-subm-msg'].split(':')
-                author = splt[0]
-                msg = ":".join(splt[1:])
-            # no colon or coma
-            else:
-                print("No colon or coma in message, author not found")
-                
+            window.refresh()            
+            author,msg = split_alert_message(values['-subm-msg'])
             author = match_authors(author.strip())
-            # let pass no identifier if no match
-            author = author.replace("#No match, find author identifier#1234", "")
-            author = author.replace("#Multiple matches, find author identifier#1234", "")
             msg = msg.strip().replace("SPXW", "SPX")
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             chan = "GUI_" + values["_chan_trigg_"]
@@ -419,7 +477,7 @@ def gui():
     client_thread = threading.Thread(target=run_client, daemon=True)
 
     # start the threads
-    client_thread.start()
+    # client_thread.start()
     run_gui()
 
     # close the GUI window

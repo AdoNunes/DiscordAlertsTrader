@@ -1,3 +1,4 @@
+requests==2.28.1
 td-ameritrade-python-api
 PySimpleGUIQt
 pandas

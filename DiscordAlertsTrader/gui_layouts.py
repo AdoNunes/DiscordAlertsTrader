@@ -28,13 +28,25 @@ def trigger_alerts_layout():
                 "STO: Author#1234, STC 1 AAA 115C 05/30 @2.5 PT 40% SL 50% \n" +\
                 "BTC: Author#1234, STC 1 AAA 115C 05/30 @2 \n" +\
                 "Exit Update: Author#1234, exit update AAA 115C 05/30 PT 80% SL 2\n"
-    lay = [sg.Stretch(), sg.Text('to portfolio:', tooltip=tp_chan),
+    lay = [[sg.Text('▲', key='-toggle',   enable_events=True, 
+                                 tooltip='Show/hide change alert action'),
+           sg.Text('| to portfolio:', tooltip=tp_chan),
            sg.Combo(['both', 'user', 'analysts'], default_value='analysts', key="_chan_trigg_",tooltip=tp_chan, readonly=True, size=(15,1.2)),
             sg.Input(default_text="Author#1234, STC 1 AAA 115C 05/30 @2.5 [click portfolio row number to prefill]",
                     size= (100,1.3), key="-subm-msg",
                     tooltip=tp_trig),
            sg.Button("Trigger alert", key="-subm-alert", 
-                     tooltip="Will generate alert in user or/and analysts portfolio, useful to close or open a position", size= (20,1.2))]
+                     tooltip="Will generate alert in user or/and analysts portfolio, useful to close or open a position", size= (20,1.2)),
+           sg.Stretch()], 
+           [sg.Text('                   Change alert to:', key='-alert_to-', tooltip="Change  current alert in tigger alert", visible=False),
+            sg.Button("BTO", key='-alert_BTO', size=(10,1), tooltip="Once clicked portfolio row change prefilled STC to BTO", visible=False),
+            sg.Button("STC", key='-alert_STC', size=(10,1), tooltip="Once clicked portfolio row change prefilled to STC", visible=False),
+            sg.Button("STO", key='-alert_STO', size=(10,1), tooltip="Once clicked portfolio row change prefilled STC to BTO", visible=False),
+            sg.Button("BTC", key='-alert_BTC', size=(10,1), tooltip="Once clicked portfolio row change prefilled to STC", visible=False),
+            sg.Button("ExitUpdate", key='-alert_exitupdate', size=(20,1), tooltip="Once clicked portfolio row change prefilled STC to exit update", visible=False),
+            sg.Stretch()
+           ]
+           ]
     return lay
 
 def layout_portfolio(data_n_headers, font_body, font_header):
@@ -357,10 +369,14 @@ def layout_config(fnt_h, cfg):
     frame3 = [
     [sg.Checkbox('Do STO trades, sell to open', cfg['shorting'].getboolean('DO_STO_TRADES'), 
                 key="cfg_shorting.DO_STO_TRADES", tooltip='Accept Shorting Trades, \b bypassed if user manually triggers alert')],
+    
     [sg.Checkbox("Do BTO trades (buy to open, close trade)",
                 cfg['shorting'].getboolean('DO_BTC_TRADES'), key="cfg_shorting.DO_BTC_TRADES",
                 tooltip='If True, a close alert with BTO\b bypassed if user manually triggers alert')], 
-     
+         
+    [sg.Checkbox("BTC at end of day (EOD)", default=cfg['shorting'].getboolean('BTC_EOD'), key="cfg_shorting.BTC_EOD",
+                tooltip="Close at end of day, if not overnight there might be big losses"), sg.Stretch()],
+    
     [sg.Text('Max price diff', 
              tooltip='Max difference allowed between alerted price and current price, if not will lim to alerted price'),
     sg.Input(cfg['shorting']['max_price_diff'], key="cfg_shorting.max_price_diff",  enable_events=True,
@@ -378,9 +394,6 @@ def layout_config(fnt_h, cfg):
     [sg.Text("BTC SL (stop loss) %", tooltip="The percentage to trigger BTC at a profit, can be empty so no PT"),
     sg.Input(cfg['shorting']['BTC_SL'], key="cfg_shorting.BTC_SL",  enable_events=True,
              tooltip="The percentage to trigger BTC at a stoploss, can be empty so no SL"), sg.Stretch()],
-    
-    [sg.Checkbox("BTC at end of day (EOD)", default=cfg['shorting'].getboolean('BTC_EOD'), key="cfg_shorting.BTC_EOD",
-                tooltip="Close at end of day, if not overnight there might be big losses"), sg.Stretch()],
     
     [sg.Text("EOF PT and SL %", 
             tooltip="Before close, at 3:45 narrow the SL to 5% and PT to 10% of current price, can be empty"),
