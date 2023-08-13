@@ -166,6 +166,7 @@ class DiscordBot(discord.Client):
             if alert is not None:
                 self.new_msg_acts(alert, False)
                 return
+        
         # only respond to channels in config or authorwise subscription
         author = f"{message.author.name}#{message.author.discriminator}"    
         if message.channel.id not in self.channel_IDS.values() and \
@@ -179,7 +180,6 @@ class DiscordBot(discord.Client):
         if not len(message.content):
             return
         self.new_msg_acts(message)
-        
 
     async def on_message_edit(self, before, after):
         # Ignore if the message is not from a user or if the bot itself edited the message

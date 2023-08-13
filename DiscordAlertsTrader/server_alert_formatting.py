@@ -5,55 +5,42 @@ def server_formatting(message):
     """Format server messages to standard alert format"""
     if message.guild.id == 542224582317441034:
         message = xtrades_formatting(message)
+    elif message.guild.id == 836435995854897193:
+        message = tradeproelite_formatting(message)
+        
     return message
 
-class MessageCopy:
-    def __init__(self, original_message):
-        self.created_at = original_message.created_at
-        self.channel = ChannelCopy(original_message.channel)
-        self.author = AuthorCopy(original_message.author)
-        self.guild = GuildCopy(original_message.guild)
-        self.embeds = [EmbedCopy(embed) for embed in original_message.embeds]
-        self.content = original_message.content
 
-class AuthorCopy:
-    def __init__(self, original_author):
-        self.name = original_author.name
-        self.discriminator = original_author.discriminator
-        self.id = original_author.id
-        self.bot =  original_author.bot
+def tradeproelite_formatting(message_):
+    """
+    Reformat Discord message from TPE to change generate alerts bot to author
+    TPE guild id: 836435995854897193
+    """
+    # Don't do anything if not Xtrade message
+    if message_.guild.id != 836435995854897193:
+        return message_
+    
+    # Change bot to author
+    if message_.author.name != 'EnhancedMarket':
+        message = MessageCopy(message_)
+        message.author.name == 'enhancedmarket'
+        message.author.discriminator = '0'
+        return message
+    
+    return message_
 
-class ChannelCopy:
-    def __init__(self, original_channel):
-        self.id = original_channel.id
-
-class GuildCopy:
-    def __init__(self, original_guild):
-        self.id = original_guild.id
-        
-class EmbedFieldCopy:
-    def __init__(self, original_field):
-        self.name = original_field.name
-        self.value = original_field.value
-
-class EmbedCopy:
-    def __init__(self, original_embed):
-        self.author = AuthorCopy(original_embed.author)
-        self.title = original_embed.title
-        self.description = original_embed.description
-        self.fields = [EmbedFieldCopy(field) for field in original_embed.fields]
 
 def xtrades_formatting(message_):
     """
     Reformat Discord message from Xtrades to a sandard alert format
-    Xtrades guild id:
+    Xtrades guild id: 542224582317441034
     """
     # Don't do anything if not Xtrade message
     if message_.guild.id != 542224582317441034:
         return message_
     
     # return None if not Xtrade bot
-    if message_.guild.id == 542224582317441034 and message_.author.name != 'Xcapture':
+    if message_.author.name != 'Xcapture':
         message_.content = message_.content.replace('BTO', 'BTO_msg').replace('STC', 'STC_msg')\
             .replace('STO', 'STO_msg').replace('BTC', 'BTC_msg')
         return message_
@@ -138,7 +125,6 @@ def xtrades_formatting(message_):
         message.content = alert
         return message
 
-
 xtrades_msg_examples = [
     'STC GOOGL Aug 11 2023 $131.00 Call @ 1.29 (from: $1.37)',
     ':white_check_mark: Short NVDA Aug 4 2023 $452.50 Call @ $0.81  |  market : $0.85',
@@ -148,7 +134,6 @@ xtrades_msg_examples = [
     ':whitecheckmark: Closed RETO @ 2.32 *(from 1.94)*  |  current : $2.32',
     ':whitecheckmark: Long CXAI @ 8  |  current : $8.03',
     ]
-
 
 # message.embeds[0].author.name 
 # 'entered long', 
@@ -161,17 +146,52 @@ xtrades_msg_examples = [
 # 'covered short from the web platform.'
 
 # message.embeds[0].title
-':white_check_mark: Long QQQ Aug 18 2023 $365.00 Call @ 2.97  |  market : $2.97'
-':white_check_mark: Closed QQQ Aug 18 2023 $365.00 Call @ 4.97 (from $2.97)  |  market : $2.97'
-':white_check_mark: Short QQQ Aug 18 2023 $365.00 Put @ 2.97  |  market : $2.97'
-':white_check_mark: Covered QQQ Aug 18 2023 $365.00 Put @ 4.97 (from $2.97)  |  market : $2.97'
-':white_check_mark: Covered 0 Sep 18 2023 $365.00 Call @ 1.97 (from $2.67)  |  market : $2.67'
+# ':white_check_mark: Long QQQ Aug 18 2023 $365.00 Call @ 2.97  |  market : $2.97'
+# ':white_check_mark: Closed QQQ Aug 18 2023 $365.00 Call @ 4.97 (from $2.97)  |  market : $2.97'
+# ':white_check_mark: Short QQQ Aug 18 2023 $365.00 Put @ 2.97  |  market : $2.97'
+# ':white_check_mark: Covered QQQ Aug 18 2023 $365.00 Put @ 4.97 (from $2.97)  |  market : $2.97'
+# ':white_check_mark: Covered 0 Sep 18 2023 $365.00 Call @ 1.97 (from $2.67)  |  market : $2.67'
 
-'STC CRM Sep 18 2023 $365.00 Call @ 1.97 (from $2.67)'
+# 'STC CRM Sep 18 2023 $365.00 Call @ 1.97 (from $2.67)'
 
-'Average accepted @ $0.12'
-# message.embeds[0].fields[0].name
-'Risk'
-'Standard'
-'Lotto'
+# 'Average accepted @ $0.12'
+# # message.embeds[0].fields[0].name
+# 'Risk'
+# 'Standard'
+# 'Lotto'
 
+class MessageCopy:
+    def __init__(self, original_message):
+        self.created_at = original_message.created_at
+        self.channel = ChannelCopy(original_message.channel)
+        self.author = AuthorCopy(original_message.author)
+        self.guild = GuildCopy(original_message.guild)
+        self.embeds = [EmbedCopy(embed) for embed in original_message.embeds]
+        self.content = original_message.content
+
+class AuthorCopy:
+    def __init__(self, original_author):
+        self.name = original_author.name
+        self.discriminator = original_author.discriminator
+        self.id = original_author.id
+        self.bot =  original_author.bot
+
+class ChannelCopy:
+    def __init__(self, original_channel):
+        self.id = original_channel.id
+
+class GuildCopy:
+    def __init__(self, original_guild):
+        self.id = original_guild.id
+
+class EmbedFieldCopy:
+    def __init__(self, original_field):
+        self.name = original_field.name
+        self.value = original_field.value
+
+class EmbedCopy:
+    def __init__(self, original_embed):
+        self.author = AuthorCopy(original_embed.author)
+        self.title = original_embed.title
+        self.description = original_embed.description
+        self.fields = [EmbedFieldCopy(field) for field in original_embed.fields]
