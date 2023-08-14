@@ -1048,7 +1048,7 @@ class AlertsTrader():
             if pd.isnull(trade["filledQty"]) or trade["filledQty"] == 0:
                 continue
 
-            if trade.get("BTO-avg-Status") in ["QUEUED", "WORKING", 'OPEN']:
+            if trade.get("BTO-avg-Status") in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION', 'AWAITING_MANUAL_REVIEW', "PARTIAL"]:
                 ordID = trade['ordID'].split(",")[-1]
                 order_status, order_info = self.get_order_info(ordID)
                 if order_info['status'] in ["FILLED", "EXECUTED"]:
@@ -1066,7 +1066,7 @@ class AlertsTrader():
                     # Update exits from % to value
                     self.exit_percent_to_price(i)
 
-            # For shorting positions if closed end of day           
+            # For shorting positions if closing end of day           
             if trade['Type'] == 'STO' and self.cfg['shorting'].getboolean("BTC_EOD"):
                 time_now = datetime.now().time()
                 time_closed = datetime.strptime(self.cfg['general']["off_hours"].split(",")[0], "%H")
