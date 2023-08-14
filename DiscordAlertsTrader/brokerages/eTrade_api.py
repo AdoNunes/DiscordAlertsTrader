@@ -421,7 +421,7 @@ class eTrade(BaseBroker):
         kwargs['priceType'] = 'LIMIT'
         kwargs['limitPrice'] = price
         kwargs['allOrNone'] = False
-        kwargs['quantity'] = Qty       
+        kwargs['quantity'] = int(Qty)       
         kwargs['orderTerm'] = "GOOD_UNTIL_CANCEL"
         kwargs['marketSession'] = 'REGULAR'
         return kwargs
