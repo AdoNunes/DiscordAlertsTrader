@@ -146,18 +146,8 @@ class DiscordBot(discord.Client):
             self.chn_hist[ch]= ch_dt
 
     async def on_ready(self):
-        print('Logged on as', self.user , '\n loading previous messages')
-        # pass channel object to trader
-        # if self.bksession is not None and self.cfg['discord'].getboolean('notify_alerts_to_discord') and \
-        #     len(cfg['discord'].get('send_alerts_to_chan')):
-            # self.trader.discord_channel = await self.fetch_channel(cfg['discord'].get('send_alerts_to_chan'))
-            # self.trader.discord_send = self.send_msg            
+        print('Logged on as', self.user , '\n loading previous messages')        
         await self.load_previous_msgs()
-
-    async def send_msg(self, msg, channel=None):
-        if channel is None:
-            # channel = await self.fetch_channel(cfg['discord'].get('send_alerts_to_chan'))
-            await channel.send(msg)
     
     async def on_message(self, message):
         # handle fend bot messages
@@ -166,6 +156,7 @@ class DiscordBot(discord.Client):
             if alert is not None:
                 self.new_msg_acts(alert, False)
                 return
+        
         # only respond to channels in config or authorwise subscription
         author = f"{message.author.name}#{message.author.discriminator}"    
         if message.channel.id not in self.channel_IDS.values() and \
@@ -179,7 +170,6 @@ class DiscordBot(discord.Client):
         if not len(message.content):
             return
         self.new_msg_acts(message)
-        
 
     async def on_message_edit(self, before, after):
         # Ignore if the message is not from a user or if the bot itself edited the message
