@@ -28,10 +28,12 @@ def trigger_alerts_layout():
                 "STO: Author#1234, STC 1 AAA 115C 05/30 @2.5 PT 40% SL 50% \n" +\
                 "BTC: Author#1234, STC 1 AAA 115C 05/30 @2 \n" +\
                 "Exit Update: Author#1234, exit update AAA 115C 05/30 PT 80% SL 2\n"
-    lay = [[sg.Text('▲', key='-toggle',   enable_events=True, 
-                                 tooltip='Show/hide change alert action'),
-           sg.Text('| to portfolio:', tooltip=tp_chan),
+    lay = [[
+           sg.Text('to portfolio:', tooltip=tp_chan),
            sg.Combo(['both', 'user', 'analysts'], default_value='analysts', key="_chan_trigg_",tooltip=tp_chan, readonly=True, size=(15,1.2)),
+           
+           sg.Button('▲', key='-toggle',   enable_events=True, 
+                                 tooltip='Show/hide change alert action'),
             sg.Input(default_text="Author#1234, STC 1 AAA 115C 05/30 @2.5 [click portfolio row number to prefill]",
                     size= (100,1.3), key="-subm-msg",
                     tooltip=tp_trig),
@@ -75,7 +77,7 @@ def layout_portfolio(data_n_headers, font_body, font_header):
             sg.Text('| Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_exc_author', tooltip=tip),
             sg.Text('Channels: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_exc_chn',tooltip=tip),
             ],
-            [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-portfolio_")]])],
+            [sg.ReadButton("Update", button_color=('white', 'black'),bind_return_key=True, key="_upd-portfolio_")]])],
          [sg.Column([[sg.Table(values=values,
                         headings=data_n_headers[1],
                         display_row_numbers=True,
@@ -119,7 +121,7 @@ def layout_traders(data_n_headers, font_body, font_header):
             sg.Checkbox("Options", key="-track-options", enable_events=True),
             sg.Text('| Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_exc_author', tooltip=tip),
             sg.Text('Channels: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_exc_chn',tooltip=tip),
-            ],[sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-track_")]
+            ],[sg.ReadButton("Update", button_color=('white', 'black'),bind_return_key=True, key="_upd-track_")]
             ])],
          [sg.Column([
             [
@@ -172,7 +174,7 @@ def layout_stats(data_n_headers, font_body, font_header):
                       sg.Text('Symbols: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_sym',tooltip=tip),
                       sg.Text('Channels: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'stat_exc_chn',tooltip=tip),
                       ],
-                     [sg.ReadButton("Update", button_color=('white', 'black'), key="_upd-stat_")],
+                     [sg.ReadButton("Update", button_color=('white', 'black'),bind_return_key=True, key="_upd-stat_")],
                      [sg.Text("PnL-actual = PnL from prices at the moment of alerted trade (as opposed to the prices claimed in the alert) \n" + \
                          "diff = difference between actual and alerted, high BTO and low STC diffs is bad, alerts are delayed"
                          )]])
