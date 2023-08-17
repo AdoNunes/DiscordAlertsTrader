@@ -112,12 +112,12 @@ class AlertsTrader():
     def trade_updater(self, refresh_rate=10):
         while self.update_portfolio is True:
             if self.update_paused is False:
-                try:
+                # try:
                     self.update_orders()
-                except Exception as ex:
-                    str_msg = f"Error raised during port update, trying again later. Error: {ex}"
-                    print(Back.RED + str_msg)
-                    self.queue_prints.put([str_msg, "", "red"])
+                # except Exception as ex:
+                #     str_msg = f"Error raised during port update, trying again later. Error: {ex}"
+                #     print(Back.RED + str_msg)
+                #     self.queue_prints.put([str_msg, "", "red"])
             if self.update_portfolio:
                 time.sleep(refresh_rate)
         str_msg = "Closed portfolio updater"
@@ -211,13 +211,13 @@ class AlertsTrader():
     def confirm_and_send(self, order, pars, order_funct):
             resp, order, ord_chngd = self.notify_alert(order, pars)
             if resp in ["yes", "y"]:
-                try:
-                    ord_resp, ord_id = self.bksession.send_order(order_funct(**order))
-                except Exception as e:
-                    str_msg = f"Error in order {e}"
-                    print(Back.GREEN + str_msg)
-                    self.queue_prints.put([str_msg, "", "red"])
-                    return None, None, order, None
+                # try:
+                ord_resp, ord_id = self.bksession.send_order(order_funct(**order))
+                # except Exception as e:
+                #     str_msg = f"Error in order {e}"
+                #     print(Back.GREEN + str_msg)
+                #     self.queue_prints.put([str_msg, "", "red"])
+                #     return None, None, order, None
                 
                 if ord_resp is None:
                     raise("Something wrong with order response")
@@ -1278,7 +1278,10 @@ class AlertsTrader():
                     order['Qty'] = Qty[ii - 1]
                     order['xQty'] = xQty[ii - 1]
                     order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
-
+                    if self.bksession.name != 'tda':
+                        str_prt = f"WARNING: {self.bksession.name} does not support OCO orders. Only the PT will be sent without SL. For an Sl order, change exit to SL only"            
+                        print(Back.RED + str_prt)
+                        self.queue_prints.put([str_prt,"", "red"])
                 # Lim order
                 elif exit_plan[f"PT{ii}"] is not None and SL is None:
                     ord_func = self.bksession.make_STC_lim
@@ -1326,14 +1329,24 @@ class AlertsTrader():
                 else:
                     break
         # no PTs but trailing stop
-        if nPTs == 0 and exit_plan["SL"] is not None and isinstance(exit_plan["SL"], str) and \
-            "TS" in exit_plan["SL"] and pd.isnull(trade["STC1-ordID"]):            
-            order = self.calculate_stoploss(order, trade, exit_plan["SL"])
+        if nPTs == 0 and exit_plan["SL"] is not None and pd.isnull(trade["STC1-ordID"]): 
+            SL = exit_plan["SL"]
+            
             order['Qty'] = int(trade['Qty'])
             order['xQty'] = 1
             order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
-            _, STC_ordID = self.bksession.send_order(self.bksession.make_STC_SL_trailstop(**order))
-            str_prt = f"STC1 {order['Symbol']} Trailing stop of {exit_plan['SL']} constant $ sent during order update"            
+            
+            if isinstance(SL, str) and "TS" in SL:
+                ord_func = self.bksession.make_STC_SL_trailstop
+                order = self.calculate_stoploss(order, trade, exit_plan["SL"])
+                msg = f"Trailing stop of {exit_plan['SL']} constant % sent during order update"
+            else:
+                ord_func =self.bksession.make_STC_SL
+                order["SL"] = exit_plan["SL"]
+                msg = f"SL of {exit_plan['SL']} constant % sent during order update"
+                
+            _, STC_ordID = self.bksession.send_order(ord_func(**order))
+            str_prt = f"STC1 {order['Symbol']} {msg}"            
             print(Back.GREEN + str_prt)
             self.queue_prints.put([str_prt,"", "green"])
             self.portfolio.loc[i, "STC1-ordID"] = STC_ordID

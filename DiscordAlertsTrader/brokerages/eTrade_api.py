@@ -448,11 +448,12 @@ class eTrade(BaseBroker):
                 kwargs['orderAction'] = 'BUY_CLOSE'
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'STOP'
-        kwargs['stopPrice'] = int(SL)
+        kwargs['stopPrice'] = SL
         kwargs['allOrNone'] = False
         kwargs['quantity'] = Qty       
         kwargs['orderTerm'] = "GOOD_UNTIL_CANCEL"
         kwargs['marketSession'] = 'REGULAR'
+        return kwargs
 
     def make_STC_SL_trailstop(self, Symbol:str, Qty:int,  trail_stop_const:float, action="STC", **kwarg):
         "trail_stop_const"

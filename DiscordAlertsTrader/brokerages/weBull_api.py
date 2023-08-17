@@ -49,25 +49,28 @@ class weBull:
         positions = data['positions']
         for position in positions:
             pos = {
-                "longQuantity" : position['position'],
+                "longQuantity" : eval(position['position']),
                 "symbol": position['ticker']["symbol"],
-                "marketValue": position['marketValue'],
+                "marketValue": eval(position['marketValue']),
                 "assetType": position['assetType'],
-                "averagePrice": position['costPrice'],
-                "currentDayProfitLoss": position['unrealizedProfitLoss'],
-                "currentDayProfitLossPercentage": position['unrealizedProfitLoss']/100,
+                "averagePrice": eval(position['costPrice']),
+                "currentDayProfitLoss": eval(position['unrealizedProfitLoss']),
+                "currentDayProfitLossPercentage": float(eval(position['unrealizedProfitLoss']))/100,
                 'instrument': {'symbol': position['ticker']["symbol"],
                                 'assetType': position['assetType'],
                                 }
             }
             acc_inf['securitiesAccount']['positions'].append(pos)
-        else:
+        if not len(positions):
             acc_inf['securitiesAccount']['positions'] = []
-        print("No portfolio")
+            print("No portfolio")
 
         # get orders and add them to acc_inf
         orders = self.session.get_history_orders(count=10)
-        orders_inf =[]        
+        orders_inf =[]  
+        if isinstance(orders, dict) and orders.get('success') is False:
+            raise ValueError("Order entpoint obscolite, go to webull/endpoints.py line 144 and remove '&startTime=1970-0-1'")
+         
         for order in orders:
             order_status = order['status'].upper()
             if order_status in ['CANCELLED', 'FAILED']:
@@ -104,15 +107,17 @@ class weBull:
             otype = "C" if order['orders'][0]['optionType'][0].upper() =="CALL" else "P"
             symbol = f"{order['orders'][0]['symbol']}_{mnt}{day}{yer[2:]}{otype}{order['orders'][0]['optionExercisePrice']}".replace(".00","")
             symbol = self.fix_symbol(symbol, "out")
+            orderStrategyType = order['optionStrategy'].upper()
         else:
             symbol = order['orders'][0]['symbol']
+            orderStrategyType= 'SINGLE'
         status = order['status'].upper()
         order_info = {
             'status': status,
             'quantity': int(order['orders'][0]['totalQuantity']),
             'filledQuantity': int(order['orders'][0]['filledQuantity']),
-            'price': float(price),
-            'orderStrategyType': order['optionStrategy'].upper(),
+            'price': float(price) if price else float(order['auxPrice']),
+            'orderStrategyType': orderStrategyType,
             "order_id" : order['orders'][0]['orderId'],
             "orderId": order['orders'][0]['orderId'],
             "stopPrice": stopPrice if stopPrice else None,
@@ -210,8 +215,8 @@ class weBull:
                     resp[symb] = {
                                 'symbol' : quote['symbol'],
                                 'description': quote['disSymbol'],
-                                'askPrice': quote['askList'][0]['price'],
-                                'bidPrice': quote['bidList'][0]['price'],
+                                'askPrice': eval(quote['askList'][0]['price']),
+                                'bidPrice': eval(quote['bidList'][0]['price']),
                                 'quoteTimeInLong': round(time.time()*1000),
                             }
                 else:
@@ -230,13 +235,22 @@ class weBull:
             order_response = self.session.place_order_option(**final_order)     
         else:
             final_order = {}
+            if new_order.get('lmtPrice'):
+                new_order['price'] = new_order.pop('lmtPrice')
             for key, val in new_order.items():
-                if key in ['stock', 'tId', 'price', 'action', 'orderType', 'enforce', 'quant', 'outsideRegularTradingHour', 'stpPrice', 'trial_value', 'trial_type']:
+                if key in ['stock', 'tId', 'price', 'action', 'orderType', 'enforce', 'quant', 
+                           'outsideRegularTradingHour', 'stpPrice', 'trial_value', 'trial_type']:
                     final_order[key] = val
             order_response = self.session.place_order(**final_order)
         
+        if order_response.get('success') is False:
+            print("Order failed", order_response)
+            return None, None
         # find order id by matching symbol and order type
-        order_id = order_response['orderId']
+        if order_response.get('data'):  #for stocks
+            order_id = order_response['data']['orderId']
+        else:
+            order_id = order_response['orderId']
         time.sleep(3) # 3 secs to wait for order to show up in history
         _, ord_inf = self.get_order_info(order_id)
         
@@ -363,12 +377,13 @@ class weBull:
             kwargs['optionId'] = optionId
         else:
             kwargs['asset'] ='stock'
-            kwargs['outsideRegularTradingHour'] = True
+            kwargs['outsideRegularTradingHour'] = False
             kwargs['stock'] = Symbol
 
         kwargs['enforce'] ='GTC'
         kwargs['quant'] = Qty 
         kwargs['orderType'] = 'STP' 
+        kwargs['stpPrice'] = SL
         kwargs['lmtPrice'] = SL
         return kwargs
 

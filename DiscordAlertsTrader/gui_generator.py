@@ -265,6 +265,7 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
     
     data = pd.read_csv(fname_port, sep=",")
     data['Date'] = data['Date'].apply(lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f").strftime("%m/%d/%Y"))
+    exclude['Open'] = True
     try:
         data = filter_data(data,exclude, stat_filt_author, stat_filt_date_frm,
                         stat_filt_date_to, stat_filt_sym, stat_exc_author, stat_exc_chn, stat_exc_sym,
@@ -280,6 +281,8 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
     data['PnL diff'] = data['PnL-actual'] - data['PnL']
     data['BTO diff'] = 100*(data['Price-actual'] - data['Price'])/ data['Price']
     data['STC diff'] = 100*(data['STC-Price-actual'] - data['STC-Price'])/ data['STC-Price']
+    data['Win'] = (data['PnL'] > 0).astype(int)
+    data['Win act'] = (data['PnL-actual'] > 0).astype(int)
     data = data.rename({'PnL-actual': 'PnL-Actual', 
                         'PnL$-actual': 'PnL$-Actual', 
                         }, axis=1)
@@ -288,6 +291,8 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
                  'PnL$-Actual': 'sum',
                  'PnL': 'mean',
                  'PnL-Actual': 'mean',
+                 "Win": 'mean',
+                 "Win act": 'mean',
                  'PnL diff' : "mean",
                  'BTO diff' : "mean",
                  'STC diff' : "mean",
@@ -296,15 +301,21 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
     # Perform the groupby operation and apply the aggregation functions
     result_td = data.groupby('Trader').agg(agg_funcs)
     result_td = result_td.reset_index()
-    
+    result_td['Win'] = (result_td['Win'] * 100).round(1)
+    result_td['Win act'] = (result_td['Win act'] * 100).round(1)
+
     result_ch = data.groupby('Channel').agg(agg_funcs)
     result_ch = result_ch.reset_index()
     result_ch = result_ch.rename({'Channel': 'Trader'}, axis=1)
+    result_ch['Win'] = (result_ch['Win'] * 100).round(1)
+    result_ch['Win act'] = (result_ch['Win act'] * 100).round(1)
 
     # make grand avg
     data["all"] = 1
     agg_values_all = data.groupby('all').agg(agg_funcs)    
     agg_values_all["Trader"] = "Total average"
+    agg_values_all['Win'] = (agg_values_all['Win'] * 100).round(1)
+    agg_values_all['Win act'] = (agg_values_all['Win act'] * 100).round(1)
     agg_values_all.loc[0, 'Trader'] = "Channels:"
     agg_values_all = agg_values_all.reset_index()
 
@@ -315,6 +326,7 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
     new_cols[-2] = "Since"
     new_cols[-1] = "Last"
     result_td.columns = new_cols
+    
     result_td = result_td.round(1)
 
     for cfrm in result_td.columns[1:-2]:
