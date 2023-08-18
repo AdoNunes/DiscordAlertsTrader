@@ -292,7 +292,12 @@ def calc_stc_prices(trade, order=None):
     
     mutipl = 1 if trade['Asset'] == "option" else .01  # pnl already in %
     if stc_price is not None and bto_price != 0: 
-        stc_pnl = float((stc_price - bto_price)/bto_price) *100
+        
+        if trade["Type"] == "BTO":
+            stc_pnl = float((stc_price - bto_price)/bto_price) *100
+        elif trade["Type"] == "STO":
+            stc_pnl = float((bto_price - stc_price)/bto_price) *100
+
         stc_pnl_u = stc_pnl* bto_price *mutipl*stc_utotal 
     else:
         stc_pnl = None
@@ -302,7 +307,10 @@ def calc_stc_prices(trade, order=None):
         stc_pnl_al = None
         stc_pnl_al_u = None
     else:
-        stc_pnl_al = float((stc_price_al - bto_price_al)/bto_price_al) *100
+        if trade["Type"] == "BTO":
+            stc_pnl_al = float((stc_price_al - bto_price_al)/bto_price_al) *100
+        elif trade["Type"] == "STO":
+            stc_pnl_al = float((bto_price_al - stc_price_al)/bto_price_al) *100
         stc_pnl_al_u = stc_pnl_al* bto_price_al *mutipl*stc_utotal 
 
     stc_info = {"STC-Prices":prices,
