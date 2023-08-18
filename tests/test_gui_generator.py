@@ -44,6 +44,8 @@ class TestConfigurator(unittest.TestCase):
             ['PnL$-Actual', '1200'],
             ['PnL', '20'],
             ['PnL-Actual', '100'],
+            ['Win', '100'],
+            ['Win act', '100'],
             ['PnL diff', '80'],
             ['BTO diff', '20'],
             ['STC diff', '100'],

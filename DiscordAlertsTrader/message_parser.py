@@ -22,7 +22,7 @@ def parse_trade_alert(msg, asset=None):
         order = {
             'action': action.upper(),
             'Symbol': symbol,
-            'Qty': int(quantity) if quantity else 1,
+            'Qty': int(quantity) if quantity else None,
             'price': float(price.replace(',', '.')) if price else None,
             'asset': asset_type
         }

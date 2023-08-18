@@ -1,22 +1,41 @@
+from datetime import datetime
 from DiscordAlertsTrader.alerts_tracker import AlertsTracker
+from DiscordAlertsTrader.message_parser import parse_trade_alert
 import unittest
 import os
 
 root_dir  =  os.path.abspath(os.path.dirname(__file__))
 
-class TestAlertsTrader(unittest.TestCase):
+class TestAlertsTracker(unittest.TestCase):
 
-    def test_trailinstat(self):
+    def prepare(self):
+        # make port files
+        self.tracker_portfolio_fname=root_dir+"/data/test_tracker_portfolio.csv"
+        # remove in case they exist
+        if os.path.exists(self.tracker_portfolio_fname):
+            os.remove(self.tracker_portfolio_fname)
+
+        
+    def test_sto(self):
+        self.prepare()
         tracker = AlertsTracker(brokerage=None,
-                                portfolio_fname=root_dir+'/data/analysts_portfolio.csv',
+                                portfolio_fname=self.tracker_portfolio_fname,
                                 dir_quotes=root_dir+'/data/live_quotes'
                                 )
-        print(root_dir)
-        open_trade = tracker.portfolio.index[tracker.portfolio['Symbol'] == 'QQQ_051223C327'].to_list()[-1]
-        trailstat = tracker.compute_trail(open_trade)
-
-        # self.assertEqual(trailstat, '| min,-87.1%,$0.04,in 02:09:36| max,3.23%,$0.32,in 00:01:19| | TS:0.2,-19.35%,$0.25'+\
-        #     ',in 00:08:14| TS:0.3,-29.03%,$0.22,in 00:16:39| TS:0.4,-38.71%,$0.19,in 00:17:09| TS:0.5,-48.39%,$0.16,in 00:22:04')
+        
+        buy = "STO 3  AAPL 100c 8/5 @1.5"
+        sell = "BTC 3  AAPL 100c 8/5 @1"
+        pars, order =  parse_trade_alert(buy)
+        order["Trader"] = 'test'
+        msg_b = tracker.trade_alert(order, live_alert=False, channel=None)        
+        pars, order =  parse_trade_alert(sell)
+        order["Trader"] = 'test'
+        order['Date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        msg_s = tracker.trade_alert(order, live_alert=False, channel=None)
+        
+        trade = tracker.portfolio.loc[0]
+        self.assertTrue(round(trade['PnL'],2) == 33.33)
+        self.assertTrue(round(trade['PnL$']) == 150)
 
 
 if __name__ == '__main__':

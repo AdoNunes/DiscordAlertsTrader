@@ -84,7 +84,7 @@ class DiscordBot(discord.Client):
             msk_tk = ((self.tracker.portfolio['isOpen']==1) | tk_day) 
             msk_td = ((self.trader.portfolio['isOpen']==1) | td_day) 
             
-            if self.cfg['general']['live_quotes_options_only']:
+            if self.cfg['general'].getboolean('live_quotes_options_only'):
                 msk_tk = msk_tk & (self.tracker.portfolio['Asset']=='option')
                 msk_td = msk_td & (self.trader.portfolio['Asset']=='option')
             

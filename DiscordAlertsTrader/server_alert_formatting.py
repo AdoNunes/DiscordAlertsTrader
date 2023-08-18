@@ -23,7 +23,7 @@ def tradeproelite_formatting(message_):
     # Change bot to author
     if message_.author.name == 'EnhancedMarket':
         message = MessageCopy(message_)
-        message.author.name == 'enhancedmarket'
+        message.author.name = 'enhancedmarket'
         message.author.discriminator = '0'
         return message
     

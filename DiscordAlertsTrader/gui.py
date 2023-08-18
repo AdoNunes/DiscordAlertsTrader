@@ -285,12 +285,12 @@ def run_gui():
             window.Element("-subm-msg").Update(value=symb_str)
         # handle alert buttons
         elif event == '-toggle':
-            state = window[event].DisplayText
+            state = window[event].GetText()
             butts = ['-alert_to-', '-alert_BTO', '-alert_STC', '-alert_STO', '-alert_BTC', '-alert_exitupdate']
             if state == '▲':
-                window[event].update(value='▼')            
+                window[event].update(text='▼')            
             else:
-                window[event].update(value='▲')
+                window[event].update(text='▲')
             for el in butts:
                 window[el].update(visible=state == '▲')
                 
