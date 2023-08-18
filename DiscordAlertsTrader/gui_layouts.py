@@ -30,15 +30,15 @@ def trigger_alerts_layout():
                 "Exit Update: Author#1234, exit update AAA 115C 05/30 PT 80% SL 2\n"
     lay = [[
            sg.Text('to portfolio:', tooltip=tp_chan),
-           sg.Combo(['both', 'user', 'analysts'], default_value='analysts', key="_chan_trigg_",tooltip=tp_chan, readonly=True, size=(15,1.2)),
+           sg.Combo(['both', 'user', 'analysts'], default_value='analysts', key="_chan_trigg_",tooltip=tp_chan, readonly=True, size=(15,1)),
            
            sg.Button('▲', key='-toggle',   enable_events=True, 
                                  tooltip='Show/hide change alert action'),
             sg.Input(default_text="Author#1234, STC 1 AAA 115C 05/30 @2.5 [click portfolio row number to prefill]",
-                    size= (100,1.3), key="-subm-msg",
+                    size= (100,1), key="-subm-msg",
                     tooltip=tp_trig),
            sg.Button("Trigger alert", key="-subm-alert", 
-                     tooltip="Will generate alert in user or/and analysts portfolio, useful to close or open a position", size= (20,1.2)),
+                     tooltip="Will generate alert in user or/and analysts portfolio, useful to close or open a position", size= (20,1)),
            sg.Stretch()], 
            [sg.Text('                   Change alert to:', key='-alert_to-', tooltip="Change  current alert in tigger alert", visible=False),
             sg.Button("BTO", key='-alert_BTO', size=(10,1), tooltip="Once clicked portfolio row change prefilled STC to BTO", visible=False),
@@ -60,8 +60,8 @@ def layout_portfolio(data_n_headers, font_body, font_header):
     layout = [
          [sg.Column([[
             sg.Text('Include:  Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_filt_author',tooltip=tip),
-            sg.Text('Date from: ', tooltip=tlp_date), sg.Input(key=f'port_filt_date_frm', size=(16, 1), default_text='week', tooltip=tlp_date),
-            sg.Text(' To: ', tooltip=tlp_date), sg.Input(key=f'port_filt_date_to', size=(16, 1), tooltip=tlp_date),
+            sg.Text('Date from: ', tooltip=tlp_date), sg.Input(key=f'port_filt_date_frm', default_text='week', tooltip=tlp_date),
+            sg.Text(' To: ', tooltip=tlp_date), sg.Input(key=f'port_filt_date_to', tooltip=tlp_date),
             sg.Text(' Symbols: ', tooltip=tip), sg.Input(key=f'port_filt_sym', tooltip=tip),
             sg.Text(' Channels: ',tooltip=tip), sg.Input(key=f'port_filt_chn',tooltip=tip)
             ],                                        
@@ -106,8 +106,8 @@ def layout_traders(data_n_headers, font_body, font_header):
             [
             sg.Text('Include:  Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_filt_author',tooltip=tip),
             sg.Text('Date from: ', tooltip=tlp_date), 
-            sg.Input(key=f'track_filt_date_frm', default_text='week', size=(16, 1), tooltip=tlp_date),
-            sg.Text(' To: ', tooltip=tlp_date), sg.Input(key=f'track_filt_date_to', size=(16, 1), tooltip=tlp_date),
+            sg.Input(key=f'track_filt_date_frm', default_text='week', tooltip=tlp_date),
+            sg.Text(' To: ', tooltip=tlp_date), sg.Input(key=f'track_filt_date_to', tooltip=tlp_date),
             sg.Text(' Symbols: ',tooltip=tip), sg.Input(key=f'track_filt_sym',tooltip=tip),
             sg.Text(' Channels: ',tooltip=tip), sg.Input(key=f'track_filt_chn',tooltip=tip)
             ],[ 
@@ -151,9 +151,9 @@ def layout_stats(data_n_headers, font_body, font_header):
     layout = [
         [sg.Column([[sg.Text('Include:  Authors: ', auto_size_text=True, tooltip=tip), sg.Input(key=f'stat_filt_author', tooltip=tip),
                      sg.Text('Date from:', tooltip=tlp_date), 
-                     sg.Input(key=f'stat_filt_date_frm', size=(16, 1), default_text='week', tooltip=tlp_date),
+                     sg.Input(key=f'stat_filt_date_frm', default_text='week', tooltip=tlp_date),
                      sg.Text(' To:', size=(5, 1), tooltip=tlp_date), 
-                     sg.Input(key=f'stat_filt_date_to', size=(16, 1), tooltip=tlp_date),
+                     sg.Input(key=f'stat_filt_date_to', tooltip=tlp_date),
                      sg.Text(' Symbols:'), sg.Input(key=f'stat_filt_sym', tooltip=tip),
                      sg.Text(' Max $:', tooltip="calculate stats limiting trades to max $"), 
                      sg.Input(key=f'stat_max_trade_val', tooltip="calculate stats limiting trades to max $ amount"),
