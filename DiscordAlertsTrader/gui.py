@@ -115,8 +115,7 @@ sg.SetOptions(font=("Helvitica 10"))
 fnt_b  ="Helvitica 10"
 fnt_h  ="Helvitica 12"
 
-ly_cons, MLINE_KEY = gl.layout_console('Discord messages from all the channels',
-                                       '-MLINE-')
+ly_cons, MLINE_KEY = gl.layout_console('Discord messages from all the channels', '-MLINE-')
 ly_cons_subs, MLINE_SUBS_KEY = gl.layout_console('Discord messages only from subscribed authors',
                                        '-MLINEsub-')
 
@@ -146,13 +145,15 @@ for chn in chns:
 bksession = get_brokerage()
 ly_accnt = gl.layout_account(bksession, fnt_b, fnt_h)
 ly_conf = gl.layout_config(fnt_b, cfg)
+msg_tab = [[sg.TabGroup([[sg.Tab(c, h) for c, h in zip(chns, ly_chns)],
+                        ], title_color='black')]]
 layout = [[sg.TabGroup([
                         [sg.Tab("Msgs Subs", ly_cons_subs, font=fnt_b)],
                         [sg.Tab("Msgs All", ly_cons, font=fnt_b)], 
                         [sg.Tab('Portfolio', ly_port)],
                         [sg.Tab('Analysts Portfolio', ly_track)],
                         [sg.Tab('Analysts Stats', ly_stats)],
-                        [sg.Tab(c, h) for c, h in zip(chns, ly_chns)],                        
+                        [sg.Tab('Msg History',msg_tab)],                        
                         [sg.Tab("Account", ly_accnt)],
                         [sg.Tab("Config", ly_conf)]
                         ], title_color='black')],
@@ -447,13 +448,15 @@ def run_gui():
             event_feedb = trade_events.get(False)
             # if message from subscribed author or channel flag it to print in both consoles
             if event_feedb[1] == "blue":
-                if any(a in event_feedb[0] for a in auth_subs):
+                author = event_feedb[0].split("\n\t")[1].split(":")[0]
+                chan = event_feedb[0].split(": \n\t")[0].split(" ")[-1]
+                if any(a == author for a in auth_subs):
                     subs_auth_msg = True
                 elif cfg['discord']['channelwise_subscription'].split(",") != [""] and \
-                    any([c.strip() in event_feedb[0] for c in cfg['discord']['channelwise_subscription'].split(",")]):
+                    any([c.strip() == chan for c in cfg['discord']['channelwise_subscription'].split(",")]):
                     subs_auth_msg = True
                 elif cfg['discord']['auhtorwise_subscription'].split(",") != [""] and \
-                    any([c.strip() in event_feedb[0] for c in cfg['discord']['auhtorwise_subscription'].split(",")]):
+                    any([c.strip() == author for c in cfg['discord']['auhtorwise_subscription'].split(",")]):
                     subs_auth_msg = True
                 else:
                     subs_auth_msg = False

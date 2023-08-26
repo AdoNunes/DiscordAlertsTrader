@@ -274,18 +274,26 @@ class TDA(BaseBroker):
                 new_order.stop_price_link_basis('BID')
             elif action == "BTC":
                 child_order_leg.order_leg_instruction(instruction="BUY_TO_CLOSE")
+                new_order.stop_price_link_basis('ASK')
             elif action == "STO":
                 child_order_leg.order_leg_instruction(instruction="SELL_TO_OPEN")
                 new_order.stop_price_link_basis('BID')
+            elif action == "BTO":
+                child_order_leg.order_leg_instruction(instruction="BUY_TO_OPEN")
+                new_order.stop_price_link_basis('ASK')
             child_order_leg.order_leg_asset(asset_type='OPTION', symbol=Symbol)
         else:
             if action == "STC":
                 child_order_leg.order_leg_instruction(instruction="SELL")
             elif action == "BTC":
                 child_order_leg.order_leg_instruction(instruction="BUY_TO_COVER")
+                new_order.stop_price_link_basis('ASK')
             elif action == "STO":
                 child_order_leg.order_leg_instruction(instruction="SELL_SHORT")
-                new_order.stop_price_link_basis('ASK')            
+                new_order.stop_price_link_basis('BID')
+            elif action == "BTO":
+                child_order_leg.order_leg_instruction(instruction="BUY")
+                new_order.stop_price_link_basis('ASK')                      
             child_order_leg.order_leg_asset(asset_type='EQUITY', symbol=Symbol)
         new_order.add_order_leg(order_leg=child_order_leg)
         return new_order
