@@ -272,6 +272,8 @@ class DiscordBot(discord.Client):
                 quote = self.trader.price_now(order['Symbol'], order["action"], pflag=1)
                 act_diff =-1
                 if quote:
+                    if quote > 0:
+                        order['price_actual'] = quote
                     act_diff = max(((quote - order['price'])/order['price']), (order['price'] - quote)/ quote)
                     # Check if actual price is too far (100) from alerted price
                     if abs(act_diff) > 1 and order.get('action') == 'BTO':

@@ -41,12 +41,14 @@ def parse_trade_alert(msg, asset=None):
 
         risk_level = parse_risk(msg)
         order['risk'] = risk_level
-
+        order['open_trailingstop'] = trailingstop(msg)
         pars = []
         for el in [action, quantity, ticker, strike, expDate, price, risk_level, str_ext]:
             if el is not None:
                 pars.append(el)
         pars = " ".join(pars)
+        if order.get('open_trailingstop'):
+            pars += f"trailing stop for open {order['open_trailingstop']}"
         if action.upper() in ["BTO", "STO"]:
             if "avg" in msg.lower() or "average" in msg.lower():
                 avg_price, _ = parse_avg(msg)
@@ -117,6 +119,17 @@ def fix_index_symbols(symbol):
     return symbol
     
 
+def trailingstop(msg):
+    exprs = ['tsbuy', 'trailstop', 'trailingstop', 'trailing stop']
+    for exp in exprs:
+        expc = exp + r"[:]?\s*([\d]{1,2}[%]?)"
+        match = re.search(expc, msg, re.IGNORECASE)
+        if match:
+            ts = match.groups()[0]            
+            return ts
+
+    
+    return False
 def ordersymb_to_str(symbol):
     "Symbol format AAA_YYMMDDCCPXXX"
     if "_" in symbol:

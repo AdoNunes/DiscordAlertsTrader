@@ -463,6 +463,11 @@ class eTrade(BaseBroker):
             kwargs['orderAction'] = "SELL"
         elif action == "STO":
             kwargs['orderAction'] = "BUY_TO_COVER"
+        elif action == "BTO":
+            kwargs['orderAction'] = "BUY"
+        elif action == "BTC":
+            kwargs['orderAction'] = "BUY_TO_CLOSE"
+            
         if len(Symbol.split("_"))>1:
             Symbol = self.format_option(Symbol)            
             symbol, year, month, day, optype, strike = Symbol.split(":")
@@ -474,7 +479,12 @@ class eTrade(BaseBroker):
             if action == "STC":
                 kwargs['orderAction'] = 'SELL_CLOSE'
             elif action == "STO":
-                kwargs['orderAction'] = 'BUY_CLOSE'    
+                kwargs['orderAction'] = 'SELL_OPEN'
+            elif action == "BTO":
+                kwargs['orderAction'] = "BUY_OPEN"
+            elif action == "BTC":
+                kwargs['orderAction'] = "BUY_CLOSE" 
+
         kwargs['clientOrderId'] = str(random.randint(1000000000, 9999999999))
         kwargs['priceType'] = 'TRAILING_STOP_CNST'
         kwargs['stopPrice'] = trail_stop_const

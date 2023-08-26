@@ -112,12 +112,12 @@ class AlertsTrader():
     def trade_updater(self, refresh_rate=10):
         while self.update_portfolio is True:
             if self.update_paused is False:
-                # try:
+                try:
                     self.update_orders()
-                # except Exception as ex:
-                #     str_msg = f"Error raised during port update, trying again later. Error: {ex}"
-                #     print(Back.RED + str_msg)
-                #     self.queue_prints.put([str_msg, "", "red"])
+                except Exception as ex:
+                    str_msg = f"Error raised during port update, trying again later. Error: {ex}"
+                    print(Back.RED + str_msg)
+                    self.queue_prints.put([str_msg, "", "red"])
             if self.update_portfolio:
                 time.sleep(refresh_rate)
         str_msg = "Closed portfolio updater"
@@ -211,18 +211,18 @@ class AlertsTrader():
     def confirm_and_send(self, order, pars, order_funct):
             resp, order, ord_chngd = self.notify_alert(order, pars)
             if resp in ["yes", "y"]:
-                # try:
-                ord_resp, ord_id = self.bksession.send_order(order_funct(**order))
-                # except Exception as e:
-                #     str_msg = f"Error in order {e}"
-                #     print(Back.GREEN + str_msg)
-                #     self.queue_prints.put([str_msg, "", "red"])
-                #     return None, None, order, None
+                try:
+                    ord_resp, ord_id = self.bksession.send_order(order_funct(**order))
+                except Exception as e:
+                    str_msg = f"Error in order {e}"
+                    print(Back.GREEN + str_msg)
+                    self.queue_prints.put([str_msg, "", "red"])
+                    return None, None, order, None
                 
                 if ord_resp is None:
                     raise("Something wrong with order response")
 
-                str_msg = f"Sent order {pars}"
+                str_msg = f"Sent order {order['action']} {order['Qty']} {order['Symbol']} @{order['price']}"
                 print(Back.GREEN + str_msg)
                 color = "green" if order['action'] == "BTO" else "yellow"
                 self.queue_prints.put([str_msg, "", color])
@@ -535,7 +535,27 @@ class AlertsTrader():
         elif not isOpen and order["action"] in ["BTO", "STO"]:
             alert_price = order["price"]
             action = order["action"]
-            order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_BTO_lim_order)
+            
+            # Do BTO TrailingStop
+            if order.get('open_trailingstop'): 
+                ts = order.get('open_trailingstop')
+                if isinstance(ts, str) and "%" in ts:
+                    pnow = order.get("price_actual")
+                    if pnow is None:
+                        pnow = self.price_now(order['Symbol'], order['action'], 1)
+                    ts = (float(ts.split("%")[0])/100)*pnow
+                elif isinstance(ts, str):
+                    ts = eval(ts)
+                    
+                    if ts/order['price']>10 :  # must be error
+                        str_msg = f"Trailing stop too high ({ts/order['price']} diff), must be in %, converted to {ts/100}%" 
+                        print(Back.RED + str_msg)
+                        self.queue_prints.put([str_msg, "", "red"])
+                        ts = ts/100  
+                order["trail_stop_const"] = round(ts / 0.01) * 0.01
+                order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_STC_SL_trailstop)
+            else:
+                order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_BTO_lim_order)
     
             self.save_logs("port")
             if order_response is None:  #Assume trade not accepted
@@ -581,7 +601,8 @@ class AlertsTrader():
                          "exit_plan": str(exit_plan),
                          "Trader": order['Trader'],
                          "Risk": order['risk'],
-                         "SL_mental": order.get("SL_mental")
+                         "SL_mental": order.get("SL_mental"),
+                         "open_trailingstop": order.get("open_trailingstop")
                          }
 
             self.portfolio = pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)
@@ -602,7 +623,7 @@ class AlertsTrader():
                 # convert % to val exit plan
                 self.exit_percent_to_price(ot)
                 
-            str_msg = f"{action} {order['Symbol']} executed @ {order_info.get('price')}. Status: {order_status}"
+            str_msg = f"{action} {order['Symbol']} sent @ {order_info.get('price')}. Status: {order_status}"
             print(Back.GREEN + str_msg)
             self.queue_prints.put([str_msg, "", "green"])
             
@@ -653,7 +674,7 @@ class AlertsTrader():
                 self.portfolio.loc[open_trade, "filledQty"] += order_info['filledQuantity']
                 self.disc_notifier(order_info)
                 self.close_open_exit_orders(open_trade)
-            str_msg =  f"BTO {avg} th AVG, {order['Symbol']} executed @{order_info['price']}. Status: {order_status}"
+            str_msg =  f"BTO {avg} th AVG, {order['Symbol']} sent @{order_info['price']}. Status: {order_status}"
             print(Back.GREEN + str_msg)
             self.queue_prints.put([str_msg, "", "green"])
 
@@ -1019,7 +1040,7 @@ class AlertsTrader():
                     price = order_info.get("price")
                     self.portfolio.loc[i, "Price"] = price
                     self.disc_notifier(order_info)
-                    str_msg = f"BTO {order_info['orderLegCollection'][0]['instrument']['symbol']} executed @ {price}. Status: {order_status}"
+                    str_msg = f"BTO {order_info['orderLegCollection'][0]['instrument']['symbol']} filled @ {price}. Status: {order_status}"
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
                     
@@ -1041,7 +1062,9 @@ class AlertsTrader():
             
                 if order_status == 'REJECTED':
                     self.portfolio.loc[i, 'isOpen'] = 0
-                    
+                    str_msg = f"BTO {order_info['orderLegCollection'][0]['instrument']['symbol']} Status: {order_status}"
+                    print(Back.GREEN + str_msg)
+                    self.queue_prints.put([str_msg, "", "green"])
                 trade = self.portfolio.iloc[i]
                 self.save_logs("port")
 
@@ -1344,14 +1367,19 @@ class AlertsTrader():
                 ord_func =self.bksession.make_STC_SL
                 order["SL"] = exit_plan["SL"]
                 msg = f"SL of {exit_plan['SL']} constant % sent during order update"
-                
-            _, STC_ordID = self.bksession.send_order(ord_func(**order))
-            str_prt = f"STC1 {order['Symbol']} {msg}"            
-            print(Back.GREEN + str_prt)
-            self.queue_prints.put([str_prt,"", "green"])
-            self.portfolio.loc[i, "STC1-ordID"] = STC_ordID
-            trade = self.portfolio.iloc[i]
-            self.save_logs("port")
+            
+            try:
+                _, STC_ordID = self.bksession.send_order(ord_func(**order))
+                str_prt = f"STC1 {order['Symbol']} {msg}"            
+                print(Back.GREEN + str_prt)
+                self.queue_prints.put([str_prt,"", "green"])
+                self.portfolio.loc[i, "STC1-ordID"] = STC_ordID
+                trade = self.portfolio.iloc[i]
+                self.save_logs("port")
+            except Exception as e:
+                str_prt = "error in making SL exit order "+ e
+                print(Back.RED + str_prt)
+                self.queue_prints.put([str_prt,"", "red"])
 
 
     def close_expired(self, open_trade):
@@ -1368,14 +1396,24 @@ class AlertsTrader():
                 if pd.isnull(trade[f"STC{stci}-Qty"]):
                     STC = f"STC{stci}"
                     break
-
+                
+            price = 0
+            pnl = -100
+            action = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
+            quote = self.price_now(self, trade['Symbol'], price_type=action, pflag=1)
+            if quote >0:
+                price = quote
+                if action == "STC":
+                    pnl = (price - trade['Price'])/trade['Price'] * 100
+                else:
+                    pnl = (trade['Price'] - price)/trade['Price'] * 100
             #Log portfolio
             self.portfolio.loc[open_trade, STC + "-Status"] = 'EXPIRED'
-            self.portfolio.loc[open_trade, STC + "-Price"] = 0
+            self.portfolio.loc[open_trade, STC + "-Price"] = price
             self.portfolio.loc[open_trade, STC + "-Date"] = expdate
             self.portfolio.loc[open_trade, STC + "-xQty"] = 1
             self.portfolio.loc[open_trade, STC + "-Qty"] = trade['filledQty'] - usold
-            self.portfolio.loc[open_trade, STC + "-PnL"] = -100
+            self.portfolio.loc[open_trade, STC + "-PnL"] = pnl
             self.portfolio.loc[open_trade, "isOpen"] = 0
             
             bto_price = self.portfolio.loc[open_trade, "Price"]
@@ -1386,8 +1424,13 @@ class AlertsTrader():
             sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
             stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
             self.portfolio.loc[open_trade, "PnL"] = stc_PnL_all
-            stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-alert"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
-            stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-actual"] - bto_price_actual)/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+            if action == "STC":
+                stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-alert"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+                stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-actual"] - bto_price_actual)/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+            else:
+                stc_PnL_all_alert =  np.nansum([(float((bto_price_alert - trade[f"STC{i}-Price-alert"])/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+                stc_PnL_all_curr = np.nansum([(float((bto_price_alert - trade[f"STC{i}-Price-actual"])/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+
             self.portfolio.loc[open_trade, "PnL-alert"] = stc_PnL_all_alert
             self.portfolio.loc[open_trade, "PnL-actual"] = stc_PnL_all_curr
             
