@@ -240,7 +240,7 @@ class TDA(BaseBroker):
 
         order_leg = OrderLeg()
         order_leg.order_leg_quantity(quantity=int(Qty))
-        if strike is not None:
+        if len(Symbol.split("_")) > 1:
             if action == "STC":
                 order_leg.order_leg_instruction(instruction="SELL_TO_CLOSE")
             elif action == "BTC":
