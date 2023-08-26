@@ -117,7 +117,6 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                     exc_chn='', 
                     exc_sym=','.join(exclude_symbols), 
                     min_con_val=min_price, 
-                    max_u_qty=1, 
                     max_underlying=max_underlying_price, 
                     max_dte=max_dte, 
                     min_dte=min_dte,
@@ -228,15 +227,15 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             qty_t = trade_amount// (roi_actual[0]*100)
         else:
             qty_t = 1
-        pnlu = pnl*roi_actual[0]*mult*row['Qty']*qty_t
+        pnlu = pnl*roi_actual[0]*mult*qty_t
         
         port.loc[idx, 'strategy-PnL'] = pnl
         port.loc[idx, 'strategy-PnL$'] = pnlu
         port.loc[idx,'strategy-entry'] = roi_actual[0]
         port.loc[idx,'strategy-exit'] = roi_actual[1]
         
-        port.loc[idx, 'PnL$'] = port.loc[idx, 'PnL$']*port.loc[idx, 'Price']*qty_t
-        port.loc[idx, 'PnL$-actual'] = port.loc[idx, 'PnL$-actual']*port.loc[idx, 'Price-actual']*qty_t
+        port.loc[idx, 'PnL$'] = port.loc[idx, 'PnL']*port.loc[idx, 'Price']*qty_t
+        port.loc[idx, 'PnL$-actual'] = port.loc[idx, 'PnL-actual']*port.loc[idx, 'Price-actual']*qty_t
 
         
     return port, no_quote, param
@@ -325,7 +324,7 @@ params_enh = {
 params_bry = {
     'fname_port': cfg['portfolio_names']['tracker_portfolio_name'],
     'dir_quotes': cfg['general']['data_dir'] + '/live_quotes',
-    'last_days': 0,
+    'last_days': None,
     'filt_date_frm': '',
     'filt_date_to': '',
     'stc_date': 'eod',  # 'eod' or 'stc alert"
@@ -336,7 +335,7 @@ params_bry = {
     'filt_hour_frm': "",
     'filt_hour_to': "",
     'include_authors': "Bryce000",
-    'exclude_traders': ['algo_2', 'cow',  'spy','algo_1','me_short', 'mage','joker','algo_3','tradewithnando','Father#4214', ], # "enh"
+    'exclude_traders': [ 'cow',  'spy','me_short', 'mage','joker','tradewithnando','Father#4214',"enh" ], # 
     'exclude_symbols': ['QQQ'],
     'PT': 20,
     'TS': 0,
@@ -385,17 +384,12 @@ if 1:
     axs[1,1].set_xlabel("Trade number")
     axs[1,1].set_ylabel("%")
     plt.show(block=False)
-# best PT 60, SL 45, TS 0, TS_buy 10
-# best PT 40, SL 35, TS 25, TS_buy 0
 
-# best PT 100., SL 40,   TS_buy 30.,  pnl -27.5, pnl $ -950,   trade count 32
-# res = grid_search(port, PT=np.arange(30,120,10), TS=[0], SL=np.arange(30,100,5), TS_buy=[10,15,20,25,30, 35,40], max_margin=None)
-res = grid_search(port, params_bry, PT=np.arange(0,150,5), TS=[0, 5,10,15,20,25,30,35,40,50], SL=np.arange(10,60,10), TS_buy=[0,5,10,20,30,40,50])
-res = np.stack(res)
-sorted_indices = np.argsort(res[:, 4])
-sorted_array = res[sorted_indices].astype(int)
-hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
-df = pd.DataFrame(sorted_array, columns=hdr)
-# df.to_csv("data/bryce_spx_grid_search_8-24.csv", index=False)
-# PT 40,  SL 20,  trailing stop starting at PT: 25,    PNL avg : 5%,  return: $2750,   num trades: 53
-# print(result_td)
+if 0:
+    res = grid_search(port, params_bry, PT=np.arange(0,150,5), TS=[0, 5,10,15,20,25,30,35,40,50], SL=np.arange(10,60,10), TS_buy=[0,5,10,20,30,40,50])
+    res = np.stack(res)
+    sorted_indices = np.argsort(res[:, 4])
+    sorted_array = res[sorted_indices].astype(int)
+    hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
+    df = pd.DataFrame(sorted_array, columns=hdr)
+    # df.to_csv("data/bryce_spx_grid_search_8-24.csv", index=False)
