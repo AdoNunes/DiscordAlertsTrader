@@ -110,10 +110,10 @@ def fit_table_elms(Widget_element):
     Widget_element.resizeColumnsToContents()
 
 # sg.theme('Dark Blue 3')
-sg.SetOptions(font=("Helvitica 10"))
+sg.SetOptions(font=("Helvitica 11"))
 
-fnt_b  ="Helvitica 10"
-fnt_h  ="Helvitica 12"
+fnt_b  ="Helvitica 11"
+fnt_h  ="Helvitica 11"
 
 ly_cons, MLINE_KEY = gl.layout_console('Discord messages from all the channels', '-MLINE-')
 ly_cons_subs, MLINE_SUBS_KEY = gl.layout_console('Discord messages only from subscribed authors',
@@ -156,7 +156,7 @@ layout = [[sg.TabGroup([
                         [sg.Tab('Msg History',msg_tab)],                        
                         [sg.Tab("Account", ly_accnt)],
                         [sg.Tab("Config", ly_conf)]
-                        ], title_color='black')],
+                        ], title_color='black', font=fnt_b)],
         ]
 layout += gl.trigger_alerts_layout()
 print(3)

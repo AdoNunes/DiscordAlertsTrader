@@ -304,7 +304,7 @@ def update_acct_ly(bksession, window):
 def layout_config(fnt_h, cfg):
     
     frame1 =[[sg.Checkbox("Notify alerts to discord", default=cfg['discord'].getboolean('notify_alerts_to_discord'),
-                        key="cfg_discord.notify_alerts_to_discord", 
+                        key="cfg_discord.notify_alerts_to_discord", text_color='black',
                         tooltip='Option to send an your trade alerts to a channel using webhook specified in config.ini')],
             [sg.Text("off market hours:"), 
                 sg.Input(cfg['general']['off_hours'],key="cfg_general.off_hours", 
@@ -314,13 +314,10 @@ def layout_config(fnt_h, cfg):
             ]
         
     frame2 = [
-        [sg.Checkbox('Do BTO trades', cfg['general'].getboolean('Do_BTO_trades'), 
+        [sg.Checkbox('Do BTO trades', cfg['general'].getboolean('Do_BTO_trades'), text_color='black',
                     key="cfg_general.do_BTO_trades", tooltip='Accept Buy alerts and open trades', enable_events=True)],
-        [sg.Checkbox('Do STC trades', cfg['general'].getboolean('Do_STC_trades'), 
+        [sg.Checkbox('Do STC trades', cfg['general'].getboolean('Do_STC_trades'), text_color='black',
                     key="cfg_general.do_STC_trades", tooltip='Accept Sell alerts and close trade', enable_events=True)],
-        [sg.Checkbox("Auto trade (don't ask for confirmation)",
-                    cfg['order_configs'].getboolean('auto_trade'), key="cfg_order_configs.auto_trade",
-                    tooltip='If True, it will execute the trade wihtout asking for confirmation', enable_events=True)],
         [sg.Checkbox('Sell @ current price', cfg['order_configs'].getboolean('sell_current_price'), 
                     key="cfg_order_configs.sell_current_price", 
                     tooltip='When BTO alerts, sell current rather than alerted,\nif alerted is too low it will not fill', enable_events=True)],
@@ -369,14 +366,14 @@ def layout_config(fnt_h, cfg):
         ]
     
     frame3 = [
-    [sg.Checkbox('Do STO trades, sell to open', cfg['shorting'].getboolean('DO_STO_TRADES'), 
+    [sg.Checkbox('Do STO trades, sell to open', cfg['shorting'].getboolean('DO_STO_TRADES'), text_color='black',
                 key="cfg_shorting.DO_STO_TRADES", tooltip='Accept Shorting Trades, \b bypassed if user manually triggers alert')],
     
     [sg.Checkbox("Do BTO trades (buy to open, close trade)",
-                cfg['shorting'].getboolean('DO_BTC_TRADES'), key="cfg_shorting.DO_BTC_TRADES",
+                cfg['shorting'].getboolean('DO_BTC_TRADES'), key="cfg_shorting.DO_BTC_TRADES",text_color='black',
                 tooltip='If True, a close alert with BTO\b bypassed if user manually triggers alert')], 
          
-    [sg.Checkbox("BTC at end of day (EOD)", default=cfg['shorting'].getboolean('BTC_EOD'), key="cfg_shorting.BTC_EOD",
+    [sg.Checkbox("BTC at end of day (EOD)", default=cfg['shorting'].getboolean('BTC_EOD'), key="cfg_shorting.BTC_EOD",text_color='black',
                 tooltip="Close at end of day, if not overnight there might be big losses"), sg.Stretch()],
     
     [sg.Text('Max price diff', 

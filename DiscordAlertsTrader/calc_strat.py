@@ -358,6 +358,9 @@ result_td =  generate_report(port, param, no_quote, verbose=True)
 
 if 1:
     import matplotlib.pyplot as plt
+    
+    stat_type = 'strategy-PnL' # 'PnL-actual'# 'PnL' # 
+    stat_typeu = stat_type.replace("PnL", "PnL$")
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
     
     winr = f"{result_td['win']['sum'].iloc[0]}/{result_td['Date']['count'].iloc[0]}"
@@ -365,22 +368,21 @@ if 1:
         + f" rate {winr}, avg PnL%={result_td['strategy-PnL']['mean'].iloc[0]:.2f}, "\
             +f"${result_td['strategy-PnL$']['sum'].iloc[0]:.2f} trade amount {param['trade_amount']}\n" \
                 +f"TS_buy {param['TS_buy']}, PT {param['PT']}, TS {param['TS']},  SL {param['SL']}"
-            
 
     fig.suptitle(title)
-    port['strategy-PnL$'].cumsum().plot(ax=axs[0,0], title='cumulative strategy-PnL$', grid=True, marker='o', linestyle='dotted') 
+    port[stat_typeu].cumsum().plot(ax=axs[0,0], title=f'cumulative {stat_typeu}', grid=True, marker='o', linestyle='dotted') 
     axs[0,0].set_xlabel("Trade number")
     axs[0,0].set_ylabel("$")
     
-    port['strategy-PnL'].cumsum().plot(ax=axs[0,1], title='cumulative strategy-PnL', grid=True, marker='o', linestyle='dotted') 
+    port[stat_type].cumsum().plot(ax=axs[0,1], title='cumulative '+stat_type, grid=True, marker='o', linestyle='dotted') 
     axs[0,1].set_xlabel("Trade number")
     axs[0,1].set_ylabel("%")
     
-    port['strategy-PnL$'].plot(ax=axs[1,0], title='strategy-PnL$', grid=True, marker='o', linestyle='dotted') 
+    port[stat_typeu].plot(ax=axs[1,0], title=stat_typeu, grid=True, marker='o', linestyle='dotted') 
     axs[1,0].set_xlabel("Trade number")
     axs[1,0].set_ylabel("$")
     
-    port['strategy-PnL'].plot(ax=axs[1,1], title='strategy-PnL', grid=True, marker='o', linestyle='dotted') 
+    port[stat_type].plot(ax=axs[1,1], title=stat_type, grid=True, marker='o', linestyle='dotted') 
     axs[1,1].set_xlabel("Trade number")
     axs[1,1].set_ylabel("%")
     plt.show(block=False)
