@@ -1400,7 +1400,7 @@ class AlertsTrader():
             price = 0
             pnl = -100
             action = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
-            quote = self.price_now(self, trade['Symbol'], price_type=action, pflag=1)
+            quote = self.price_now(trade['Symbol'], price_type=action, pflag=1)
             if quote >0:
                 price = quote
                 if action == "STC":
