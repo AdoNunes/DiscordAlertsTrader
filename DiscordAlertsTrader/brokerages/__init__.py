@@ -82,3 +82,15 @@ def get_brokerage(name=cfg['general']['BROKERAGE']):
             print("Got error: \n", e, "\n Trying again...if it fails again, rerun the application.")
             et.get_session()
         return et
+    # todo : implement stub in ibkr module
+    elif name.lower() == 'ibkr':
+        from .ibkr_api import Ibkr
+        accountId = cfg['ibkr']['accountId']
+        accountId = None if len(accountId) == 0 else accountId
+        ibkr = Ibkr(accountId=accountId)
+        try:
+            ibkr.get_session()
+        except Exception as e:
+            print("Got error: \n", e, "\n Trying again...if it fails again, rerun the application.")
+            ibkr.get_session() 
+        return ibkr
