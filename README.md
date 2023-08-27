@@ -14,9 +14,9 @@ It tracks messages from all the channels, generates a portfolio from analysts an
 provides live quotes to see actual alert profits (rather than prices stated in the alert), and can trigger
 an alert to open long or short a position, close it or update exits (target profit, stop loss).
 
-Trades are done through APIs of TDAmeritrade (full functionality), eTrade (long positions for now) or webull (long, no OCO, live quotes).
+Trades are done through APIs of TDAmeritrade (full functionality), eTrade (long positions for now) or webull (long, no OCO, not trailing stops).
 If no brokerage API key is provided, it will just print the discord messages and track the 
-analysts portfolio. With an API key, it will track the current price of the alerts, besides executing trades.
+analysts' portfolio. With an API key, it will track the current price of the alerts, besides executing trades.
 
 If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed. 
 
@@ -29,13 +29,13 @@ If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed.
 - Opening, closing, and updating trades through the GUI.
 - Calculate analysts' stats and provide options to test stats with maximum capital 
 - Checking order and account status, and accessing current ticker prices.
-- Supporting manual trade execution through prompts if `auto_trade` is set to False in `config.ini`.
+- Supporting manual trade execution through prompts if `auto_trade` is set to False in `config.ini` (not maintained).
 
 
 **Current Discord servers being used**:
-- TradeProElite (good timing, profitable strategies): [invite link](https://tradeproelite.memberful.com/referral/vedpmz8)
-- Xtrades (alerts with market data): [invite link](https://app.xtrades.net/invite/4lk91GuPz0KsoJWYP74ieg)
-- BullTrades (good for shorting (bad trades, delayed alerts), see historical trades in the package (5/10 to 8/7)): [invite link](https://bulltrades.net/?ref=ndrjogi)
+- **EnhancedMarket** TradeProElite (profitable strategies about 10-8k month (fully pays $100-150 membership), uses software to quickly send trade alerts for minimal delay even for scalpings and uses a bot to track trades alerted PnL and market price PnL, full transparency): [invite link](https://tradeproelite.memberful.com/referral/vedpmz8)
+- **Xtrades** (alerts with market price data, their stats match what you can get, multiple analysts): [invite link](https://app.xtrades.net/invite/4lk91GuPz0KsoJWYP74ieg)
+- **BullTrades** (good for shorting (bad trades, delayed alerts, they show alerted PnL but hide market priced PnL), see historical trades in this repo data/analyst_portfolio_bulltrades.csv(5/10 to 8/7)): [invite link](https://bulltrades.net/?ref=ndrjogi)
 
 Supports any Discord channel with structured BTP/STC alerts as message contents (not embedded, yet)
 
@@ -57,14 +57,14 @@ It requires a user discord token, once installed the package saves the token in 
 To get the discord token follow the instructions: https://www.androidauthority.com/get-discord-token-3149920/
 To get the channel ID, in Discord right click on the channel and click "Copy Channel ID"
 
-**Automation of user accounts is against Discord ToS. This package only read alerts and Discord can not detect automation behavior,
+**Automation of user accounts is against Discord ToS. This package only reads alerts and Discord can not detect automation behavior,
 however, if you want to follow Discords ToS, do not provide a user token and manually input the alerts at the bottom of the GUI to
 manually trigger the alerts ;)**
 
 ## Installation and Setup
  ______________________________
 
-1. Install Python:
+1. Install Python 3.10:
    - For Windows, open PowerShell and run the following command, verify that it prints out "Hello World!":
      ```powershell
      if (-not (Test-Path $env:USERPROFILE\scoop)) {
@@ -83,8 +83,14 @@ manually trigger the alerts ;)**
      scoop install miniconda3
      # Check python is installed
      python -c "print('Hello, World!')"
-     ```
 
+     # Make sure is python 3.10
+     conda install python=3.10
+     ```
+    - For macOS:
+     - Install Miniconda by selecting your OS version: https://docs.conda.io/en/latest/miniconda.html
+     - Open the terminal (cmd + space -> terminal) and type conda install python=3.10, then follow the next steps inside the terminal
+      
 2. In the PowerShell terminal navigate to the directory where you want to clone the DiscordAlertsTrader package, e.g. type: `cd Desktop`.
 
 3. Clone the package from the GitHub repository and install the package and its dependencies using pip:
@@ -132,7 +138,9 @@ https://developer.etrade.com/getting-started
 Make sure to select free real-time quote data:
 https://us.etrade.com/etx/hw/subscriptioncenter#/subscription
 
-Before running the package and send orders, in etrade make a trailing stop order and preview to sign an Advanced Order Disclosure, otherwise an error will rise when posting the order
+Before running the package and send orders, in etrade web make a trailing stop order and preview to sign an Advanced Order Disclosure, otherwise an error will arise when posting the order
+
+Etrade does not have One Cancels the Other (OCO) so you can not pass a target profit and stoploss at the same time. However, the package can create a local OCO, by passing in the alert or config default exits, a PT1 50%TS5% SL 50% (numbers can change). This will create an SL order, and every 10 secs check the contract price until it reaches 50%, then it will create a trailing stop of 5%.
 
 ## Webull API
 ____________
@@ -141,6 +149,11 @@ You will need to get a device ID, follow these steps to get DID, and then save i
 https://github.com/tedchou12/webull/wiki/Workaround-for-Login-Method-2
 
 Trading pin is the 6 digit code used to unlock webull
+
+Webull does not have One Cancels the Other (OCO) so you can not pass a target profit and stoploss at the same time. Also there is no trailing stop.
+However, the package can create a local OCO, by passing in the alert or config default exits, a PT1 50%TS20% SL 50% (numbers can change). This will 
+create an SL order, and every 10 secs check the contract price until it reaches 50%, then will try to create a trailing stop of 20%, but because of webull 
+it will instead sell at PT.
 
 ## TDAmeritrade
 _______________
