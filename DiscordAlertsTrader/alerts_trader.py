@@ -1248,16 +1248,20 @@ class AlertsTrader():
 
             STC_ordID = trade[STC+"-ordID"]
             if not pd.isnull(STC_ordID):
-                # assume PT with trailing stop at lim has SL
+                # assume PT with trailing stop at lim has SL, TS can be 0
                 if isinstance(exit_plan[f"PT{ii}"], str) and "TS" in exit_plan[f"PT{ii}"]:
                     trigger = float(exit_plan[f"PT{ii}"].split("TS")[0])
                     TS = eval(exit_plan[f"PT{ii}"].split("TS")[1])
                     quote_opt = self.price_now(trade['Symbol'], "STC", 1)
                     if quote_opt >= trigger:
                         self.close_open_exit_orders(open_trade)
-                        ord_func = self.bksession.make_STC_SL_trailstop
                         order = {'Symbol': trade['Symbol']}
-                        order = self.calculate_stoploss(order, trade, TS)                                            
+                        if TS > 0:
+                            ord_func = self.bksession.make_STC_SL_trailstop
+                            order = self.calculate_stoploss(order, trade, TS) 
+                        else:
+                            ord_func = self.bksession.make_STC_lim
+                            order["price"] = quote_opt                                          
                         order['Qty'] = int(trade['Qty'])
                         order['xQty'] = 1
                         order['action'] = trade["Type"].replace("BTO", "STC").replace("STO", "BTC")
@@ -1267,7 +1271,7 @@ class AlertsTrader():
                             str_prt = f"{STC} {order['Symbol']} @{order['price']}(Qty:{order['Qty']}) sent during order update"
                         else:
                             str_prt = f"{STC} {order['Symbol']} TS @{order.get('trail_stop_const')} (Qty:{order['Qty']}) sent during order update"
-                        exit_plan[f"PT{ii}"] = TS
+                        exit_plan[f"PT{ii}"] = TS if TS > 0 else quote_opt
                         self.portfolio.loc[i, 'exit_plan'] = str(exit_plan)
                         print (Back.GREEN + str_prt)
                         self.queue_prints.put([str_prt,"", "green"])
@@ -1311,7 +1315,7 @@ class AlertsTrader():
                     order['xQty'] = xQty[ii - 1]
                     order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
                     if self.bksession.name != 'tda':
-                        str_prt = f"WARNING: {self.bksession.name} does not support OCO orders. Only the PT will be sent without SL. For an Sl order, change exit to SL only"            
+                        str_prt = f"WARNING: {self.bksession.name} does not support OCO orders. Only the PT will be sent without SL. For OCO pass a PT as a string with 0%TS (e.g. 50%TS0%) and SL."            
                         print(Back.RED + str_prt)
                         self.queue_prints.put([str_prt,"", "red"])
                 # Lim order
@@ -1409,7 +1413,7 @@ class AlertsTrader():
             price = 0
             pnl = -100
             action = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
-            quote = self.price_now(self, trade['Symbol'], price_type=action, pflag=1)
+            quote = self.price_now(trade['Symbol'], price_type=action, pflag=1)
             if quote >0:
                 price = quote
                 if action == "STC":
