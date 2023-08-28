@@ -318,9 +318,9 @@ def layout_config(fnt_h, cfg):
                     key="cfg_general.do_BTO_trades", tooltip='Accept Buy alerts and open trades', enable_events=True)],
         [sg.Checkbox('Do STC trades', cfg['general'].getboolean('Do_STC_trades'), text_color='black',
                     key="cfg_general.do_STC_trades", tooltip='Accept Sell alerts and close trade', enable_events=True)],
-        [sg.Checkbox('Sell @ current price', cfg['order_configs'].getboolean('sell_current_price'), 
-                    key="cfg_order_configs.sell_current_price", 
-                    tooltip='When BTO alerts, sell current rather than alerted,\nif alerted is too low it will not fill', enable_events=True)],
+        # [sg.Checkbox('Sell @ current price', cfg['order_configs'].getboolean('sell_current_price'), 
+        #             key="cfg_order_configs.sell_current_price", 
+        #             tooltip='When BTO alerts, sell current rather than alerted,\nif alerted is too low it will not fill', enable_events=True)],
         [sg.Text("Authors subscribed:",
                 tooltip='list of authors to follow, e.g. me_long,trader#1234'), 
         sg.Input(cfg['discord']['authors_subscribed'],key="cfg_discord.authors_subscribed",
@@ -337,7 +337,7 @@ def layout_config(fnt_h, cfg):
                 tooltip='For stocks and options max value diff to accept current price,\nif not will lim to alerted price'), 
         sg.Input(cfg['order_configs']['max_price_diff'],key="cfg_order_configs.max_price_diff", enable_events=True,
                 tooltip='For stocks and options max value diff to accept current price,\nif not will lim to alerted price')],
-        [sg.Text("Default exits (in quotes if not a number, eg. '20%', 'TS20%'):",
+        [sg.Text("Default exits (in quotes if not a number, eg. '20%', '50%TS20%'):",
                 tooltip='If not None, it will set up profit taking (up to 3) and stoploss if exit not provided in alert.\n' +\
                 ' can be value=1.1, percentage "30%", for PT can be "%" and a Trailing stop: "30%TS5%"\n' +\
                 'SL (stop loss) can be percentage: "30%" or trailing stop "TS30%"\n' +\
