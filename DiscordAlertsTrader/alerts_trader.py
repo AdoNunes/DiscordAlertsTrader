@@ -374,6 +374,7 @@ class AlertsTrader():
                             str_msg = f"BTO trade exeeded max_trade_capital of ${max_trade_val}, order quantity reduced to {order['Qty']} from {Qty_ori}"
                             print(Back.GREEN + str_msg)
                             self.queue_prints.put([str_msg, "", "green"])
+                            order['trader_qty'] = Qty_ori
                         else:
                             str_msg = f"cancelled BTO: trade exeeded max_trade_capital of ${max_trade_val}"
                             print(Back.RED + str_msg)
@@ -547,7 +548,7 @@ class AlertsTrader():
                 elif isinstance(ts, str):
                     ts = eval(ts)
                     
-                    if ts/order['price']>10 :  # must be error
+                    if ts/order['price']>10 :  # must be error, diff too big, make it %
                         str_msg = f"Trailing stop too high ({ts/order['price']} diff), must be in %, converted to {ts/100}%" 
                         print(Back.RED + str_msg)
                         self.queue_prints.put([str_msg, "", "red"])
@@ -602,7 +603,8 @@ class AlertsTrader():
                          "Trader": order['Trader'],
                          "Risk": order['risk'],
                          "SL_mental": order.get("SL_mental"),
-                         "open_trailingstop": order.get("open_trailingstop")
+                         "open_trailingstop": order.get("open_trailingstop"),
+                         "trader_qty": order_info.get('trader_qty'),
                          }
 
             self.portfolio = pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)
@@ -823,10 +825,17 @@ class AlertsTrader():
                 self.save_logs(["alert"])
                 return
 
+            # adjust trader qty to match portfolio
+            if not pd.isnull(position['trader_qty']):
+                qr = qty_bought/position['trader_qty']
+                order['Qty'] = max(round(order['Qty']/qr), 1)
             # Sell all and close waiting stc orders
             if order['xQty'] == 1 or i == 3:
                 if i == 3 and order['xQty'] != 1:
-                    print("Selling all, max supported STC is 3")                
+                    print("Selling all, max supported STC is 3")
+                    self.queue_prints.put(["Selling all, max supported STC is 3", "", "green"])
+                elif order['xQty'] == 1:
+                    print("Selling all, got xQTY =1, check if not true")              
                 # Stop updater to avoid overlapping
                 self.update_paused = True
                 # Sell all and close waiting stc orders

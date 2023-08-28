@@ -41,14 +41,12 @@ def parse_trade_alert(msg, asset=None):
 
         risk_level = parse_risk(msg)
         order['risk'] = risk_level
-        order['open_trailingstop'] = trailingstop(msg)
+        
         pars = []
         for el in [action, quantity, ticker, strike, expDate, price, risk_level, str_ext]:
             if el is not None:
                 pars.append(el)
-        pars = " ".join(pars)
-        if order.get('open_trailingstop'):
-            pars += f"trailing stop for open {order['open_trailingstop']}"
+        pars = " ".join(pars)        
         if action.upper() in ["BTO", "STO"]:
             if "avg" in msg.lower() or "average" in msg.lower():
                 avg_price, _ = parse_avg(msg)
@@ -56,6 +54,11 @@ def parse_trade_alert(msg, asset=None):
                 order["avg"] = avg_price
             else:
                 order["avg"] = None
+                
+            order['open_trailingstop'] = trailingstop(msg)
+            if order.get('open_trailingstop'):
+                pars += f"trailing stop for open {order['open_trailingstop']}"
+                
             try:
                 pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
                 n_pts = 3 if pt3_v else 2 if pt2_v else 1 if pt1_v else 0

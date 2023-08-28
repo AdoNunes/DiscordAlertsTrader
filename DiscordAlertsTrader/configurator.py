@@ -28,7 +28,10 @@ def update_port_cols():
             trader['open_trailingstop'] = None
         if "OCO" not in trader.columns:
             trader['OCO'] = None
+        if 'trader_qty' not in trader.columns:
+            trader['trader_qty'] = None        
         trader.to_csv(cfg['portfolio_names']['portfolio_fname'], index=False)
+        
     if os.path.exists(cfg['portfolio_names']['tracker_portfolio_name']):
         tracker = pd.read_csv(cfg['portfolio_names']['tracker_portfolio_name'])
         tracker = tracker.rename(columns=tracker_newcols)
