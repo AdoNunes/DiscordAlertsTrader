@@ -3,7 +3,7 @@ import time
 from ib_insync import IB, Stock, MarketOrder, util, Option
 from datetime import datetime
 from DiscordAlertsTrader.configurator import cfg
-
+import ib_insync
 
 class Ibkr:
     def __init__(self, paper_trading: bool = False) -> None:
@@ -46,7 +46,7 @@ class Ibkr:
                 res = float(summary.value)
                 break
         return res
-        data = self.session.get_account()       
+
 
         acc_inf ={
             'securitiesAccount':{   
@@ -269,14 +269,23 @@ class Ibkr:
         order_response.update(ord_inf) 
         return order_response, order_id
     
-    def cancel_order(self, order_id:int):
-        resp = self.session.cancel_order(order_id)
-        return resp
+    def cancel_order(self, order_id:int) -> bool:
+        # todo: handle exception
+        try:
+            self.session.cancelOrder(ib_insync.Order(orderId=order_id))
+            return True
+        except:
+            return False
 
     def get_orders(self):
-        orders = self.session.get_history_orders()
+        '''
+        todo
+        1. pass account id to get only that account open orders
+        2. is it asking for all orders or just open orders?
+        '''
+
         orders_all  = []
-        for order in orders:
+        for order in self.session.orders():
             orders_all.append(self.format_order(order))
         return orders
 
