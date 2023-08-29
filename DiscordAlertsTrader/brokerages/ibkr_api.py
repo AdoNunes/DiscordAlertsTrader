@@ -39,6 +39,13 @@ class Ibkr:
         """
         Call portfolio API to retrieve a list of positions held in the specified account
         """
+        account_summary = self.session.accountSummary()
+        res = None
+        for summary in account_summary:
+            if summary.tag == ftag:
+                res = float(summary.value)
+                break
+        return res
         data = self.session.get_account()       
 
         acc_inf ={
@@ -416,14 +423,3 @@ class Ibkr:
         kwargs['trial_type'] = 'DOLLAR'
         kwargs['outsideRegularTradingHour'] = True
         return kwargs
-
-
-if 0:
-    self = weBull()
-    self.get_session()
-    self.get_account_info()
-    self.get_quotes(["AAuPL_062323C180", "AAPL_062323C190"])
-    optid = self.get_option_id("AAPL_062323C180")
-    order = self.make_BTO_lim_order("NIO_062323P7", 1, 0.01, action="BTO")
-    order_response, order_id = self.send_order(order)
-    self.cancel_order(order_id)
