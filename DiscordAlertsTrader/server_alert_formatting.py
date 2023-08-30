@@ -132,7 +132,7 @@ def aurora_trading_formatting(message_):
     Reformat Discord message from aurora_trading to content message
     """
     
-    def format_0dte_weelies(contract, message):
+    def format_0dte_weeklies(contract, message):
         if "0DTE" in contract:
             msg_date = message.created_at.strftime('%m/%d')
             contract = contract.replace("0DTE", msg_date).split(" @")[0]
@@ -144,34 +144,36 @@ def aurora_trading_formatting(message_):
             contract = contract.replace("Weeklies", msg_date).split(" @")[0]
         return contract
     
-    # Don't do anything if not server message
-    if message_.guild.id != 826258453391081524:
-        return message_
-    
-    # format Bryce trades
-    if message_.channel.id == 846415903671320598:
-        pattern = r'\b(BTO|STC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?(?:C|P)?\s*(\d+[.\d+]*[cp]?)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
-        match = re.search(pattern, message.content, re.IGNORECASE)
+    def format_alert(alert):
+        pattern = r'\b(BTO|STC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?(?:C|P)?\s*(\d+[.\d+]*[cp]?)?(?:\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+))?'
+        match = re.search(pattern, alert, re.IGNORECASE)
         if match:
             action, quantity, ticker, expDate, strike, price = match.groups()
 
             asset_type = 'option' if strike and expDate else 'stock'
             symbol =  ticker.upper()
-            price =  float(price.replace(',', '.')) if price else None
+            price =  f" @ {float(price.replace(',', '.'))}" if price else ""
         
             if asset_type == 'option':
                 # fix missing strike, assume Call            
                 if "c" not in strike.lower() and "p" not in strike.lower():
                     strike = strike + "c"
-                alert = f"{action.upper()} {symbol} {strike.upper()} {expDate} @ {price}"
-                message.content = alert
-        
+                alert = f"{action.upper()} {symbol} {strike.upper()} {expDate}{price}"
+            elif asset_type == 'stock':
+                alert = f"{action.upper()} {symbol}{price}"
+        return alert
+    
+    # Don't do anything if not server message
+    if message_.guild.id != 826258453391081524:
+        return message_
+    
+    message = MessageCopy(message_)
+    # format Bryce trades
+    if message_.channel.id == 846415903671320598:   
+        message.content = format_alert(message.content)
     # format ace trades
     elif message_.channel.id == 885627509121618010:
-        message = MessageCopy(message_)
-        
         alert = ""
-        # add Sl and TP and other fields
         for mb in message.embeds:
             if mb.title == 'Options Entry':
                 description = mb.description
@@ -184,7 +186,8 @@ def aurora_trading_formatting(message_):
                 if contract_match:
                     contract = contract_match.group(1).strip().replace(" - ", " ")
                     # Check for 0DTE and replace with today's date
-                    contract = format_0dte_weelies(contract, message)
+                    contract = format_0dte_weeklies(contract, message)
+                    contract = format_alert(contract)                    
                     alert += f"{contract}"
                 if fill_match :
                     fill = fill_match.group(1).strip()
@@ -205,7 +208,8 @@ def aurora_trading_formatting(message_):
                 if contract_match:
                     contract = contract_match.group(1).strip().replace(" - ", " ")
                     # Check for 0DTE and weeklies
-                    contract = format_0dte_weelies(contract, message)
+                    contract = format_0dte_weeklies(contract, message)
+                    contract = format_alert(contract) 
                     alert += f"{contract}"
                 if fill_match :
                     fill = fill_match.group(1).strip()
