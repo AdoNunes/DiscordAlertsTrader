@@ -148,8 +148,26 @@ def aurora_trading_formatting(message_):
     if message_.guild.id != 826258453391081524:
         return message_
     
+    # format Bryce trades
+    if message_.channel.id == 846415903671320598:
+        pattern = r'\b(BTO|STC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?(?:C|P)?\s*(\d+[.\d+]*[cp]?)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
+        match = re.search(pattern, message.content, re.IGNORECASE)
+        if match:
+            action, quantity, ticker, expDate, strike, price = match.groups()
+
+            asset_type = 'option' if strike and expDate else 'stock'
+            symbol =  ticker.upper()
+            price =  float(price.replace(',', '.')) if price else None
+        
+            if asset_type == 'option':
+                # fix missing strike, assume Call            
+                if "c" not in strike.lower() and "p" not in strike.lower():
+                    strike = strike + "c"
+                alert = f"{action.upper()} {symbol} {strike.upper()} {expDate} @ {price}"
+                message.content = alert
+        
     # format ace trades
-    if message_.channel.id == 885627509121618010:
+    elif message_.channel.id == 885627509121618010:
         message = MessageCopy(message_)
         
         alert = ""
@@ -200,13 +218,12 @@ def aurora_trading_formatting(message_):
                 
             elif mb.description:
                 alert += f"(not parsed) {mb.description}"
-    message.content = alert
-    if message.content:
-        print(message.content)
+        if len(alert):  
+            message.content = alert
+
     return message
 
 
-                      
 class MessageCopy:
     def __init__(self, original_message):
         self.created_at = original_message.created_at
