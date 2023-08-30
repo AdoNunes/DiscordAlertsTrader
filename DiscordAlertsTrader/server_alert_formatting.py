@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def server_formatting(message):
     """Format server messages to standard alert format"""
@@ -7,7 +7,9 @@ def server_formatting(message):
         message = xtrades_formatting(message)
     elif message.guild.id == 836435995854897193:
         message = tradeproelite_formatting(message)
-        
+    elif message.guild.id == 826258453391081524:
+        message = aurora_trading_formatting(message)
+
     return message
 
 
@@ -125,41 +127,86 @@ def xtrades_formatting(message_):
         message.content = alert
         return message
 
-xtrades_msg_examples = [
-    'STC GOOGL Aug 11 2023 $131.00 Call @ 1.29 (from: $1.37)',
-    ':white_check_mark: Short NVDA Aug 4 2023 $452.50 Call @ $0.81  |  market : $0.85',
-    ':whitecheckmark: Short NVDA Aug 4 2023 $452.50 Call @ $0.81  |  market : $0.85',
-    ':whitecheckmark: Short NVDA Aug 4 2023 $452.50 Call @ $0.81  |  market : $0.85',
-    ':whitecheckmark: Long SQ @ 65.53  |  current : $65.53',
-    ':whitecheckmark: Closed RETO @ 2.32 *(from 1.94)*  |  current : $2.32',
-    ':whitecheckmark: Long CXAI @ 8  |  current : $8.03',
-    ]
+def aurora_trading_formatting(message_):
+    """
+    Reformat Discord message from aurora_trading to content message
+    """
+    
+    def format_0dte_weelies(contract, message):
+        if "0DTE" in contract:
+            msg_date = message.created_at.strftime('%m/%d')
+            contract = contract.replace("0DTE", msg_date).split(" @")[0]
+        elif "Weeklies" in contract:
+            msg_date= message.created_at
+            days_until_friday = (4 - msg_date.weekday() + 7) % 7
+            msg_date += timedelta(days=days_until_friday)
+            msg_date = msg_date.strftime('%m/%d')
+            contract = contract.replace("Weeklies", msg_date).split(" @")[0]
+        return contract
+    
+    # Don't do anything if not server message
+    if message_.guild.id != 826258453391081524:
+        return message_
+    
+    # format ace trades
+    if message_.channel.id == 885627509121618010:
+        message = MessageCopy(message_)
+        
+        alert = ""
+        # add Sl and TP and other fields
+        for mb in message.embeds:
+            if mb.title == 'Options Entry':
+                description = mb.description
+                # Extract the required information using regex
+                contract_match = re.search(r'\*\*\[🎟️\] Contract:\*\* __([^_]+)__', description)
+                fill_match = re.search(r'\*\*\[🍉\] My Fill:\*\* ([\d.]+)', description)
+                risk_match = re.search(r'\*\*\[🚨\]  Risk:\*\* ([\d/]+)', description)
+                extra_info_match = re.search(r'\*\*\[🗨️\] Comment:\*\* ([^\n]+)', description)
+                
+                if contract_match:
+                    contract = contract_match.group(1).strip().replace(" - ", " ")
+                    # Check for 0DTE and replace with today's date
+                    contract = format_0dte_weelies(contract, message)
+                    alert += f"{contract}"
+                if fill_match :
+                    fill = fill_match.group(1).strip()
+                    alert += f" @{fill}"
+                if risk_match:
+                    risk = risk_match.group(1).strip()
+                    alert += f" risk: {risk}"
+                if extra_info_match:
+                    extra_info = extra_info_match.group(1).strip()
+                    alert += f" | comment: {extra_info}"
+            elif mb.title in ["Options Close", 'Options Scale']:
+                description = mb.description
+                # Extract the required information using regex
+                contract_match = re.search(r'\*\*\[🎟️\] Contract:\*\* __([^_]+)__', description)
+                fill_match = re.search(r'\*\*\[✂️] Scaling Price:\*\* ([\d.]+)', description)
+                extra_info_match = re.search(r'\*\*\[🗨️\] Comment:\*\* ([^\n]+)', description)
+                
+                if contract_match:
+                    contract = contract_match.group(1).strip().replace(" - ", " ")
+                    # Check for 0DTE and weeklies
+                    contract = format_0dte_weelies(contract, message)
+                    alert += f"{contract}"
+                if fill_match :
+                    fill = fill_match.group(1).strip()
+                    alert += f" @{fill}"
+                if extra_info_match:
+                    extra_info = extra_info_match.group(1).strip()
+                    alert += f" | comment: {extra_info}"
+                if mb.title == 'Options Scale':
+                    alert += " | partial scale"
+                
+            elif mb.description:
+                alert += f"(not parsed) {mb.description}"
+    message.content = alert
+    if message.content:
+        print(message.content)
+    return message
 
-# message.embeds[0].author.name 
-# 'entered long', 
-# 'averaged long
-# 'added an update from the web platform.'
 
-# 'STOPPED OUT:'
-# 'STOPPED IN PROFIT:'
-# 'entered short'
-# 'covered short from the web platform.'
-
-# message.embeds[0].title
-# ':white_check_mark: Long QQQ Aug 18 2023 $365.00 Call @ 2.97  |  market : $2.97'
-# ':white_check_mark: Closed QQQ Aug 18 2023 $365.00 Call @ 4.97 (from $2.97)  |  market : $2.97'
-# ':white_check_mark: Short QQQ Aug 18 2023 $365.00 Put @ 2.97  |  market : $2.97'
-# ':white_check_mark: Covered QQQ Aug 18 2023 $365.00 Put @ 4.97 (from $2.97)  |  market : $2.97'
-# ':white_check_mark: Covered 0 Sep 18 2023 $365.00 Call @ 1.97 (from $2.67)  |  market : $2.67'
-
-# 'STC CRM Sep 18 2023 $365.00 Call @ 1.97 (from $2.67)'
-
-# 'Average accepted @ $0.12'
-# # message.embeds[0].fields[0].name
-# 'Risk'
-# 'Standard'
-# 'Lotto'
-
+                      
 class MessageCopy:
     def __init__(self, original_message):
         self.created_at = original_message.created_at

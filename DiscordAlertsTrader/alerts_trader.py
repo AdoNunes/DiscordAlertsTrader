@@ -91,14 +91,14 @@ class AlertsTrader():
             self.update_orders()
             self.activate_trade_updater()
 
-    def activate_trade_updater(self, refresh_rate=10):
+    def activate_trade_updater(self, refresh_rate=5):
         self.update_portfolio = True
         self.updater = threading.Thread(target=self.trade_updater, args=[refresh_rate], daemon=True)
         self.updater.start()
         self.queue_prints.put([f"Updating portfolio orders every {refresh_rate} secs", "", "green"])
         print(Back.GREEN + f"Updating portfolio orders every {refresh_rate} secs")
 
-    def trade_updater_reset(self, refresh_rate=10):
+    def trade_updater_reset(self, refresh_rate=5):
         """ Will stop threding updater and restart.
         To avoid delays or parallel updatings. """
         self.update_portfolio = False
@@ -109,7 +109,7 @@ class AlertsTrader():
         "Lazy trick to stop updater threading"
         self.update_portfolio = False
 
-    def trade_updater(self, refresh_rate=10):
+    def trade_updater(self, refresh_rate=5):
         while self.update_portfolio is True:
             if self.update_paused is False:
                 try:
@@ -168,7 +168,7 @@ class AlertsTrader():
             action = "BTC"
 
         symbol = ordersymb_to_str(order_info['orderLegCollection'][0]['instrument']['symbol'])
-        msg = f"{action} {order_info['filledQuantity']} {symbol} @{order_info.get('price')}"
+        msg = f"{action} {int(order_info['filledQuantity'])} {symbol} @{order_info.get('price')}"
         
         if len(self.cfg['discord']['webhook']):
             webhook = DiscordWebhook(
@@ -552,7 +552,7 @@ class AlertsTrader():
                         str_msg = f"Trailing stop too high ({ts/order['price']} diff), must be in %, converted to {ts/100}%" 
                         print(Back.RED + str_msg)
                         self.queue_prints.put([str_msg, "", "red"])
-                        ts = ts/100  
+                        ts = ts/100 
                 order["trail_stop_const"] = round(ts / 0.01) * 0.01
                 order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_STC_SL_trailstop)
             else:
