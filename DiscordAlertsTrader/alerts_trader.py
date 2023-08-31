@@ -1067,7 +1067,7 @@ class AlertsTrader():
                 ts_const = eval(ts_const.split(":")[1])
                 stp_price = max_price - ts_const
                 quote_opt = self.price_now(trade['Symbol'], "STC", 1)
-                if quote_opt <= stp_price:
+                if quote_opt <= stp_price*1.02:
                     order = {"Symbol": trade['Symbol'],
                             "action": "BTO",
                             "asset": trade['Asset'],
@@ -1562,7 +1562,7 @@ class AlertsTrader():
             else:
                 increment = 0.10
         
-        for exit in ['PT1', 'PT2', 'PT3', 'SL']:
+        for exit in ['PT', 'PT1', 'PT2', 'PT3', 'SL']:
             if order.get(exit) is not None and isinstance(order.get(exit), (int, float)):
                 order[exit] = round(round(order[exit] / increment) * increment,2)
         return order
