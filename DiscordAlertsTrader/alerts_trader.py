@@ -569,6 +569,7 @@ class AlertsTrader():
                                 'BTO-Status': "invTSbuy",
                                 "Asset": order["asset"],
                                 "Type": action,
+                                "Qty": 0,
                                 "Price-alert": alert_price,
                                 "Price-actual": pricenow,
                                 "exit_plan": str(exit_plan),
@@ -1083,6 +1084,7 @@ class AlertsTrader():
                         return
                     order_status, order_info = self.get_order_info(order_id)                    
                     self.portfolio.loc[i, "Qty"] = order_info['quantity']
+                    self.portfolio.loc[i, "filledQty"] = order_info['filledQuantity']
                     self.portfolio.loc[i, "BTO-Status"] = order_info['status']
                     self.portfolio.loc[i, "Price"] = order_info.get("price")
                     self.portfolio.loc[i, "trader_qty"] = order_info.get("trader_qty")
@@ -1322,7 +1324,8 @@ class AlertsTrader():
                             order = self.calculate_stoploss(order, trade, TS) 
                         else:
                             ord_func = self.bksession.make_STC_lim
-                            order["price"] = quote_opt                                          
+                            order["price"] = quote_opt
+                        order = self.round_order_price(order, trade)                                        
                         order['Qty'] = int(trade['Qty'])
                         order['xQty'] = 1
                         order['action'] = trade["Type"].replace("BTO", "STC").replace("STO", "BTC")
@@ -1372,7 +1375,6 @@ class AlertsTrader():
                     ord_func = self.bksession.make_Lim_SL_order
                     order["PT"] = exit_plan[f"PT{ii}"]
                     order["SL"] = exit_plan["SL"]
-                    order = self.round_SL_order_price(order, trade)
                     order['Qty'] = Qty[ii - 1]
                     order['xQty'] = xQty[ii - 1]
                     order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
@@ -1396,7 +1398,6 @@ class AlertsTrader():
                     else:
                         ord_func =self.bksession.make_STC_SL
                         order["SL"] = exit_plan["SL"]
-                        order = self.round_SL_order_price(order, trade)
                     
                     order['Qty'] = int(trade['Qty'])
                     order['xQty'] = 1
@@ -1413,9 +1414,10 @@ class AlertsTrader():
                     if order.get("SL") is not None and isinstance(order.get("SL"), (int, float)):
                         order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
                         order = self.SL_below_market(order)
-                        order = self.round_SL_order_price(order, trade)
+                        order = self.round_order_price(order, trade)
 
                 if ord_func is not None and order['Qty'] > 0:
+                    order = self.round_order_price(order, trade)
                     _, STC_ordID = self.bksession.send_order(ord_func(**order))
                     if order.get("price"):
                         str_prt = f"{STC} {order['Symbol']} @{order['price']}(Qty:{order['Qty']}) sent during order update"
@@ -1443,7 +1445,7 @@ class AlertsTrader():
             else:
                 ord_func =self.bksession.make_STC_SL
                 order["SL"] = exit_plan["SL"]
-                order = self.round_SL_order_price(order, trade)
+                order = self.round_order_price(order, trade)
                 msg = f"SL of {exit_plan['SL']} constant % sent during order update"
             
             try:
@@ -1543,7 +1545,7 @@ class AlertsTrader():
         order["trail_stop_const"] = rounded_stop_loss_price
         return order
 
-    def round_SL_order_price(self, order, trade):
+    def round_order_price(self, order, trade):
         # Round SL price to nearest increment
         
         if self.bksession.name == 'tda':
@@ -1560,8 +1562,9 @@ class AlertsTrader():
             else:
                 increment = 0.10
         
-        if order.get('SL') is not None and isinstance(order.get('SL'), (int, float)):
-            order['SL'] = round(order['SL'] / increment) * increment
+        for exit in ['PT1', 'PT2', 'PT3', 'SL']:
+            if order.get(exit) is not None and isinstance(order.get(exit), (int, float)):
+                order[exit] = round(order[exit] / increment) * increment
         return order
     
 def option_date(opt_symbol):
