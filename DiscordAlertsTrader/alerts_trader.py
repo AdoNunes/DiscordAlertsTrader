@@ -1564,7 +1564,7 @@ class AlertsTrader():
         
         for exit in ['PT1', 'PT2', 'PT3', 'SL']:
             if order.get(exit) is not None and isinstance(order.get(exit), (int, float)):
-                order[exit] = round(order[exit] / increment) * increment
+                order[exit] = round(round(order[exit] / increment) * increment,2)
         return order
     
 def option_date(opt_symbol):
