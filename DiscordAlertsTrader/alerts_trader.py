@@ -1311,6 +1311,7 @@ class AlertsTrader():
                     ord_func = self.bksession.make_Lim_SL_order
                     order["PT"] = exit_plan[f"PT{ii}"]
                     order["SL"] = exit_plan["SL"]
+                    order = self.round_SL_order_price(order, trade)
                     order['Qty'] = Qty[ii - 1]
                     order['xQty'] = xQty[ii - 1]
                     order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
@@ -1334,6 +1335,7 @@ class AlertsTrader():
                     else:
                         ord_func =self.bksession.make_STC_SL
                         order["SL"] = exit_plan["SL"]
+                        order = self.round_SL_order_price(order, trade)
                     
                     order['Qty'] = int(trade['Qty'])
                     order['xQty'] = 1
@@ -1350,6 +1352,7 @@ class AlertsTrader():
                     if order.get("SL") is not None and isinstance(order.get("SL"), (int, float)):
                         order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
                         order = self.SL_below_market(order)
+                        order = self.round_SL_order_price(order, trade)
 
                 if ord_func is not None and order['Qty'] > 0:
                     _, STC_ordID = self.bksession.send_order(ord_func(**order))
@@ -1379,6 +1382,7 @@ class AlertsTrader():
             else:
                 ord_func =self.bksession.make_STC_SL
                 order["SL"] = exit_plan["SL"]
+                order = self.round_SL_order_price(order, trade)
                 msg = f"SL of {exit_plan['SL']} constant % sent during order update"
             
             try:
@@ -1477,7 +1481,28 @@ class AlertsTrader():
         rounded_stop_loss_price = round(SL / increment) * increment
         order["trail_stop_const"] = rounded_stop_loss_price
         return order
+
+    def round_SL_order_price(self, order, trade):
+        # Round SL price to nearest increment
         
+        if self.bksession.name == 'tda':
+            if trade['Price'] < 3.0:
+                increment = 0.05
+            else:
+                increment = 0.10
+                
+        elif trade['Symbol'] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
+            increment = 0.01  # ETFs trade in penny increments
+        else:
+            if trade['Price'] < 3.0:
+                increment = 0.05
+            else:
+                increment = 0.10
+        
+        if order.get('SL') is not None and isinstance(order.get('SL'), (int, float)):
+            order['SL'] = round(order['SL'] / increment) * increment
+        return order
+    
 def option_date(opt_symbol):
     sym_inf = opt_symbol.split("_")[1]
     opt_date = re.split("C|P", sym_inf)[0]
