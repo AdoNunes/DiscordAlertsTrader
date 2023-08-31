@@ -226,6 +226,51 @@ def calc_trailingstop(data:pd.Series, pt:float, ts:float):
         return None, None, None
 
 
+def calc_buy_trailingstop(data:pd.Series, ts:float, buy_price:float=None):
+    """Calculate the trailing stop for a given series of quotes
+    Parameters
+    ----------
+    data : pd.Series
+        Series of quotes
+    ts : float
+        Trailing stop, constant value
+    buy_price : float
+        Initial buy price
+    Returns
+    -------
+    trigger_price : float
+        The price at which the trailing stop was triggered
+    trigger_index : int
+        The index of the quote at which the trailing stop was triggered
+    """
+    
+    # If pt is None, use the first value of the series
+    min_value = buy_price or data.iloc[0]  
+    trailing_stop = min_value + ts
+    trigger_index = None
+    
+    for i in range(1, len(data)):
+        actual_value = data.iloc[i]
+        # New low
+        if actual_value < min_value:
+            min_value = actual_value  # Update the minimum value
+            trailing_stop = min_value + ts
+
+        # Trailing stop triggered
+        if actual_value >= trailing_stop:
+            trigger_index = i
+            break
+
+    if trigger_index is not None:
+        trigger_price = data.iloc[trigger_index]
+        trigger_index = data.index[trigger_index]
+        return trigger_price, trigger_index
+    else:
+        # If no trigger, return None
+        return None, None
+
+
+
 def calc_SL(data:pd.Series, sl:float, update:list=None):
     """Calculate the StopLoss for a given series of quotes
     Parameters

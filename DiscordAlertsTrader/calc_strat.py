@@ -4,7 +4,7 @@ import os.path as op
 from datetime import datetime, timedelta, date
 import numpy as np
 from DiscordAlertsTrader.configurator import cfg
-from DiscordAlertsTrader.port_sim import filter_data, calc_trailingstop, calc_roi
+from DiscordAlertsTrader.port_sim import filter_data, calc_trailingstop, calc_roi, calc_buy_trailingstop
 
 
 
@@ -27,6 +27,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 TS=0,
                 SL=45,
                 TS_buy= 10,
+                TS_buy_type= 'inverse',
                 max_margin = None,
                 verbose= True,
                 trade_amount=1,
@@ -66,6 +67,9 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         stop loss percent, by default 45
     TS_buy : int, optional
         trailing stop percent before opening position (for shorting), by default 10
+    TS_buy_type : str, optional
+        buy or inverse, by default 'inverse'. If buy, T Stop goes down if price goes down,
+        if inverse, T Stop goes up if price goes up
     max_margin : int, optional
         max margin to use for shorting, by default None
     verbose: bool, optional
@@ -99,6 +103,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             'TS': TS,
             'SL': SL,
             'TS_buy': TS_buy,
+            'TS_buy_type' : TS_buy_type,
             'max_margin': max_margin,
             'trade_amount': trade_amount,
             'trade_type': trade_type
@@ -205,13 +210,23 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             port.loc[idx, 'margin'] = trade_margin
             
         trigger_index = 0       
-        if ts_buy:            
+        if ts_buy and TS_buy_type == 'inverse':            
             price_curr, trigger_index, pt_index = calc_trailingstop(quotes_vals, 0, price_curr*ts_buy)
             if trigger_index == len(quotes_vals)-1:
                 if verbose:
                     print("no trigger index", row['Symbol'])
                 port.loc[idx, 'reason_skip'] = 'TS buy not triggered'
                 continue
+        elif ts_buy and TS_buy_type == 'buy': 
+            price_curr, trigger_index = calc_buy_trailingstop(quotes_vals, price_curr*ts_buy, price_curr)
+            if trigger_index is None:
+                if verbose:
+                    print("no TS buy trigger index", row['Symbol'])
+                port.loc[idx, 'reason_skip'] = 'TS buy not triggered'
+                continue
+        elif ts_buy:
+            raise TypeError("TS_buy_type must be long or short")
+
         roi_actual, = calc_roi(quotes_vals.loc[trigger_index:], PT=pt, TS=ts, SL=sl, do_plot=False, initial_prices=price_curr)
 
         if roi_actual[-1] == len(quotes_vals)-1:        
@@ -274,7 +289,7 @@ def generate_report(port, param={}, no_quote=None, verbose=True):
     result_td = port.groupby('Trader').agg(agg_funcs).sort_values(by=('Date', 'count'), ascending=False)
     return result_td
 
-def grid_search(port, params_dict, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25]):
+def grid_search(params_dict, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25]):
     # params_dict for calc_returns
     res = []
     for pt in PT:
@@ -294,32 +309,6 @@ def grid_search(port, params_dict, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,
     return res
 
 
-params_enh = {
-    'fname_port': cfg['portfolio_names']['tracker_portfolio_name'],
-    'dir_quotes': cfg['general']['data_dir'] + '/live_quotes',
-    'last_days': None,
-    'filt_date_frm': '',
-    'filt_date_to': '',
-    'stc_date': 'eod',  # 'eod' or 'stc alert"
-    'max_underlying_price': "",
-    'min_price': 10,
-    'max_dte': 500,
-    'min_dte': 0,
-    'filt_hour_frm': "",
-    'filt_hour_to': "",
-    'include_authors': "enh",
-    'exclude_traders': ['algo_2', 'cow',  'spy', 'Bryce000', 'algo_1','me_short', 'mage','joker','algo_3','tradewithnando','Father#4214', ], # "enh"
-    'exclude_symbols': [],
-    'PT': 20,
-    'TS': 20,
-    'SL': 20,
-    'TS_buy': 0,
-    'max_margin': None,
-    'verbose': True,
-    'trade_amount': None,
-    'trade_type': 'any'
-}
-
 
 params_bry = {
     'fname_port': cfg['portfolio_names']['tracker_portfolio_name'],
@@ -338,14 +327,41 @@ params_bry = {
     'exclude_traders': [ 'cow',  'spy','me_short', 'mage','joker','tradewithnando','Father#4214',"enh" ], # 
     'exclude_symbols': ['QQQ'],
     'PT': 20,
-    'TS': 0,
+    'TS': 5,
     'SL': 50,
     'TS_buy': 20,
     'max_margin': None,
     'verbose': True,
-    'trade_amount': 1000,
+    'trade_amount': 2000,
     'trade_type': 'any'
 }
+
+params_enh = {
+    'fname_port': cfg['portfolio_names']['tracker_portfolio_name'],
+    'dir_quotes': cfg['general']['data_dir'] + '/live_quotes',
+    'last_days': None,
+    'filt_date_frm': '',
+    'filt_date_to': '',
+    'stc_date':'stc alert',  # 'eod' or 'stc alert"
+    'max_underlying_price': "",
+    'min_price': 10,
+    'max_dte': 500,
+    'min_dte': 0,
+    'filt_hour_frm': "",
+    'filt_hour_to': 12,
+    'include_authors': "enh",
+    'exclude_traders': ['algo_2', 'cow',  'spy', 'Bryce000', 'algo_1','me_short', 'mage','joker','algo_3','tradewithnando','Father#4214', ], # "enh"
+    'exclude_symbols': [],
+    'PT': 40,
+    'TS': 5,
+    'SL': 50,
+    'TS_buy': 20,
+    'max_margin': None,
+    'verbose': False,
+    'trade_amount': 2000,
+    'trade_type': 'any'
+}
+
 port, no_quote, param = calc_returns(**params_bry)
 
 
@@ -368,9 +384,12 @@ if 1:
         + f" rate {winr}, avg PnL%={result_td['strategy-PnL']['mean'].iloc[0]:.2f}, "\
             +f"${result_td['strategy-PnL$']['sum'].iloc[0]:.2f} trade amount {param['trade_amount']}\n" \
                 +f"TS_buy {param['TS_buy']}, PT {param['PT']}, TS {param['TS']},  SL {param['SL']}"
+            
 
     fig.suptitle(title)
-    port[stat_typeu].cumsum().plot(ax=axs[0,0], title=f'cumulative {stat_typeu}', grid=True, marker='o', linestyle='dotted') 
+    port[stat_typeu].cumsum().plot(ax=axs[0,0], title=f'cumulative {stat_typeu}', grid=True, marker='o', linestyle='dotted')
+    axs[0,0].fill_between(port.index, 0, port[stat_typeu], where=(port[stat_typeu] > 0), facecolor='green', alpha=0.4)
+    axs[0,0].fill_between(port.index, 0, port[stat_typeu], where=(port[stat_typeu] < 0), facecolor='red', alpha=0.4)
     axs[0,0].set_xlabel("Trade number")
     axs[0,0].set_ylabel("$")
     
@@ -386,12 +405,19 @@ if 1:
     axs[1,1].set_xlabel("Trade number")
     axs[1,1].set_ylabel("%")
     plt.show(block=False)
+# best PT 60, SL 45, TS 0, TS_buy 10
+# best PT 40, SL 35, TS 25, TS_buy 0
 
+# best PT 100., SL 40,   TS_buy 30.,  pnl -27.5, pnl $ -950,   trade count 32
+# res = grid_search(port, PT=np.arange(30,120,10), TS=[0], SL=np.arange(30,100,5), TS_buy=[10,15,20,25,30, 35,40], max_margin=None)
 if 0:
-    res = grid_search(port, params_bry, PT=np.arange(0,150,5), TS=[0, 5,10,15,20,25,30,35,40,50], SL=np.arange(10,60,10), TS_buy=[0,5,10,20,30,40,50])
+    res = grid_search(params_bry, PT=np.arange(0,150,5), TS=[0, 5,10,15,20,25,30,35,40,50], SL=np.arange(10,60,10), TS_buy=[0,5,10,20,30,40,50])
     res = np.stack(res)
-    sorted_indices = np.argsort(res[:, 4])
+    sorted_indices = np.argsort(res[:, 5])
     sorted_array = res[sorted_indices].astype(int)
+    print(sorted_array[20:])
     hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
     df = pd.DataFrame(sorted_array, columns=hdr)
-    # df.to_csv("data/bryce_spx_grid_search_8-24.csv", index=False)
+    # df.to_csv("data/EM_grid_search_8-24.csv", index=False)
+    # PT 40,  SL 20,  trailing stop starting at PT: 25,    PNL avg : 5%,  return: $2750,   num trades: 53
+    # print(result_td)

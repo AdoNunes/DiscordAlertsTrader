@@ -91,14 +91,14 @@ class AlertsTrader():
             self.update_orders()
             self.activate_trade_updater()
 
-    def activate_trade_updater(self, refresh_rate=10):
+    def activate_trade_updater(self, refresh_rate=5):
         self.update_portfolio = True
         self.updater = threading.Thread(target=self.trade_updater, args=[refresh_rate], daemon=True)
         self.updater.start()
         self.queue_prints.put([f"Updating portfolio orders every {refresh_rate} secs", "", "green"])
         print(Back.GREEN + f"Updating portfolio orders every {refresh_rate} secs")
 
-    def trade_updater_reset(self, refresh_rate=10):
+    def trade_updater_reset(self, refresh_rate=5):
         """ Will stop threding updater and restart.
         To avoid delays or parallel updatings. """
         self.update_portfolio = False
@@ -109,7 +109,7 @@ class AlertsTrader():
         "Lazy trick to stop updater threading"
         self.update_portfolio = False
 
-    def trade_updater(self, refresh_rate=10):
+    def trade_updater(self, refresh_rate=5):
         while self.update_portfolio is True:
             if self.update_paused is False:
                 try:
@@ -168,7 +168,7 @@ class AlertsTrader():
             action = "BTC"
 
         symbol = ordersymb_to_str(order_info['orderLegCollection'][0]['instrument']['symbol'])
-        msg = f"{action} {order_info['filledQuantity']} {symbol} @{order_info.get('price')}"
+        msg = f"{action} {int(order_info['filledQuantity'])} {symbol} @{order_info.get('price')}"
         
         if len(self.cfg['discord']['webhook']):
             webhook = DiscordWebhook(
@@ -185,6 +185,7 @@ class AlertsTrader():
             print("discord channel message sent")
 
     def price_now(self, symbol, price_type="BTO", pflag=0):
+        "pflag: 0: return str, 1: return float"
         if price_type in ["BTO", "BTC"]:
             ptype = 'askPrice'
         else:
@@ -537,24 +538,55 @@ class AlertsTrader():
             alert_price = order["price"]
             action = order["action"]
             
+            # Get exit plan and add default vals if needed
+            exit_plan = parse_exit_plan(order)
+            if action == "BTO":
+                if len(self.cfg["order_configs"]["default_exits"]) and \
+                    exit_plan.get("PT") is None and exit_plan.get("SL") is None:
+                    exit_plan = eval(self.cfg["order_configs"]["default_exits"])
             # Do BTO TrailingStop
             if order.get('open_trailingstop'): 
-                ts = order.get('open_trailingstop')
+                # get TS value, convet from percentage if needed
+                ts = order.get('open_trailingstop').replace("invTSbuy ", "").replace("TSbuy ", "")                
                 if isinstance(ts, str) and "%" in ts:
-                    pnow = order.get("price_actual")
-                    if pnow is None:
-                        pnow = self.price_now(order['Symbol'], order['action'], 1)
-                    ts = (float(ts.split("%")[0])/100)*pnow
+                    pricenow = self.price_now(order['Symbol'], 'BTO', 1 )
+                    ts = round((float(ts.split("%")[0])/100)*pricenow,2)
                 elif isinstance(ts, str):
-                    ts = eval(ts)
-                    
+                    ts = eval(ts) 
                     if ts/order['price']>10 :  # must be error, diff too big, make it %
                         str_msg = f"Trailing stop too high ({ts/order['price']} diff), must be in %, converted to {ts/100}%" 
                         print(Back.RED + str_msg)
                         self.queue_prints.put([str_msg, "", "red"])
-                        ts = ts/100  
-                order["trail_stop_const"] = round(ts / 0.01) * 0.01
-                order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_STC_SL_trailstop)
+                        pricenow = self.price_now(order['Symbol'], 'BTO', 1 )
+                        ts = round((ts/100)*pricenow,2) 
+
+                ts_order = order.get('open_trailingstop')
+                if ts_order.startswith("invTSbuy"):
+
+                    new_trade = {"Date": date,
+                                "Symbol": order['Symbol'],
+                                'isOpen': 1,
+                                'BTO-Status': "invTSbuy",
+                                "Asset": order["asset"],
+                                "Type": action,
+                                "Price-alert": alert_price,
+                                "Price-actual": pricenow,
+                                "exit_plan": str(exit_plan),
+                                "Trader": order['Trader'],
+                                "Risk": order['risk'],
+                                "open_trailingstop": f"ts:{ts},max_price:{pricenow}",
+                                "trader_qty": order.get('Qty'),
+                                }
+                    self.portfolio = pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)                    
+                    str_msg = f"{action} {order['Symbol']} created inverse TS local order @{pricenow}, TSconst {ts}, stp @{pricenow-ts}"
+                    print(Back.GREEN + str_msg)
+                    self.queue_prints.put([str_msg, "", "green"])
+                    self.save_logs("port")
+                    return
+                else:
+                    order["trail_stop_const"] = round(ts / 0.01) * 0.01
+                    order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_STC_SL_trailstop)
+                
             else:
                 order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_BTO_lim_order)
     
@@ -577,13 +609,7 @@ class AlertsTrader():
                 self.queue_prints.put([action+" REJECTED", "", "green"])
                 return
             
-            # Get exit plan and add default vals if needed
-            exit_plan = parse_exit_plan(order)
-            if order['action'] == "BTO":
-                if len(self.cfg["order_configs"]["default_exits"]) and \
-                    exit_plan.get("PT") is None and exit_plan.get("SL") is None:
-                    exit_plan = eval(self.cfg["order_configs"]["default_exits"])
-            elif order['action'] == "STO":
+            if order['action'] == "STO":
                 price = order_info.get("price")
                 if price is None:
                     price = order_info.get('activationPrice')
@@ -602,7 +628,6 @@ class AlertsTrader():
                          "exit_plan": str(exit_plan),
                          "Trader": order['Trader'],
                          "Risk": order['risk'],
-                         "SL_mental": order.get("SL_mental"),
                          "open_trailingstop": order.get("open_trailingstop"),
                          "trader_qty": order_info.get('trader_qty'),
                          }
@@ -1033,7 +1058,43 @@ class AlertsTrader():
 
             if trade["isOpen"] == 0:
                 continue
-
+            
+            # check if inverse TSbuy stop has reached or update stop
+            if trade["BTO-Status"]== "invTSbuy":                
+                ts_const, max_price = trade["open_trailingstop"].split(",")
+                max_price = eval(max_price.split(":")[1])
+                ts_const = eval(ts_const.split(":")[1])
+                stp_price = max_price - ts_const
+                quote_opt = self.price_now(trade['Symbol'], "STC", 1)
+                if quote_opt <= stp_price:
+                    order = {"Symbol": trade['Symbol'],
+                            "action": "BTO",
+                            "asset": trade['Asset'],
+                            "price": quote_opt,
+                            "Qty": int(trade["trader_qty"]),
+                            }
+                    pars = f"BTO {trade['trader_qty']} {trade['Symbol']} @{quote_opt}"
+                    order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_BTO_lim_order)
+                    
+                    if order_response is None:  # trade not successful 
+                        str_msg = "BTO after invTS did not go through, order response is none. Will try again next update. Trigger an STC to cancel it"
+                        print(Back.GREEN + str_msg)
+                        self.queue_prints.put([str_msg, "", "green"])
+                        return
+                    order_status, order_info = self.get_order_info(order_id)                    
+                    self.portfolio.loc[i, "Qty"] = order_info['quantity']
+                    self.portfolio.loc[i, "BTO-Status"] = order_info['status']
+                    self.portfolio.loc[i, "Price"] = order_info.get("price")
+                    self.portfolio.loc[i, "trader_qty"] = order_info.get("trader_qty")
+                    self.portfolio.loc[i, "ordID"] = order_id
+                    
+                else:
+                    if quote_opt > max_price:
+                        max_price = quote_opt
+                        self.portfolio.loc[i, "open_trailingstop"]= f"ts:{ts_const},max_price:{max_price}"
+                self.save_logs("port")
+                continue
+            
             if trade["BTO-Status"]  in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION', 'AWAITING_MANUAL_REVIEW', "PARTIAL"]:
                 order_status, order_info = self.get_order_info(trade['ordID'])
 
@@ -1478,7 +1539,7 @@ class AlertsTrader():
                 increment = 0.05
             else:
                 increment = 0.10
-        rounded_stop_loss_price = round(SL / increment) * increment
+        rounded_stop_loss_price = round(round(SL / increment) * increment,2)
         order["trail_stop_const"] = rounded_stop_loss_price
         return order
 
