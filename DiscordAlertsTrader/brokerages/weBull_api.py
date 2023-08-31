@@ -69,8 +69,8 @@ class weBull:
         orders = self.session.get_history_orders(count=10)
         orders_inf =[]  
         if isinstance(orders, dict) and orders.get('success') is False:
-            raise ValueError("Order entpoint obscolite, go to webull/endpoints.py line 144 and remove '&startTime=1970-0-1'")
-         
+            raise ValueError("Order entpoint obsolete, go to webull/endpoints.py (actual webull package) line 144 and remove '&startTime=1970-0-1'")
+        
         for order in orders:
             order_status = order['status'].upper()
             if order_status in ['CANCELLED', 'FAILED']:
