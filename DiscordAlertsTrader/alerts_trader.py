@@ -1543,7 +1543,7 @@ class AlertsTrader():
         # Round SL price to nearest increment
         
         if self.bksession.name == 'tda':
-            if trade['Symbol'] in ['SPXW']:
+            if 'SPXW' in trade['Symbol']:
                 if trade['Price'] < 3.0:
                     increment = 0.05
                 else:
