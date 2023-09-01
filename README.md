@@ -33,7 +33,7 @@ If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed.
 
 
 **Current Discord servers being used**:
-- **EnhancedMarket** TradeProElite (profitable strategies about 10-8k month [fully pays $150 membership], uses software to quickly send trade alerts for minimal delay even for scalpings and uses a bot to track trades alerted PnL and market price PnL, full transparency. Good for learning how to trade with live sessions): [invite link with 2 days trial and $30 off coupon](https://tradeproelite.memberful.com/checkout?plan=97432&coupon=Minkys)
+- **EnhancedMarket** TradeProElite (profitable strategies about 10-8k month [fully pays $150 membership], uses software to quickly send trade alerts for minimal delay even for scalpings and uses a bot to track trades alerted PnL and market price PnL, full transparency. Good for learning how to trade with live sessions): [invite link with 2 days trial and $50 off coupon](https://tradeproelite.memberful.com/checkout?plan=97432&coupon=Minkys)
 - **Xtrades** (alerts with market price data tracked with a bot, their stats posted on their web match what you can get, multiple analysts, see historical trades in the GUI Analysts tabs [$38 membership]): [invite link](https://app.xtrades.net/invite/4lk91GuPz0KsoJWYP74ieg)
 - **BullTrades** (good for shorting [bad trades, delayed alerts, they show alerted PnL but hide market priced PnL], see historical trades in this repo data/analyst_portfolio_bulltrades.csv(5/10 to 8/7) and [stats screenshot image](media/bulltrades_stats_05_08.png)): [invite link](https://bulltrades.net/?ref=ndrjogi)
 
