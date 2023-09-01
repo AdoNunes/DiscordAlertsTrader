@@ -35,19 +35,18 @@ class Ibkr:
             print(f"Logging into IBKR: Failed!")
         return self.success
 
-    def get_account_info(self):
+    def get_account_info(self,account:str =""):
         """
         Call portfolio API to retrieve a list of positions held in the specified account
         """
-        account_summary = self.session.accountSummary()
+        account_summary = self.session.accountSummary(account=account)
         res = None
         for summary in account_summary:
             if summary.tag == ftag:
                 res = float(summary.value)
                 break
-        return res
-
-
+        
+        # get account metadata information
         acc_inf ={
             'securitiesAccount':{   
                 'positions':[],
@@ -58,6 +57,8 @@ class Ibkr:
                     'availableFunds': data['accountMembers'][2]['value'],
                     },
         }}
+
+        # get positions of the account
         positions = data['positions']
         for position in positions:
             pos = {
@@ -73,6 +74,8 @@ class Ibkr:
                                 }
             }
             acc_inf['securitiesAccount']['positions'].append(pos)
+
+        # checks if account has no open pos   
         if not len(positions):
             acc_inf['securitiesAccount']['positions'] = []
             print("No portfolio")
@@ -93,6 +96,7 @@ class Ibkr:
 
     def get_order_info(self, order_id): 
         """ Get order info from order_id, mimicks the order_info from TDA API"""
+        order.OrderStatus.g
         orders = self.session.get_history_orders()      
         for order in orders:
             if order['orders'][0]['orderId'] == order_id:
