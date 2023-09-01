@@ -26,9 +26,10 @@ def update_port_cols():
         trader = trader.rename(columns=portfolio_newcols)
         if "open_trailingstop" not in trader.columns:
             trader['open_trailingstop'] = None
-        if "OCO" not in trader.columns:
-            trader['OCO'] = None
+        if 'trader_qty' not in trader.columns:
+            trader['trader_qty'] = None        
         trader.to_csv(cfg['portfolio_names']['portfolio_fname'], index=False)
+        
     if os.path.exists(cfg['portfolio_names']['tracker_portfolio_name']):
         tracker = pd.read_csv(cfg['portfolio_names']['tracker_portfolio_name'])
         tracker = tracker.rename(columns=tracker_newcols)
@@ -76,7 +77,7 @@ cfg['portfolio_names']['mock_alerts_log_fname'] = './tests/trader_logger_simulat
 # Define column names for portfolios and hist messages
 portfolio_cols = ",".join([
                 "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Price-alert", "Price-actual",
-                "Qty", "filledQty", "Avged", "Avged-prices", "exit_plan", "ordID", "Risk", "SL_mental", "trailingstop", 'oco',"PnL", "PnL$",
+                "Qty", "filledQty", "Avged", "Avged-prices", "exit_plan", "ordID", "Risk", "trailingstop", "PnL", "PnL$",
                 "PnL-alert", "PnL$-alert","PnL-actual","PnL$-actual"
                 ] + [
                     "STC%d-%s"% (i, v) for v in

@@ -41,14 +41,12 @@ def parse_trade_alert(msg, asset=None):
 
         risk_level = parse_risk(msg)
         order['risk'] = risk_level
-        order['open_trailingstop'] = trailingstop(msg)
+        
         pars = []
         for el in [action, quantity, ticker, strike, expDate, price, risk_level, str_ext]:
             if el is not None:
                 pars.append(el)
-        pars = " ".join(pars)
-        if order.get('open_trailingstop'):
-            pars += f"trailing stop for open {order['open_trailingstop']}"
+        pars = " ".join(pars)        
         if action.upper() in ["BTO", "STO"]:
             if "avg" in msg.lower() or "average" in msg.lower():
                 avg_price, _ = parse_avg(msg)
@@ -56,6 +54,11 @@ def parse_trade_alert(msg, asset=None):
                 order["avg"] = avg_price
             else:
                 order["avg"] = None
+                
+            order['open_trailingstop'] = trailingstop(msg)
+            if order.get('open_trailingstop'):
+                pars += f" {order['open_trailingstop']}"
+                
             try:
                 pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
                 n_pts = 3 if pt3_v else 2 if pt2_v else 1 if pt1_v else 0
@@ -68,9 +71,6 @@ def parse_trade_alert(msg, asset=None):
                 order["PT2"] = None
                 order["PT3"] = None
                 order["SL"] = None            
-            sl_mental = True if "mental" in msg.lower() else False
-            if sl_mental: order["SL_mental"] = True
-            
 
         elif action.upper() in ["STC", "BTC"]:
             xamnt = parse_sell_ratio_amount(msg, asset_type)
@@ -120,13 +120,20 @@ def fix_index_symbols(symbol):
     
 
 def trailingstop(msg):
+    # inverse TSbuy
+    expc = r"invTSbuy [:]?\s*([\d]{1,2}[%]?)"
+    match = re.search(expc, msg, re.IGNORECASE)
+    if match:
+        ts = match.groups()[0]            
+        return f"invTSbuy {ts}"
     exprs = ['tsbuy', 'trailstop', 'trailingstop', 'trailing stop']
     for exp in exprs:
         expc = exp + r"[:]?\s*([\d]{1,2}[%]?)"
         match = re.search(expc, msg, re.IGNORECASE)
         if match:
             ts = match.groups()[0]            
-            return ts
+            return f"TSbuy {ts}"
+
 
     
     return False
@@ -141,94 +148,6 @@ def ordersymb_to_str(symbol):
             symbol = f"{symbol} {strike}{type} {date[:2]}/{date[2:4]}"
     return symbol
 
-def parser_alerts(msg, asset=None):
-    msg = msg.replace("STc", "STC").replace("StC", "STC").replace("stC", "STC").replace("STc", "STC")
-    msg = msg.replace("BtO", "BTO").replace("btO", "BTO").replace("bTO", "BTO").replace("BTo", "BTO")
-    msg = msg.replace("spx", "SPX").replace("spy", "SPY").replace("Spx", "SPX")
-    act = parse_action(msg)
-    if act is None:
-        if "ExitUpdate" in msg:
-            order = {}
-            order['action'] = "ExitUpdate"
-            order['Symbol'], _ = parse_Symbol(msg, "ExitUpdate")
-            pars = f"ExitUpdate: "
-            if asset == "option":
-                if "_" not in  order['Symbol']:
-                    strike, optType = parse_strike(msg)
-                    order["expDate"] = parse_date(msg)
-                    order["strike"] = strike + optType
-                    order['Symbol'] = make_optionID(**order)
-            order, str_prt = make_order_exits(order, msg, pars, "stock") # price type dealt in disc_trader
-            return pars, order
-        return None, None
-    
-    Symbol, Symbol_info = parse_Symbol(msg, act)
-    if Symbol is None:
-        return None, None
-
-    if asset != "stock":
-        strike, optType = parse_strike(msg)
-        if asset is None:
-            asset="option" if strike is not None else "stock"
-        elif asset == "option" and strike is None:
-            return None, None
-
-    if asset == "option":
-        expDate = parse_date(msg)
-        if expDate is None:
-            return None, None
-
-        mark = parse_mark_option(msg)
-
-    elif asset == "stock":
-        mark  = parse_mark_stock(msg, Symbol, act)
-
-    amnt = parse_unit_amount(msg)
-    risk_level = parse_risk(msg)
-
-    order = {"action": act,
-             "Symbol": Symbol,
-             "price": mark,
-             "asset": asset,
-             "Qty": amnt,
-             "risk": risk_level}
-
-    str_prt = f"{act} {Symbol} @{mark} amount: {amnt}"
-
-    if asset == "option":
-        if Symbol == "SPX": 
-            order['Symbol'] = "SPXW"
-        elif Symbol == "NDX":
-            order['Symbol'] = "NDXP"
-        optType = optType.upper()
-        order["expDate"] = expDate
-        order["strike"] = strike + optType
-        str_prt = f"{act} {order['Symbol']} {expDate} {strike + optType} @{mark} amount: {amnt}"
-        order['Symbol'] = make_optionID(**order)
-
-    if act == "BTO":
-        if "avg" in msg.lower() or "average" in msg.lower():
-            avg_price, _ = parse_avg(msg)
-            str_prt = str_prt + f"AVG to {avg_price} "
-            order["avg"] = avg_price
-        else:
-            order["avg"] = None
-
-        pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
-        n_pts = 3 if pt3_v else 2 if pt2_v else 1 if pt1_v else 0
-        pts_qty = set_pt_qts(n_pts)
-        order, str_prt = make_order_exits(order, msg, str_prt, asset)
-        sl_mental = True if "mental" in msg.lower() else False
-        if sl_mental: order["SL_mental"] = True
-        order["n_PTs"] = n_pts
-        order["PTs_Qty"] = pts_qty
-
-    elif act == "STC":
-        xamnt = parse_sell_ratio_amount(msg, asset)
-        if order["Qty"] is None:
-            str_prt = str_prt + f" xamount: {xamnt}"
-        order["xQty"] = xamnt
-    return str_prt, order
 
 def make_order_exits(order, msg, str_prt, asset):
     pt1_v, pt2_v, pt3_v, sl_v = parse_exits(msg)
