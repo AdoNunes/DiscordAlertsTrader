@@ -72,6 +72,7 @@ class AlertsTrader():
         self.discord_channel = None # discord channel object to post trade alerts, passed on_ready discord
         self.cfg = cfg
         self.EOD = {} # end of day shorting actions
+        self.order_update_rate = 5
         # load port and log
         if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
@@ -89,37 +90,27 @@ class AlertsTrader():
         if update_portfolio:
             # first do a synch, then thread it
             self.update_orders()
-            self.activate_trade_updater()
+            self.updater = threading.Thread(target=self.trade_updater, daemon=True)
+            self.updater.start()
+            self.queue_prints.put([f"Updating portfolio orders every {self.order_update_rate} secs", "", "green"])
+            print(Back.GREEN + f"Updating portfolio orders every {self.order_update_rate} secs")
 
-    def activate_trade_updater(self, refresh_rate=5):
-        self.update_portfolio = True
-        self.updater = threading.Thread(target=self.trade_updater, args=[refresh_rate], daemon=True)
-        self.updater.start()
-        self.queue_prints.put([f"Updating portfolio orders every {refresh_rate} secs", "", "green"])
-        print(Back.GREEN + f"Updating portfolio orders every {refresh_rate} secs")
-
-    def trade_updater_reset(self, refresh_rate=5):
-        """ Will stop threding updater and restart.
-        To avoid delays or parallel updatings. """
-        self.update_portfolio = False
-        time.sleep(refresh_rate)
-        self.activate_trade_updater(refresh_rate)
-
-    def _stop(self):
-        "Lazy trick to stop updater threading"
-        self.update_portfolio = False
-
-    def trade_updater(self, refresh_rate=5):
+    def trade_updater(self):
         while self.update_portfolio is True:
-            if self.update_paused is False:
-                try:
-                    self.update_orders()
-                except Exception as ex:
-                    str_msg = f"Error raised during port update, trying again later. Error: {ex}"
-                    print(Back.RED + str_msg)
-                    self.queue_prints.put([str_msg, "", "red"])
-            if self.update_portfolio:
-                time.sleep(refresh_rate)
+            if self.update_paused is True:
+                time.sleep(1)
+                continue
+            t0 = time.time()
+            try:
+                self.update_orders()
+            except Exception as ex:
+                str_msg = f"Error raised during port update, trying again later. Error: {ex}"
+                print(Back.RED + str_msg)
+                self.queue_prints.put([str_msg, "", "red"])
+            
+            if time.time() - t0 < self.order_update_rate:
+                time.sleep(self.order_update_rate - (time.time() - t0))
+        
         str_msg = "Closed portfolio updater"
         print(Back.GREEN + str_msg)
         self.queue_prints.put([str_msg, "", "green"])
@@ -1061,13 +1052,14 @@ class AlertsTrader():
                 continue
             
             # check if inverse TSbuy stop has reached or update stop
-            if trade["BTO-Status"]== "invTSbuy":                
+            if trade["BTO-Status"] == "invTSbuy":
+                self.order_update_rate = 1       
                 ts_const, max_price = trade["open_trailingstop"].split(",")
                 max_price = eval(max_price.split(":")[1])
                 ts_const = eval(ts_const.split(":")[1])
                 stp_price = max_price - ts_const
                 quote_opt = self.price_now(trade['Symbol'], "STC", 1)
-                if quote_opt <= stp_price*1.02:
+                if quote_opt <= stp_price*1.03:
                     order = {"Symbol": trade['Symbol'],
                             "action": "BTO",
                             "asset": trade['Asset'],
@@ -1089,7 +1081,7 @@ class AlertsTrader():
                     self.portfolio.loc[i, "Price"] = order_info.get("price")
                     self.portfolio.loc[i, "trader_qty"] = order_info.get("trader_qty")
                     self.portfolio.loc[i, "ordID"] = order_id
-                    
+                    self.order_update_rate = 5
                 else:
                     if quote_opt > max_price:
                         max_price = quote_opt
@@ -1313,6 +1305,7 @@ class AlertsTrader():
             if not pd.isnull(STC_ordID):
                 # assume PT with trailing stop at lim has SL, TS can be 0
                 if isinstance(exit_plan[f"PT{ii}"], str) and "TS" in exit_plan[f"PT{ii}"]:
+                    self.order_update_rate = 1
                     trigger = float(exit_plan[f"PT{ii}"].split("TS")[0])
                     TS = eval(exit_plan[f"PT{ii}"].split("TS")[1])
                     quote_opt = self.price_now(trade['Symbol'], "STC", 1)
@@ -1342,6 +1335,7 @@ class AlertsTrader():
                         self.portfolio.loc[i, STC+"-ordID"] = STC_ordID
                         trade = self.portfolio.iloc[i]
                         self.save_logs("port")
+                        self.order_update_rate = 5
                         
                 # Adjust if necessary Qty based on remaining shares
                 if nPTs > 1:
@@ -1549,11 +1543,13 @@ class AlertsTrader():
         # Round SL price to nearest increment
         
         if self.bksession.name == 'tda':
-            if trade['Price'] < 3.0:
-                increment = 0.05
+            if trade['Symbol'] in ['SPXW']:
+                if trade['Price'] < 3.0:
+                    increment = 0.05
+                else:
+                    increment = 0.10
             else:
-                increment = 0.10
-                
+                increment = 0.01
         elif trade['Symbol'] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
             increment = 0.01  # ETFs trade in penny increments
         else:
