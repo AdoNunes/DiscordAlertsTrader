@@ -95,8 +95,7 @@ class Ibkr:
         return acc_inf
 
     def get_order_info(self, order_id): 
-        """ Get order info from order_id, mimicks the order_info from TDA API"""
-        order.OrderStatus.g
+        """ Get order info from order_id"""
         orders = self.session.get_history_orders()      
         for order in orders:
             if order['orders'][0]['orderId'] == order_id:
@@ -281,7 +280,7 @@ class Ibkr:
         except:
             return False
 
-    def get_orders(self):
+    def get_orders(self, open_only=True):
         '''
         todo
         1. pass account id to get only that account open orders
@@ -289,9 +288,19 @@ class Ibkr:
         '''
 
         orders_all  = []
-        for order in self.session.orders():
-            orders_all.append(self.format_order(order))
-        return orders
+        if open_only is True:
+            for order in self.session.openOrders():
+                orders_all.append(self.format_order(order))
+        else:
+            for order in self.session.orders():
+                orders_all.append(self.format_order(order))
+                
+        return orders_all
+
+    def get_account_names(self) -> List[str]: 
+        '''Return list of accounts eligible for trading'''
+        res = self.session.managedAccounts()
+        return ret
 
     def make_BTO_lim_order(self, Symbol:str, Qty:int, price:float, action="BTO", **kwarg):
         "Buy with a limit order"
