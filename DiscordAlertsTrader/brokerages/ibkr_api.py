@@ -47,30 +47,35 @@ class Ibkr:
                 break
         
         # get account metadata information
+        netLiquidation = [v for v in self.session.accountValues() if 
+                          v.tag == 'NetLiquidationByCurrency' and v.currency == 'BASE'] # ib example        
+        cashBalance = self.session.accountValues()['TotalCashValue'] # ib example
+        availableFunds = self.session.accountValues()['SettledCash'] # ib example
         acc_inf ={
             'securitiesAccount':{   
                 'positions':[],
                 'accountId' : str(data['secAccountId']),
                 'currentBalances':{
-                    'liquidationValue': data.get('netLiquidation'),
-                    'cashBalance': data['accountMembers'][1]['value'],
-                    'availableFunds': data['accountMembers'][2]['value'],
+                    'liquidationValue': netLiquidation, # ib example    
+                    'cashBalance': cashBalance, # ib example   
+                    'availableFunds': availableFunds, # ib example   
                     },
         }}
 
         # get positions of the account
-        positions = data['positions']
+        positions = self.session.positions() # ib example
+        
         for position in positions:
             pos = {
-                "longQuantity" : eval(position['position']),
-                "symbol": position['ticker']["symbol"],
-                "marketValue": eval(position['marketValue']),
-                "assetType": position['assetType'],
-                "averagePrice": eval(position['costPrice']),
+                "longQuantity" : eval(position['position']), # ib example        
+                "symbol": position["symbol"],  # ib example        
+                "marketValue": eval(position['position']),
+                "assetType": position['tradingClass'], # ib example    
+                "averagePrice": eval(position['avgCost']), # ib example    
                 "currentDayProfitLoss": eval(position['unrealizedProfitLoss']),
                 "currentDayProfitLossPercentage": float(eval(position['unrealizedProfitLoss']))/100,
-                'instrument': {'symbol': position['ticker']["symbol"],
-                                'assetType': position['assetType'],
+                'instrument': {'symbol': position["symbol"], # ib example    
+                                'assetType': position['tradingClass'], # ib example    
                                 }
             }
             acc_inf['securitiesAccount']['positions'].append(pos)
@@ -81,11 +86,9 @@ class Ibkr:
             print("No portfolio")
 
         # get orders and add them to acc_inf
-        orders = self.session.get_history_orders(count=10)
+        orders = self.session.openOrders() # ib example
         orders_inf =[]  
-        if isinstance(orders, dict) and orders.get('success') is False:
-            raise ValueError("Order entpoint obscolite, go to webull/endpoints.py line 144 and remove '&startTime=1970-0-1'")
-         
+       
         for order in orders:
             order_status = order['status'].upper()
             if order_status in ['CANCELLED', 'FAILED']:
