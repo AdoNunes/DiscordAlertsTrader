@@ -223,10 +223,13 @@ port_exc = {"Closed":False,
             "live PnL":False,
             "stocks":True,
             "options":False,
+            'bto':False,
+            "stc":False,
             }
 track_exc = port_exc.copy()
 stat_exc = port_exc.copy()
-port_exc["Cancelled"] = True
+port_exc["Canceled"] = True
+port_exc["Rejected"] = False
 
 print(10)
 dt, _  = gg.get_tracker_data(track_exc, **values)
@@ -480,7 +483,7 @@ def gui():
     client_thread = threading.Thread(target=run_client, daemon=True)
 
     # start the threads
-    client_thread.start()
+    # client_thread.start()
     run_gui()
 
     # close the GUI window

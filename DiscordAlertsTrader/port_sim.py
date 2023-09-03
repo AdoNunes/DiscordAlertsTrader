@@ -102,8 +102,10 @@ def filter_data(data,exclude={}, filt_author='', filt_date_frm='', filt_date_to=
                 ):
     if len(exclude):
         for k, v in exclude.items():
-            if k == "Cancelled" and v and k in data.columns:
+            if k == "Canceled" and v and "BTO-Status" in data.columns:
                 data = data[data["BTO-Status"] !="CANCELED"]
+            elif k == "Rejected" and v and "BTO-Status" in data.columns:
+                data = data[data["BTO-Status"] !="REJECTED"]
             elif k == "Closed" and v:
                 data = data[data["isOpen"] !=0]
             elif k == "Open" and v:
@@ -120,7 +122,10 @@ def filter_data(data,exclude={}, filt_author='', filt_date_frm='', filt_date_to=
                 data = data[data["Asset"] !="stock"]
             elif k == "options" and v:
                 data = data[data["Asset"] !="option"]
-
+            elif k == "bto" and v and "Type" in data.columns:
+                data = data[data["Type"] !="BTO"]
+            elif k == "sto" and v and "Type" in data.columns:
+                data = data[data["Type"] !="STO"]
     if filt_author:
         msk = [x.strip() for x in filt_author.split(",")]
         data = data[data['Trader'].str.contains('|'.join(msk), case=False)]

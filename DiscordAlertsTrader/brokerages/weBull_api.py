@@ -84,7 +84,7 @@ class weBull:
         orders = self.session.get_history_orders()      
         for order in orders:
             if order['orders'][0]['orderId'] == order_id:
-                order_status = order['status'].upper()
+                order_status = order['status'].upper().replace("CANCELLED", "CANCELED")
                 order_info = self.format_order(order)         
                 return order_status, order_info
         return None, None
