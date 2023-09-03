@@ -21,7 +21,7 @@ class Ibkr:
             self.success = False
             self._port = None
          
-    def get_session(self, use_workaround: bool = True) -> bool:
+    def get_session(self) -> bool:
         # todo : can use singleton pattern
         self.success = self.connect(port=7496)
         if not self.success:
