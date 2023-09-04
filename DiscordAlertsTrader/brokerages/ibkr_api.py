@@ -1,9 +1,13 @@
 import re
 import time
+import ib_insync
+import random
+
 from ib_insync import IB, Stock, MarketOrder, util, Option
 from datetime import datetime
 from DiscordAlertsTrader.configurator import cfg
-import ib_insync
+from typing import List
+
 
 class Ibkr:
     def __init__(self, paper_trading: bool = False) -> None:
@@ -11,50 +15,44 @@ class Ibkr:
         self._loggedin = False
         self.name = 'ibkr'
         self.option_ids = {}
-
-    def connect(self, port: int = 7496) -> bool:
+        self.trapped_errors = []
+    def filter_by(self, ftag):
+        res = [v for v in self.session.accountValues() if 
+                          v.tag == f'{ftag}'] # ib example 
+        return res
+    def connect(self, host = '127.0.0.1', port: int = 7496) -> bool:
         try:
-            self._ibkr.connect('127.0.0.1', port, clientId=random.randint(1, 50))
+            self._ibkr.connect(host, port, clientId=random.randint(1, 50))
             self.success = True
             self._port = port
-        except:
+            self.session = self._ibkr
+        except Exception as e:
             self.success = False
             self._port = None
-         
-    def get_session(self) -> bool:
-        # todo : can use singleton pattern
-        self.success = self.connect(port=7496)
-        if not self.success:
-            self.session = None
-        else:
-            self.session = self._ibkr
 
-        if self.success: 
-            print(f"Logging into IBKR: Success!")
-        else:
-            print(f"Logging into IBKR: Failed!")
-        return self.success
+    def get_session(self) -> bool:
+        return self._ibkr
 
     def get_account_info(self,account:str =""):
         """
         Call portfolio API to retrieve a list of positions held in the specified account
         """
+        # print(self.session.accountValues())
         account_summary = self.session.accountSummary(account=account)
         res = None
-        for summary in account_summary:
-            if summary.tag == ftag:
-                res = float(summary.value)
-                break
         
         # get account metadata information
-        netLiquidation = [v for v in self.session.accountValues() if 
-                          v.tag == 'NetLiquidationByCurrency' and v.currency == 'BASE'] # ib example        
-        cashBalance = self.session.accountValues()['TotalCashValue'] # ib example
-        availableFunds = self.session.accountValues()['SettledCash'] # ib example
+        netLiquidation_vector = self.filter_by('NetLiquidationByCurrency')
+        netLiquidation = self.filter_by('NetLiquidationByCurrency')[0].value
+
+        account_id = netLiquidation_vector[0].account  
+        cashBalance = self.filter_by('TotalCashValue')[0].value # ib example
+        availableFunds = self.filter_by('CashBalance')[0].value # ib example
+        
         acc_inf ={
             'securitiesAccount':{   
                 'positions':[],
-                'accountId' : str(data['secAccountId']),
+                'accountId' : str(account_id),
                 'currentBalances':{
                     'liquidationValue': netLiquidation, # ib example    
                     'cashBalance': cashBalance, # ib example   
@@ -65,36 +63,37 @@ class Ibkr:
         # get positions of the account
         positions = self.session.positions() # ib example
         
-        for position in positions:
-            pos = {
-                "longQuantity" : eval(position['position']), # ib example        
-                "symbol": position["symbol"],  # ib example        
-                "marketValue": eval(position['position']),
-                "assetType": position['tradingClass'], # ib example    
-                "averagePrice": eval(position['avgCost']), # ib example    
-                "currentDayProfitLoss": eval(position['unrealizedProfitLoss']),
-                "currentDayProfitLossPercentage": float(eval(position['unrealizedProfitLoss']))/100,
-                'instrument': {'symbol': position["symbol"], # ib example    
-                                'assetType': position['tradingClass'], # ib example    
-                                }
-            }
-            acc_inf['securitiesAccount']['positions'].append(pos)
+        # for position in positions:
+        #     pos = {
+        #         "longQuantity" : eval(position['position']), # ib example        
+        #         "symbol": position["symbol"],  # ib example        
+        #         "marketValue": eval(position['position']),
+        #         "assetType": position['tradingClass'], # ib example    
+        #         "averagePrice": eval(position['avgCost']), # ib example    
+        #         "currentDayProfitLoss": eval(position['unrealizedProfitLoss']),
+        #         "currentDayProfitLossPercentage": float(eval(position['unrealizedProfitLoss']))/100,
+        #         'instrument': {'symbol': position["symbol"], # ib example    
+        #                         'assetType': position['tradingClass'], # ib example    
+        #                         }
+        #     }
+        #     acc_inf['securitiesAccount']['positions'].append(pos)
 
-        # checks if account has no open pos   
-        if not len(positions):
-            acc_inf['securitiesAccount']['positions'] = []
-            print("No portfolio")
+        # # checks if account has no open pos   
+        # if not len(positions):
+        #     acc_inf['securitiesAccount']['positions'] = []
+        #     print("No portfolio")
 
-        # get orders and add them to acc_inf
-        orders = self.session.openOrders() # ib example
-        orders_inf =[]  
+        # # get orders and add them to acc_inf
+        # orders = self.session.openOrders() # ib example
+        # orders_inf =[]  
        
-        for order in orders:
-            order_status = order['status'].upper()
-            if order_status in ['CANCELLED', 'FAILED']:
-                continue
-            orders_inf.append(self.format_order(order))
-        acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
+        # for order in orders:
+        #     order_status = order['status'].upper()
+        #     if order_status in ['CANCELLED', 'FAILED']:
+        #         continue
+        #     orders_inf.append(self.format_order(order))
+        # acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
+        print(acc_inf)
         return acc_inf
 
     def get_order_info(self, order_id): 
