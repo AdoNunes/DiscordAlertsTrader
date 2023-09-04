@@ -14,10 +14,10 @@ from DiscordAlertsTrader.alerts_trader import AlertsTrader
 from DiscordAlertsTrader.alerts_tracker import AlertsTracker
 from DiscordAlertsTrader.server_alert_formatting import server_formatting
 try:
-    from .fend_bot import bot_msgs
-    with_fend = True
+    from .custom_msg_format import msg_custom_formated
+    custom = True
 except ImportError:
-    with_fend = False
+    custom = False
 
 
 init(autoreset=True)
@@ -150,23 +150,21 @@ class DiscordBot(discord.Client):
         await self.load_previous_msgs()
     
     async def on_message(self, message):
-        # handle fend bot messages
-        if with_fend:
-            alert = bot_msgs(message)
-            if alert is not None:
-                self.new_msg_acts(alert, False)
-                return
-        
         # only respond to channels in config or authorwise subscription
         author = f"{message.author.name}#{message.author.discriminator}"    
         if message.channel.id not in self.channel_IDS.values() and \
             author.lower() not in split_strip(self.cfg['discord']['auhtorwise_subscription']):
-            # print(author, message.channel.name, message.channel.id, message.guild.name)
             return
         if message.content == 'ping':
             await message.channel.send('pong')
         
         message = server_formatting(message)
+        if custom:
+            alert = msg_custom_formated(message)
+            if alert is not None:
+                for msg in alert:
+                    self.new_msg_acts(msg, False)
+                return
         if not len(message.content):
             return
         self.new_msg_acts(message)

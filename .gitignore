@@ -1,4 +1,5 @@
 */config.ini
+custom_msg_format.py
 secrets_td.json
 data/*_message_history.csv
 data/trader_logger.csv
