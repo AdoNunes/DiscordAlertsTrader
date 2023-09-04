@@ -61,39 +61,38 @@ class Ibkr:
         }}
 
         # get positions of the account
+
         positions = self.session.positions() # ib example
-        
-        # for position in positions:
-        #     pos = {
-        #         "longQuantity" : eval(position['position']), # ib example        
-        #         "symbol": position["symbol"],  # ib example        
-        #         "marketValue": eval(position['position']),
-        #         "assetType": position['tradingClass'], # ib example    
-        #         "averagePrice": eval(position['avgCost']), # ib example    
-        #         "currentDayProfitLoss": eval(position['unrealizedProfitLoss']),
-        #         "currentDayProfitLossPercentage": float(eval(position['unrealizedProfitLoss']))/100,
-        #         'instrument': {'symbol': position["symbol"], # ib example    
-        #                         'assetType': position['tradingClass'], # ib example    
-        #                         }
-        #     }
-        #     acc_inf['securitiesAccount']['positions'].append(pos)
+        for position in positions:
+            pos = {
+                "longQuantity" : position.position, # ib example        
+                "symbol": position.contract.symbol,  # ib example        
+                "marketValue": 'n/a', #todo: fetch in realtime.
+                "assetType": position.contract.tradingClass, # ib example    
+                "averagePrice":position.avgCost, # ib example    
+                "currentDayProfitLoss": 'n/a',
+                "currentDayProfitLossPercentage": 'n/a',
+                'instrument': {'symbol': position.contract.symbol, # ib example    
+                                'assetType': position.contract.tradingClass, # ib example    
+                                }
+            }
+            acc_inf['securitiesAccount']['positions'].append(pos)
 
-        # # checks if account has no open pos   
-        # if not len(positions):
-        #     acc_inf['securitiesAccount']['positions'] = []
-        #     print("No portfolio")
+        # checks if account has no open pos   
+        if not len(positions):
+            acc_inf['securitiesAccount']['positions'] = []
+            print("No portfolio")
 
-        # # get orders and add them to acc_inf
-        # orders = self.session.openOrders() # ib example
-        # orders_inf =[]  
-       
-        # for order in orders:
-        #     order_status = order['status'].upper()
-        #     if order_status in ['CANCELLED', 'FAILED']:
-        #         continue
-        #     orders_inf.append(self.format_order(order))
-        # acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
-        print(acc_inf)
+        # get orders and add them to acc_inf
+        orders = self.session.openOrders() # ib example
+        orders_inf =[]  
+        print(orders)
+        for order in orders:
+            order_status = order['status'].upper()
+            if order_status in ['CANCELLED', 'FAILED']:
+                continue
+            orders_inf.append(self.format_order(order))
+        acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
         return acc_inf
 
     def get_order_info(self, order_id): 
