@@ -169,7 +169,7 @@ def aurora_trading_formatting(message_):
     
     message = MessageCopy(message_)
     # format Bryce trades
-    if message_.channel.id == 846415903671320598:   
+    if message_.channel.id in [846415903671320598]:   
         message.content = format_alert(message.content)
     # format ace trades
     elif message_.channel.id == 885627509121618010:
