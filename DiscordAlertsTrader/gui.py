@@ -223,10 +223,13 @@ port_exc = {"Closed":False,
             "live PnL":False,
             "stocks":True,
             "options":False,
+            'bto':False,
+            "stc":False,
             }
 track_exc = port_exc.copy()
 stat_exc = port_exc.copy()
-port_exc["Cancelled"] = True
+port_exc["Canceled"] = True
+port_exc["Rejected"] = False
 
 print(10)
 dt, _  = gg.get_tracker_data(track_exc, **values)

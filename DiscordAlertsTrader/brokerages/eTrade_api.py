@@ -152,7 +152,7 @@ class eTrade(BaseBroker):
         orders_inf =[]
         for order in orders:
             order_status = order['OrderDetail'][0]['status'].upper()
-            if order_status in ['CANCELLED', 'REJECTED', 'EXPIRED']:
+            if order_status in ['CANCELED','CANCELLED', 'REJECTED', 'EXPIRED']:
                 continue
             orders_inf.append(self.format_order(order))
         acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
@@ -295,7 +295,7 @@ class eTrade(BaseBroker):
             closeTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00")
         else:
             closeTime = enteredTime
-        status = order['OrderDetail'][0]['status'].upper().replace('EXECUTED','FILLED').replace('OPEN','WORKING')
+        status = order['OrderDetail'][0]['status'].upper().replace('EXECUTED','FILLED').replace('OPEN','WORKING').replace('CANCELLED','CANCELED')
         order_info = {
             'status': status,
             'quantity': order['OrderDetail'][0]['Instrument'][0]['orderedQuantity'],
