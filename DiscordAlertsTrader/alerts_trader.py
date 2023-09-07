@@ -567,7 +567,7 @@ class AlertsTrader():
                                 "Trader": order['Trader'],
                                 "Risk": order['risk'],
                                 "open_trailingstop": f"ts:{ts},max_price:{pricenow}",
-                                "trader_qty": order.get('Qty'),
+                                "trader_qty": order.get('Qty', 1),
                                 }
                     self.portfolio = pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)                    
                     str_msg = f"{action} {order['Symbol']} created inverse TS local order @{pricenow}, TSconst {ts}, stp @{pricenow-ts}"
@@ -1541,25 +1541,25 @@ class AlertsTrader():
 
     def round_order_price(self, order, trade):
         # Round SL price to nearest increment
-        
-        if self.bksession.name == 'tda':
-            if 'SPXW' in trade['Symbol']:
-                if trade['Price'] < 3.0:
-                    increment = 0.05
-                else:
-                    increment = 0.10
-            else:
-                increment = 0.01
-        elif trade['Symbol'] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
-            increment = 0.01  # ETFs trade in penny increments
-        else:
-            if trade['Price'] < 3.0:
-                increment = 0.05
-            else:
-                increment = 0.10
-        
         for exit in ['PT', 'PT1', 'PT2', 'PT3', 'SL']:
             if order.get(exit) is not None and isinstance(order.get(exit), (int, float)):
+                if self.bksession.name == 'tda':
+                    if 'SPXW' in trade['Symbol']:
+                        if order[exit] < 3.0:
+                            increment = 0.05
+                        else:
+                            increment = 0.10
+                    else:
+                        increment = 0.01
+                elif trade['Symbol'] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
+                    increment = 0.01  # ETFs trade in penny increments
+                else:
+                    if order[exit] < 3.0:
+                        increment = 0.05
+                    else:
+                        increment = 0.10
+
+            
                 order[exit] = round(round(order[exit] / increment) * increment,2)
         return order
     
