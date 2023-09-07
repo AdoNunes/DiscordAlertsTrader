@@ -19,7 +19,7 @@ def msg_custom_formated(message):
             price =  price.group(1)
         if "BTO SPX" in alert:
             if price is not None:
-                qty =  max(int(500//(float(price)*100)), 1)
+                qty =  max(int(800//(float(price)*100)), 1)
                 alert.replace("BTO", f"BTO {qty}")
             alert += r" PT 20% SL 50% invTSbuy 20%"
         elif "BTO QQQ" in alert:
