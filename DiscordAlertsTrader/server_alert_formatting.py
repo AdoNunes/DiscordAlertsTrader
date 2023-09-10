@@ -144,8 +144,8 @@ def aurora_trading_formatting(message_):
             contract = contract.replace("Weeklies", msg_date).split(" @")[0]
         return contract
     
-    def format_alert(alert):
-        pattern = r'\b(BTO|STC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?(?:C|P)?\s*(\d+[.\d+]*[cp]?)?(?:\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+))?'
+    def format_alert(alert, possible_stock=False):
+        pattern = r'\b(BTO|STC)?\b\s*(\d+)?\s*([A-Z]+)\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?(?:C|P)?\s*(\d+[.\d+]*[cp]?)?(?:\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+))?'
         match = re.search(pattern, alert, re.IGNORECASE)
         if match:
             action, quantity, ticker, expDate, strike, price = match.groups()
@@ -158,8 +158,10 @@ def aurora_trading_formatting(message_):
                 # fix missing strike, assume Call            
                 if "c" not in strike.lower() and "p" not in strike.lower():
                     strike = strike + "c"
+                if action is None:  # assume BTO
+                    action = "BTO"
                 alert = f"{action.upper()} {symbol} {strike.upper()} {expDate}{price}"
-            elif asset_type == 'stock':
+            elif asset_type == 'stock' and possible_stock:
                 alert = f"{action.upper()} {symbol}{price}"
         return alert
     
@@ -224,6 +226,10 @@ def aurora_trading_formatting(message_):
                 alert += f"(not parsed) {mb.description}"
         if len(alert):  
             message.content = alert
+    # format daemon trades
+    elif message_.channel.id == 886669912389607504:
+        contract = format_0dte_weeklies(contract, message)
+        contract = format_alert(contract) 
 
     return message
 
