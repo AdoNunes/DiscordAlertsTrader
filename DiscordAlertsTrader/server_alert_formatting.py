@@ -130,49 +130,28 @@ def xtrades_formatting(message_):
 def aurora_trading_formatting(message_):
     """
     Reformat Discord message from aurora_trading to content message
-    """
-    
-    def format_0dte_weeklies(contract, message):
-        if "0DTE" in contract:
+    """    
+    def format_0dte_weeklies(contract, message, remove_price=True):
+        "remove price when stc title is bto"
+        if "0DTE" in contract.upper():
             msg_date = message.created_at.strftime('%m/%d')
-            contract = contract.replace("0DTE", msg_date).split(" @")[0]
-        elif "Weeklies" in contract:
+            contract = re.sub(r"0DTE", msg_date,contract, flags=re.IGNORECASE)
+            if remove_price:
+                contract = contract.split(" @")[0]
+        elif "weeklies" in contract.lower():
             msg_date= message.created_at
             days_until_friday = (4 - msg_date.weekday() + 7) % 7
             msg_date += timedelta(days=days_until_friday)
             msg_date = msg_date.strftime('%m/%d')
-            contract = contract.replace("Weeklies", msg_date).split(" @")[0]
+            contract =  re.sub(r"Weeklies", msg_date,contract, flags=re.IGNORECASE)
+            if remove_price:
+                contract = contract.split(" @")[0]
         return contract
-    
-    def format_alert(alert, possible_stock=False):
-        pattern = r'\b(BTO|STC)?\b\s*(\d+)?\s*([A-Z]+)\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?(?:C|P)?\s*(\d+[.\d+]*[cp]?)?(?:\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+))?'
-        match = re.search(pattern, alert, re.IGNORECASE)
-        if match:
-            action, quantity, ticker, expDate, strike, price = match.groups()
-
-            asset_type = 'option' if strike and expDate else 'stock'
-            symbol =  ticker.upper()
-            price =  f" @ {float(price.replace(',', '.'))}" if price else ""
-        
-            if asset_type == 'option':
-                # fix missing strike, assume Call            
-                if "c" not in strike.lower() and "p" not in strike.lower():
-                    strike = strike + "c"
-                if action is None:  # assume BTO
-                    action = "BTO"
-                alert = f"{action.upper()} {symbol} {strike.upper()} {expDate}{price}"
-            elif asset_type == 'stock' and possible_stock:
-                alert = f"{action.upper()} {symbol}{price}"
-        return alert
-    
-    # Don't do anything if not server message
-    if message_.guild.id not in [826258453391081524, 1093339706260979822]:
-        return message_
     
     message = MessageCopy(message_)
     # format Bryce trades
     if message_.channel.id in [846415903671320598, 1093340247057772654]:   
-        message.content = format_alert(message.content)
+        message.content = format_alert_date_price(message.content)
     # format ace trades
     elif message_.channel.id == 885627509121618010:
         alert = ""
@@ -189,7 +168,7 @@ def aurora_trading_formatting(message_):
                     contract = contract_match.group(1).strip().replace(" - ", " ")
                     # Check for 0DTE and replace with today's date
                     contract = format_0dte_weeklies(contract, message)
-                    contract = format_alert(contract)                    
+                    contract = format_alert_date_price(contract)                    
                     alert += f"{contract}"
                 if fill_match :
                     fill = fill_match.group(1).strip()
@@ -211,7 +190,7 @@ def aurora_trading_formatting(message_):
                     contract = contract_match.group(1).strip().replace(" - ", " ")
                     # Check for 0DTE and weeklies
                     contract = format_0dte_weeklies(contract, message)
-                    contract = format_alert(contract) 
+                    contract = format_alert_date_price(contract) 
                     alert += f"{contract}"
                 if fill_match :
                     fill = fill_match.group(1).strip()
@@ -227,12 +206,33 @@ def aurora_trading_formatting(message_):
         if len(alert):  
             message.content = alert
     # format daemon trades
-    elif message_.channel.id == 886669912389607504:
-        contract = format_0dte_weeklies(contract, message)
-        contract = format_alert(contract) 
+    elif message_.channel.id in [886669912389607504, 1072553858053701793]:
+        contract = format_0dte_weeklies(message.content, message, False)
+        message.content = format_alert_date_price(contract) 
 
     return message
 
+
+def format_alert_date_price(alert, possible_stock=False):
+    pattern = r'\b(BTO|STC)?\b\s*(\d+)?\s*([A-Z]+)\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?(?:C|P)?\s*(\d+[.\d+]*[cp]?)?(?:\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+))?'
+    match = re.search(pattern, alert, re.IGNORECASE)
+    if match:
+        action, quantity, ticker, expDate, strike, price = match.groups()
+
+        asset_type = 'option' if strike and expDate else 'stock'
+        symbol =  ticker.upper()
+        price =  f" @ {float(price.replace(',', '.'))}" if price else ""
+    
+        if asset_type == 'option':
+            # fix missing strike, assume Call            
+            if "c" not in strike.lower() and "p" not in strike.lower():
+                strike = strike + "c"
+            if action is None:  # assume BTO
+                action = "BTO"
+            alert = f"{action.upper()} {symbol} {strike.upper()} {expDate}{price}"
+        elif asset_type == 'stock' and possible_stock:
+            alert = f"{action.upper()} {symbol}{price}"
+    return alert
 
 class MessageCopy:
     def __init__(self, original_message):
