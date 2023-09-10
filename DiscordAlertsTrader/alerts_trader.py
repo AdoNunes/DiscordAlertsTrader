@@ -567,7 +567,7 @@ class AlertsTrader():
                                 "Trader": order['Trader'],
                                 "Risk": order['risk'],
                                 "open_trailingstop": f"ts:{ts},max_price:{pricenow}",
-                                "trader_qty": order.get('Qty'),
+                                "trader_qty": order.get('Qty', 1),
                                 }
                     self.portfolio = pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)                    
                     str_msg = f"{action} {order['Symbol']} created inverse TS local order @{pricenow}, TSconst {ts}, stp @{pricenow-ts}"
@@ -1059,14 +1059,15 @@ class AlertsTrader():
                 ts_const = eval(ts_const.split(":")[1])
                 stp_price = max_price - ts_const
                 quote_opt = self.price_now(trade['Symbol'], "STC", 1)
-                if quote_opt <= stp_price*1.03:
+                if quote_opt <= stp_price*1.01: # 1%
                     order = {"Symbol": trade['Symbol'],
                             "action": "BTO",
                             "asset": trade['Asset'],
-                            "price": quote_opt,
+                            "price": quote_opt*1.03,
                             "Qty": int(trade["trader_qty"]),
                             }
-                    pars = f"BTO {trade['trader_qty']} {trade['Symbol']} @{quote_opt}"
+                    order = self.round_order_price(order, trade)
+                    pars = f"BTO {trade['trader_qty']} {trade['Symbol']} @{order['price']}"
                     order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_BTO_lim_order)
                     
                     if order_response is None:  # trade not successful 
@@ -1085,7 +1086,8 @@ class AlertsTrader():
                 else:
                     if quote_opt > max_price:
                         max_price = quote_opt
-                        self.portfolio.loc[i, "open_trailingstop"]= f"ts:{ts_const},max_price:{max_price}"
+                        self.portfolio.loc[i, "open_trailingstop"] = f"ts:{ts_const},max_price:{max_price}"
+                        self.portfolio.loc[i, "Price"] = stp_price
                 self.save_logs("port")
                 continue
             
@@ -1541,25 +1543,25 @@ class AlertsTrader():
 
     def round_order_price(self, order, trade):
         # Round SL price to nearest increment
-        
-        if self.bksession.name == 'tda':
-            if 'SPXW' in trade['Symbol']:
-                if trade['Price'] < 3.0:
-                    increment = 0.05
-                else:
-                    increment = 0.10
-            else:
-                increment = 0.01
-        elif trade['Symbol'] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
-            increment = 0.01  # ETFs trade in penny increments
-        else:
-            if trade['Price'] < 3.0:
-                increment = 0.05
-            else:
-                increment = 0.10
-        
-        for exit in ['PT', 'PT1', 'PT2', 'PT3', 'SL']:
+        for exit in ['price', 'PT', 'PT1', 'PT2', 'PT3', 'SL']:
             if order.get(exit) is not None and isinstance(order.get(exit), (int, float)):
+                if self.bksession.name == 'tda':
+                    if 'SPXW' in trade['Symbol']:
+                        if order[exit] < 3.0:
+                            increment = 0.05
+                        else:
+                            increment = 0.10
+                    else:
+                        increment = 0.01
+                elif trade['Symbol'] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
+                    increment = 0.01  # ETFs trade in penny increments
+                else:
+                    if order[exit] < 3.0:
+                        increment = 0.05
+                    else:
+                        increment = 0.10
+
+            
                 order[exit] = round(round(order[exit] / increment) * increment,2)
         return order
     

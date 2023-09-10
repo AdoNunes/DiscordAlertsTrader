@@ -418,6 +418,8 @@ def compute_live_trader_port(trade, order):
     
     
     sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
+    if sold_tot == 0:
+        return trade
     stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
     trade[ "PnL"] = stc_PnL_all
 

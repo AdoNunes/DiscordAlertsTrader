@@ -7,7 +7,7 @@ def server_formatting(message):
         message = xtrades_formatting(message)
     elif message.guild.id == 836435995854897193:
         message = tradeproelite_formatting(message)
-    elif message.guild.id == 826258453391081524:
+    elif message.guild.id in  [826258453391081524, 1093339706260979822]:
         message = aurora_trading_formatting(message)
 
     return message
@@ -166,12 +166,12 @@ def aurora_trading_formatting(message_):
         return alert
     
     # Don't do anything if not server message
-    if message_.guild.id != 826258453391081524:
+    if message_.guild.id not in [826258453391081524, 1093339706260979822]:
         return message_
     
     message = MessageCopy(message_)
     # format Bryce trades
-    if message_.channel.id == 846415903671320598:   
+    if message_.channel.id in [846415903671320598, 1093340247057772654]:   
         message.content = format_alert(message.content)
     # format ace trades
     elif message_.channel.id == 885627509121618010:
