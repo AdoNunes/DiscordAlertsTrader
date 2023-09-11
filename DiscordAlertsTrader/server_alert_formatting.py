@@ -206,7 +206,7 @@ def aurora_trading_formatting(message_):
         if len(alert):  
             message.content = alert
     # format daemon trades
-    elif message_.channel.id in [886669912389607504, 1072553858053701793]:
+    elif message_.channel.id in [886669912389607504, 1072553859454599197]:
         contract = format_0dte_weeklies(message.content, message, False)
         message.content = format_alert_date_price(contract) 
 
