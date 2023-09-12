@@ -7,7 +7,7 @@ def server_formatting(message):
         message = xtrades_formatting(message)
     elif message.guild.id == 836435995854897193:
         message = tradeproelite_formatting(message)
-    elif message.guild.id in  [826258453391081524, 1093339706260979822]:
+    elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793]:
         message = aurora_trading_formatting(message)
 
     return message

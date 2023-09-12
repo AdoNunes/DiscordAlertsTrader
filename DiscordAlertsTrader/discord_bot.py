@@ -125,10 +125,10 @@ class DiscordBot(discord.Client):
                         f.write(f"timestamp, quote\n")
                     f.write(f"{timestamp}, {quote[q]['bidPrice']}\n")
             
-            # Sleep for up to 5 secs    
+            # Sleep for up to 4 secs    
             toc = (datetime.now() - now).total_seconds()
-            if toc < 1 and self.live_quotes:
-                time.sleep(1-toc)
+            if toc < 4 and self.live_quotes:
+                time.sleep(4-toc)
 
     def load_data(self):
         self.chn_hist= {}
