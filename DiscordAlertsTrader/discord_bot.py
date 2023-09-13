@@ -127,8 +127,8 @@ class DiscordBot(discord.Client):
             
             # Sleep for up to 5 secs    
             toc = (datetime.now() - now).total_seconds()
-            if toc < 1 and self.live_quotes:
-                time.sleep(1-toc)
+            if toc < 5 and self.live_quotes:
+                time.sleep(5-toc)
 
     def load_data(self):
         self.chn_hist= {}
