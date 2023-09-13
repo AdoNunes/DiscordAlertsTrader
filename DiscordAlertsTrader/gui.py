@@ -321,7 +321,8 @@ def run_gui():
                 msg =  f"{author}, Exit Update {symbol} PT 50% SL 50%"
             window.Element("-subm-msg").Update(value=msg)
             window.Element(event).Update(button_color=ori_col)
-        if event == "_upd-portfolio_": # update button in portfolio
+            
+        elif event == "_upd-portfolio_": # update button in portfolio
             ori_col = window.Element(event).ButtonColor
             window.Element(event).Update(button_color=("black", "white"))
             window.refresh()

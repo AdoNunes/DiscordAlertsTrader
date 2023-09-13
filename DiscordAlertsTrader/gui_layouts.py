@@ -373,15 +373,15 @@ def layout_config(fnt_h, cfg):
         ]
     
     frame3 = [
-    [sg.Checkbox('Do STO trades, sell to open', cfg['shorting'].getboolean('DO_STO_TRADES'), text_color='black',
+    [sg.Checkbox('Do STO trades, sell to open', cfg['shorting'].getboolean('DO_STO_TRADES'), text_color='black',enable_events=True,
                 key="cfg_shorting.DO_STO_TRADES", tooltip='Accept Shorting Trades, \b bypassed if user manually triggers alert')],
     
-    [sg.Checkbox("Do BTO trades (buy to open, close trade)",
-                cfg['shorting'].getboolean('DO_BTC_TRADES'), key="cfg_shorting.DO_BTC_TRADES",text_color='black',
+    [sg.Checkbox("Do BTO trades (buy to open, close trade)", cfg['shorting'].getboolean('DO_BTC_TRADES'), 
+                 enable_events=True, key="cfg_shorting.DO_BTC_TRADES",text_color='black',
                 tooltip='If True, a close alert with BTO\b bypassed if user manually triggers alert')], 
          
     [sg.Checkbox("BTC at end of day (EOD)", default=cfg['shorting'].getboolean('BTC_EOD'), key="cfg_shorting.BTC_EOD",text_color='black',
-                tooltip="Close at end of day, if not overnight there might be big losses"), sg.Stretch()],
+                tooltip="Close at end of day, if not overnight there might be big losses", enable_events=True), sg.Stretch()],
     
     [sg.Text('Max price diff', 
              tooltip='Max difference allowed between alerted price and current price, if not will lim to alerted price'),
@@ -401,7 +401,7 @@ def layout_config(fnt_h, cfg):
     sg.Input(cfg['shorting']['BTC_SL'], key="cfg_shorting.BTC_SL",  enable_events=True,
              tooltip="The percentage to trigger BTC at a stoploss, can be empty so no SL"), sg.Stretch()],
     
-    [sg.Text("EOF PT and SL %", 
+    [sg.Text("EOD PT and SL %", 
             tooltip="Before close, at 3:45 narrow the SL to 5% and PT to 10% of current price, can be empty"),
     sg.Input(cfg['shorting']['BTC_EOD_PT_SL'], key="cfg_shorting.BTC_EOD_PT_SL", enable_events=True,
             tooltip="Before close, at 3:45 narrow the SL to 5% and PT to 10% of current price, can be empty"), sg.Stretch()],
