@@ -272,6 +272,11 @@ class DiscordBot(discord.Client):
                 if quote:
                     if quote > 0:
                         order['price_actual'] = quote
+                    if order['price'] == 0:
+                        str_msg = f"ALerted price is 0, skipping alert "
+                        self.queue_prints.put([f"\t {str_msg}", "green"])
+                        print(Fore.GREEN + f"\t {str_msg}")
+                        return
                     act_diff = max(((quote - order['price'])/order['price']), (order['price'] - quote)/ quote)
                     # Check if actual price is too far (100) from alerted price
                     if abs(act_diff) > 1 and order.get('action') == 'BTO':
