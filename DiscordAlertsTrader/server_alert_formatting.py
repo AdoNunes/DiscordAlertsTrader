@@ -86,7 +86,7 @@ def xtrades_formatting(message_):
     # format alert
     if action in ["BTO", "STC", "STO", "BTC"]:        
         pattern = re.compile(r'(?:\:\S+ )?(\w+) (\w+)(?: (\w+ \d+ \d+) \$?(\d+\.\d+) (\w+))? @ \$?(\d+(?:\.\d+)?)', re.IGNORECASE)
-        msg = message.embeds[0].title.replace("**","").replace("_","")
+        msg = message.embeds[0].title.replace("**","").replace("_","").replace("¤", "$")
         match = pattern.match(msg)
         if match:
             direction, stock, expiration_date, strike, option_type, price = match.groups()          
@@ -115,6 +115,7 @@ def xtrades_formatting(message_):
             message.content = alert
             return message
         print("no match", msg)
+        return message
     else:
         alert = ""        
         # add Sl and TP and other fields
