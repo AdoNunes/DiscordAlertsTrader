@@ -421,7 +421,7 @@ class AlertsTrader():
             if pd.isnull(position[ f"STC{i}-ordID"]):
                 continue
 
-            order_id =  int(position[ f"STC{i}-ordID"])
+            order_id =  position[ f"STC{i}-ordID"]
             ord_stat, _ = self.get_order_info(order_id)
 
             if ord_stat not in ["FILLED", "EXECUTED", 'CANCELED','CANCEL_REQUESTED','REJECTED', 'EXPIRED']:
