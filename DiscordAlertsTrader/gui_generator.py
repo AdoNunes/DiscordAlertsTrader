@@ -354,8 +354,8 @@ def get_live_quotes(portfolio, trader_port=False):
         with open(fquote, "r") as f:
             quotes = f.readlines()
         
-        timestamp, quote = quotes[-1].split(',')  # in ms
-        quotes_sym[sym] = float(quote.replace('\n', '').replace(' ', ''))
+        quote_lst = quotes[-1].split(',')  # in ms
+        quotes_sym[sym] = float(quote_lst[1].replace('\n', '').replace(' ', ''))
     
     for sym in quotes_sym:
         live_price = quotes_sym[sym]

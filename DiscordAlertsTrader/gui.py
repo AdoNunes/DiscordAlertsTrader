@@ -91,7 +91,11 @@ def get_live_quotes(symbol, max_delay=None):
     
     now = time.time()
     try:
-        timestamp, quote = quotes[-1].split(',')  # in s   
+        tmp = quotes[-1].split(',') # in s  
+        if len(tmp) == 3:
+            timestamp, quote, _ = tmp
+        else:
+            timestamp, quote = tmp 
     except:
         print("Error reading quote", symbol, quotes[-1])
         return

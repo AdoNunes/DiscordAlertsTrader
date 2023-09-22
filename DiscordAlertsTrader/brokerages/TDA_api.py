@@ -47,7 +47,7 @@ class TDA(BaseBroker):
         return order_response, order_id
     
     def cancel_order(self, order_id):
-        return self.session.cancel_order(self.accountId, order_id)
+        return self.session.cancel_order(self.accountId, int(order_id))
 
     def get_order_info(self, order_id):  
         """

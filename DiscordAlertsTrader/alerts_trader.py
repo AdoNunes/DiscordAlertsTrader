@@ -421,7 +421,7 @@ class AlertsTrader():
             if pd.isnull(position[ f"STC{i}-ordID"]):
                 continue
 
-            order_id =  int(position[ f"STC{i}-ordID"])
+            order_id =  position[ f"STC{i}-ordID"]
             ord_stat, _ = self.get_order_info(order_id)
 
             if ord_stat not in ["FILLED", "EXECUTED", 'CANCELED','CANCEL_REQUESTED','REJECTED', 'EXPIRED']:
@@ -525,7 +525,7 @@ class AlertsTrader():
             self.queue_prints.put([f"Updated {symb} exit plan from :{old_plan} to {renew_plan}", "", "green"])
             return
 
-        elif not isOpen and order["action"] in ["BTO", "STO"]:
+        elif order["action"] in ["BTO", "STO"] and not isOpen:
             alert_price = order["price"]
             action = order["action"]
             
@@ -1059,11 +1059,13 @@ class AlertsTrader():
                 ts_const = eval(ts_const.split(":")[1])
                 stp_price = max_price - ts_const
                 quote_opt = self.price_now(trade['Symbol'], "STC", 1)
+                if quote_opt == -1:
+                    continue
                 if quote_opt <= stp_price*1.01: # 1%
                     order = {"Symbol": trade['Symbol'],
                             "action": "BTO",
                             "asset": trade['Asset'],
-                            "price": quote_opt*1.03,
+                            "price": quote_opt,
                             "Qty": int(trade["trader_qty"]),
                             }
                     order = self.round_order_price(order, trade)
