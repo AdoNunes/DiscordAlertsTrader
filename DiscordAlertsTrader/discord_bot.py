@@ -100,7 +100,7 @@ class DiscordBot(discord.Client):
                 continue
             
             for q in quote: 
-                if quote[q]['description'] == 'Symbol not found' or q =='':
+                if quote[q]['description'] == 'Symbol not found' or q =='' or quote[q]['bidPrice'] == 0:
                     continue
                 timestamp = quote[q]['quoteTimeInLong']//1000  # in ms
 
@@ -122,13 +122,13 @@ class DiscordBot(discord.Client):
                 # Write the new line to the file
                 with open(file_path, "a+") as f:
                     if do_header:
-                        f.write(f"timestamp, quote\n")
-                    f.write(f"{timestamp}, {quote[q]['bidPrice']}\n")
+                        f.write(f"timestamp, quote, quote_ask\n")
+                    f.write(f"{timestamp}, {quote[q]['bidPrice']}, {quote[q]['askPrice']}\n")
             
-            # Sleep for up to 4 secs    
+            # Sleep for up to 2 secs    
             toc = (datetime.now() - now).total_seconds()
-            if toc < 4 and self.live_quotes:
-                time.sleep(4-toc)
+            if toc < 2 and self.live_quotes:
+                time.sleep(2-toc)
 
     def load_data(self):
         self.chn_hist= {}
