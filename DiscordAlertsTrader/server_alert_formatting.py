@@ -215,6 +215,7 @@ def aurora_trading_formatting(message_):
 
 
 def format_alert_date_price(alert, possible_stock=False):
+    alert = alert.replace("@everyone", "")
     pattern = r'\b(BTO|STC)?\b\s*(\d+)?\s*([A-Z]+)\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?(?:C|P)?\s*(\d+[.\d+]*[cp]?)?(?:\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+))?'
     match = re.search(pattern, alert, re.IGNORECASE)
     if match:

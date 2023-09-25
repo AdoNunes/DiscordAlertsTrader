@@ -56,7 +56,8 @@ class DiscordBot(discord.Client):
         self.tracker = AlertsTracker(brokerage=brokerage, portfolio_fname=tracker_portfolio_fname, cfg=self.cfg)
         self.load_data()        
 
-        if live_quotes and brokerage is not None and brokerage.name != 'webull':
+        if (live_quotes and brokerage is not None and brokerage.name != 'webull') \
+            or (brokerage.name == 'webull' and cfg['general'].getboolean('live_quotes_webull')):
             self.thread_liveq =  threading.Thread(target=self.track_live_quotes)
             self.thread_liveq.start()
 
@@ -125,10 +126,10 @@ class DiscordBot(discord.Client):
                         f.write(f"timestamp, quote, quote_ask\n")
                     f.write(f"{timestamp}, {quote[q]['bidPrice']}, {quote[q]['askPrice']}\n")
             
-            # Sleep for up to 2 secs    
+            # Sleep for up to X secs    
             toc = (datetime.now() - now).total_seconds()
-            if toc < 2 and self.live_quotes:
-                time.sleep(2-toc)
+            if toc < cfg['general']['sampling_rate_quotes'] and self.live_quotes:
+                time.sleep(cfg['general']['sampling_rate_quotes']-toc)
 
     def load_data(self):
         self.chn_hist= {}
@@ -322,7 +323,13 @@ class DiscordBot(discord.Client):
                 print(Fore.GREEN + str_msg)
                 self.queue_prints.put([str_msg, "", "green"])
                 return False, order
-            else:             
+            else:
+                if order['asset'] == 'option':
+                    if order['price'] *100 < cfg['order_configs']['min_opt_price']:
+                        str_msg = f"Option price is too small as per config: {order['price']}"
+                        print(Fore.GREEN + str_msg)
+                        self.queue_prints.put([str_msg, "", "green"])
+                        return False, order
                 return True, order
 
         # in authors shorting list
