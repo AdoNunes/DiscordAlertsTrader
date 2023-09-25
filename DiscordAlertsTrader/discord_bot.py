@@ -57,7 +57,7 @@ class DiscordBot(discord.Client):
         self.load_data()        
 
         if (live_quotes and brokerage is not None and brokerage.name != 'webull') \
-            or (brokerage.name == 'webull' and cfg['general'].getboolean('live_quotes_webull')):
+            or (brokerage.name == 'webull' and cfg['general'].getboolean('webull_live_quotes')):
             self.thread_liveq =  threading.Thread(target=self.track_live_quotes)
             self.thread_liveq.start()
 
