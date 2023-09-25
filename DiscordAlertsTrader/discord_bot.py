@@ -325,7 +325,7 @@ class DiscordBot(discord.Client):
                 return False, order
             else:
                 if order['asset'] == 'option':
-                    if order['price'] *100 < cfg['order_configs']['min_opt_price']:
+                    if order['price'] *100 < float(cfg['order_configs']['min_opt_price']):
                         str_msg = f"Option price is too small as per config: {order['price']}"
                         print(Fore.GREEN + str_msg)
                         self.queue_prints.put([str_msg, "", "green"])
