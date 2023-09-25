@@ -128,8 +128,8 @@ class DiscordBot(discord.Client):
             
             # Sleep for up to X secs    
             toc = (datetime.now() - now).total_seconds()
-            if toc < cfg['general']['sampling_rate_quotes'] and self.live_quotes:
-                time.sleep(cfg['general']['sampling_rate_quotes']-toc)
+            if toc < float(cfg['general']['sampling_rate_quotes']) and self.live_quotes:
+                time.sleep(float(cfg['general']['sampling_rate_quotes'])-toc)
 
     def load_data(self):
         self.chn_hist= {}
