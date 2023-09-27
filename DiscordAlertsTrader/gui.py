@@ -435,22 +435,27 @@ def run_gui():
         elif event == "-subm-alert":
             ori_col = window.Element(event).ButtonColor
             window.Element(event).Update(button_color=("black", "white"))
-            window.refresh()            
-            author,msg = split_alert_message(values['-subm-msg'])
-            author = match_authors(author.strip())
-            msg = msg.strip().replace("SPXW", "SPX")
-            date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-            chan = "GUI_" + values["_chan_trigg_"]
-            print(chan)
-            new_msg = pd.Series({
-                'AuthorID': None,
-                'Author': author,
-                'Date': date, 
-                'Content': msg,
-                'Channel': chan
-                })
-            alistner.new_msg_acts(new_msg, from_disc=False)
-            window.Element(event).Update(button_color=ori_col)
+            window.refresh()    
+            try:        
+                author,msg = split_alert_message(values['-subm-msg'])
+                author = match_authors(author.strip())
+                msg = msg.strip().replace("SPXW", "SPX")
+                date = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                chan = "GUI_" + values["_chan_trigg_"]
+                print(chan)
+                new_msg = pd.Series({
+                    'AuthorID': None,
+                    'Author': author,
+                    'Date': date, 
+                    'Content': msg,
+                    'Channel': chan
+                    })
+                alistner.new_msg_acts(new_msg, from_disc=False)
+                window.Element(event).Update(button_color=ori_col)
+            except Exception as e:
+                print("Trigger alers with error:", e)
+                window.Element(event).Update(button_color=ori_col)
+                continue
 
         try:
             event_feedb = trade_events.get(False)
