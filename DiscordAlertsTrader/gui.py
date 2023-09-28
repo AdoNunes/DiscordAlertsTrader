@@ -453,7 +453,7 @@ def run_gui():
                 alistner.new_msg_acts(new_msg, from_disc=False)
                 window.Element(event).Update(button_color=ori_col)
             except Exception as e:
-                print("Trigger alers with error:", e)
+                print("Trigger alerts with error:", e)
                 window.Element(event).Update(button_color=ori_col)
                 continue
 

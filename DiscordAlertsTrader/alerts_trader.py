@@ -352,13 +352,17 @@ class AlertsTrader():
                         return "no", order, False
                     price = price*100 if order["asset"] == "option" else price
                     max_trade_val = float(self.cfg['order_configs']['max_trade_capital'])
-
+                    
+                    print('Before calc- order[Qty]', order['Qty'], self.cfg['order_configs']['default_bto_qty'], order.keys())
                     if 'Qty' not in order.keys() or order['Qty'] is None:
                         if self.cfg['order_configs']['default_bto_qty'] == "buy_one":
                             order['Qty'] = 1                    
                         elif self.cfg['order_configs']['default_bto_qty'] == "trade_capital":
                             order['Qty'] =  int(max(round(float(self.cfg['order_configs']['trade_capital'])/price), 1))
-
+                    elif self.cfg['order_configs']['default_bto_qty'] == "trade_capital":
+                        order['Qty'] =  int(max(round(float(self.cfg['order_configs']['trade_capital'])/price), 1))
+                    print('After calc- order[Qty]', order['Qty'])
+                    
                     if price * order['Qty'] > max_trade_val:
                         Qty_ori = order['Qty']
                         order['Qty'] =  int(max(max_trade_val//price, 1))
@@ -533,7 +537,7 @@ class AlertsTrader():
             exit_plan = parse_exit_plan(order)
             if action == "BTO":
                 if len(self.cfg["order_configs"]["default_exits"]) and \
-                    exit_plan.get("PT") is None and exit_plan.get("SL") is None:
+                    exit_plan.get("PT1") is None and exit_plan.get("SL") is None:
                     exit_plan = eval(self.cfg["order_configs"]["default_exits"])
             # Do BTO TrailingStop
             if order.get('open_trailingstop'): 
