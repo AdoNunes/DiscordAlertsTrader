@@ -321,10 +321,10 @@ class AlertsTrader():
                     if order['action'] in ["BTO", "STC"]:
                         # reduce 1% to ensure fill
                         if order['action'] == "BTO":
-                            new_price =  round(order['price']*1.01,2)
+                            new_price =  round(order['price']*1.05,2)
                         elif order['action'] == "STC":
-                            new_price =  round(order['price']*.99,2)
-                        print(f"price reduced 1% to ensure fill from {order['price']} to {new_price}")
+                            new_price =  round(order['price']*.95,2)
+                        print(f"price reduced 5% to ensure fill from {order['price']} to {new_price}")
                     
                     order['price'] = new_price
                     
