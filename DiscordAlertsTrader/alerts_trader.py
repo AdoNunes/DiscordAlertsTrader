@@ -1536,7 +1536,7 @@ class AlertsTrader():
 
         if self.bksession.name == 'tda':
             increment = 0.01
-        elif trade['Symbol'] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
+        elif trade['Symbol'].split("_")[0] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
             increment = 0.01  # ETFs trade in penny increments
         else:
             if trade['Price'] < 3.0:
@@ -1544,6 +1544,8 @@ class AlertsTrader():
             else:
                 increment = 0.10
         rounded_stop_loss_price = round(round(SL / increment) * increment,2)
+        if rounded_stop_loss_price == 0:
+            rounded_stop_loss_price = increment
         order["trail_stop_const"] = rounded_stop_loss_price
         return order
 

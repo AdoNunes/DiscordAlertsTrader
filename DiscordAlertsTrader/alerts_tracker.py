@@ -227,8 +227,8 @@ class AlertsTracker():
                 continue
             optdate = option_date(trade['Symbol'])
             if optdate.date() < date.today():
-                expdate = date.today().strftime("%Y-%m-%dT%H:%M:%S+0000")
-                
+                expdate = pd.to_datetime(optdate).replace(hour=16, minute=00, second=0, microsecond=0)
+                expdate = expdate.strftime("%Y-%m-%dT%H:%M:%S+0000")
                 stc_info = calc_stc_prices(trade)
                 #Log portfolio
                 self.portfolio.loc[i, "STC-Date"] = expdate
