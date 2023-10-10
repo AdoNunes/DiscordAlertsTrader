@@ -57,7 +57,8 @@ class DiscordBot(discord.Client):
         self.load_data()        
 
         if (live_quotes and brokerage is not None and brokerage.name != 'webull') \
-            or (brokerage.name == 'webull' and cfg['general'].getboolean('webull_live_quotes')):
+            or (brokerage is not None and brokerage.name == 'webull' and 
+                cfg['general'].getboolean('webull_live_quotes')):
             self.thread_liveq =  threading.Thread(target=self.track_live_quotes)
             self.thread_liveq.start()
 
@@ -262,7 +263,7 @@ class DiscordBot(discord.Client):
 
             order['Trader'], order["Date"] = msg['Author'], msg["Date"]
             order_date = datetime.strptime(order["Date"], "%Y-%m-%d %H:%M:%S.%f")
-            date_diff = datetime.now() - order_date
+            date_diff = abs(datetime.now() - order_date)
             print(f"time difference is {date_diff.total_seconds()}")
 
             live_alert = True if date_diff.seconds < 90 else False

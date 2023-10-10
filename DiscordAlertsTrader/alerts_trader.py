@@ -303,28 +303,28 @@ class AlertsTrader():
 
         while True:
             # If symbol not found, quote val returned is -1
-            if price_now(symb, act, 1 ) == -1:
+            actual_price = price_now(symb, act, 1 )
+            if actual_price == -1:
                 return "no", order, False
 
-            actual_price = price_now(symb, act, 1 )
             order["price_actual"] = actual_price
             pdiff = (actual_price - ord_ori['price'])/ord_ori['price']
             pdiff = round(pdiff*100,1)
 
-            question = f"{pars_ori} {price_now(symb, act)}"
+            question = f"{pars_ori} currently @ {actual_price}"
             if order['action'] in ["STO", "BTC"]:
                 return self.short_orders(order, pars)
             
-            elif self.cfg['order_configs'].getboolean('sell_actual_price'):
+            elif self.cfg['order_configs'].getboolean('sell_current_price'):
                 if pdiff < eval(self.cfg['order_configs']['max_price_diff'])[order["asset"]]:
-                    order['price'] = price_now(symb, act, 1)
+                    order['price'] = actual_price
                     if order['action'] in ["BTO", "STC"]:
                         # reduce 1% to ensure fill
                         if order['action'] == "BTO":
                             new_price =  round(order['price']*1.05,2)
                         elif order['action'] == "STC":
                             new_price =  round(order['price']*.95,2)
-                        print(f"price reduced 5% to ensure fill from {order['price']} to {new_price}")
+                        # print(f"price reduced 5% to ensure fill from {order['price']} to {new_price}")
                     
                     order['price'] = new_price
                     
@@ -359,8 +359,8 @@ class AlertsTrader():
                             order['Qty'] = 1                    
                         elif self.cfg['order_configs']['default_bto_qty'] == "trade_capital":
                             order['Qty'] =  int(max(round(float(self.cfg['order_configs']['trade_capital'])/price), 1))
-                    elif self.cfg['order_configs']['default_bto_qty'] == "trade_capital":
-                        order['Qty'] =  int(max(round(float(self.cfg['order_configs']['trade_capital'])/price), 1))
+                    # elif self.cfg['order_configs']['default_bto_qty'] == "trade_capital":
+                    #     order['Qty'] =  int(max(round(float(self.cfg['order_configs']['trade_capital'])/price), 1))
                     print('After calc- order[Qty]', order['Qty'])
                     
                     if price * order['Qty'] > max_trade_val:

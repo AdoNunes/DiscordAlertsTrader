@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import copy
 import os.path as op
 from datetime import datetime, date
 
@@ -53,6 +54,7 @@ class AlertsTracker():
 
     def trade_alert(self, order, live_alert=True, channel=None):
         open_trade, _ = find_last_trade(order, self.portfolio, open_only=True)
+        order = copy.deepcopy(order)
         if order.get('Qty') is None:
             order['Qty'] = 1
         
