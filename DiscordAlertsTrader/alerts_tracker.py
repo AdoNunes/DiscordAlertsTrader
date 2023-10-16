@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import copy
 import os.path as op
 from datetime import datetime, date
 
@@ -53,6 +54,7 @@ class AlertsTracker():
 
     def trade_alert(self, order, live_alert=True, channel=None):
         open_trade, _ = find_last_trade(order, self.portfolio, open_only=True)
+        order = copy.deepcopy(order)
         if order.get('Qty') is None:
             order['Qty'] = 1
         
@@ -227,8 +229,8 @@ class AlertsTracker():
                 continue
             optdate = option_date(trade['Symbol'])
             if optdate.date() < date.today():
-                expdate = date.today().strftime("%Y-%m-%dT%H:%M:%S+0000")
-                
+                expdate = pd.to_datetime(optdate).replace(hour=16, minute=00, second=0, microsecond=0)
+                expdate = expdate.strftime("%Y-%m-%dT%H:%M:%S+0000")
                 stc_info = calc_stc_prices(trade)
                 #Log portfolio
                 self.portfolio.loc[i, "STC-Date"] = expdate

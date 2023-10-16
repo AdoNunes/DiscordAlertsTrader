@@ -303,28 +303,28 @@ class AlertsTrader():
 
         while True:
             # If symbol not found, quote val returned is -1
-            if price_now(symb, act, 1 ) == -1:
+            actual_price = price_now(symb, act, 1 )
+            if actual_price == -1:
                 return "no", order, False
 
-            actual_price = price_now(symb, act, 1 )
             order["price_actual"] = actual_price
             pdiff = (actual_price - ord_ori['price'])/ord_ori['price']
             pdiff = round(pdiff*100,1)
 
-            question = f"{pars_ori} {price_now(symb, act)}"
+            question = f"{pars_ori} currently @ {actual_price}"
             if order['action'] in ["STO", "BTC"]:
                 return self.short_orders(order, pars)
             
-            elif self.cfg['order_configs'].getboolean('sell_actual_price'):
+            elif self.cfg['order_configs'].getboolean('sell_current_price'):
                 if pdiff < eval(self.cfg['order_configs']['max_price_diff'])[order["asset"]]:
-                    order['price'] = price_now(symb, act, 1)
+                    order['price'] = actual_price
                     if order['action'] in ["BTO", "STC"]:
                         # reduce 1% to ensure fill
                         if order['action'] == "BTO":
-                            new_price =  round(order['price']*1.01,2)
+                            new_price =  round(order['price']*1.05,2)
                         elif order['action'] == "STC":
-                            new_price =  round(order['price']*.99,2)
-                        print(f"price reduced 1% to ensure fill from {order['price']} to {new_price}")
+                            new_price =  round(order['price']*.95,2)
+                        # print(f"price reduced 5% to ensure fill from {order['price']} to {new_price}")
                     
                     order['price'] = new_price
                     
@@ -352,13 +352,17 @@ class AlertsTrader():
                         return "no", order, False
                     price = price*100 if order["asset"] == "option" else price
                     max_trade_val = float(self.cfg['order_configs']['max_trade_capital'])
-
+                    
+                    print('Before calc- order[Qty]', order['Qty'], self.cfg['order_configs']['default_bto_qty'], order.keys())
                     if 'Qty' not in order.keys() or order['Qty'] is None:
                         if self.cfg['order_configs']['default_bto_qty'] == "buy_one":
                             order['Qty'] = 1                    
                         elif self.cfg['order_configs']['default_bto_qty'] == "trade_capital":
                             order['Qty'] =  int(max(round(float(self.cfg['order_configs']['trade_capital'])/price), 1))
-
+                    # elif self.cfg['order_configs']['default_bto_qty'] == "trade_capital":
+                    #     order['Qty'] =  int(max(round(float(self.cfg['order_configs']['trade_capital'])/price), 1))
+                    print('After calc- order[Qty]', order['Qty'])
+                    
                     if price * order['Qty'] > max_trade_val:
                         Qty_ori = order['Qty']
                         order['Qty'] =  int(max(max_trade_val//price, 1))
@@ -533,7 +537,7 @@ class AlertsTrader():
             exit_plan = parse_exit_plan(order)
             if action == "BTO":
                 if len(self.cfg["order_configs"]["default_exits"]) and \
-                    exit_plan.get("PT") is None and exit_plan.get("SL") is None:
+                    exit_plan.get("PT1") is None and exit_plan.get("SL") is None:
                     exit_plan = eval(self.cfg["order_configs"]["default_exits"])
             # Do BTO TrailingStop
             if order.get('open_trailingstop'): 
@@ -1532,7 +1536,7 @@ class AlertsTrader():
 
         if self.bksession.name == 'tda':
             increment = 0.01
-        elif trade['Symbol'] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
+        elif trade['Symbol'].split("_")[0] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
             increment = 0.01  # ETFs trade in penny increments
         else:
             if trade['Price'] < 3.0:
@@ -1540,6 +1544,8 @@ class AlertsTrader():
             else:
                 increment = 0.10
         rounded_stop_loss_price = round(round(SL / increment) * increment,2)
+        if rounded_stop_loss_price == 0:
+            rounded_stop_loss_price = increment
         order["trail_stop_const"] = rounded_stop_loss_price
         return order
 

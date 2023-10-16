@@ -11,7 +11,7 @@ from datetime import datetime
 import numpy as np
 
 def parse_trade_alert(msg, asset=None):
-    pattern = r'\b(BTO|STC|STO|BTC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[.\d+]*[cp]?)?\s*(\d{1,2}\/\d{1,2})?(?:\/202\d|\/2\d)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
+    pattern = r'\b(BTO|STC|STO|BTC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[.\d+]*[cp]?)?\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
     match = re.search(pattern, msg, re.IGNORECASE)
     
     if match:
@@ -43,10 +43,15 @@ def parse_trade_alert(msg, asset=None):
         order['risk'] = risk_level
         
         pars = []
-        for el in [action, quantity, ticker, strike, expDate, price, risk_level, str_ext]:
+        for el in [action, quantity, ticker, strike, expDate]:
             if el is not None:
                 pars.append(el)
-        pars = " ".join(pars)        
+        pars = " ".join(pars)  
+        pars += f" @{price}"
+        for el in [risk_level, str_ext]:
+            if el is not None:
+                pars += f" {el}"
+        
         if action.upper() in ["BTO", "STO"]:
             if "avg" in msg.lower() or "average" in msg.lower():
                 avg_price, _ = parse_avg(msg)
@@ -442,3 +447,20 @@ def make_optionID(Symbol:str, expDate:str, strike=str, **kwarg):
     if strike == int(strike):
         return f"{Symbol}_{date_frm}{opt_type}{int(strike)}"
     return f"{Symbol}_{date_frm}{opt_type}{strike}"
+
+
+def parse_symbol(symbol:str):
+    # symbol: APPL_092623P426    
+    match = re.match(r"^([A-Z]+)_(\d{2})(\d{2})(\d{2})([CP])((?:\d+)(?:\.\d+)?)", symbol)
+
+    if match:
+        option ={
+            "symbol": match.group(1),
+            "exp_month": int(match.group(2)),
+            "exp_day": int(match.group(3)),
+            "exp_year": 2000+int(match.group(4)),
+            "put_or_call": match.group(5),
+            "strike": eval(match.group(6))
+            }
+        return option
+    
