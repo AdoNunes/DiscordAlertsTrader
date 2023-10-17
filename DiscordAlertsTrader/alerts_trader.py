@@ -326,7 +326,7 @@ class AlertsTrader():
                             new_price =  round(order['price']*.95,2)
                         # print(f"price reduced 5% to ensure fill from {order['price']} to {new_price}")
                     
-                    order['price'] = new_price
+                    order['price'] = self.round_price(new_price, order)
                     
                     pars = self.order_to_pars(order)
                     question += f"\n new price: {pars}"
@@ -1066,11 +1066,15 @@ class AlertsTrader():
                 if quote_opt == -1:
                     continue
                 if quote_opt <= stp_price*1.01: # 1%
+                    if pd.isna(trade['trader_qty']):
+                        qty = 1 
+                    else:
+                        qty = int(trade['trader_qty'])
                     order = {"Symbol": trade['Symbol'],
                             "action": "BTO",
                             "asset": trade['Asset'],
                             "price": quote_opt,
-                            "Qty": int(trade["trader_qty"]),
+                            "Qty": qty,
                             }
                     order = self.round_order_price(order, trade)
                     pars = f"BTO {trade['trader_qty']} {trade['Symbol']} @{order['price']}"
@@ -1237,7 +1241,7 @@ class AlertsTrader():
                 trade = self.portfolio.iloc[i]
                 STC_ordID = trade[STC+"-ordID"]
 
-                if pd.isnull(STC_ordID):
+                if pd.isnull(STC_ordID) or trade[STC+"-Status"] =='FILLED':
                     continue
 
                 # Get status exit orders
@@ -1302,6 +1306,8 @@ class AlertsTrader():
         for ii in range(1, nPTs+1):
             STC = f"STC{ii}"           
 
+            if trade[STC+"-Status"] in ["FILLED", "EXECUTED"]:
+                continue
             # If Option add strike field
             ord_inf = trade['Symbol'].split("_")
             if len(ord_inf) == 2:
@@ -1534,44 +1540,40 @@ class AlertsTrader():
             else:
                 SL = float(SL)
 
-        if self.bksession.name == 'tda':
-            increment = 0.01
-        elif trade['Symbol'].split("_")[0] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
-            increment = 0.01  # ETFs trade in penny increments
-        else:
-            if trade['Price'] < 3.0:
-                increment = 0.05
-            else:
-                increment = 0.10
-        rounded_stop_loss_price = round(round(SL / increment) * increment,2)
-        if rounded_stop_loss_price == 0:
-            rounded_stop_loss_price = increment
-        order["trail_stop_const"] = rounded_stop_loss_price
+        order["trail_stop_const"] = self.round_price(SL, trade)
         return order
 
     def round_order_price(self, order, trade):
         # Round SL price to nearest increment
         for exit in ['price', 'PT', 'PT1', 'PT2', 'PT3', 'SL']:
             if order.get(exit) is not None and isinstance(order.get(exit), (int, float)):
-                if self.bksession.name == 'tda':
-                    if 'SPXW' in trade['Symbol']:
-                        if order[exit] < 3.0:
-                            increment = 0.05
-                        else:
-                            increment = 0.10
-                    else:
-                        increment = 0.01
-                elif trade['Symbol'] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
-                    increment = 0.01  # ETFs trade in penny increments
-                else:
-                    if order[exit] < 3.0:
-                        increment = 0.05
-                    else:
-                        increment = 0.10
-
-            
-                order[exit] = round(round(order[exit] / increment) * increment,2)
+                order[exit] = self.round_price(order.get(exit), trade)
         return order
+    
+    def round_price(self, price, trade):
+        # Round SL price to nearest increment        
+        if self.bksession.name == 'tda':
+            if 'SPXW' in trade['Symbol']:
+                if price < 3.0:
+                    increment = 0.05
+                else:
+                    increment = 0.10
+            else:
+                increment = 0.01
+        elif trade['Symbol'] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':
+            increment = 0.01  # ETFs trade in penny increments
+        elif self.bksession.name == 'etrade':
+            if price < 3.0:
+                increment = 0.05
+            else:
+                increment = 0.10
+        else:
+            increment = 0.01
+    
+        new_price = round(round(price / increment) * increment,2)
+        if new_price == 0:
+            new_price = increment
+        return new_price
     
 def option_date(opt_symbol):
     sym_inf = opt_symbol.split("_")[1]
