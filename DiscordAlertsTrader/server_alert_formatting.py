@@ -9,6 +9,8 @@ def server_formatting(message):
         message = tradeproelite_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793]:
         message = aurora_trading_formatting(message)
+    elif message.channel.id in [1144658745822035978]:
+        message = eclipse_alerts(message)
 
     return message
 
@@ -212,6 +214,32 @@ def aurora_trading_formatting(message_):
         message.content = format_alert_date_price(contract) 
 
     return message
+
+def eclipse_alerts(message_):
+    """
+    Reformat Discord message from eclipse to content message
+    """   
+    if not message_.content:
+        return message_
+    
+    message = MessageCopy(message_)
+    alert = message.content
+    pattern = r'([A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s*(\d{1,2}\/\d{1,2})?\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
+    match = re.search(pattern, alert, re.IGNORECASE)
+    if match:
+        ticker, strike, expDate, price = match.groups()
+        qty = re.search(r'(\d+)\s*Contracts', alert, re.IGNORECASE)
+        qty = qty.group(1) if qty else "1"
+        chall = ''
+        if "Challenge Account" in alert:
+            chall += " | Challenge Account"
+        alert = f"BTO {qty} {ticker} {strike.upper()} {expDate} @{price}{chall}"
+        
+            
+    message.content = alert
+    return message
+
+
 
 
 def format_alert_date_price(alert, possible_stock=False):
