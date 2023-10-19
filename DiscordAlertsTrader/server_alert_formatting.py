@@ -250,7 +250,7 @@ def rough_alerts(message_):
     
     message = MessageCopy(message_)
     pattern = r'(\d{1,2}\/\d{1,2})?\s*([A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
-    match = re.search(pattern, alert, re.IGNORECASE)
+    match = re.search(pattern, message.content, re.IGNORECASE)
     if match:
         ticker, strike, expDate, price = match.groups()
         alert = f"BTO {ticker} {strike.upper()} {expDate} @{price}"
