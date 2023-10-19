@@ -11,7 +11,8 @@ def server_formatting(message):
         message = aurora_trading_formatting(message)
     elif message.channel.id in [1144658745822035978]:
         message = eclipse_alerts(message)
-
+    elif message.channel.id in [989674163331534929]:
+        message = rough_alerts(message)
     return message
 
 
@@ -240,7 +241,21 @@ def eclipse_alerts(message_):
     return message
 
 
-
+def rough_alerts(message_):
+    """
+    Reformat Discord message from rough to content message
+    """   
+    if not message_.content:
+        return message_
+    
+    message = MessageCopy(message_)
+    pattern = r'(\d{1,2}\/\d{1,2})?\s*([A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
+    match = re.search(pattern, alert, re.IGNORECASE)
+    if match:
+        ticker, strike, expDate, price = match.groups()
+        alert = f"BTO {ticker} {strike.upper()} {expDate} @{price}"
+        message.content = alert
+    return message
 
 def format_alert_date_price(alert, possible_stock=False):
     alert = alert.replace("@everyone", "")
