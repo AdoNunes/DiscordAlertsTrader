@@ -7,7 +7,7 @@ def server_formatting(message):
         message = xtrades_formatting(message)
     elif message.guild.id == 836435995854897193:
         message = tradeproelite_formatting(message)
-    elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793]:
+    elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166]:
         message = aurora_trading_formatting(message)
     elif message.channel.id in [1144658745822035978]:
         message = eclipse_alerts(message)
@@ -210,7 +210,7 @@ def aurora_trading_formatting(message_):
         if len(alert):  
             message.content = alert
     # format daemon trades
-    elif message_.channel.id in [886669912389607504, 1072553859454599197]:
+    elif message_.channel.id in [886669912389607504, 1072553859454599197, 904396043498709072]:
         contract = format_0dte_weeklies(message.content, message, False)
         message.content = format_alert_date_price(contract) 
 
