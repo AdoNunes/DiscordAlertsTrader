@@ -7,8 +7,6 @@ def server_formatting(message):
         message = xtrades_formatting(message)
     elif message.guild.id == 836435995854897193:
         message = tradeproelite_formatting(message)
-    elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166]:
-        message = aurora_trading_formatting(message)
     elif message.channel.id in [1144658745822035978]:
         message = eclipse_alerts(message)
     elif message.channel.id in [989674163331534929]:
@@ -17,6 +15,8 @@ def server_formatting(message):
         message = kent_formatting(message)
     elif message.channel.id in [894421928968871986]:
         message = sirgoldman_formatting(message)
+    elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166]:
+        message = aurora_trading_formatting(message)
     return message
 
 

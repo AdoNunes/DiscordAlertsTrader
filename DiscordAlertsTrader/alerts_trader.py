@@ -693,6 +693,11 @@ class AlertsTrader():
 
             self.portfolio.loc[open_trade, "Qty"] += order_info['quantity']
             if  order_status in ["FILLED", "EXECUTED"]:
+                or_price = self.portfolio.loc[open_trade,"Price"]*self.portfolio.loc[open_trade, "filledQty"]
+                nw_price = order_info['price']*order_info['filledQuantity']
+                avg_price = round((or_price + nw_price)/(self.portfolio.loc[open_trade, "filledQty"] + order_info['filledQuantity']),2)
+                self.portfolio.loc[ot, "Price"] = avg_price
+
                 self.portfolio.loc[open_trade, "filledQty"] += order_info['filledQuantity']
                 self.disc_notifier(order_info)
                 self.close_open_exit_orders(open_trade)
