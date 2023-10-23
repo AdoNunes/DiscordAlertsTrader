@@ -656,9 +656,8 @@ class AlertsTrader():
             self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
             self.save_logs()
 
-        elif order["action"] == "BTO" and order['avg'] is not None:
-            # if PT in order: cancel previous and make_BTO_lim_rder
-            # else : BTO
+        elif order["action"] == "BTO" and self.cfg['order_configs'].getboolean('accept_repeated_bto_alerts') is True:
+
             alert_price = order['price']
             order_response, order_id, order, _ = self.confirm_and_send(order, pars,
                                                                        self.bksession.make_BTO_lim_order)
@@ -851,7 +850,7 @@ class AlertsTrader():
                 qr = qty_bought/position['trader_qty']
                 order['Qty'] = max(round(order['Qty']/qr), 1)
             # Sell all and close waiting stc orders
-            if order['xQty'] == 1 or i == 3:
+            if (order['xQty'] == 1 and order['Qty'] is None) or i == 3:
                 if i == 3 and order['xQty'] != 1:
                     print("Selling all, max supported STC is 3")
                     self.queue_prints.put(["Selling all, max supported STC is 3", "", "green"])
@@ -867,7 +866,7 @@ class AlertsTrader():
                 position = self.portfolio.iloc[open_trade]
                 order['Qty'] = int(position["Qty"]) - qty_sold
 
-            elif order['xQty'] < 1:  # portion
+            elif order['xQty'] < 1 :  # portion
                 # Stop updater to avoid overlapping
                 self.update_paused = True
                 self.close_open_exit_orders(open_trade)

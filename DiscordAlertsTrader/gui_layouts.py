@@ -325,9 +325,12 @@ def layout_config(fnt_h, cfg):
                     key="cfg_general.do_BTO_trades", tooltip='Accept Buy alerts and open trades', enable_events=True)],
         [sg.Checkbox('Do STC trades', cfg['general'].getboolean('Do_STC_trades'), text_color='black',
                     key="cfg_general.do_STC_trades", tooltip='Accept Sell alerts and close trade', enable_events=True)],
-        # [sg.Checkbox('Sell @ current price', cfg['order_configs'].getboolean('sell_current_price'), 
-        #             key="cfg_order_configs.sell_current_price", 
-        #             tooltip='When BTO alerts, sell current rather than alerted,\nif alerted is too low it will not fill', enable_events=True)],
+        [sg.Checkbox('Sell @ current price', cfg['order_configs'].getboolean('sell_current_price'), text_color='black',
+                    key="cfg_order_configs.sell_current_price", 
+                    tooltip='When BTO alerts, sell current rather than alerted,\nif alerted is too low it will not fill if false', enable_events=True)],
+        [sg.Checkbox('Accept repeated BTO alerts', cfg['order_configs'].getboolean('accept_repeated_bto_alerts'), text_color='black',
+                    key="cfg_order_configs.accept_repeated_bto_alerts", tooltip='With repeated BTO, it will average down', enable_events=True)],
+
         [sg.Text("Authors subscribed:",
                 tooltip='list of authors to follow, e.g. me_long,trader#1234'), 
         sg.Input(cfg['discord']['authors_subscribed'],key="cfg_discord.authors_subscribed",
@@ -369,6 +372,11 @@ def layout_config(fnt_h, cfg):
                 tooltip='Max investment per trade, if alert qty is higher than this, it will only buy max_trade_capital/price'), 
         sg.Input(cfg['order_configs']['max_trade_capital'], key="cfg_order_configs.max_trade_capital", enable_events=True,
                 tooltip='Max investment per trade, if alert qty is higher than this, it will only buy max_trade_capital/price'),
+        sg.Stretch()],
+        [sg.Text("Min acceptable option price : $",
+                tooltip='Min investment per trade, if alert qty is lower than this, it will not buy'), 
+        sg.Input(cfg['order_configs']['min_opt_price'], key="cfg_order_configs.min_opt_price", enable_events=True,
+                tooltip='Min investment per trade, if alert qty is lower than this, it will not buy'),
         sg.Stretch()],
         ]
     

@@ -1,7 +1,62 @@
+import time
+from typing import List
 import pandas as pd
 from datetime import date, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
+from thetadata import OptionReqType, OptionRight, DateRange, DataType
+from DiscordAlertsTrader.message_parser import parse_symbol
+
+def get_timestamp(row):
+        date_time = (row[DataType.DATE] + timedelta(milliseconds=row[DataType.MS_OF_DAY]))
+        return date_time.timestamp()
+
+def get_hist_quotes(symbol:str, date_range:List[date], client, interval_size:int=1000):
+    # symbol: APPL_092623P426
+    # date_range: [date(2021, 9, 24), date(2021, 9, 24)] start and end date, or start date only
+    # interval_size: 1000 (milliseconds)
+
+    option = parse_symbol(symbol)
+    exp = date(option['exp_year'], option['exp_month'], option['exp_day'])
+    right = OptionRight.PUT if option['put_or_call'] == 'P' else OptionRight.CALL
+    if len(date_range) == 1:
+        drange = DateRange(date_range[0], date_range[0])
+    else:
+        drange = DateRange(date_range[0], date_range[1])
+    
+    with client.connect():
+            # Make the request
+            out = client.get_hist_option(
+                req=OptionReqType.QUOTE,  
+                root=option['symbol'],
+                exp=exp,
+                strike=option['strike'],
+                right=right,
+                date_range=drange,
+                interval_size=interval_size
+            )
+
+    # Apply the function row-wise to compute the timestamp and store it in a new column
+    out['timestamp'] = out.apply(get_timestamp, axis=1)
+    out['timestamp'] = out['timestamp'].astype(int)
+    out['bid'] = out[DataType.BID]
+    out['ask'] = out[DataType.ASK]
+    out = out[['timestamp', 'bid', 'ask']]
+    out = out[(out['ask']!=0) & (out['bid']!=0)] # remove zero ask
+    return out
+
+def save_or_append_quote(quotes, symbol, path_quotes, overwrite=False):
+    fname = f"{path_quotes}/{symbol}.csv"
+    if overwrite:
+        quotes.to_csv(fname, index=False)
+        return
+    try:
+        df = pd.read_csv(fname)
+        df = pd.concat([df, quotes], ignore_index=True)
+        df = df.sort_values(by=['timestamp']).drop_duplicates(subset=['timestamp'])
+    except FileNotFoundError:
+        df = quotes
+    df.to_csv(fname, index=False)
 
 def period_to_date(period):
     "Convert str to date. Period can be today, yesterday, week, biweek, month, mtd. ytd"
@@ -347,7 +402,8 @@ def calc_PT(data:pd.Series, pt:float):
         return pt_val, pt_index, pt_index
     return None, None, None
 
-def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False, initial_prices=None, sl_update:list=None)->list:
+def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False, initial_prices=None, sl_update:list=None,
+             avgdown:list=None)->list:
     """Calculate roi for a given series of quotes
 
     Parameters
@@ -366,11 +422,13 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
         initial price, by default None
     sl_update : list, optional
         list of tuples with target and new stop loss, by default None
+    avgdown : list, optional
+        list with lists of [percentage price, percentage quantity] default None
 
     Returns
     -------
     list
-        initial price, sell price, ROI with TS, ROI without TS, and sell_index
+        initial price, sell price, ROI with TS, ROI without TS, and sell_index, qty_ratio
     """
     roi = []
 
@@ -381,11 +439,31 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
         initial_price = quotes.iloc[0]
     else:
         initial_price = initial_prices
-
+    sl = initial_price * SL
+    # average down 
+    ds_inf = []
+    tot_qty_ratio = 1
+    if avgdown is not None:
+        # check if ds before PT
+        pt = initial_price * PT
+        trigger_price, trigger_index, pt_index = calc_PT(quotes, pt)
+        for dws in avgdown:            
+            sl_index, sl_val = calc_SL(quotes, initial_price *(1-dws[0]/100), [])            
+            if (trigger_index is None and sl_index is not None) or \
+                (trigger_index and sl_index and trigger_index > sl_index):
+                ds_inf.append([sl_index, sl_val, dws[1]/100])
+        if len(ds_inf):
+            # make average price
+            tot_qty_ratio = sum([1] + [i[2] for i in ds_inf])
+            initial_price = sum([initial_price] + [i[1]*i[2] for i in ds_inf])/tot_qty_ratio
+            quotes = quotes[quotes.index >= ds_inf[-1][0]]
+            sl = initial_price * SL
+    
     # Calculate the PT, SL and trailing stop levels
     pt = initial_price * PT
-    sl = initial_price * SL
+    
     ts = initial_price * TS
+    
     if TS == 0:
         trigger_price, trigger_index, pt_index = calc_PT(quotes, pt)
     else:
@@ -441,7 +519,7 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
         plt.axhline(SL-1, color='red', linestyle='--', label=f'SL {(SL-1)*100}%', alpha=.5)
         plt.axhline(0, color='k', linestyle='--', label='bto', alpha=.5)
 
-    prof = [initial_price, sell_price, (sell_price - initial_price)/initial_price * 100, (no_ts_sell - initial_price)/initial_price * 100, sell_index ]
+    prof = [initial_price, sell_price, (sell_price - initial_price)/initial_price * 100, (no_ts_sell - initial_price)/initial_price * 100, sell_index, tot_qty_ratio ]
     roi.append(prof)
     plt.show(block=False)
     return roi

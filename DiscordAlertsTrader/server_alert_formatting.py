@@ -13,6 +13,10 @@ def server_formatting(message):
         message = eclipse_alerts(message)
     elif message.channel.id in [989674163331534929]:
         message = rough_alerts(message)
+    elif message.channel.id in [972620961004269598]:
+        message = kent_formatting(message)
+    elif message.channel.id in [894421928968871986]:
+        message = sirgoldman_formatting(message)
     return message
 
 
@@ -32,6 +36,38 @@ def tradeproelite_formatting(message_):
         message.author.discriminator = '0'
         return message
     
+    return message_
+
+
+def kent_formatting(message_):
+    """
+    Reformat Discord message from Kent
+    """
+    message = MessageCopy(message_)
+    alert = ''
+    for mb in message.embeds:
+        if mb.description:
+            alert += mb.description
+    return message_
+
+def sirgoldman_formatting(message_):
+    """
+    Reformat Discord message from sirgoldman
+    """
+    message = MessageCopy(message_)
+    for mb in message.embeds:
+        if mb.description:
+            if mb.title.lower() == 'entry':
+                pattern = r'(\$[A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
+                match = re.search(pattern, mb.description, re.IGNORECASE)
+                if match:
+                    ticker,  strike, price = match.groups()
+                    msg_date = message.created_at.strftime('%m/%d')
+                    ext = mb.description.split("price")[-1]
+                    alert = f"BTO {ticker} {strike.upper()} {msg_date} @{price} {ext}"
+            else:
+                alert = f"{mb.title}: {mb.description}"
+            message.content = alert
     return message_
 
 
@@ -235,8 +271,17 @@ def eclipse_alerts(message_):
         if "Challenge Account" in alert:
             chall += " | Challenge Account"
         alert = f"BTO {qty} {ticker} {strike.upper()} {expDate} @{price}{chall}"
-        
-            
+    else: # date might come first
+        pattern = r'([A-Z]+)\s*(\d{1,2}\/\d{1,2})?\s*(\d+[.\d+]*[c|p|C|P])\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
+        match = re.search(pattern, alert, re.IGNORECASE)
+        if match:
+            ticker, expDate, strike, price = match.groups()
+            qty = re.search(r'(\d+)\s*Contracts', alert, re.IGNORECASE)
+            qty = qty.group(1) if qty else "1"
+            chall = ''
+            if "Challenge Account" in alert:
+                chall += " | Challenge Account"
+            alert = f"BTO {qty} {ticker} {strike.upper()} {expDate} @{price}{chall}"
     message.content = alert
     return message
 
@@ -249,10 +294,10 @@ def rough_alerts(message_):
         return message_
     
     message = MessageCopy(message_)
-    pattern = r'(\d{1,2}\/\d{1,2})?\s*([A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
+    pattern = r'\b(BTO)?\b(\d{1,2}\/\d{1,2})?\s*([A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
     match = re.search(pattern, message.content, re.IGNORECASE)
     if match:
-        ticker, strike, expDate, price = match.groups()
+        action, expDate, ticker, strike, price = match.groups()
         alert = f"BTO {ticker} {strike.upper()} {expDate} @{price}"
         message.content = alert
     return message

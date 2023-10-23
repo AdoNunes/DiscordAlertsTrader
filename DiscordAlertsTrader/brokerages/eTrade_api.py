@@ -333,9 +333,10 @@ class eTrade(BaseBroker):
     
     @retry_on_exception()
     def cancel_order(self, order_id:int):
-        time.sleep(.5)  # sleep as order status change is not instant
+        # time.sleep(2)  # sleep as order status change is not instant
+        print('canceling order', order_id)
         resp = self.order_session.cancel_order(self.accountIdKey,order_id, resp_format='xml')
-        time.sleep(.5)
+        time.sleep(2)
         return resp
 
     def make_BTO_lim_order(self, Symbol:str, Qty:int, price:float, action="BTO", **kwarg):
