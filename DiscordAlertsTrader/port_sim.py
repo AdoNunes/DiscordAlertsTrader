@@ -4,8 +4,12 @@ import pandas as pd
 from datetime import date, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
-from thetadata import OptionReqType, OptionRight, DateRange, DataType
 from DiscordAlertsTrader.message_parser import parse_symbol
+
+try: 
+    from thetadata import OptionReqType, OptionRight, DateRange, DataType
+except ImportError:
+    print("thetadata not installed, will not be able to get historical quotes")
 
 def get_timestamp(row):
         date_time = (row[DataType.DATE] + timedelta(milliseconds=row[DataType.MS_OF_DAY]))
