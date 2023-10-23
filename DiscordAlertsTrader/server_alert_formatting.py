@@ -48,7 +48,7 @@ def kent_formatting(message_):
     for mb in message.embeds:
         if mb.description:
             alert += mb.description
-    return message_
+    return message
 
 def sirgoldman_formatting(message_):
     """
@@ -57,7 +57,7 @@ def sirgoldman_formatting(message_):
     message = MessageCopy(message_)
     for mb in message.embeds:
         if mb.description:
-            if mb.title.lower() == 'entry':
+            if mb.title.upper() == 'ENTRY':
                 pattern = r'(\$[A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
                 match = re.search(pattern, mb.description, re.IGNORECASE)
                 if match:
@@ -68,7 +68,7 @@ def sirgoldman_formatting(message_):
             else:
                 alert = f"{mb.title}: {mb.description}"
             message.content = alert
-    return message_
+    return message
 
 
 def xtrades_formatting(message_):
