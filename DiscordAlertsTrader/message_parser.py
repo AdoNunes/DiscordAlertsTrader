@@ -393,7 +393,7 @@ def parse_sell_ratio_amount(msg, asset):
     if amnt_inf is not None:
         return round(eval(amnt_inf.groups()[0].replace(" of ", "/")), 2)
 
-    partial = ['scaling out', 'selling more', 'trimming more off', "selling some more"]
+    partial = ['scaling out', 'selling more', 'trimming more off', "selling some more", 'trim']
     if any([True if m in msg.lower() else False for m in partial]):
         return .33
 
