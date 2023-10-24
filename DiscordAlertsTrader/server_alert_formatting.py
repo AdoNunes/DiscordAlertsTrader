@@ -58,12 +58,12 @@ def sirgoldman_formatting(message_):
     for mb in message.embeds:
         if mb.description:
             if mb.title.upper() == 'ENTRY':
-                pattern = r'(\$[A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
+                pattern = r'\$([A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
                 match = re.search(pattern, mb.description, re.IGNORECASE)
                 if match:
                     ticker,  strike, price = match.groups()
                     msg_date = message.created_at.strftime('%m/%d')
-                    ext = mb.description.split("price")[-1]
+                    ext = mb.description.split(price)[-1]
                     alert = f"BTO {ticker} {strike.upper()} {msg_date} @{price} {ext}"
             else:
                 alert = f"{mb.title}: {mb.description}"

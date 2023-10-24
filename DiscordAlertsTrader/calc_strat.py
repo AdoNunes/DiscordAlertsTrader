@@ -270,6 +270,9 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             bid = quotes['bid']
             ask = quotes['ask']
             dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x, tz=pytz.utc))
+            if not len(ask):
+                print("no quotes", row['Symbol'])
+                continue
             price_curr = ask.iloc[4]
         else:
             bid = quotes[' quote']
@@ -337,6 +340,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         port.loc[idx, 'strategy-PnL$'] = pnlu
         port.loc[idx,'strategy-entry'] = roi_actual[0]
         port.loc[idx,'strategy-exit'] = roi_actual[1]
+        
+        port.loc[idx,'max_pnl'] = (bid.max() - roi_actual[0])/roi_actual[0]
         
         port.loc[idx, 'PnL$'] = port.loc[idx, 'PnL']*port.loc[idx, 'Price']*qty_t
         port.loc[idx, 'PnL$-actual'] = port.loc[idx, 'PnL-actual']*port.loc[idx, 'Price-actual']*qty_t
@@ -515,9 +520,34 @@ params_xt = {
     'trade_type': 'sto'
 }
 
+params_flohai0 = {
+    'fname_port': cfg['general']['data_dir'] + "/flohai_0dte_port.csv",
+    'last_days': None,
+    'filt_date_frm': '',
+    'filt_date_to': '',
+    'stc_date':'eod',  # 'eod' or 'stc alert"
+    'max_underlying_price': 6000,
+    'min_price': 1,
+    'max_dte': 500,
+    'min_dte': 0,
+    'filt_hour_frm': "",
+    'filt_hour_to': "",
+    'include_authors': "",
+    'exclude_symbols': [],
+    'PT': 20,
+    'TS': 0,
+    'SL': 50,
+    'TS_buy': 0,
+    'TS_buy_type':'inverse',
+    'max_margin': None,
+    'verbose': True,
+    'trade_amount': 1000,
+}
+
+
 import time as tt
 t0 = tt.time()
-params = params_dem
+params = params_flohai0
 port, no_quote, param = calc_returns(dir_quotes=dir_quotes, with_theta=with_theta, **params)
 t1 = tt.time()
 print(f"Time to calc returns: {t1-t0:.2f} sec")
@@ -584,7 +614,7 @@ if 0:
     # res = grid_search(params, PT= list(np.arange(0,60, 10)) + list(np.arange(60,150, 10)), SL=np.arange(10,60,10), TS_buy=[0], TS= [0])
     # res = grid_search(params, PT= list(np.arange(10,80, 20)), SL=np.arange(10,70,20), TS_buy=[0,5,10,20,30], TS= [0, 10,20,50])
     # res = grid_search(params, PT= list(np.arange(10,150, 20)), SL=np.arange(10,90,10), TS_buy=[0], TS= [0])
-    res = grid_search(params, PT= list(np.arange(10,140, 10)), SL=np.arange(10,90,10), TS_buy=[0, 5, 10, 20, 30, 40], TS= [0])
+    res = grid_search(params, PT= list(np.arange(10,140, 10)), SL=np.arange(10,90,10), TS_buy=[0], TS= [0])
  
     res = np.stack(res)
     sorted_indices = np.argsort(res[:, 5])
@@ -592,6 +622,6 @@ if 0:
     print(sorted_array[-20:])
     hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
     df = pd.DataFrame(sorted_array, columns=hdr)
-    df.to_csv("data/dem_tsbuy_buy_grid_search_120days.csv", index=False)
+    df.to_csv("data/flohai_0dte_grid_search.csv", index=False)
     # PT 40,  SL 20,  trailing stop starting at PT: 25,    PNL avg : 5%,  return: $2750,   num trades: 53
     # print(result_td)
