@@ -15,7 +15,7 @@ def server_formatting(message):
         message = kent_formatting(message)
     elif message.channel.id in [894421928968871986]:
         message = sirgoldman_formatting(message)
-    elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166]:
+    elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     return message
 
@@ -48,6 +48,8 @@ def kent_formatting(message_):
     for mb in message.embeds:
         if mb.description:
             alert += mb.description
+    if len(alert):
+        message.content = alert
     return message
 
 def sirgoldman_formatting(message_):
@@ -190,7 +192,7 @@ def aurora_trading_formatting(message_):
     
     message = MessageCopy(message_)
     # format Bryce trades
-    if message_.channel.id in [846415903671320598, 1093340247057772654]:   
+    if message_.channel.id in [846415903671320598, 1093340247057772654, 953812898059276369]:   
         message.content = format_alert_date_price(message.content)
     # format ace trades
     elif message_.channel.id == 885627509121618010:
