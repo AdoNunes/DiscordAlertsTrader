@@ -40,12 +40,13 @@ def trigger_alerts_layout():
            sg.Button("Trigger alert", key="-subm-alert", 
                      tooltip="Will generate alert in user or/and analysts portfolio, useful to close or open a position", size= (20,1)),
            sg.Stretch()], 
-           [sg.Text('                   Change alert to:', key='-alert_to-', tooltip="Change  current alert in tigger alert", visible=False),
-            sg.Button("BTO", key='-alert_BTO', size=(10,1), tooltip="Once clicked portfolio row change prefilled STC to BTO", visible=False),
-            sg.Button("STC", key='-alert_STC', size=(10,1), tooltip="Once clicked portfolio row change prefilled to STC", visible=False),
-            sg.Button("STO", key='-alert_STO', size=(10,1), tooltip="Once clicked portfolio row change prefilled STC to BTO", visible=False),
-            sg.Button("BTC", key='-alert_BTC', size=(10,1), tooltip="Once clicked portfolio row change prefilled to STC", visible=False),
-            sg.Button("ExitUpdate", key='-alert_exitupdate', size=(20,1), tooltip="Once clicked portfolio row change prefilled STC to exit update", visible=False),
+           [sg.Text('                   Change alert to:', key='-alert_to-', tooltip="Change  current alert in tigger alert", visible=True),
+            sg.Button("BTO", key='-alert_BTO', size=(10,1), tooltip="Once clicked portfolio row change prefilled STC to BTO", visible=True),
+            sg.Button("STC", key='-alert_STC', size=(10,1), tooltip="Once clicked portfolio row change prefilled to STC", visible=True),
+            sg.Button("STO", key='-alert_STO', size=(10,1), tooltip="Once clicked portfolio row change prefilled STC to BTO", visible=True),
+            sg.Button("BTC", key='-alert_BTC', size=(10,1), tooltip="Once clicked portfolio row change prefilled to STC", visible=True),
+            sg.Button("ExitUpdate", key='-alert_exitupdate', size=(20,1), tooltip="Once clicked portfolio row change prefilled STC to exit update", visible=True),
+            sg.Button("Get quotes", key='-alert_quotes', size=(20,1), tooltip="get quotes from alerts in trigger box. In alert pass prices as @m to get market price", visible=True),
             sg.Stretch()
            ]
            ]

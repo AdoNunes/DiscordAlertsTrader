@@ -46,6 +46,8 @@ def match_authors(author_str:str)->str:
         at = pd.read_csv(op.join(cfg['general']['data_dir'] , f"{chn}_message_history.csv"))["Author"].unique()
         authors.extend(at)
     authors = list(dict.fromkeys(authors))
+    
+    authors += cfg['discord']['authors_subscribed'].split(',')
     authors = [a for a in authors if author_str.lower() in a.lower()]
     if len(authors) == 0:
         author = author_str
@@ -75,36 +77,48 @@ def split_alert_message(gui_msg):
         
     # no colon or coma
     else:
-        print("No colon or coma in message, author not found")
-        author = msg = None
+        print("No colon or coma in message, author not found, assuming no author")
+        author = "author"
+        msg = gui_msg
     return author, msg
 
-def get_live_quotes(symbol, max_delay=None):
+def get_live_quotes(symbol, tracker, max_delay=2):
     dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
     
     fquote = f"{dir_quotes}/{symbol}.csv"
     if not op.exists(fquote):
-        return
+        quote = tracker.price_now(symbol, "both")
+        if quote is None:
+            return None, None        
+        return quote
     
     with open(fquote, "r") as f:
         quotes = f.readlines()
     
     now = time.time()
+    get_live = False
     try:
         tmp = quotes[-1].split(',') # in s  
         if len(tmp) == 3:
-            timestamp, quote, _ = tmp
+            timestamp, ask, bid = tmp
         else:
-            timestamp, quote = tmp 
+            timestamp, ask = tmp
+            bid = ask
+        bid = bid.strip().replace('\n', '')
     except:
         print("Error reading quote", symbol, quotes[-1])
-        return
+        get_live = True
     
     timestamp = eval(timestamp)
     if max_delay is not None:
         if now - timestamp > max_delay:
-            return
-    quote = quote.strip().replace('\n', '')
+            get_live = True
+    
+    if get_live:
+        quote = tracker.price_now(symbol, "both")
+        if quote is None:
+            return None, None        
+        return quote
     return quote
 
 def fit_table_elms(Widget_element):
@@ -294,7 +308,7 @@ def run_gui():
         # handle alert buttons
         elif event == '-toggle':
             state = window[event].GetText()
-            butts = ['-alert_to-', '-alert_BTO', '-alert_STC', '-alert_STO', '-alert_BTC', '-alert_exitupdate']
+            butts = ['-alert_to-', '-alert_BTO', '-alert_STC', '-alert_STO', '-alert_BTC', '-alert_exitupdate', 'alert_quotes']
             if state == '▲':
                 window[event].update(text='▼')            
             else:
@@ -309,20 +323,42 @@ def run_gui():
             window.refresh()            
 
             action = event.split('_')[1]
-            author, alert = split_alert_message(values['-subm-msg'])            
+            
+            msg_split = split_alert_message(values['-subm-msg'])
+            if len(msg_split) == 2:
+                author, alert = msg_split
+            else:
+                author, alert = "author", msg_split[0]
+            # fix missing price, none price, no action
+            if "@" not in alert:
+                alert += " @0.01"
+            if  not len([p for p in ["BTO", "STO", "BTC", "STC"] if p in alert]):
+                alert = "BTO " + alert                
+            alert = alert.replace("@None", "@0.01").replace("@m", "@0.01")
             _, order = parse_trade_alert(alert)
 
             if order is None:
                 window.Element(event).Update(button_color=ori_col)
                 continue
-            price = get_live_quotes(order['Symbol'])
-            if price is not None:
-                price = order.get('price',0)
-            symbol = ordersymb_to_str(order['Symbol'])
-            if action != 'exitupdate':
-                msg =  f"{author}, {action} {order.get('Qty', 1)} {symbol} @{price}" 
+            
+            ask, bid = get_live_quotes(order['Symbol'], alistner.tracker)
+            if action in ["BTO", "BTC"] or order['action'] in ["BTO", "BTC"]:
+                price = ask
+            elif action in ["STO", "STC"] or order['action'] in ["STO", "STC"]:
+                price = bid
             else:
+                price = ask
+            if price is None:
+                price = order.get('price', 0.01)
+            symbol = ordersymb_to_str(order['Symbol'])
+            if action =='exitupdate':
                 msg =  f"{author}, Exit Update {symbol} PT 50% SL 50%"
+            elif action == 'quotes': 
+                action_msg = order['action'].replace('ExitUpdate', "BTO")
+                msg =  f"{author}, {action_msg} {order.get('Qty', 1)} {symbol} @{price} | [ask {ask} bid {bid}]" 
+            else:
+                msg =  f"{author}, {action} {order.get('Qty', 1)} {symbol} @{price}" 
+                
             window.Element("-subm-msg").Update(value=msg)
             window.Element(event).Update(button_color=ori_col)
             

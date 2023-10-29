@@ -37,8 +37,10 @@ class AlertsTracker():
 
         if price_type in ["BTO", "BTC"]:
             ptype = 'askPrice'
-        else:
+        elif price_type in ["STO", "STC"]:
             ptype = 'bidPrice'
+        else: # get both ask and bid
+            ptype = ['askPrice', 'bidPrice']
 
         quote = self.bksession.get_quotes([symbol])
         if quote is None:
@@ -46,7 +48,10 @@ class AlertsTracker():
             quote = self.bksession.get_quotes([symbol])
             
         if quote is not None and len(quote) and quote.get(symbol) is not None and quote.get(symbol).get('description' ) != 'Symbol not found':
-            quote = quote.get(symbol).get(ptype)
+            if isinstance(ptype, list):
+                quote = [quote.get(symbol).get(p) for p in ptype]
+            else:
+                quote = quote.get(symbol).get(ptype)
             if quote != 0:
                 return quote
             else:

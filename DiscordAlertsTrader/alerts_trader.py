@@ -861,22 +861,11 @@ class AlertsTrader():
                     self.queue_prints.put(["Selling all, max supported STC is 3", "", "green"])
                 elif order['xQty'] == 1:
                     print("Selling all, got xQTY =1, check if not true")              
-                # Stop updater to avoid overlapping
-                self.update_paused = True
-                # Sell all and close waiting stc orders
-                self.close_open_exit_orders(open_trade)
-                time.sleep(1)
-                self.update_paused = False
                 qty_sold = np.nansum([position[f"STC{i}-Qty"] for i in range(1,4)])
                 position = self.portfolio.iloc[open_trade]
                 order['Qty'] = int(position["Qty"]) - qty_sold
 
             elif order['xQty'] < 1 :  # portion
-                # Stop updater to avoid overlapping
-                self.update_paused = True
-                self.close_open_exit_orders(open_trade)
-                time.sleep(1)
-                self.update_paused = False
                 order['Qty'] = round(max(qty_bought * order['xQty'], 1))
 
             if order['Qty'] + qty_sold > qty_bought:
@@ -885,9 +874,12 @@ class AlertsTrader():
                 print(Back.RED + Fore.BLACK + str_msg)
                 self.queue_prints.put([str_msg, "", "red"])
 
+            # Stop updater to avoid overlapping
             self.update_paused = True
+            # close waiting stc orders
+            self.close_open_exit_orders(open_trade)
             order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_STC_lim)
-            self.update_paused = False
+            
             log_alert["portfolio_idx"] = open_trade
 
             if order_response is None:  # Assume trade rejected by user
@@ -897,6 +889,7 @@ class AlertsTrader():
                 msg_str = f"{order['action']} not accepted by user, order response null"
                 print(Back.GREEN + msg_str)
                 self.queue_prints.put([msg_str, "", "green"])
+                self.update_paused = False
                 return
 
             order_status, order_info = self.get_order_info(order_id)
@@ -916,6 +909,7 @@ class AlertsTrader():
             log_alert['action'] = "STC-partial" if order['xQty']<1 else "STC-ALL"
             self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
             self.save_logs()
+            self.update_paused = False
 
 
     def log_filled_STC(self, order_id, open_trade, STC):
