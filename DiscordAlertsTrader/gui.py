@@ -105,6 +105,7 @@ def get_live_quotes(symbol, tracker, max_delay=2):
             timestamp, ask = tmp
             bid = ask
         bid = bid.strip().replace('\n', '')
+        quote = [ask, bid]
     except:
         print("Error reading quote", symbol, quotes[-1])
         get_live = True
