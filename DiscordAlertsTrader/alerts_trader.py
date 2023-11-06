@@ -102,12 +102,12 @@ class AlertsTrader():
                 time.sleep(1)
                 continue
             t0 = time.time()
-            try:
-                self.update_orders()
-            except Exception as ex:
-                str_msg = f"Error raised during port update, trying again later. Error: {ex}"
-                print(Back.RED + str_msg)
-                self.queue_prints.put([str_msg, "", "red"])
+            # try:
+            self.update_orders()
+            # except Exception as ex:
+            #     str_msg = f"Error raised during port update, trying again later. Error: {ex}"
+            #     print(Back.RED + str_msg)
+            #     self.queue_prints.put([str_msg, "", "red"])
             
             if time.time() - t0 < self.order_update_rate:
                 time.sleep(self.order_update_rate - (time.time() - t0))
@@ -998,8 +998,8 @@ class AlertsTrader():
         exit_plan = eval(self.portfolio.loc[open_trade, "exit_plan"])
         exit_plan_o = exit_plan.copy()
 
-        for exit in ["PT1", "PT2", "PT3"]:
-            if exit_plan[exit] is None or not isinstance(exit_plan[exit], str)  or "%" not in exit_plan[exit]:
+        for exit in [f"PT{i}" for i in range(1,self.max_stc_orders)]:
+            if exit_plan.get(exit) is None or not isinstance(exit_plan[exit], str)  or "%" not in exit_plan[exit]:
                 continue
             
             if "TS" in exit_plan[exit]: 
@@ -1240,7 +1240,7 @@ class AlertsTrader():
             for ii in range(1, self.max_stc_orders):
                 STC = f"STC{ii}"
                 trade = self.portfolio.iloc[i]
-                STC_ordID = trade[STC+"-ordID"]
+                STC_ordID = trade.get(STC+"-ordID")
 
                 if pd.isnull(STC_ordID) or trade[STC+"-Status"] =='FILLED':
                     continue
@@ -1294,7 +1294,7 @@ class AlertsTrader():
 
         # Calculate x/Qty:
         Qty_bought = trade['filledQty']
-        nPTs =  len([i for i in range(1,self.max_stc_orders) if exit_plan[f"PT{i}"] is not None])
+        nPTs =  len([i for i in range(1,self.max_stc_orders) if exit_plan.get(f"PT{i}") is not None])
         if nPTs != 0:
             Qty = [round(Qty_bought/nPTs)]*nPTs
             Qty[-1] = int(Qty_bought - sum(Qty[:-1]))
@@ -1546,7 +1546,7 @@ class AlertsTrader():
 
     def round_order_price(self, order, trade):
         # Round SL price to nearest increment
-        for exit in ['price', 'PT', 'PT1', 'PT2', 'PT3', 'SL']:
+        for exit in ['price', 'SL'] + [f"PT{i}" for i in range(1,self.max_stc_orders)]:
             if order.get(exit) is not None and isinstance(order.get(exit), (int, float)):
                 order[exit] = self.round_price(order.get(exit), trade)
         return order
