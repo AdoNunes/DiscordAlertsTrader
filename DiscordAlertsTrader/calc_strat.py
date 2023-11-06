@@ -18,6 +18,7 @@ if with_theta:
 do_plot = 0
 def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
+                order_type = 'any',
                 last_days= None,
                 filt_date_frm='',
                 filt_date_to='',
@@ -51,6 +52,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         path to portfolio, by default cfg['portfolio_names']['tracker_portfolio_name']
     dir_quotes : _type_, optional
         path to quotes, by default cfg['general']['data_dir']+'/live_quotes'
+    order_type : str, optional
+        'any', 'call', 'put', by default 'any'
     last_days : int, optional
         subtract today to n prev days, by default 7
     stc_date : str, optional
@@ -104,6 +107,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     """
     param = {'last_days': last_days,
             "stc_date":stc_date,
+            'order_type': order_type,
             'max_underlying_price': max_underlying_price,
             'min_price': min_price,
             'max_dte': max_dte,
@@ -124,12 +128,13 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             'trade_type': trade_type
             }
     port = pd.read_csv(fname_port)
+    port = port.sort_values(by='Date').reset_index(drop=True)
     if last_days is not None:
         msk = pd.to_datetime(port['Date']).dt.date >= pd.to_datetime(date.today()- timedelta(days=last_days)).date()
         port = port[msk]
     
     port = filter_data(port, 
-                    exclude={'stocks':True, "Open":True},
+                    exclude={'stocks':True, "Open":False},
                     filt_author=include_authors, 
                     exc_author=','.join(exclude_traders),
                     filt_date_frm= filt_date_frm,
@@ -145,6 +150,11 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                     )
     if trade_type != 'any':
         port = port[port['Type'] == trade_type.upper()]
+    if order_type != 'any':
+        order_type = order_type.lower()
+        ot = 'C' if order_type == 'call' else 'P' if order_type == 'put' else None
+        port = port[port['Symbol'].str.split("_").str[1].str.contains(ot)]
+            
     port = port.reset_index(drop=True)
     if len(port) == 0:
         print("No trades to calculate")
@@ -262,7 +272,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
 
         # get quotes within trade dates, ask and bid
         quotes = quotes[msk].reset_index(drop=True)      
-        
+        quotes = quotes.iloc[::3]
         if 'bid' in quotes:
             bad_data_times = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x, tz=pytz.utc)).dt.time
             bad_data_times = bad_data_times != pd.Timestamp("09:30:01").time() 
@@ -273,7 +283,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             if not len(ask):
                 print("no quotes", row['Symbol'])
                 continue
-            price_curr = ask.iloc[4]
+            price_curr = ask.loc[4]
         else:
             bid = quotes[' quote']
             ask = quotes[' quote']
@@ -323,7 +333,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         if roi_actual[-2] == len(bid)-1:        
             port.loc[idx, 'last'] = 1
             
-        port.loc[idx, 'strategy-close_date'] = dates.iloc[roi_actual[-2]]
+        port.loc[idx, 'strategy-close_date'] = dates.loc[roi_actual[-2]]
         pnl = roi_actual[2]
         mult = .1 if row['Asset'] == 'stock' else 1
 
@@ -521,24 +531,25 @@ params_xt = {
 }
 
 params_flohai0 = {
-    'fname_port': cfg['general']['data_dir'] + "/flohai_0dte_port.csv",
-    'last_days': None,
+    'fname_port': cfg['general']['data_dir'] + "/flohai_0dte+90_port.csv",
+    'order_type': 'call',
+    'last_days': 200,
     'filt_date_frm': '',
     'filt_date_to': '',
     'stc_date':'eod',  # 'eod' or 'stc alert"
-    'max_underlying_price': 6000,
-    'min_price': 1,
+    'max_underlying_price': None,
+    'min_price': 10,
     'max_dte': 500,
     'min_dte': 0,
     'filt_hour_frm': "",
-    'filt_hour_to': "",
+    'filt_hour_to': 15,
     'include_authors': "",
     'exclude_symbols': [],
-    'PT': 20,
+    'PT': 150,
     'TS': 0,
-    'SL': 50,
+    'SL': 20,
     'TS_buy': 0,
-    'TS_buy_type':'inverse',
+    'TS_buy_type':'buy',
     'max_margin': None,
     'verbose': True,
     'trade_amount': 1000,
@@ -613,15 +624,16 @@ if 0:
     # res = grid_search(params, PT= list(np.arange(0,60, 10)) + list(np.arange(60,150, 10)), SL=np.arange(10,60,10), TS_buy=[0,5,10,20,30], TS= [0, 10,20,50])
     # res = grid_search(params, PT= list(np.arange(0,60, 10)) + list(np.arange(60,150, 10)), SL=np.arange(10,60,10), TS_buy=[0], TS= [0])
     # res = grid_search(params, PT= list(np.arange(10,80, 20)), SL=np.arange(10,70,20), TS_buy=[0,5,10,20,30], TS= [0, 10,20,50])
-    # res = grid_search(params, PT= list(np.arange(10,150, 20)), SL=np.arange(10,90,10), TS_buy=[0], TS= [0])
-    res = grid_search(params, PT= list(np.arange(10,140, 10)), SL=np.arange(10,90,10), TS_buy=[0], TS= [0])
+    res = grid_search(params, PT= list(np.arange(10,250, 20)), SL=np.arange(10,90,10), TS_buy=[0], TS= [0])
+    # res = grid_search(params, PT= list(np.arange(10,140, 10)), SL=np.arange(10,90,10), TS_buy=[0], TS= [0])
+    # res = grid_search(params, PT= list(np.arange(0,270, 10)), SL=[20,30,40,50,60], TS_buy=[0,5,10,15,20,30], TS= [0,10,20,30,50,60])
  
     res = np.stack(res)
-    sorted_indices = np.argsort(res[:, 5])
+    sorted_indices = np.argsort(res[:, 4])
     sorted_array = res[sorted_indices].astype(int)
     print(sorted_array[-20:])
     hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
     df = pd.DataFrame(sorted_array, columns=hdr)
-    df.to_csv("data/flohai_0dte_grid_search.csv", index=False)
+    df.to_csv("data/flohai_weekly+90_grid_search.csv", index=False)
     # PT 40,  SL 20,  trailing stop starting at PT: 25,    PNL avg : 5%,  return: $2750,   num trades: 53
     # print(result_td)
