@@ -878,6 +878,9 @@ class AlertsTrader():
             self.update_paused = True
             # close waiting stc orders
             self.close_open_exit_orders(open_trade)
+            # remove exits from exit plan
+            self.portfolio.loc[open_trade, "exit_plan"] = str({"PT1": None, "PT2": None, "PT3": None, "SL": None})
+
             order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_STC_lim)
             
             log_alert["portfolio_idx"] = open_trade

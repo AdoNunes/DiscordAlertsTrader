@@ -67,6 +67,8 @@ def sirgoldman_formatting(message_):
                     msg_date = message.created_at.strftime('%m/%d')
                     ext = mb.description.split(price)[-1]
                     alert = f"BTO {ticker} {strike.upper()} {msg_date} @{price} {ext}"
+                else:
+                    alert = f"{mb.title}: {mb.description}"
             else:
                 alert = f"{mb.title}: {mb.description}"
             message.content = alert
@@ -79,7 +81,7 @@ def xtrades_formatting(message_):
     Xtrades guild id: 542224582317441034
     """
     # Don't do anything if not Xtrade message
-    if message_.guild.id != 542224582317441034:
+    if message_.guild.id != 542224582317441034 or message_.channel.id == 993892865824542820:
         return message_
     
     # return None if not Xtrade bot
