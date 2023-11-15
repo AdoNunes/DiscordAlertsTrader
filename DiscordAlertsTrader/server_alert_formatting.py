@@ -15,7 +15,7 @@ def server_formatting(message):
         message = kent_formatting(message)
     elif message.channel.id in [894421928968871986]:
         message = sirgoldman_formatting(message)
-    elif message.channel in [1090673126527996004]:
+    elif message.channel.id in [1090673126527996004]:
         message = flint_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
@@ -52,11 +52,11 @@ def flint_formatting(message_):
             alert += mb.description
     if len(alert):
         pattern = r'([A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s(\d{1,2}\/\d{1,2})\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
-        match = re.search(pattern, mb.description, re.IGNORECASE)
+        match = re.search(pattern, alert, re.IGNORECASE)
         if match:
             ticker,  strike, price = match.groups()
             msg_date = message.created_at.strftime('%m/%d')
-            ext = mb.description.split(price)[-1]
+            ext = alert.split(price)[-1]
             alert = f"BTO {ticker} {strike.upper()} {msg_date} @{price} {ext}"
         message.content = alert
     return message
