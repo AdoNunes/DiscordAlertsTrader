@@ -54,8 +54,15 @@ def flint_formatting(message_):
         pattern = r'([A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s(\d{1,2}\/\d{1,2})\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
         match = re.search(pattern, alert, re.IGNORECASE)
         if match:
-            ticker,  strike, price = match.groups()
-            msg_date = message.created_at.strftime('%m/%d')
+            out = match.groups()
+            if len(out) == 4:
+                ticker, strike, msg_date, price = out
+            elif len(out) == 3:
+                ticker,  strike, price = out
+                msg_date = message.created_at.strftime('%m/%d')
+            else:
+                print('ERROR: wrong number of groups in flint_formatting')
+                return message
             ext = alert.split(price)[-1]
             alert = f"BTO {ticker} {strike.upper()} {msg_date} @{price} {ext}"
         message.content = alert
