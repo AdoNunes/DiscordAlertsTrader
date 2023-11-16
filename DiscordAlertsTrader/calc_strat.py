@@ -346,6 +346,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         qty_ratio = roi_actual[-1]
         pnlu = pnl*roi_actual[0]*mult*qty_t*qty_ratio
         
+        port.loc[idx, 'Qty'] = qty_t
         port.loc[idx, 'strategy-PnL'] = pnl
         port.loc[idx, 'strategy-PnL$'] = pnlu
         port.loc[idx,'strategy-entry'] = roi_actual[0]
@@ -555,10 +556,33 @@ params_flohai0 = {
     'trade_amount': 1000,
 }
 
-
+params_tradir = {
+    'fname_port': cfg['general']['data_dir'] + "/tradir_port.csv",
+    'order_type': 'call',
+    'last_days': 200,
+    'filt_date_frm': '',
+    'filt_date_to': '',
+    'stc_date':'eod',  # 'eod' or 'stc alert"
+    'max_underlying_price': None,
+    'min_price': 10,
+    'max_dte': 500,
+    'min_dte': 0,
+    'filt_hour_frm': "",
+    'filt_hour_to': 14,
+    'include_authors': "",
+    'exclude_symbols': [],
+    'PT': 30,
+    'TS': 0,
+    'SL': 50,
+    'TS_buy': 0,
+    'TS_buy_type':'buy',
+    'max_margin': None,
+    'verbose': True,
+    'trade_amount': 1000,
+}
 import time as tt
 t0 = tt.time()
-params = params_flohai0
+params = params_tradir
 port, no_quote, param = calc_returns(dir_quotes=dir_quotes, with_theta=with_theta, **params)
 t1 = tt.time()
 print(f"Time to calc returns: {t1-t0:.2f} sec")
