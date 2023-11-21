@@ -244,10 +244,13 @@ class DiscordBot(discord.Client):
             if order['asset'] == "option":
                 try:
                     # get option date with year
-                    if len(order['expDate'].split('/')) == 3:
-                        exp_dt = datetime.strptime(f"{order['expDate']}" , "%m/%d/%y").date()
-                    else:
+                    if len(order['expDate'].split("/")) ==2:
                         exp_dt = datetime.strptime(f"{order['expDate']}/{datetime.now().year}" , "%m/%d/%Y").date()
+                    else:
+                        if len(order['expDate'].split("/")[-1]) == 2:
+                            exp_dt = datetime.strptime(f"{order['expDate']}" , "%m/%d/%y").date()
+                        else:
+                            exp_dt = datetime.strptime(f"{order['expDate']}", "%m/%d/%Y").date()
                 except ValueError:
                     str_msg = f"Option date is wrong: {order['expDate']}"
                     self.queue_prints.put([f"\t {str_msg}", "green"])
