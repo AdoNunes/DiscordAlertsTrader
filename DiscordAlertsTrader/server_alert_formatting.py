@@ -15,7 +15,7 @@ def server_formatting(message):
         message = kent_formatting(message)
     elif message.channel.id in [894421928968871986]:
         message = sirgoldman_formatting(message)
-    elif message.channel.id in [1090673126527996004]:
+    elif message.channel.id in [1090673126527996004, 1132799545491869857]:
         message = flint_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
