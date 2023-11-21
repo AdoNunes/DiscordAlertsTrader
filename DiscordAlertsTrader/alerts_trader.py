@@ -696,7 +696,7 @@ class AlertsTrader():
                 or_price = self.portfolio.loc[open_trade,"Price"]*self.portfolio.loc[open_trade, "filledQty"]
                 nw_price = order_info['price']*order_info['filledQuantity']
                 avg_price = round((or_price + nw_price)/(self.portfolio.loc[open_trade, "filledQty"] + order_info['filledQuantity']),2)
-                self.portfolio.loc[ot, "Price"] = avg_price
+                self.portfolio.loc[open_trade, "Price"] = avg_price
 
                 self.portfolio.loc[open_trade, "filledQty"] += order_info['filledQuantity']
                 self.disc_notifier(order_info)
@@ -878,6 +878,9 @@ class AlertsTrader():
             self.update_paused = True
             # close waiting stc orders
             self.close_open_exit_orders(open_trade)
+            # remove exits from exit plan
+            self.portfolio.loc[open_trade, "exit_plan"] = str({"PT1": None, "PT2": None, "PT3": None, "SL": None})
+
             order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_STC_lim)
             
             log_alert["portfolio_idx"] = open_trade

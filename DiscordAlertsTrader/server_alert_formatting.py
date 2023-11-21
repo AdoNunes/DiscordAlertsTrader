@@ -15,6 +15,8 @@ def server_formatting(message):
         message = kent_formatting(message)
     elif message.channel.id in [894421928968871986]:
         message = sirgoldman_formatting(message)
+    elif message.channel.id in [1090673126527996004, 1132799545491869857]:
+        message = flint_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     return message
@@ -37,6 +39,34 @@ def tradeproelite_formatting(message_):
         return message
     
     return message_
+
+
+def flint_formatting(message_):
+    """
+    Reformat Discord message from Flint
+    """
+    message = MessageCopy(message_)
+    alert = ''
+    for mb in message.embeds:
+        if mb.description:
+            alert += mb.description
+    if len(alert):
+        pattern = r'([A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s(\d{1,2}\/\d{1,2})\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
+        match = re.search(pattern, alert, re.IGNORECASE)
+        if match:
+            out = match.groups()
+            if len(out) == 4:
+                ticker, strike, msg_date, price = out
+            elif len(out) == 3:
+                ticker,  strike, price = out
+                msg_date = message.created_at.strftime('%m/%d')
+            else:
+                print('ERROR: wrong number of groups in flint_formatting')
+                return message
+            ext = alert.split(price)[-1]
+            alert = f"BTO {ticker} {strike.upper()} {msg_date} @{price} {ext}"
+        message.content = alert
+    return message
 
 
 def kent_formatting(message_):
@@ -67,6 +97,8 @@ def sirgoldman_formatting(message_):
                     msg_date = message.created_at.strftime('%m/%d')
                     ext = mb.description.split(price)[-1]
                     alert = f"BTO {ticker} {strike.upper()} {msg_date} @{price} {ext}"
+                else:
+                    alert = f"{mb.title}: {mb.description}"
             else:
                 alert = f"{mb.title}: {mb.description}"
             message.content = alert
@@ -79,7 +111,7 @@ def xtrades_formatting(message_):
     Xtrades guild id: 542224582317441034
     """
     # Don't do anything if not Xtrade message
-    if message_.guild.id != 542224582317441034:
+    if message_.guild.id != 542224582317441034 or message_.channel.id == 993892865824542820:
         return message_
     
     # return None if not Xtrade bot

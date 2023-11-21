@@ -201,7 +201,13 @@ class DiscordBot(discord.Client):
                 message = server_formatting(message)
                 if message is None:
                     continue
-                self.new_msg_acts(message)
+                if custom:
+                    alert = msg_custom_formated(message)
+                    if alert is not None:
+                        for msg in alert:
+                            self.new_msg_acts(msg, False)
+                else:
+                    self.new_msg_acts(message)
         print("Done")        
         self.tracker.close_expired()
 
