@@ -15,7 +15,7 @@ def server_formatting(message):
         message = kent_formatting(message)
     elif message.channel.id in [894421928968871986]:
         message = sirgoldman_formatting(message)
-    elif message.channel.id in [1090673126527996004]:
+    elif message.channel.id in [1090673126527996004, 1132799545491869857]:
         message = flint_formatting(message)
     elif message.channel.id in [904543469266161674]:  
         message = jpm_formatting(message)
@@ -56,8 +56,15 @@ def flint_formatting(message_):
         pattern = r'([A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s(\d{1,2}\/\d{1,2})\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
         match = re.search(pattern, alert, re.IGNORECASE)
         if match:
-            ticker,  strike, price = match.groups()
-            msg_date = message.created_at.strftime('%m/%d')
+            out = match.groups()
+            if len(out) == 4:
+                ticker, strike, msg_date, price = out
+            elif len(out) == 3:
+                ticker,  strike, price = out
+                msg_date = message.created_at.strftime('%m/%d')
+            else:
+                print('ERROR: wrong number of groups in flint_formatting')
+                return message
             ext = alert.split(price)[-1]
             alert = f"BTO {ticker} {strike.upper()} {msg_date} @{price} {ext}"
         message.content = alert
