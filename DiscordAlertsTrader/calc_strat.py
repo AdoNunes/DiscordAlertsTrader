@@ -39,6 +39,9 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 TS_buy_type= 'inverse',
                 avg_down=None,
                 max_margin = None,
+                short_under_amnt = None,
+                sell_bto=False,
+                max_short_val= None,
                 verbose= True,
                 trade_amount=1,
                 trade_type = 'any',
@@ -87,6 +90,12 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         list of lists with [% avg down, % quantity], eg [[30, 50]] average at -30%, 50% initial quantity, by default [0]
     max_margin : int, optional
         max margin to use for shorting, by default None
+    short_under_amnt : int, optional
+        for shorting, instead of Qty, qty set by underlying price, eg 400 would be 4 cons for a 100 underlying, by default None
+    sell_bto : bool, optional
+        if true BTO get converted to STC, sells options, by default False
+    max_short_val : int, optional
+        max value of short trade, by default 1000
     verbose: bool, optional
         print verbose, by default False
     trade_amount: int, optional
@@ -124,6 +133,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             'TS_buy_type' : TS_buy_type,
             'avg_down': avg_down,
             'max_margin': max_margin,
+            'short_under_amnt': short_under_amnt,
+            'sell_bto':sell_bto,
             'trade_amount': trade_amount,
             'trade_type': trade_type
             }
@@ -159,6 +170,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     if len(port) == 0:
         print("No trades to calculate")
         exit()
+    if sell_bto:
+        port.loc[port['Type'] == 'BTO', 'Type'] = 'STO'
 
     pt = 1 + PT/100
     ts = TS/100
@@ -179,8 +192,9 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         port['margin'] = np.nan  
         port = port.reset_index(drop=True)
         qty_t = 1        
-        underlying = port['Symbol'].str.extract(r'[C|P](\d+(\.\d+)?)$').iloc[:, 0]
-        port['underlying'] = pd.to_numeric(underlying)
+    underlying = port['Symbol'].str.extract(r'[C|P](\d+(\.\d+)?)$').iloc[:, 0]
+    port['underlying'] = pd.to_numeric(underlying)
+    port['hour'] = pd.to_datetime(port['Date']).dt.hour
     
     for idx, row in port.iterrows(): 
         # idx = 69
@@ -214,7 +228,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             if pd.isna(date_close):                
                 ord_in = parse_symbol(row['Symbol'])
                 date_close = pd.to_datetime(f"{ord_in['exp_month']}/{ord_in['exp_day']}/{ord_in['exp_year']} 15:55:00.000000")
-            elif date_close.time() == time(16,0):
+            elif date_close.time() >= time(16,0):
                 date_close = date_close.replace(hour=15, minute=55, second=0, microsecond=0)
                 
         # Load data from disk or thetadata
@@ -277,8 +291,12 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             bad_data_times = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x, tz=pytz.utc)).dt.time
             bad_data_times = bad_data_times != pd.Timestamp("09:30:01").time() 
             quotes = quotes[(quotes['ask']!=0) & (quotes['bid']!=0) & ( bad_data_times)].reset_index(drop=True) 
-            bid = quotes['bid']
-            ask = quotes['ask']
+            if port.loc[idx, 'Type'] == 'BTO':                
+                bid = quotes['bid']
+                ask = quotes['ask']
+            elif port.loc[idx, 'Type'] == 'STO':
+                bid = quotes['ask']
+                ask = quotes['bid']
             dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x, tz=pytz.utc))
             if not len(ask):
                 print("no quotes", row['Symbol'])
@@ -332,12 +350,20 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             
         if roi_actual[-2] == len(bid)-1:        
             port.loc[idx, 'last'] = 1
-            
-        port.loc[idx, 'strategy-close_date'] = dates.loc[roi_actual[-2]]
+        
+        try:
+            dt_close= dates.loc[roi_actual[-2]].tz_localize('UTC')
+        except TypeError:
+            dt_close= dates.loc[roi_actual[-2]]
+        port.loc[idx, 'strategy-close_date'] = dt_close
         pnl = roi_actual[2]
         mult = .1 if row['Asset'] == 'stock' else 1
 
-        if trade_amount is None:
+        if short_under_amnt is not None:
+            qty_t = max(1, short_under_amnt//port.loc[idx,'underlying'])
+            if max_short_val is not None and qty_t*roi_actual[0]*100 > max_short_val:
+                qty_t = max(max_short_val// (roi_actual[0]*100), 1)
+        elif trade_amount is None:
             qty_t = row['Qty']        
         elif trade_amount > 1:
             qty_t = max(trade_amount// (roi_actual[0]*100), 1)
@@ -346,6 +372,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         qty_ratio = roi_actual[-1]
         pnlu = pnl*roi_actual[0]*mult*qty_t*qty_ratio
         
+        port.loc[idx, 'Qty'] = qty_t
         port.loc[idx, 'strategy-PnL'] = pnl
         port.loc[idx, 'strategy-PnL$'] = pnlu
         port.loc[idx,'strategy-entry'] = roi_actual[0]
@@ -436,7 +463,7 @@ params_bry = {
     'TS_buy_type':'inverse',
     'max_margin': None,
     'verbose': True,
-    'trade_amount': 2000,
+    'trade_amount': 300,
     'trade_type': 'any'
 }
 do_sym = "SPX"
@@ -480,10 +507,10 @@ params_enh = {
 
 params_dem = {
     'fname_port': cfg['general']['data_dir'] + "/Demon_port.csv",
-    'last_days': 120,
+    'last_days': 60,
     'filt_date_frm': '',
     'filt_date_to': '',
-    'stc_date':'eod',  # 'eod' or 'stc alert"
+    'stc_date':"stc alert", #'eod',  # 'eod' or 
     'max_underlying_price': "",
     'min_price': 10,
     'max_dte': 500,
@@ -492,12 +519,12 @@ params_dem = {
     'filt_hour_to': "",
     'include_authors': "demon",
     'exclude_symbols': [],
-    'PT': 10,
+    'PT': 20,
     'TS': 0,
-    'SL': 30,
+    'SL': 80,
     'TS_buy': 0,
     'TS_buy_type':'buy',
-    'avg_down': None, #[[10, 25],[20, 25],[30, 25]],#
+    'avg_down': [[20, 100]],#None,#
     'max_margin': None,
     'verbose': False,
     'trade_amount': 1000,
@@ -507,59 +534,92 @@ params_dem = {
 
 params_xt = {
     'fname_port': cfg['general']['data_dir'] + "/roybaty_port_delay5.csv",
-    'last_days': None,
+    'last_days': 300,
     'filt_date_frm': '',
     'filt_date_to': '',
     'stc_date':'stc alert',  # 'eod' or 'stc alert"
     'max_underlying_price': 600,
-    'min_price': 1,
+    'min_price': 10,
     'max_dte': 500,
     'min_dte': 0,
     'filt_hour_frm': "",
     'filt_hour_to': "",
     'include_authors': "",
     'exclude_symbols': [],
-    'PT': 1000,
+    'PT': 100,
     'TS': 0,
-    'SL': 100,
+    'SL': 20,
     'TS_buy': 0,
     'TS_buy_type':'inverse',
-    'max_margin': 25000,
+    'max_margin': 50000,
+    'short_under_amnt' : 2000,
     'verbose': True,
     'trade_amount': 1,
-    'trade_type': 'sto'
+    'trade_type': 'stc',
+    "sell_bto": False,
+    "max_short_val": 2000,
 }
 
 params_flohai0 = {
-    'fname_port': cfg['general']['data_dir'] + "/flohai_0dte+90_port.csv",
+    'fname_port': cfg['general']['data_dir'] + "/flohai_weekly_port.csv",
+    'last_days': None,
+    'filt_date_frm': '',
+    'filt_date_to': '',
+    'stc_date':'eod',  # 'eod' or 'stc alert"
+    'max_underlying_price': 1500,
+    'min_price': 20,
+    'max_dte': 500,
+    'min_dte': 0,
+    'filt_hour_frm': "",
+    'filt_hour_to': "",
+    'include_authors': "",
+    'exclude_symbols': [],
+    'PT': 100,
+    'TS': 0,
+    'SL': 80,
+    'TS_buy': 0,
+    'TS_buy_type':'inverse',
+    'max_margin': 100000,
+    'short_under_amnt' : None,
+    'verbose': True,
+    'trade_amount': 1,
+    "sell_bto": False,
+    "max_short_val": 2000,
+}
+
+params_tradir = {
+    'fname_port': cfg['general']['data_dir'] + "/tradir_port.csv",
     'order_type': 'call',
     'last_days': 200,
     'filt_date_frm': '',
     'filt_date_to': '',
     'stc_date':'eod',  # 'eod' or 'stc alert"
-    'max_underlying_price': None,
+    'max_underlying_price': 800,
     'min_price': 10,
-    'max_dte': 500,
+    'max_dte': 50,
     'min_dte': 0,
     'filt_hour_frm': "",
-    'filt_hour_to': 15,
+    'filt_hour_to': "",
     'include_authors': "",
     'exclude_symbols': [],
-    'PT': 150,
+    'PT': 100,
     'TS': 0,
-    'SL': 20,
+    'SL': 80,
     'TS_buy': 0,
-    'TS_buy_type':'buy',
+    'TS_buy_type':'inverse',
     'max_margin': None,
+    'short_under_amnt' : None,
     'verbose': True,
-    'trade_amount': 1000,
+    'trade_amount': 3,
+    "sell_bto": True,
+    "max_short_val": 1000,
 }
-
-
 import time as tt
 t0 = tt.time()
-params = params_flohai0
+params = params_dem
 port, no_quote, param = calc_returns(dir_quotes=dir_quotes, with_theta=with_theta, **params)
+
+    
 t1 = tt.time()
 print(f"Time to calc returns: {t1-t0:.2f} sec")
 
@@ -624,7 +684,7 @@ if 0:
     # res = grid_search(params, PT= list(np.arange(0,60, 10)) + list(np.arange(60,150, 10)), SL=np.arange(10,60,10), TS_buy=[0,5,10,20,30], TS= [0, 10,20,50])
     # res = grid_search(params, PT= list(np.arange(0,60, 10)) + list(np.arange(60,150, 10)), SL=np.arange(10,60,10), TS_buy=[0], TS= [0])
     # res = grid_search(params, PT= list(np.arange(10,80, 20)), SL=np.arange(10,70,20), TS_buy=[0,5,10,20,30], TS= [0, 10,20,50])
-    res = grid_search(params, PT= list(np.arange(10,250, 20)), SL=np.arange(10,90,10), TS_buy=[0], TS= [0])
+    res = grid_search(params, PT= list(np.arange(10,100, 10)), SL=np.arange(10,90,10), TS_buy=[0], TS= [10,15,20])
     # res = grid_search(params, PT= list(np.arange(10,140, 10)), SL=np.arange(10,90,10), TS_buy=[0], TS= [0])
     # res = grid_search(params, PT= list(np.arange(0,270, 10)), SL=[20,30,40,50,60], TS_buy=[0,5,10,15,20,30], TS= [0,10,20,30,50,60])
  
@@ -634,6 +694,6 @@ if 0:
     print(sorted_array[-20:])
     hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
     df = pd.DataFrame(sorted_array, columns=hdr)
-    df.to_csv("data/flohai_weekly+90_grid_search.csv", index=False)
+    df.to_csv("data/demon_last60days_grid_search.csv", index=False)
     # PT 40,  SL 20,  trailing stop starting at PT: 25,    PNL avg : 5%,  return: $2750,   num trades: 53
     # print(result_td)
