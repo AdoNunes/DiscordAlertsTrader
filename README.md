@@ -7,6 +7,8 @@ ________________________
 ![GitHub](https://img.shields.io/github/license/AdoNunes/DiscordAlertsTrader)
 [![Discord](https://img.shields.io/discord/1123242366980075570.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/9ejghcjpar "realtime support / chat with the community and the team.")
 
+ If you like this package, give it a star ⭐️!
+
 
 A Python package to automate trades from alerts shared in a Discord channel by analysts.
 The package parses these messages and executes trades from traders specified in the configuration file. 
@@ -14,7 +16,7 @@ It tracks messages from all the channels, generates a portfolio from analysts an
 provides live quotes to see actual alert profits (rather than prices stated in the alert), and can trigger
 an alert to open long or short a position, close it or update exits (target profit, stop loss).
 
-Trades are done through APIs of TDAmeritrade (full functionality), eTrade (long positions for now) or webull (long, no OCO, not trailing stops).
+Trades are done through APIs of TDAmeritrade (full functionality), eTrade (either a PT or SL order) or webull (either a PT or SL order, not trailing stops).
 If no brokerage API key is provided, it will just print the discord messages and track the 
 analysts' portfolio. With an API key, it will track the current price of the alerts, besides executing trades.
 
@@ -146,7 +148,7 @@ Etrade does not have One Cancels the Other (OCO) so you can not pass a target pr
 ____________
 
 You will need to get a device ID, follow these steps to get DID, and then save it in the config.ini, along with credential details: 
-https://github.com/tedchou12/webull/wiki/Workaround-for-Login-Method-2
+[https://github.com/tedchou12/webull/wiki/Workaround-for-Login-Method-2](https://github.com/tedchou12/webull/wiki/Workaround-for-Login-%E2%80%90-Method-2)
 
 Trading pin is the 6 digit code used to unlock webull
 
