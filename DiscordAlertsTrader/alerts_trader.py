@@ -344,6 +344,15 @@ class AlertsTrader():
                     return "no", order, False
                 
                 elif order['action'] == "BTO":
+                    if len(cfg['order_configs']['exclude_tickers']):
+                        no_trade = cfg['order_configs']['exclude_tickers'].split(',')
+                        no_trade = [i.strip() for i in no_trade]
+                        if order['Symbol'].split("_")[0] in no_trade:
+                            str_msg = f"BTO not accepted by config options: exclude_tickers = {no_trade}"
+                            print(Back.GREEN + str_msg)
+                            self.queue_prints.put([str_msg, "", "green"])
+                            return "no", order, False
+                    
                     price = order['price']
                     if price == 0:
                         str_msg = f"Order not accepted price is 0"

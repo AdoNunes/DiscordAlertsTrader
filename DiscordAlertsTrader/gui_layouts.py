@@ -358,6 +358,10 @@ def layout_config(fnt_h, cfg):
                 ' can be $ value: 1.1, percentage: "30%", for PT can be "%" and a Trailing stop: "30%TS5%"\n' +\
                 'SL (stop loss) can be percentage: "30%" or trailing stop "TS30%"\n' +\
                 'add quotes to the exits values e.g. "10%"', enable_events=True,)],
+        [sg.Text("Exclude tickers [SPX should be SPXW]:",
+                 tooltip="will not trade them, [comma separated]")],
+        [sg.Input(cfg['order_configs']['exclude_tickers'], key="cfg_order_configs.exclude_tickers",
+                 tooltip="will not trade them, [comma separated]", enable_events=True)],        
         [sg.Text("Default quantity:",
                 tooltip='If no quantity specified in the alert either "buy_one" or use "trade_capital"'), 
         sg.Drop(values=['buy_one', 'trade_capital'] ,default_value=cfg['order_configs']['default_bto_qty'],
