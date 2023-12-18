@@ -345,6 +345,14 @@ def eclipse_alerts(message_):
             if "Challenge Account" in alert:
                 chall += " | Challenge Account"
             alert = f"BTO {qty} {ticker} {strike.upper()} {expDate} @{price}{chall}"
+        else: # diff format
+            
+            pattern = r'\$(\w+)\s+\$(\d[\d,]+)\s+(\w+)\s+(\d{1,2}/\d{1,2})\s+@([\d.]+)'
+            match = re.search(pattern, alert, re.IGNORECASE)
+            if match:
+                ticker, strike, otype, expDate, price = match.groups()
+                alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
+            
     message.content = alert
     return message
 
