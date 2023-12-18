@@ -9,6 +9,8 @@ def server_formatting(message):
         message = tradeproelite_formatting(message)
     elif message.channel.id in [1144658745822035978]:
         message = eclipse_alerts(message)
+    elif message.channel.id in [1005221780941709312]:
+        message = oculus_alerts(message)
     elif message.channel.id in [989674163331534929]:
         message = rough_alerts(message)
     elif message.channel.id in [972620961004269598]:
@@ -230,11 +232,8 @@ def xtrades_formatting(message_):
         message.content = alert
         return message
 
-def aurora_trading_formatting(message_):
-    """
-    Reformat Discord message from aurora_trading to content message
-    """    
-    def format_0dte_weeklies(contract, message, remove_price=True):
+
+def format_0dte_weeklies(contract, message, remove_price=True):
         "remove price when stc title is bto"
         if "0DTE" in contract.upper():
             msg_date = message.created_at.strftime('%m/%d')
@@ -250,7 +249,11 @@ def aurora_trading_formatting(message_):
             if remove_price:
                 contract = contract.split(" @")[0]
         return contract
-    
+
+def aurora_trading_formatting(message_):
+    """
+    Reformat Discord message from aurora_trading to content message
+    """        
     message = MessageCopy(message_)
     # format Bryce trades
     if message_.channel.id in [846415903671320598, 1093340247057772654, 953812898059276369]:   
@@ -313,6 +316,32 @@ def aurora_trading_formatting(message_):
         contract = format_0dte_weeklies(message.content, message, False)
         message.content = format_alert_date_price(contract) 
 
+    return message
+
+def oculus_alerts(message_):
+    """
+    Reformat Discord message from oculus to content message
+    """
+    
+    if not message_.content:
+        return message_
+    
+    message = MessageCopy(message_)
+    alert = message.content
+    
+    if "%" in alert: # just status update
+        return message
+    
+    if "(0dte)" in alert.lower():
+        alert = alert.replace("(0dte)", "0DTE")
+        alert = format_0dte_weeklies(alert, message, remove_price=False)
+    
+    pattern = r'\$(\w+)\s+\$(\d[\d,]+)\s+(\w+)\s+(\d{1,2}/\d{1,2})\s+@([\d.]+)'
+    match = re.search(pattern, alert, re.IGNORECASE)
+    if match:
+        ticker, strike, otype, expDate, price = match.groups()
+        alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
+        message.content = alert
     return message
 
 def eclipse_alerts(message_):
