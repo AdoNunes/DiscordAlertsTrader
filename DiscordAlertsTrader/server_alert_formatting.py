@@ -72,7 +72,6 @@ def flint_formatting(message_):
         message.content = alert
     return message
 
-
 def jpm_formatting(message_):
     """
     Reformat Discord message from jpm
