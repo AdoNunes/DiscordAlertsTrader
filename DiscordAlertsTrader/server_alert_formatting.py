@@ -336,7 +336,7 @@ def oculus_alerts(message_):
         alert = alert.replace("(0dte)", "0DTE")
         alert = format_0dte_weeklies(alert, message, remove_price=False)
     
-    pattern = r'\$(\w+)\s+\$(\d[\d,]+)\s+(\w+)\s+(\d{1,2}/\d{1,2})\s+@([\d.]+)'
+    pattern = r'\$(\w+)\s+\$?(\d[\d,]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s+@([\d.]+)'
     match = re.search(pattern, alert, re.IGNORECASE)
     if match:
         ticker, strike, otype, expDate, price = match.groups()
