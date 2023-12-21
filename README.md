@@ -7,6 +7,8 @@ ________________________
 ![GitHub](https://img.shields.io/github/license/AdoNunes/DiscordAlertsTrader)
 [![Discord](https://img.shields.io/discord/1123242366980075570.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/9ejghcjpar "realtime support / chat with the community and the team.")
 
+ If you like this package, give it a star ⭐️!
+
 
 A Python package to automate trades from alerts shared in a Discord channel by analysts.
 The package parses these messages and executes trades from traders specified in the configuration file. 
@@ -14,7 +16,7 @@ It tracks messages from all the channels, generates a portfolio from analysts an
 provides live quotes to see actual alert profits (rather than prices stated in the alert), and can trigger
 an alert to open long or short a position, close it or update exits (target profit, stop loss).
 
-Trades are done through APIs of TDAmeritrade (full functionality), eTrade (long positions for now) or webull (long, no OCO, not trailing stops).
+Trades are done through APIs of TDAmeritrade (full functionality), eTrade (either a PT or SL order) or webull (either a PT or SL order, not trailing stops).
 If no brokerage API key is provided, it will just print the discord messages and track the 
 analysts' portfolio. With an API key, it will track the current price of the alerts, besides executing trades.
 
@@ -33,7 +35,7 @@ If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed.
 
 
 **Current Discord servers being used**:
-- **EnhancedMarket** TradeProElite (profitable strategies about 10-8k month [fully pays $150 membership], uses software to quickly send trade alerts for minimal delay even for scalpings and uses a bot to track trades alerted PnL and market price PnL, full transparency. Good for learning how to trade with live sessions): [invite link with 2 days trial and $50 off coupon](https://tradeproelite.memberful.com/checkout?plan=97432&coupon=Minkys)
+- **EnhancedMarket** TradeProElite (profitable strategies about 10-8k month [fully pays $100 membership], uses software to quickly send trade alerts for minimal delay even for scalpings and uses a bot to track trades alerted PnL and market price PnL, full transparency. Good for learning how to trade with live sessions): invite links with 5 day trials: [Gold](https://whop.com/tradeproelite/?d2c=true&directPlanId=plan_j1IIQmDRiu63q&pass=prod_rJqBNfMDOprhs&a=transverseblouse3c34) or [VIP (with live trading)](https://whop.com/tradeproelite/?d2c=true&directPlanId=plan_dz8MNZD1bO6Vi&pass=prod_KtXKwzfXMW7ck&a=transverseblouse3c34)
 - **Xtrades** (alerts with market price data tracked with a bot, their stats posted on their web match what you can get, multiple analysts, see historical trades in the GUI Analysts tabs [$38 membership]): [invite link](https://app.xtrades.net/invite/4lk91GuPz0KsoJWYP74ieg)
 - **BullTrades** (good for shorting [bad trades, delayed alerts, they show alerted PnL but hide market priced PnL], see historical trades in this repo data/analyst_portfolio_bulltrades.csv(5/10 to 8/7) and [stats screenshot image](media/bulltrades_stats_05_08.png)): [invite link](https://bulltrades.net/?ref=ndrjogi)
 
@@ -146,7 +148,7 @@ Etrade does not have One Cancels the Other (OCO) so you can not pass a target pr
 ____________
 
 You will need to get a device ID, follow these steps to get DID, and then save it in the config.ini, along with credential details: 
-https://github.com/tedchou12/webull/wiki/Workaround-for-Login-Method-2
+[https://github.com/tedchou12/webull/wiki/Workaround-for-Login-Method-2](https://github.com/tedchou12/webull/wiki/Workaround-for-Login-%E2%80%90-Method-2)
 
 Trading pin is the 6 digit code used to unlock webull
 

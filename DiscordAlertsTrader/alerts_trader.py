@@ -345,6 +345,15 @@ class AlertsTrader():
                     return "no", order, False
                 
                 elif order['action'] == "BTO":
+                    if len(cfg['order_configs']['exclude_tickers']):
+                        no_trade = cfg['order_configs']['exclude_tickers'].split(',')
+                        no_trade = [i.strip() for i in no_trade]
+                        if order['Symbol'].split("_")[0] in no_trade:
+                            str_msg = f"BTO not accepted by config options: exclude_tickers = {no_trade}"
+                            print(Back.GREEN + str_msg)
+                            self.queue_prints.put([str_msg, "", "green"])
+                            return "no", order, False
+                    
                     price = order['price']
                     if price == 0:
                         str_msg = f"Order not accepted price is 0"
@@ -881,6 +890,9 @@ class AlertsTrader():
             self.update_paused = True
             # close waiting stc orders
             self.close_open_exit_orders(open_trade)
+            # remove exits from exit plan
+            self.portfolio.loc[open_trade, "exit_plan"] = str({"PT1": None, "PT2": None, "PT3": None, "SL": None})
+
             order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_STC_lim)
             
             log_alert["portfolio_idx"] = open_trade
