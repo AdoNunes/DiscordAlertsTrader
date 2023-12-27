@@ -7,7 +7,7 @@ ________________________
 ![GitHub](https://img.shields.io/github/license/AdoNunes/DiscordAlertsTrader)
 [![Discord](https://img.shields.io/discord/1123242366980075570.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/9ejghcjpar "realtime support / chat with the community and the team.")
 
- If you like this package, give it a star ⭐️!
+ If you like this package, give it a star!
 
 
 A Python package to automate trades from alerts shared in a Discord channel by analysts.

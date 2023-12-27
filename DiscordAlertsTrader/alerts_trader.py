@@ -73,6 +73,7 @@ class AlertsTrader():
         self.cfg = cfg
         self.EOD = {} # end of day shorting actions
         self.order_update_rate = 5
+        self.max_stc_orders = int(cfg['order_configs']['max_stc_orders']) + 1
         # load port and log
         if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
@@ -101,12 +102,12 @@ class AlertsTrader():
                 time.sleep(1)
                 continue
             t0 = time.time()
-            try:
-                self.update_orders()
-            except Exception as ex:
-                str_msg = f"Error raised during port update, trying again later. Error: {ex}"
-                print(Back.RED + str_msg)
-                self.queue_prints.put([str_msg, "", "red"])
+            # try:
+            self.update_orders()
+            # except Exception as ex:
+            #     str_msg = f"Error raised during port update, trying again later. Error: {ex}"
+            #     print(Back.RED + str_msg)
+            #     self.queue_prints.put([str_msg, "", "red"])
             
             if time.time() - t0 < self.order_update_rate:
                 time.sleep(self.order_update_rate - (time.time() - t0))
@@ -124,7 +125,7 @@ class AlertsTrader():
     def order_to_pars(self, order):
         pars_str = f"{order['action']} {order['Symbol']} @{order['price']}"
         if order['action'] in ["BTO", "STO"]:
-            for i in range(1, 4):
+            for i in range(1, self.max_stc_orders):
                 pt = f"PT{i}"
                 if pt in order.keys() and order[pt] is not None:
                     pars_str = pars_str + f" {pt}: {order[pt]}"
@@ -401,7 +402,7 @@ class AlertsTrader():
                                       or order['price'])
 
                 if order['action'] == 'BTO':
-                    PTs = [order[f'PT{i}'] for i in range(1,4)]
+                    PTs = [order[f'PT{i}'] for i in range(1,self.max_stc_orders)]
                     PTs = eval(input(f"Change PTs @{PTs} {price_now(symb, act)}? \
                                       Leave blank if NO, respond eg [1, 2, None] \n")
                                       or str(PTs))
@@ -425,8 +426,10 @@ class AlertsTrader():
         return resp, order, ord_chngd
 
 
-    def close_open_exit_orders(self, open_trade, STCn=range(1,4)):
+    def close_open_exit_orders(self, open_trade, STCn=None):
         # close STCn waiting orders
+        if STCn is None:
+            STCn = range(1,self.max_stc_orders)
         position = self.portfolio.iloc[open_trade]
         if type(STCn) == int: STCn = [STCn]
 
@@ -494,7 +497,7 @@ class AlertsTrader():
                 sym_inf = self.portfolio.loc[open_trade, "Symbol"].split("_")[1]
                 strike = re.split("C|P", sym_inf)[1]
                 new_plan["strike"] = strike + "C" if "C" in sym_inf else strike + "P"
-                for i in range(1,4):
+                for i in range(1,self.max_stc_orders):
                     exit_price = new_plan.get(f"PT{i}")
                     if exit_price is not None:
                         new_plan[f"PT{i}"] = set_exit_price_type(exit_price, new_plan)
@@ -509,7 +512,7 @@ class AlertsTrader():
                     istc = i+1
             if istc is not None and any(["PT" in k for k in new_plan.keys()]):
                 new_plan_c = new_plan.copy()
-                for i in range(1,4):
+                for i in range(1,self.max_stc_orders):
                     if new_plan.get(f"PT{i}"):
                         del new_plan_c[f"PT{i}"]
                         new_plan_c[f"PT{istc}"] = new_plan[f"PT{i}"]
@@ -742,7 +745,7 @@ class AlertsTrader():
 
             position = self.portfolio.iloc[open_trade]
             # Check if closed position was not alerted
-            for i in range(1,4):
+            for i in range(1,self.max_stc_orders):
                 STC = f"STC{i}"
                 if pd.isnull(position[f"{STC}-alerted"]):
                     self.portfolio.loc[open_trade, f"{STC}-alerted"] = 1
@@ -776,7 +779,7 @@ class AlertsTrader():
                       f"xQty: {order['xQty']} and Qty: {order['Qty']}", "", "green"])
 
             # check if position already alerted and closed
-            for i in range(1,4):
+            for i in range(1,self.max_stc_orders):
                 STC = f"STC{i}"
                 # If not alerted, mark it
                 if pd.isnull(position[f"{STC}-alerted"]):
@@ -847,7 +850,7 @@ class AlertsTrader():
                 log_alert["portfolio_idx"] = open_trade
                 return
 
-            qty_sold = np.nansum([position[f"STC{i}-Qty"] for i in range(1,4)])
+            qty_sold = np.nansum([position[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])
             if position["Qty"] - qty_sold == 0:
                 self.portfolio.loc[open_trade, "isOpen"] = 0
                 print(Back.GREEN + "Already sold")
@@ -870,7 +873,7 @@ class AlertsTrader():
                     self.queue_prints.put(["Selling all, max supported STC is 3", "", "green"])
                 elif order['xQty'] == 1:
                     print("Selling all, got xQTY =1, check if not true")              
-                qty_sold = np.nansum([position[f"STC{i}-Qty"] for i in range(1,4)])
+                qty_sold = np.nansum([position[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])
                 position = self.portfolio.iloc[open_trade]
                 order['Qty'] = int(position["Qty"]) - qty_sold
 
@@ -962,16 +965,16 @@ class AlertsTrader():
         self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
 
         trade = self.portfolio.loc[open_trade]
-        sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
-        stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+        sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])
+        stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])/sold_tot
         self.portfolio.loc[open_trade, "PnL"] = stc_PnL_all
     
         if self.portfolio.loc[open_trade, "Type"] == "BTO":
-            stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-alert"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
-            stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-actual"] - bto_price_actual)/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+            stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-alert"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])/sold_tot
+            stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-actual"] - bto_price_actual)/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])/sold_tot
         elif self.portfolio.loc[open_trade, "Type"] == "STO":
-            stc_PnL_all_alert =  np.nansum([(float((bto_price_alert - trade[f"STC{i}-Price-alert"])/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
-            stc_PnL_all_curr = np.nansum([(float((bto_price_actual - trade[f"STC{i}-Price-actual"])/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+            stc_PnL_all_alert =  np.nansum([(float((bto_price_alert - trade[f"STC{i}-Price-alert"])/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])/sold_tot
+            stc_PnL_all_curr = np.nansum([(float((bto_price_actual - trade[f"STC{i}-Price-actual"])/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])/sold_tot
 
         self.portfolio.loc[open_trade, "PnL-alert"] = stc_PnL_all_alert
         self.portfolio.loc[open_trade, "PnL-actual"] = stc_PnL_all_curr
@@ -984,7 +987,7 @@ class AlertsTrader():
 
         symb = self.portfolio.loc[open_trade, 'Symbol']
 
-        sold_Qty =  self.portfolio.loc[open_trade, [f"STC{i}-Qty" for i in range(1,4)]].sum()
+        sold_Qty =  self.portfolio.loc[open_trade, [f"STC{i}-Qty" for i in range(1,self.max_stc_orders)]].sum()
 
         str_STC = f"{STC} {symb} @{stc_price} Qty:" + \
             f"{sold_unts}({int(xQty*100)}%), for {stc_PnL:.2f}%"
@@ -1007,8 +1010,8 @@ class AlertsTrader():
         exit_plan = eval(self.portfolio.loc[open_trade, "exit_plan"])
         exit_plan_o = exit_plan.copy()
 
-        for exit in ["PT1", "PT2", "PT3"]:
-            if exit_plan[exit] is None or not isinstance(exit_plan[exit], str)  or "%" not in exit_plan[exit]:
+        for exit in [f"PT{i}" for i in range(1,self.max_stc_orders)]:
+            if exit_plan.get(exit) is None or not isinstance(exit_plan[exit], str)  or "%" not in exit_plan[exit]:
                 continue
             
             if "TS" in exit_plan[exit]: 
@@ -1193,8 +1196,8 @@ class AlertsTrader():
                             self.close_open_exit_orders(i) 
                             quote = self.price_now(trade["Symbol"], "BTC", 1)
                             # get the STC number to save PT
-                            STC = "STC3"
-                            for ith in range(1,4):
+                            STC = f"STC{self.max_stc_orders-1}"
+                            for ith in range(1,self.max_stc_orders):
                                 STC = f"STC{ith}"
                                 if pd.isnull(trade[STC+"-ordID"]):
                                     break
@@ -1220,14 +1223,14 @@ class AlertsTrader():
                     order = {}
                     order['action'] = "BTC"
                     order['Symbol'] = trade["Symbol"]
-                    qty_sold = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
+                    qty_sold = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])
                     order['Qty'] =  int(trade["filledQty"]) - qty_sold
                     order['price'] = quote
                     self.update_paused = True
                     _, order_id, order, _ = self.confirm_and_send(order, f'EOD {order["Symbol"]}', self.bksession.make_STC_lim)
                     
                     # add order id
-                    for ith in range(1,4):
+                    for ith in range(1,self.max_stc_orders):
                         STC = f"STC{ith}"
                         if pd.isnull(trade[STC+"-ordID"]):
                             break
@@ -1246,10 +1249,10 @@ class AlertsTrader():
                 self.exit_percent_to_price(i)
 
             # Go over STC orders and check status
-            for ii in range(1, 4):
+            for ii in range(1, self.max_stc_orders):
                 STC = f"STC{ii}"
                 trade = self.portfolio.iloc[i]
-                STC_ordID = trade[STC+"-ordID"]
+                STC_ordID = trade.get(STC+"-ordID")
 
                 if pd.isnull(STC_ordID) or trade[STC+"-Status"] =='FILLED':
                     continue
@@ -1303,7 +1306,7 @@ class AlertsTrader():
 
         # Calculate x/Qty:
         Qty_bought = trade['filledQty']
-        nPTs =  len([i for i in range(1,4) if exit_plan[f"PT{i}"] is not None])
+        nPTs =  len([i for i in range(1,self.max_stc_orders) if exit_plan.get(f"PT{i}") is not None])
         if nPTs != 0:
             Qty = [round(Qty_bought/nPTs)]*nPTs
             Qty[-1] = int(Qty_bought - sum(Qty[:-1]))
@@ -1488,9 +1491,9 @@ class AlertsTrader():
         optdate = option_date(trade['Symbol'])
         if optdate.date() < date.today():
             expdate = date.today().strftime("%Y-%m-%d %H:%M:%S+0000")
-            usold = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
-            STC =  f"STC3" # default to max stc
-            for stci in range(1,4):
+            usold = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])
+            STC =  f"STC{self.max_stc_orders-1}" # default to max stc
+            for stci in range(1,self.max_stc_orders):
                 if pd.isnull(trade[f"STC{stci}-Qty"]):
                     STC = f"STC{stci}"
                     break
@@ -1519,15 +1522,15 @@ class AlertsTrader():
             bto_price_actual = self.portfolio.loc[open_trade, "Price-actual"]
             
             trade = self.portfolio.loc[open_trade]
-            sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,4)])
-            stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+            sold_tot = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])
+            stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])/sold_tot
             self.portfolio.loc[open_trade, "PnL"] = stc_PnL_all
             if action == "STC":
-                stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-alert"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
-                stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-actual"] - bto_price_actual)/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+                stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-alert"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])/sold_tot
+                stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-actual"] - bto_price_actual)/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])/sold_tot
             else:
-                stc_PnL_all_alert =  np.nansum([(float((bto_price_alert - trade[f"STC{i}-Price-alert"])/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
-                stc_PnL_all_curr = np.nansum([(float((bto_price_alert - trade[f"STC{i}-Price-actual"])/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
+                stc_PnL_all_alert =  np.nansum([(float((bto_price_alert - trade[f"STC{i}-Price-alert"])/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])/sold_tot
+                stc_PnL_all_curr = np.nansum([(float((bto_price_alert - trade[f"STC{i}-Price-actual"])/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])/sold_tot
 
             self.portfolio.loc[open_trade, "PnL-alert"] = stc_PnL_all_alert
             self.portfolio.loc[open_trade, "PnL-actual"] = stc_PnL_all_curr
@@ -1555,7 +1558,7 @@ class AlertsTrader():
 
     def round_order_price(self, order, trade):
         # Round SL price to nearest increment
-        for exit in ['price', 'PT', 'PT1', 'PT2', 'PT3', 'SL']:
+        for exit in ['price', 'SL'] + [f"PT{i}" for i in range(1,self.max_stc_orders)]:
             if order.get(exit) is not None and isinstance(order.get(exit), (int, float)):
                 order[exit] = self.round_price(order.get(exit), trade)
         return order
