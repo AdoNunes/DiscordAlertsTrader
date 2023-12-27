@@ -1260,7 +1260,7 @@ class AlertsTrader():
 
                 order_status, order_info =  self.get_order_info(STC_ordID)
 
-                if order_status == 'CANCELED':
+                if order_status == 'CANCELED' and self.bksession.name == 'tda':
                     # Try next order number. OCO gets chancelled when one of child ordergets filled.
                     # This is for TDA OCO
                     order_status, order_info =  self.get_order_info(STC_ordID + 1)
