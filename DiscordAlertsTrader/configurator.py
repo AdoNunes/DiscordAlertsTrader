@@ -27,7 +27,12 @@ def update_port_cols():
         if "open_trailingstop" not in trader.columns:
             trader['open_trailingstop'] = None
         if 'trader_qty' not in trader.columns:
-            trader['trader_qty'] = None        
+            trader['trader_qty'] = None   
+        for col in ["STC%d-%s"% (i, v) for v in
+                    ["alerted", "Status", "Qty", "xQty", "Price", "Price-alert", "Price-actual", "PnL","Date", "ordID"]
+                    for i in range(1,int(cfg['order_configs']['max_stc_orders'])+1)]:
+            if col not in trader.columns:
+                trader[col] = None
         trader.to_csv(cfg['portfolio_names']['portfolio_fname'], index=False)
         
     if os.path.exists(cfg['portfolio_names']['tracker_portfolio_name']):
@@ -82,7 +87,7 @@ portfolio_cols = ",".join([
                 ] + [
                     "STC%d-%s"% (i, v) for v in
                     ["alerted", "Status", "Qty", "xQty", "Price", "Price-alert", "Price-actual", "PnL","Date", "ordID"]
-                    for i in range(1,4)])
+                    for i in range(1,int(cfg['order_configs']['max_stc_orders'])+1)])
 
 tracker_portfolio_cols = ",".join([
                 "Date", "Symbol", "Trader", 'Channel', "isOpen", "Asset", "Type", "Price", "Qty", "Price-actual", 
