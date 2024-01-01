@@ -1164,8 +1164,18 @@ class AlertsTrader():
                 ordID = trade['ordID'].split(",")[-1]
                 order_status, order_info = self.get_order_info(ordID)
                 if order_info['status'] in ["FILLED", "EXECUTED"]:
-                    self.portfolio.loc[i, "BTO-avg-Status"] = order_info['status']
+                    
+                    or_price = self.portfolio.loc[i,"Price"]*self.portfolio.loc[i, "filledQty"]
+                    nw_price = order_info['price']*order_info['filledQuantity']
+                    avg_price = round((or_price + nw_price)/(self.portfolio.loc[i, "filledQty"] + order_info['filledQuantity']),2)
+                    self.portfolio.loc[i, "Price"] = avg_price
+
                     self.portfolio.loc[i, "filledQty"] += order_info['filledQuantity']
+                    self.disc_notifier(order_info)
+                    self.close_open_exit_orders(i)
+                
+                    self.portfolio.loc[i, "BTO-avg-Status"] = order_info['status']
+                    
                     redo_orders = True
                     trade = self.portfolio.iloc[i]
                     self.save_logs("port")

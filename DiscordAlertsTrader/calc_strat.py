@@ -58,7 +58,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     last_days : int, optional
         subtract today to n prev days, by default 7
     stc_date : str, optional
-        'eod' or 'stc alert" close trade end of day or when alerted, by default 'eod'
+        'eod', 'stc alert", 'exp' close trade end of day, when alerted or at exp date, by default 'eod'
     max_underlying_price : int, optional
         max stock price of the option, by default 500
     min_price : int, optional
@@ -135,7 +135,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             "include_authors": include_authors,
             'exclude_traders': exclude_traders,
             'exclude_symbols': exclude_symbols,
-            "invert_contrats": invert_contrats,
+            "invert_contrats": invert_contracts,
             'PT': [PT],
             'pts_ratio' : pts_ratio,
             'TS': TS,
@@ -244,6 +244,9 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 date_close = pd.to_datetime(f"{ord_in['exp_month']}/{ord_in['exp_day']}/{ord_in['exp_year']} 15:55:00.000000")
             elif date_close.time() >= time(16,0):
                 date_close = date_close.replace(hour=15, minute=55, second=0, microsecond=0)
+        elif stc_date == 'exp':
+            ord_in = parse_symbol(row['Symbol'])
+            date_close = pd.to_datetime(f"{ord_in['exp_month']}/{ord_in['exp_day']}/{ord_in['exp_year']} 15:55:00.000000")
                 
         # Load data from disk or thetadata
         fquote = f"{dir_quotes}/{row['Symbol']}.csv"
@@ -676,9 +679,40 @@ if __name__ == '__main__':
         "max_short_val": None,
         "invert_contrats": False,
     }
+    
+    params_bishop = {
+        'fname_port': cfg['general']['data_dir'] + "/bishop_port.csv",
+        'order_type': 'any',
+        'last_days': 600,
+        'filt_date_frm': '',
+        'filt_date_to': '',
+        'stc_date': 'exp', #'stc alert', #'eod',  # 'eod' or 
+        'max_underlying_price': 8000,
+        'min_price': 10,
+        'max_dte': 50,
+        'min_dte': 0,
+        'filt_hour_frm': "",
+        'filt_hour_to': "",
+        'include_authors': "bishop",
+        'exclude_symbols': [],
+        'PT': [20, 40, 80],
+        'pts_ratio' : [0.4, 0.3, 0.3],
+        'sl_update' : [[1.2, 0.95]],
+        'TS': 0,
+        'SL': 50,
+        'TS_buy': 0,
+        'TS_buy_type':'inverse',
+        'max_margin': None,
+        'short_under_amnt' : None,
+        'verbose': True,
+        'trade_amount': 1000,
+        "sell_bto": False,
+        "max_short_val": None,
+        "invert_contracts": False,
+    }
     import time as tt
     t0 = tt.time()
-    params = params_flint
+    params = params_bishop
     port, no_quote, param = calc_returns(dir_quotes=dir_quotes, theta_client=client, **params)
 
         
@@ -707,7 +741,7 @@ if __name__ == '__main__':
         
         winr = f"{nwin}(w)-{nlost}(l)/{ntot}(t)"
         winp = round((result_td['win']['sum'].iloc[0]/result_td['Date']['count'].iloc[0])*100)
-        pnl_emp =  nwin* param['PT'] - nlost*param['SL']
+        pnl_emp =  nwin* np.mean(param['PT'][0]) - nlost*param['SL']
         
         excl = ''
         if param['exclude_symbols']:
@@ -715,9 +749,11 @@ if __name__ == '__main__':
         title = f"{param['include_authors']} {excl} winrate {winp}% {winr}, trade amount {param['trade_amount']}" \
             + f" \nat market: avg PnL%={result_td['strategy-PnL']['mean'].iloc[0]:.2f}, "\
                 +f"${result_td['strategy-PnL$']['sum'].iloc[0]:.2f}" \
-                + f" \nat set order: avg PnL%={pnl_emp/ntot:.2f}, "\
-                +f"${param['trade_amount']*(pnl_emp/100):.0f} \n" \
-                    +f"TS_buy {param['TS_buy']}, PT {param['PT']}, TS {param['TS']},  SL {param['SL']}"
+                    +f"${param['trade_amount']*(pnl_emp/100):.0f} \n" \
+                        +f"TS_buy {param['TS_buy']}, PT {param['PT']}, TS {param['TS']},  SL {param['SL']}"
+                # + f" \nat set order: avg PnL%={pnl_emp/ntot:.2f}, "\
+                    
+                        
                 
 
         fig.suptitle(title)
