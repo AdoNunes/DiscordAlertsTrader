@@ -38,4 +38,28 @@ def msg_custom_formated(message):
         msg['Channel'] =  "GUI_analysts"
         
         return [msg, msg2]
+    
+    # Enhanced, scale qty
+    elif message.channel.id == 1126325195301462117:
+        
+        avg_trade_val = 5000
+        user_trade_val = 500
+        ratio = user_trade_val/avg_trade_val
+        
+        # get qty
+        pattern = r"(BTO|STC) (\d+)"
+        match = re.search(pattern, message.content)
+        if match is not None:
+            action = match.group(1)
+            qty = int(match.group(2))
+            new_qty = max(int(qty*ratio), 1)
+            alert =  message.content.replace(match.group(0), f"{action} {new_qty}")
+        else:
+            alert =  message.content
 
+        msg = pd.Series({'AuthorID': message.author.id,
+                'Author': message.author.name,
+                'Date': message.created_at.replace(tzinfo=timezone.utc).astimezone(tz=None), 
+                'Content': alert,
+                'Channel': message.channel.name
+                    })

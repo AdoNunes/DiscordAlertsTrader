@@ -686,7 +686,7 @@ if __name__ == '__main__':
         'last_days': 600,
         'filt_date_frm': '',
         'filt_date_to': '',
-        'stc_date': 'exp', #'stc alert', #'eod',  # 'eod' or 
+        'stc_date':'stc alert',# 'exp', #, #'eod',  # 'eod' or 
         'max_underlying_price': 8000,
         'min_price': 10,
         'max_dte': 50,
