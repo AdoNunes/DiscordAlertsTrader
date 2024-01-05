@@ -542,7 +542,7 @@ if __name__ == '__main__':
 
     params_dem = {
         'fname_port': cfg['general']['data_dir'] + "/Demon_port.csv",
-        'last_days': 60,
+        'last_days': 180,
         'filt_date_frm': '',
         'filt_date_to': '',
         'stc_date':"stc alert", #'eod',  # 'eod' or 
@@ -554,16 +554,20 @@ if __name__ == '__main__':
         'filt_hour_to': "",
         'include_authors': "demon",
         'exclude_symbols': [],
-        'PT': 25,
+        'PT': [20, 40, 80],
+        'pts_ratio' : [0.4, 0.3, 0.3],
+        'sl_update' : [[1.2, 0.95]],
         'TS': 0,
-        'SL': 80,
+        'SL': 50,
         'TS_buy': 0,
-        'TS_buy_type':'buy',
-        'avg_down': [[20, 100]],#None,#
+        'TS_buy_type':'inverse',
         'max_margin': None,
-        'verbose': False,
+        'short_under_amnt' : None,
+        'verbose': True,
         'trade_amount': 1000,
-        'trade_type': 'any'
+        "sell_bto": False,
+        "max_short_val": None,
+        "invert_contracts": False,
     }
 
 
@@ -712,7 +716,7 @@ if __name__ == '__main__':
     }
     import time as tt
     t0 = tt.time()
-    params = params_bishop
+    params = params_dem
     port, no_quote, param = calc_returns(dir_quotes=dir_quotes, theta_client=client, **params)
 
         

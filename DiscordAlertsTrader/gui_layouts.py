@@ -61,8 +61,10 @@ def layout_portfolio(data_n_headers, font_body, font_header):
     layout = [
          [sg.Column([[
             sg.Text('Include:  Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'port_filt_author',tooltip=tip),
-            sg.Text('Date from: ', tooltip=tlp_date), sg.Input(key=f'port_filt_date_frm', default_text='week', tooltip=tlp_date),
-            sg.Text(' To: ', tooltip=tlp_date), sg.Input(key=f'port_filt_date_to', tooltip=tlp_date),
+            sg.Text('Date from: ', tooltip=tlp_date),sg.Combo(['today', 'week', 'month'], default_value='week',
+                                                              key=f'port_filt_date_frm', tooltip=tlp_date),
+            sg.Text(' To: ', tooltip=tlp_date), sg.Combo(['today', 'week', 'month'], default_value='today',
+                                                         key=f'port_filt_date_to', tooltip=tlp_date),
             sg.Text(' Symbols: ', tooltip=tip), sg.Input(key=f'port_filt_sym', tooltip=tip),
             sg.Text(' Channels: ',tooltip=tip), sg.Input(key=f'port_filt_chn',tooltip=tip)
             ],                                        
@@ -109,9 +111,10 @@ def layout_traders(data_n_headers, font_body, font_header):
         sg.Column([
             [
             sg.Text('Include:  Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_filt_author',tooltip=tip),
-            sg.Text('Date from: ', tooltip=tlp_date), 
-            sg.Input(key=f'track_filt_date_frm', default_text='week', tooltip=tlp_date),
-            sg.Text(' To: ', tooltip=tlp_date), sg.Input(key=f'track_filt_date_to', tooltip=tlp_date),
+            sg.Text('Date from: ', tooltip=tlp_date), sg.Combo(['today', 'week', 'month'], default_value='week',
+                                                               key=f'track_filt_date_frm', tooltip=tlp_date),
+            sg.Text(' To: ', tooltip=tlp_date), sg.Combo(['today', 'week', 'month'], default_value='',
+                                                         key=f'track_filt_date_to', tooltip=tlp_date),
             sg.Text(' Symbols: ',tooltip=tip), sg.Input(key=f'track_filt_sym',tooltip=tip),
             sg.Text(' Channels: ',tooltip=tip), sg.Input(key=f'track_filt_chn',tooltip=tip)
             ],[ 

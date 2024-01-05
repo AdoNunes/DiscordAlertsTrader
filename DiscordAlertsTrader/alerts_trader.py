@@ -1488,7 +1488,7 @@ class AlertsTrader():
                 trade = self.portfolio.iloc[i]
                 self.save_logs("port")
             except Exception as e:
-                str_prt = "error in making SL exit order "+ e
+                str_prt = "error in making SL exit order "+ str(e)
                 print(Back.RED + str_prt)
                 self.queue_prints.put([str_prt,"", "red"])
 
