@@ -127,7 +127,7 @@ class weBull:
             'orderLegCollection':[{
                 'instrument':{'symbol': symbol},
                 'instruction': order['orders'][0]['action'],
-                'quantity': int(order['filledQuantity']),
+                'quantity': eval(order['filledQuantity']),
             }]             
         }    
         return order_info
