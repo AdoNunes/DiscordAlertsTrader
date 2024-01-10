@@ -21,6 +21,8 @@ def server_formatting(message):
         message = flint_formatting(message)
     elif message.channel.id in [904543469266161674]:  
         message = jpm_formatting(message)
+    elif message.channel.id in [1087374395477078106]:
+        message = nitro_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     return message
