@@ -375,11 +375,13 @@ def eclipse_alerts(message_):
             alert = f"BTO {qty} {ticker} {strike.upper()} {expDate} @{price}{chall}"
         else: # diff format
             
-            pattern = r'\$(\w+)\s+\$(\d[\d,]+)\s+(\w+)\s+(\d{1,2}/\d{1,2})\s+@([\d.]+)'
+            pattern = r'\$(\w+)\s+\$([\d.]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2})\s+@([\d.]+)'
             match = re.search(pattern, alert, re.IGNORECASE)
             if match:
                 ticker, strike, otype, expDate, price = match.groups()
-                alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
+                qty = re.search(r'(\d+)\s*Contracts', alert, re.IGNORECASE)
+                qty = qty.group(1) if qty else "1"
+                alert = f"BTO {qty} {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
             
     message.content = alert
     return message
