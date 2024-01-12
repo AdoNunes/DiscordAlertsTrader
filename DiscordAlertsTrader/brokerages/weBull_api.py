@@ -114,8 +114,8 @@ class weBull:
         status = order['status'].upper()
         order_info = {
             'status': status,
-            'quantity': int(order['orders'][0]['totalQuantity']),
-            'filledQuantity': int(order['orders'][0]['filledQuantity']),
+            'quantity': eval(order['orders'][0]['totalQuantity']),
+            'filledQuantity': eval(order['orders'][0]['filledQuantity']),
             'price': float(price) if price else float(order['auxPrice']),
             'orderStrategyType': orderStrategyType,
             "order_id" : order['orders'][0]['orderId'],
@@ -127,7 +127,7 @@ class weBull:
             'orderLegCollection':[{
                 'instrument':{'symbol': symbol},
                 'instruction': order['orders'][0]['action'],
-                'quantity': int(order['filledQuantity']),
+                'quantity': eval(order['filledQuantity']),
             }]             
         }    
         return order_info

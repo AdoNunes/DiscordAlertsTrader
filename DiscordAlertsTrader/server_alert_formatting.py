@@ -21,6 +21,8 @@ def server_formatting(message):
         message = flint_formatting(message)
     elif message.channel.id in [904543469266161674]:  
         message = jpm_formatting(message)
+    elif message.channel.id in [1087374395477078106]:
+        message = nitro_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     return message
@@ -98,7 +100,7 @@ def jpm_formatting(message_):
             alert = f"{mb.title}: {mb.description}"
         message.content = alert
     return message
-    
+
 def kent_formatting(message_):
     """
     Reformat Discord message from Kent
@@ -132,6 +134,38 @@ def sirgoldman_formatting(message_):
             else:
                 alert = f"{mb.title}: {mb.description}"
             message.content = alert
+    return message
+
+
+def nitro_formatting(message_):
+    """
+    Reformat Discord message from nitro trades
+    """
+    message = MessageCopy(message_)
+    alert = ""
+    for mb in message.embeds:
+        if mb.title == 'Entry':
+            description = mb.description
+            contract_match = re.search(r'\*\*Contract:\*\*[ ]+([A-Z]+)[ ]+?(\d{1,2}/\d{1,2})?[ ]*?\$?([0-9]+)([cCpP])', description)
+            fill_match = re.search(r'\*\*Price:\*\* ?\$?([\d.]+)', description)
+            
+            if contract_match is None:
+                continue
+            contract, exp_date, strike, otype = contract_match.groups()
+            try:
+                price= float(fill_match.groups()[0])
+            except ValueError:
+                price = None
+            if exp_date is None: 
+                if strike in ["QQQ", "SPY", "IWM"]:
+                    exp_date = "0DTE"
+                else:
+                    exp_date = "Weeklies"
+            bto = f"BTO {contract} {strike}{otype.upper()} {exp_date} @{price}"
+            alert += format_0dte_weeklies(bto, message, False)
+        
+    if len(alert):
+        message.content = alert
     return message
 
 
