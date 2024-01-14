@@ -13,13 +13,17 @@ import numpy as np
 def parse_trade_alert(msg, asset=None):
     pattern = r'\b(BTO|STC|STO|BTC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[.\d+]*[cp]?)?\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
     match = re.search(pattern, msg, re.IGNORECASE)
-    
+    strike_date = True
     if match is None:
         pattern = r'\b(BTO|STC|STO|BTC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s*(\d+[.\d+]*[CP]?)?\s@*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
         match = re.search(pattern, msg, re.IGNORECASE)
+        strike_date = False
     if match:
-        action, quantity, ticker, strike, expDate, price = match.groups()
-
+        if strike_date:
+            action, quantity, ticker, strike, expDate, price = match.groups()
+        else:
+            action, quantity, ticker, expDate, strike, price = match.groups()
+            
         asset_type = 'option' if strike and expDate else 'stock'
         symbol =  ticker.upper()
         order = {
