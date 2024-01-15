@@ -150,11 +150,12 @@ def nitro_formatting(message_):
             fill_match = re.search(r'\*\*Price:\*\* ?\$?([\d.]+)', description)
             
             if contract_match is None:
+                alert = f"{mb.title}: {mb.description}"
                 continue
             contract, exp_date, strike, otype = contract_match.groups()
-            try:
+            if fill_match is not None:
                 price= float(fill_match.groups()[0])
-            except ValueError:
+            else:
                 price = None
             if exp_date is None: 
                 if strike in ["QQQ", "SPY", "IWM"]:
@@ -163,7 +164,9 @@ def nitro_formatting(message_):
                     exp_date = "Weeklies"
             bto = f"BTO {contract} {strike}{otype.upper()} {exp_date} @{price}"
             alert += format_0dte_weeklies(bto, message, False)
-        
+        else:
+            alert = f"{mb.title}: {mb.description}"
+            
     if len(alert):
         message.content = alert
     return message
