@@ -1,7 +1,7 @@
 import re
 from datetime import timezone
 import pandas as pd
-
+from DiscordAlertsTrader.message_parser import parse_trade_alert
 
 
 def msg_custom_formated(message):
@@ -63,3 +63,24 @@ def msg_custom_formated(message):
                 'Content': alert,
                 'Channel': message.channel.name
                     })
+        return [msg]
+    
+    # change strike format of the alert example
+    elif message.channel.id == 993892865554542820:
+        
+        msg_date = message.created_at.replace(tzinfo=timezone.utc).astimezone(tz=None)
+        msg_date_f = msg_date.strftime(time_strf) 
+        author = message.author.name
+        alert = message.content
+        if len(alert) > 0:
+            _, order = parse_trade_alert(alert.replace("@bid", "@1"))
+            alert = f"{order['action']} {order['Symbol'].split('_')[0]} {int(float(order['strike'][:-1]))}{order['strike'][-1]} {order['expDate']} @{order['price']}"
+        
+            
+        msg = pd.Series({'AuthorID': 0,
+            'Author': author,
+            'Date': msg_date_f, 
+            'Content': alert,
+            'Channel': "roybot"
+            })
+        return [msg]
