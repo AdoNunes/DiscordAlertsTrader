@@ -23,6 +23,8 @@ def server_formatting(message):
         message = jpm_formatting(message)
     elif message.channel.id in [1087374395477078106]:
         message = nitro_formatting(message)
+    elif message.channel.id in [728711121128652851]:
+        message = owl_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     return message
@@ -171,6 +173,46 @@ def nitro_formatting(message_):
         message.content = alert
     return message
 
+
+def owl_formatting(message_):
+    """
+    Reformat Discord message from ownl trades
+    """
+    message = MessageCopy(message_)
+    if len(message.embeds[0].description):
+        pattern = r"TICKER: ([A-Z]+)\nSTRIKE: (\d+[C|P])\nPRICE: ([\d.]+)\nEXP: (\d{2}/\d{2})"
+        match = re.search(pattern, message.embeds[0].description)
+        if match:
+            ticker = match.group(1)
+            strike = match.group(2)
+            price = match.group(3)
+            exp_date = match.group(4)
+            extra = message.embeds[0].description.split(exp_date)[-1].replace("\n", " ")
+            message.content = f"BTO {ticker} {strike} {exp_date} @{price} {extra}"
+            message.author.name = message.embeds[0].author.name
+        else:
+            pattern = r"([A-Z]+) (\d+[CP]) (\d{1,2}/\d{1,2}exp) ([\d.]+)"
+            match = re.search(pattern, message.embeds[0].description)
+            if match:
+                ticker = match.group(1)
+                strike = match.group(2)
+                exp_date = match.group(3)
+                price = match.group(4)
+                extra = message.embeds[0].description.split(exp_date)[-1].replace("\n", " ")
+                message.content = f"BTO {ticker} {strike} {exp_date} @{price} {extra}"
+                message.author.name = message.embeds[0].author.name
+                
+    elif message.content.startswith(".bto"):
+        pattern = r"TICKER: ([A-Z]+)\nSTRIKE: (\d+[C|P])\nPRICE: ([\d.]+)\nEXP: (\d{2}/\d{2})"
+        match = re.search(pattern, message.content)
+        if match:
+            ticker = match.group(1)
+            strike = match.group(2)
+            price = match.group(3)
+            exp_date = match.group(4)
+            extra = message.content.split(exp_date)[-1].replace("\n", " ")
+            message.content = f"BTO {ticker} {strike} {exp_date} @{price} {extra}"
+    return message
 
 def xtrades_formatting(message_):
     """
