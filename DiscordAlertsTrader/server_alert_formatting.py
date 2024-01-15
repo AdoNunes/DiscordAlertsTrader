@@ -176,7 +176,30 @@ def owl_formatting(message_):
     Reformat Discord message from ownl trades
     """
     message = MessageCopy(message_)
-    if message.content.startswith(".bto"):
+    if len(message.embeds[0].description):
+        pattern = r"TICKER: ([A-Z]+)\nSTRIKE: (\d+[C|P])\nPRICE: ([\d.]+)\nEXP: (\d{2}/\d{2})"
+        match = re.search(pattern, message.embeds[0].description)
+        if match:
+            ticker = match.group(1)
+            strike = match.group(2)
+            price = match.group(3)
+            exp_date = match.group(4)
+            extra = message.embeds[0].description.split(exp_date)[-1].replace("\n", " ")
+            message.content = f"BTO {ticker} {strike} {exp_date} @{price} {extra}"
+            message.author.name = message.embeds[0].author.name
+        else:
+            pattern = r"([A-Z]+) (\d+[CP]) (\d{1,2}/\d{1,2}exp) ([\d.]+)"
+            match = re.search(pattern, message.embeds[0].description)
+            if match:
+                ticker = match.group(1)
+                strike = match.group(2)
+                exp_date = match.group(3)
+                price = match.group(4)
+                extra = message.embeds[0].description.split(exp_date)[-1].replace("\n", " ")
+                message.content = f"BTO {ticker} {strike} {exp_date} @{price} {extra}"
+                message.author.name = message.embeds[0].author.name
+                
+    elif message.content.startswith(".bto"):
         pattern = r"TICKER: ([A-Z]+)\nSTRIKE: (\d+[C|P])\nPRICE: ([\d.]+)\nEXP: (\d{2}/\d{2})"
         match = re.search(pattern, message.content)
         if match:
