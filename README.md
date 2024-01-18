@@ -2,7 +2,8 @@
 ________________________
 ![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/t/AdoNunes/DiscordAlertsTrader?color=red)
 ![PyPI](https://img.shields.io/pypi/v/DiscordAlertsTrader)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/DiscordAlertsTrader)
+[![Downloads](https://static.pepy.tech/badge/discordalertstrader/month)](https://pepy.tech/project/discordalertstrader)
+[![Downloads](https://static.pepy.tech/badge/discordalertstrader)](https://pepy.tech/project/discordalertstrader)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/DiscordAlertsTrader)
 ![GitHub](https://img.shields.io/github/license/AdoNunes/DiscordAlertsTrader)
 [![Discord](https://img.shields.io/discord/1123242366980075570.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/9ejghcjpar "realtime support / chat with the community and the team.")
