@@ -1376,7 +1376,7 @@ class AlertsTrader():
                         
                 # Adjust if necessary Qty based on remaining shares
                 if nPTs > 1:
-                    ord_stat, ord_inf = self.get_order_info(int(STC_ordID))
+                    ord_stat, ord_inf = self.get_order_info(STC_ordID)
                     iord_qty = ord_inf.get('quantity')
                     if iord_qty is None:
                         iord_qty = ord_inf['childOrderStrategies'][0]['quantity']
