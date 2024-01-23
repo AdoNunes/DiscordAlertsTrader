@@ -301,10 +301,14 @@ class AlertsTrader():
         ord_ori = order.copy()
         pars_ori = pars
         act = order['action']
-
+        ix_a = 0
         while True:
-            # If symbol not found, quote val returned is -1
-            actual_price = price_now(symb, act, 1 )
+            if ix_a == 0 and order.get('price_actual', 0) > 0:
+                actual_price = order['price_actual']
+                ix_a += 1
+            else:
+                # If symbol not found, quote val returned is -1
+                actual_price = price_now(symb, act, 1 )            
             if actual_price == -1:
                 return "no", order, False
 
