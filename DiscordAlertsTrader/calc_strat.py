@@ -384,6 +384,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             dt_close= dates.loc[roi_actual[-2]].tz_localize('UTC')
         except TypeError:
             dt_close= dates.loc[roi_actual[-2]]
+            
+            
         port.loc[idx, 'strategy-close_date'] = dt_close
         pnl = roi_actual[2]
         mult = .1 if row['Asset'] == 'stock' else 1
@@ -457,12 +459,12 @@ def grid_search(params_dict, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25]):
         for sl in SL:
             for ts_buy in TS_buy:
                 for ts in TS:
-                    params_dict['PT'] = pt
+                    params_dict['PT'] = [pt]
                     params_dict['SL'] = sl
                     params_dict['TS_buy'] = ts_buy
                     params_dict['TS'] = ts
                     
-                    port, no_quote, param = calc_returns(**params_dict)                    
+                    port, no_quote, param = calc_returns(dir_quotes=dir_quotes, theta_client=client, **params_dict)                    
                     port = port[port['strategy-PnL'].notnull()]        
                     win = (port['strategy-PnL'] > 0).sum()/port['strategy-PnL'].count() 
                     res.append([pt, sl, ts_buy, ts, port['strategy-PnL'].mean(), port['strategy-PnL$'].sum(), len(port), win*100])
@@ -714,9 +716,42 @@ if __name__ == '__main__':
         "max_short_val": None,
         "invert_contracts": False,
     }
+    
+    
+    params_must = {
+        'fname_port': 'data/moustache_port.csv',
+        'order_type': 'any',
+        'last_days': 90,
+        'filt_date_frm': '',
+        'filt_date_to': '',
+        'stc_date':'stc alert',# 'exp', #, #'eod',  # 'eod' or 
+        'max_underlying_price': 8000,
+        'min_price': 10,
+        'max_dte': 50,
+        'min_dte': 0,
+        'filt_hour_frm': "",
+        'filt_hour_to': "",
+        'include_authors': "",
+        'exclude_symbols': [],
+        'PT': [50],# [90],#
+        'pts_ratio' : [1],# [0.4, 0.3, 0.3], # 
+        'sl_update' :[[1.2, 0.95]], # None,# 
+        'TS': 0,
+        'SL': 20,
+        'TS_buy': 0,
+        'TS_buy_type':'inverse',
+        'max_margin': None,
+        'short_under_amnt' : None,
+        'verbose': True,
+        'trade_amount': 200,
+        "sell_bto": False,
+        "max_short_val": None,
+        "invert_contracts": False,
+    }
+    
     import time as tt
     t0 = tt.time()
-    params = params_dem
+    params = params_must
     port, no_quote, param = calc_returns(dir_quotes=dir_quotes, theta_client=client, **params)
 
         
@@ -786,7 +821,7 @@ if __name__ == '__main__':
         # res = grid_search(params, PT= list(np.arange(0,60, 10)) + list(np.arange(60,150, 10)), SL=np.arange(10,60,10), TS_buy=[0,5,10,20,30], TS= [0, 10,20,50])
         # res = grid_search(params, PT= list(np.arange(0,60, 10)) + list(np.arange(60,150, 10)), SL=np.arange(10,60,10), TS_buy=[0], TS= [0])
         # res = grid_search(params, PT= list(np.arange(10,80, 20)), SL=np.arange(10,70,20), TS_buy=[0,5,10,20,30], TS= [0, 10,20,50])
-        res = grid_search(params, PT= list(np.arange(10,100, 20)), SL=np.arange(10,90,20), TS_buy=[0,10,20], TS= [0,10,15,20])
+        res = grid_search(params, PT= list(np.arange(10,100, 20)), SL=np.arange(20,90,10), TS_buy=[0], TS= [0])
         # res = grid_search(params, PT= list(np.arange(10,140, 10)), SL=np.arange(10,90,10), TS_buy=[0], TS= [0])
         # res = grid_search(params, PT= list(np.arange(0,270, 10)), SL=[20,30,40,50,60], TS_buy=[0,5,10,15,20,30], TS= [0,10,20,30,50,60])
     
@@ -796,6 +831,6 @@ if __name__ == '__main__':
         print(sorted_array[-20:])
         hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
         df = pd.DataFrame(sorted_array, columns=hdr)
-        df.to_csv("data/demon_last60days_grid_search.csv", index=False)
+        df.to_csv("data/moustache_grid_search.csv", index=False)
         # PT 40,  SL 20,  trailing stop starting at PT: 25,    PNL avg : 5%,  return: $2750,   num trades: 53
         # print(result_td)
