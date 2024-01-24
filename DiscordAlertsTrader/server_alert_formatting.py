@@ -7,7 +7,7 @@ def server_formatting(message):
         message = xtrades_formatting(message)
     elif message.guild.id == 836435995854897193:
         message = tradeproelite_formatting(message)
-    elif message.channel.id in [1144658745822035978]:
+    elif message.channel.id in [1144658745822035978, 1196385162490032128]:
         message = eclipse_alerts(message)
     elif message.channel.id in [1005221780941709312]:
         message = oculus_alerts(message)
