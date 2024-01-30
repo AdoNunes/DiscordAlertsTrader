@@ -23,6 +23,8 @@ def server_formatting(message):
         message = jpm_formatting(message)
     elif message.channel.id in [1087374395477078106]:
         message = nitro_formatting(message)
+    elif message.channel.id in [1189288104545226773]:
+        message = moneymotive(message)
     elif message.channel.id in [728711121128652851]:
         message = owl_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
@@ -454,7 +456,7 @@ def eclipse_alerts(message_):
             alert = f"BTO {qty} {ticker} {strike.upper()} {expDate} @{price}{chall}"
         else: # diff format
             
-            pattern = r'\$(\w+)\s+\$([\d.]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2})\s+@([\d.]+)'
+            pattern = r'\$?(\w+)\s+\$?([\d.]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2})\s+@([\d.]+)'
             match = re.search(pattern, alert, re.IGNORECASE)
             if match:
                 ticker, strike, otype, expDate, price = match.groups()
@@ -465,6 +467,36 @@ def eclipse_alerts(message_):
     message.content = alert
     return message
 
+def moneymotive(message_):
+    """
+    Reformat Discord message from moneymotive to content message
+    """   
+    if not message_.content:
+        return message_
+    
+    message = MessageCopy(message_)
+    alert = message.content
+    
+    if "%" in alert: # just status update
+        return message
+    
+    if "0DTE" in alert:
+        alert = format_0dte_weeklies(alert, message, remove_price=False)
+    
+    pattern = r'\$?(\w+)\s+([\d.]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2})\s+@\s+([\d.]+)'
+    match = re.search(pattern, alert, re.IGNORECASE)
+    if match:
+        ticker, strike, otype, expDate, price = match.groups()
+        alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
+        message.content = alert
+    else:
+        pattern = r'\$?(\w+)\s+([\d.]+)\s+(\w+)\s+@\s+([\d.]+)\s+(\d{1,2}\/\d{1,2})'
+        match = re.search(pattern, alert, re.IGNORECASE)
+        if match:
+            ticker, strike, otype, price, expDate = match.groups()
+            alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
+            message.content = alert
+    return message
 
 def rough_alerts(message_):
     """

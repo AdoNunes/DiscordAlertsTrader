@@ -14,7 +14,7 @@ from .configurator import cfg
 from .alerts_tracker import calc_stc_prices
 from .port_sim import filter_data
 
-def short_date(datestr, infrm="%Y-%m-%d %H:%M:%S.%f", outfrm="%m/%d/%Y %H:%M"):
+def short_date(datestr, infrm="%Y-%m-%d %H:%M:%S.%f", outfrm="%Y/%m/%d %H:%M"):
     return datetime.strptime(datestr, infrm).strftime(outfrm)
 
 def formt_num_2str(x, decim=2, str_len=6, remove_zero=True):
@@ -264,7 +264,7 @@ def get_stats_data(exclude={}, stat_filt_author='', stat_filt_date_frm='',
         return [],[]
     
     data = pd.read_csv(fname_port, sep=",")
-    data['Date'] = data['Date'].apply(lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f").strftime("%m/%d/%Y"))
+    data['Date'] = data['Date'].apply(lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f").strftime("%Y/%m/%d"))
     exclude['Open'] = True
     try:
         data = filter_data(data,exclude, stat_filt_author, stat_filt_date_frm,
