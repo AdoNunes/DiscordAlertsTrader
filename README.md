@@ -9,7 +9,8 @@ ________________________
 [![Discord](https://img.shields.io/discord/1123242366980075570.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/9ejghcjpar "realtime support / chat with the community and the team.")
 
  If you like this package, give it a star!
-
+ 
+For an exe compiled version, go to [Releases](https://github.com/AdoNunes/DiscordAlertsTrader/releases)
 
 A Python package to automate trades from alerts shared in a Discord channel by analysts.
 The package parses these messages and executes trades from traders specified in the configuration file. 
@@ -66,6 +67,8 @@ manually trigger the alerts ;)**
 
 ## Installation and Setup
  ______________________________
+
+ If you want a pre-compiled version, see [Releases](https://github.com/AdoNunes/DiscordAlertsTrader/releases), and skip to step 6.
 
 1. Install Python 3.10:
    - For Windows, open PowerShell and run the following command, verify that it prints out "Hello World!":
