@@ -1,4 +1,4 @@
-# DiscordAlertsTrader: *Discord Alerts Trader Bot*
+# DiscordAlertsTrader: *Discord Alerts AutoTrader Bot*
 ________________________
 ![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/t/AdoNunes/DiscordAlertsTrader?color=red)
 ![PyPI](https://img.shields.io/pypi/v/DiscordAlertsTrader)
