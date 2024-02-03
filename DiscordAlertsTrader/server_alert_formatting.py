@@ -480,8 +480,13 @@ def moneymotive(message_):
     if "%" in alert: # just status update
         return message
     
+    if ":rotating_light:" in alert and "/" not in alert:
+        alert = alert.replace(":rotating_light:", "0DTE :rotating_light:")
+        message.content = alert
+        
     if "0DTE" in alert:
         alert = format_0dte_weeklies(alert, message, remove_price=False)
+        message.content = alert
     
     pattern = r'\$?(\w+)\s+([\d.]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2})\s+@\s+([\d.]+)'
     match = re.search(pattern, alert, re.IGNORECASE)
@@ -490,7 +495,7 @@ def moneymotive(message_):
         alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
         message.content = alert
     else:
-        pattern = r'\$?(\w+)\s+([\d.]+)\s+(\w+)\s+@\s+([\d.]+)\s+(\d{1,2}\/\d{1,2})'
+        pattern = r'\$?(\w+)\s+([\d.]+)\s+(\w+)\s+@\s+([\d.]+)\s+\w*\s+(\d{1,2}\/\d{1,2})'
         match = re.search(pattern, alert, re.IGNORECASE)
         if match:
             ticker, strike, otype, price, expDate = match.groups()

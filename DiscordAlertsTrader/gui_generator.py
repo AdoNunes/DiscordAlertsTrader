@@ -233,6 +233,7 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     cols = ['Live'] + cols
 
     data = data[cols]
+    data = data.astype(object)
     data.fillna("", inplace=True)
     header_list = data.columns.tolist()
     header_list = [d.replace('STC', 'S') for d in header_list]
