@@ -23,7 +23,7 @@ def server_formatting(message):
         message = jpm_formatting(message)
     elif message.channel.id in [1087374395477078106]:
         message = nitro_formatting(message)
-    elif message.channel.id in [1189288104545226773]:
+    elif message.channel.id in [1189288104545226773, 1012144319282556928]:
         message = moneymotive(message)
     elif message.channel.id in [728711121128652851]:
         message = owl_formatting(message)
@@ -195,7 +195,7 @@ def diesel_formatting(message_):
         ticker, strike, otype, expDate, price = match.groups()
         if expDate is None:
             bto = f"BTO {ticker} {strike.upper()}{otype[0]} 0DTE @{price}" 
-            alert += format_0dte_weeklies(bto, message, False)
+            alert = format_0dte_weeklies(bto, message, False)
         else:
             alert += f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"        
 
@@ -537,7 +537,7 @@ def bear_alerts(message_):
     message = MessageCopy(message_)
     alert = ""
     for mb in message.embeds:
-        if mb.title.replace(":", "") in ['Daytrade', "LOTTO", "Swing"]:
+        if mb.title is not None and mb.title.replace(":", "") in ['Daytrade', "LOTTO", "Swing"]:
             description = mb.description
             contract_match = re.search(r'\*\*Contract:\*\* \$([A-Z]+) (\d{1,2}\/\d{1,2}) ([\d.]+)([cCpP])', description)
             fill_match = re.search(r'\*\*Entry:\*\* ([\d.]+)', description)
