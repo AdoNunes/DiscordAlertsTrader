@@ -17,7 +17,7 @@ def server_formatting(message):
         message = kent_formatting(message)
     elif message.channel.id in [894421928968871986]:
         message = sirgoldman_formatting(message)
-    elif message.channel.id in [1090673126527996004, 1132799545491869857]:
+    elif message.channel.id in [1090673126527996004, 1132799545491869857, 1106356727294726156, 1135628574511079505]:
         message = flint_formatting(message)
     elif message.channel.id in [904543469266161674]:  
         message = jpm_formatting(message)
@@ -27,6 +27,10 @@ def server_formatting(message):
         message = moneymotive(message)
     elif message.channel.id in [728711121128652851]:
         message = owl_formatting(message)
+    elif message.channel.id in [979906463487103006]:
+        message = bear_alerts(message)
+    elif message.channel.id in [1107395495460081754]:
+        message = diesel_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     return message
@@ -150,7 +154,7 @@ def nitro_formatting(message_):
     for mb in message.embeds:
         if mb.title == 'Entry':
             description = mb.description
-            contract_match = re.search(r'\*\*Contract:\*\*[ ]+([A-Z]+)[ ]+?(\d{1,2}/\d{1,2})?[ ]*?\$?([0-9]+)([cCpP])', description)
+            contract_match = re.search(r'\*\*Contract:\*\*[ ]+([A-Z]+)[ ]+?(\d{1,2}\/\d{1,2})?[ ]*?\$?([0-9]+)([cCpP])', description)
             fill_match = re.search(r'\*\*Price:\*\* ?\$?([\d.]+)', description)
             
             if contract_match is None:
@@ -175,6 +179,29 @@ def nitro_formatting(message_):
         message.content = alert
     return message
 
+def diesel_formatting(message_):
+    """
+    Reformat Discord message from diesel trades
+    """
+    message = MessageCopy(message_)
+
+    if message.content  is None:
+        return message
+    
+    alert = message.content    
+    pattern = r'BTO\s+([A-Z]+)\s+([\d.]+)([c|p])\s*(\d{1,2}\/\d{1,2})?\s+@\s*([\d.]+)'
+    match = re.search(pattern, alert, re.IGNORECASE)
+    if match:
+        ticker, strike, otype, expDate, price = match.groups()
+        if expDate is None:
+            bto = f"BTO {ticker} {strike.upper()}{otype[0]} 0DTE @{price}" 
+            alert += format_0dte_weeklies(bto, message, False)
+        else:
+            alert += f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"        
+
+    if len(alert):
+        message.content = alert
+    return message
 
 def owl_formatting(message_):
     """
@@ -391,7 +418,7 @@ def aurora_trading_formatting(message_):
                 alert += f"(not parsed) {mb.description}"
         if len(alert):  
             message.content = alert
-    # format daemon trades
+    # format demon trades
     elif message_.channel.id in [886669912389607504, 1072553859454599197, 904396043498709072]:
         contract = format_0dte_weeklies(message.content, message, False)
         message.content = format_alert_date_price(contract) 
@@ -480,22 +507,22 @@ def moneymotive(message_):
     if "%" in alert: # just status update
         return message
     
-    if ":rotating_light:" in alert and "/" not in alert:
+    if ":rotating_light:" in alert and "/" not in alert and "0DTE" not in alert:
         alert = alert.replace(":rotating_light:", "0DTE :rotating_light:")
         message.content = alert
-        
+    
     if "0DTE" in alert:
         alert = format_0dte_weeklies(alert, message, remove_price=False)
         message.content = alert
     
-    pattern = r'\$?(\w+)\s+([\d.]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2})\s+@\s+([\d.]+)'
+    pattern = r'\$?(\w+)\s+([\d.]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2})\s+@\s*([\d.]+)'
     match = re.search(pattern, alert, re.IGNORECASE)
     if match:
         ticker, strike, otype, expDate, price = match.groups()
         alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
         message.content = alert
     else:
-        pattern = r'\$?(\w+)\s+([\d.]+)\s+(\w+)\s+@\s+([\d.]+)\s+\w*\s+(\d{1,2}\/\d{1,2})'
+        pattern = r'\$?(\w+)\s+([\d.]+)\s+(\w+)\s+@\s+([\d.]+)\s+\w*\s*(\d{1,2}\/\d{1,2})'
         match = re.search(pattern, alert, re.IGNORECASE)
         if match:
             ticker, strike, otype, price, expDate = match.groups()
@@ -503,6 +530,40 @@ def moneymotive(message_):
             message.content = alert
     return message
 
+def bear_alerts(message_):
+    """
+    Reformat Discord message from bear to content message
+    """
+    message = MessageCopy(message_)
+    alert = ""
+    for mb in message.embeds:
+        if mb.title.replace(":", "") in ['Daytrade', "LOTTO", "Swing"]:
+            description = mb.description
+            contract_match = re.search(r'\*\*Contract:\*\* \$([A-Z]+) (\d{1,2}\/\d{1,2}) ([\d.]+)([cCpP])', description)
+            fill_match = re.search(r'\*\*Entry:\*\* ([\d.]+)', description)
+            
+            if contract_match is None:
+                alert = f"{mb.title}: {mb.description}"
+                continue
+            contract, exp_date, strike, otype = contract_match.groups()
+            if fill_match is not None:
+                price= float(fill_match.groups()[0])
+            else:
+                price = None
+            if exp_date is None: 
+                if strike in ["QQQ", "SPY", "IWM"]:
+                    exp_date = "0DTE"
+                else:
+                    exp_date = "Weeklies"
+            bto = f"BTO {contract} {strike}{otype.upper()} {exp_date} @{price} {mb.title}"
+            alert += format_0dte_weeklies(bto, message, False)
+        else:
+            alert = f"{mb.title}: {mb.description}"
+            
+    if len(alert):
+        message.content = alert
+
+    
 def rough_alerts(message_):
     """
     Reformat Discord message from rough to content message

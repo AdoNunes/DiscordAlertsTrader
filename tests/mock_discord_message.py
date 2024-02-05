@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 import os
 from DiscordAlertsTrader.configurator import cfg 
+from DiscordAlertsTrader.port_sim import custom_msg_fromdict
 
 root_dir  =  os.path.abspath(os.path.dirname(__file__))
 
@@ -44,24 +45,6 @@ def load_message(filename):
         content=content
     )
     return message
-
-#`discord.Message` as `message`
-class CustomMessage:
-    def __init__(self, created_at, channel_id, author_id, author_name, author_discriminator, content):
-        self.created_at = created_at
-        self.channel = CustomChannel(channel_id)
-        self.author = CustomUser(author_id, author_name, author_discriminator)
-        self.content = content
-
-class CustomChannel:
-    def __init__(self, id):
-        self.id = id
-
-class CustomUser:
-    def __init__(self, id, name, discriminator):
-        self.id = id
-        self.name = name
-        self.discriminator = discriminator
 
 def make_message(content=None, cfg=cfg):
     message = load_message(root_dir+"/data/discord_message.json")

@@ -118,7 +118,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     params : dict
         parameters used for simulation
     """
-    assert sum(pts_ratio) == 1, "pts_ratio must add up to 1"
+    assert sum(pts_ratio) in [1,0.9999999999999999], "pts_ratio must add up to 1"
     assert len(pts_ratio) == len(PT), "pts_ratio must have same length as PT"
     
     with_theta = False if theta_client is None else True
@@ -212,7 +212,10 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     port['underlying'] = pd.to_numeric(underlying)
     port['hour'] = pd.to_datetime(port['Date']).dt.hour
     
+    # do_plot = True
     for idx, row in port.iterrows():
+        # if idx != 27:
+        #     continue
         if pd.isna(row['Price-actual']) and not with_theta:
             if verbose:
                 print("no current price, skip")
@@ -312,13 +315,13 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 bid = quotes['bid']
                 ask = quotes['ask']
             elif port.loc[idx, 'Type'] == 'STO':
-                bid = quotes['ask']
-                ask = quotes['bid']
+                bid = quotes['bid']
+                ask = quotes['ask']
             dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x, tz=pytz.utc))
             if not len(ask):
                 print("no quotes", row['Symbol'])
                 continue
-            price_curr = ask.loc[4]
+            price_curr = ask.loc[1]
         else:
             bid = quotes[' quote']
             ask = quotes[' quote']
@@ -370,7 +373,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         roi_actual[3] = sum([r*q for r,q in zip(rois_r[:,3], pts_ratio)])
         roi_actual[4] = int(rois_r[np.argmax(rois_r[:,4]),4])
         roi_actual[5] = np.max(rois_r[:,5])
-        
+
         if do_plot:
             plt.plot(tstm[trigger_index],roi_actual[0], "gx")
             for roi in rois:
@@ -733,11 +736,11 @@ if __name__ == '__main__':
         'filt_hour_to': "",
         'include_authors': "",
         'exclude_symbols': [],
-        'PT': [50],# [90],#
-        'pts_ratio' : [1],# [0.4, 0.3, 0.3], # 
-        'sl_update' :[[1.2, 0.95]], # None,# 
+        'PT': [15,25,35,45,55,65,75,],# [90],#
+        'pts_ratio' : [0.4,0.1,0.1,0.1,0.1,0.1,0.1,],# [0.4, 0.3, 0.3], # 
+        'sl_update' :[[1.15, 1], [1.3, 1.1], [1.5, 1.3]], #       
+        'SL': 40,
         'TS': 0,
-        'SL': 20,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
         'max_margin': None,
@@ -749,9 +752,71 @@ if __name__ == '__main__':
         "invert_contracts": False,
     }
     
+    params_demon = {
+        'fname_port': 'data/eclipse_port.csv',
+        'order_type': 'any',
+        'last_days': 200,
+        'filt_date_frm': '',
+        'filt_date_to': '',
+        'stc_date':'eod',  #'exp',# 'exp', #, # 'eod' or 
+        'max_underlying_price': 8000,
+        'min_price': 20,
+        'max_dte': 5,
+        'min_dte': 0,
+        'filt_hour_frm': "",
+        'filt_hour_to': "",
+        'include_authors': "eclipse",
+        'exclude_symbols': [],
+        'PT': [160], #[20,25,35,45,55,65,75,],# [90],#
+        'pts_ratio' : [1],# [0.2,0.2,0.2,0.1,0.1,0.1,0.1,],# [0.4, 0.3, 0.3], # 
+        # 'sl_update' :[[1.30, 1.05], [2, 1.5]], #   
+        # 'avg_down': [[10, 50], [20, 50]], 
+        'SL': 95,
+        'TS': 0,
+        'TS_buy': 0,
+        'TS_buy_type':'inverse',
+        'max_margin': 25000,
+        'short_under_amnt' : None,
+        'verbose': True,
+        'trade_amount': 1000,
+        "sell_bto": False,
+        "max_short_val": None,
+        "invert_contracts": False,
+    }
+        
+    params_moneymotive = {
+        'fname_port': 'data/moneymotive_free_port.csv',
+        'order_type': 'any',
+        'last_days': 360,
+        'filt_date_frm': '',
+        'filt_date_to': '',
+        'stc_date': 'eod', #'exp',# 'exp', #, #'eod',  # or 
+        'max_underlying_price': 8000,
+        'min_price': 13,
+        'max_dte': 1,
+        'min_dte': 0,
+        'filt_hour_frm': "",
+        'filt_hour_to': 11,
+        'include_authors': "moneymotive",
+        'exclude_symbols': [],
+        'PT':[45], #[15,25,35,45,55,65,75,85],# [20], # [90],#
+        'pts_ratio' : [1], #[0.3,0.1,0.1,0.1,0.1,0.1,0.1,0.1],# [1],# [0.4, 0.3, 0.3], # 
+        'sl_update' :None,#[[1.20, 1.05], [2, 1.5]], #   
+        # 'avg_down': [[10, 50], [20, 50]], 
+        'SL': 50,
+        'TS': 0,
+        'TS_buy': 0,
+        'TS_buy_type':'inverse',
+        'max_margin': 25000,
+        'short_under_amnt' : None,
+        'verbose': True,
+        'trade_amount': 1000,
+        "sell_bto": True,
+        "max_short_val": None,
+    }
     import time as tt
     t0 = tt.time()
-    params = params_must
+    params = params_demon
     port, no_quote, param = calc_returns(dir_quotes=dir_quotes, theta_client=client, **params)
 
         
@@ -787,11 +852,10 @@ if __name__ == '__main__':
             excl = f"(no {param['exclude_symbols']})"
         title = f"{param['include_authors']} {excl} winrate {winp}% {winr}, trade amount {param['trade_amount']}" \
             + f" \nat market: avg PnL%={result_td['strategy-PnL']['mean'].iloc[0]:.2f}, "\
-                +f"${result_td['strategy-PnL$']['sum'].iloc[0]:.2f}" \
-                    +f"${param['trade_amount']*(pnl_emp/100):.0f} \n" \
-                        +f"TS_buy {param['TS_buy']}, PT {param['PT']}, TS {param['TS']},  SL {param['SL']}"
+                +f"${result_td['strategy-PnL$']['sum'].iloc[0]:.0f}" \
+                    + f"\nTS_buy {param['TS_buy']}, PT {param['PT']}, TS {param['TS']},  SL {param['SL']}"
                 # + f" \nat set order: avg PnL%={pnl_emp/ntot:.2f}, "\
-                    
+                    # +f" ${param['trade_amount']*(pnl_emp/100):.0f} \n" \
                         
                 
 
@@ -821,7 +885,7 @@ if __name__ == '__main__':
         # res = grid_search(params, PT= list(np.arange(0,60, 10)) + list(np.arange(60,150, 10)), SL=np.arange(10,60,10), TS_buy=[0,5,10,20,30], TS= [0, 10,20,50])
         # res = grid_search(params, PT= list(np.arange(0,60, 10)) + list(np.arange(60,150, 10)), SL=np.arange(10,60,10), TS_buy=[0], TS= [0])
         # res = grid_search(params, PT= list(np.arange(10,80, 20)), SL=np.arange(10,70,20), TS_buy=[0,5,10,20,30], TS= [0, 10,20,50])
-        res = grid_search(params, PT= list(np.arange(10,100, 20)), SL=np.arange(20,90,10), TS_buy=[0], TS= [0])
+        res = grid_search(params, PT= list(np.arange(20,200, 10)), SL=np.arange(20,100,5), TS_buy=[0], TS= [0])
         # res = grid_search(params, PT= list(np.arange(10,140, 10)), SL=np.arange(10,90,10), TS_buy=[0], TS= [0])
         # res = grid_search(params, PT= list(np.arange(0,270, 10)), SL=[20,30,40,50,60], TS_buy=[0,5,10,15,20,30], TS= [0,10,20,30,50,60])
     
@@ -831,6 +895,6 @@ if __name__ == '__main__':
         print(sorted_array[-20:])
         hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
         df = pd.DataFrame(sorted_array, columns=hdr)
-        df.to_csv("data/moustache_grid_search.csv", index=False)
+        df.to_csv(f"data/{param['include_authors']}_grid_search.csv", index=False)
         # PT 40,  SL 20,  trailing stop starting at PT: 25,    PNL avg : 5%,  return: $2750,   num trades: 53
         # print(result_td)

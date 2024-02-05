@@ -527,3 +527,65 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
     roi.append(prof)
     plt.show(block=False)
     return roi
+
+
+def custom_msg_fromdict(message_dict):
+    """Create a custom message from a dictionary
+
+    Parameters
+    ----------
+    message_dict : dict
+        Dictionary with the message data
+
+    Returns
+    -------
+    CustomMessage
+        Custom message object
+    """
+    created_at = message_dict['timestamp']
+    channel_id = message_dict['channel_id']
+    author_id = message_dict['author']['id']
+    author_name = message_dict['author']['name']
+    author_discriminator = message_dict['author']['discriminator']
+    content = message_dict['content']
+    embeds = message_dict['embeds']
+    return CustomMessage(created_at, channel_id, author_id, author_name, author_discriminator, content, embeds)
+
+#`discord.Message` as `message`
+class CustomMessage:
+    def __init__(self, created_at, channel_id, author_id, author_name, author_discriminator, content, embeds):
+        self.created_at = created_at
+        self.channel = CustomChannel(channel_id)
+        self.author = CustomUser(author_id, author_name, author_discriminator)
+        self.content = content
+        self.embeds = [Customembed(e) for e in embeds]
+
+class CustomChannel:
+    def __init__(self, id):
+        self.id = id
+
+class CustomUser:
+    def __init__(self, id, name, discriminator):
+        self.id = id
+        self.name = name
+        self.discriminator = discriminator
+
+class Customembed:
+    def __init__(self, embed):
+        self.embed.title = embed['title']
+        self.embed.description = embed['description']
+        self.embed.author = emebed_author(embed['author'])
+        self.embed.fields = [embed_field(f) for f in embed['fields']]
+        
+class emebed_author:
+    def __init__(self, embed):
+        self.embed.author.name = embed['name']
+        self.embed.author.url = embed['url']
+        self.embed.author.icon_url = embed['icon_url']
+
+class embed_field:
+    def __init__(self, field):
+        self.name = field['name']
+        self.value = field['value']
+        self.inline = field['inline']
+        
