@@ -504,7 +504,7 @@ def moneymotive(message_):
     message = MessageCopy(message_)
     alert = message.content
     
-    if "%" in alert: # just status update
+    if "%" in alert and ":rotating_light:" not in alert: # just status update
         return message
     
     if ":rotating_light:" in alert and "/" not in alert and "0DTE" not in alert:
