@@ -402,7 +402,7 @@ def parse_sell_ratio_amount(msg, asset):
 
     partial = ['scaling out', 'selling more', 'trimming more off', "selling some more", 'trim']
     if any([True if m in msg.lower() else False for m in partial]):
-        return .33
+        return .25
 
     if "partial" in msg.lower():
         if asset == "stock":

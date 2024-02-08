@@ -28,6 +28,7 @@ def get_hist_quotes(symbol:str, date_range:List[date], client, interval_size:int
     else:
         drange = DateRange(date_range[0], date_range[1])
     
+
     with client.connect():
             # Make the request
             out = client.get_hist_option(
