@@ -14,7 +14,8 @@ from DiscordAlertsTrader.alerts_trader import AlertsTrader
 from DiscordAlertsTrader.alerts_tracker import AlertsTracker
 from DiscordAlertsTrader.server_alert_formatting import server_formatting
 try:
-    from .custom_msg_format import msg_custom_formated
+    from .custom_msg_format import msg_custom_formated, msg_custom_formated2
+    print("custom message format loaded")
     custom = True
 except ImportError:
     custom = False
@@ -162,11 +163,13 @@ class DiscordBot(discord.Client):
         
         message = server_formatting(message)
         if custom:
+            await msg_custom_formated2(message)
             alert = msg_custom_formated(message)
             if alert is not None:
                 for msg in alert:
                     self.new_msg_acts(msg, False)
                 return
+        
         if not len(message.content):
             return
         self.new_msg_acts(message)
@@ -208,6 +211,8 @@ class DiscordBot(discord.Client):
                             self.new_msg_acts(msg, False)
                 else:
                     self.new_msg_acts(message)
+                if custom:
+                    await msg_custom_formated2(message)
         print("Done")        
         self.tracker.close_expired()
 

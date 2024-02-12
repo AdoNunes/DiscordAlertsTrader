@@ -562,6 +562,7 @@ def bear_alerts(message_):
             
     if len(alert):
         message.content = alert
+    return message
 
     
 def rough_alerts(message_):
