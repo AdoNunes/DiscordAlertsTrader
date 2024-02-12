@@ -31,6 +31,12 @@ def server_formatting(message):
         message = bear_alerts(message)
     elif message.channel.id in [1107395495460081754]:
         message = diesel_formatting(message)
+    elif message.channel.id in [1204586438679863326,1204586623015067698, 1175535656915705959, 1049137689062035487]:
+        message = makeplays_challenge_formatting(message)
+    elif message.channel.id in [1188201803783876638, 1164747583638491156, 1204596671636443223]:
+        message = makeplays_main_formatting(message)
+    elif message.channel.id in [1195073059770605568]:
+        message = bishop_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     return message
@@ -339,6 +345,102 @@ def xtrades_formatting(message_):
         message.content = alert
         return message
 
+def makeplays_challenge_formatting(message_):
+    """
+    Reformat Discord message from makeplay trades
+    """
+    message = MessageCopy(message_)
+
+    if message.content  is None:
+        return message
+    
+    alert = message.content
+    alert = alert.replace('weekly contract', 'weeklies').replace(" at ", " @ ")
+    alert = format_0dte_weeklies(alert, message, False)
+    
+    alert = message.content    
+    # strike then exp date
+    pattern = r'(?:BTO)?\s*([\d]+)?\s+([A-Z]+)\s+([\d.]+)([C|P])\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s+@\s*([\d.]+)'
+    match = re.search(pattern, alert, re.IGNORECASE)
+    # exp date then strike
+    if match is None:
+        pattern = r'(?:BTO)?\s*([\d]+)?\s+([A-Z]+)\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s+([\d.]+)([C|P])\s+@\s*([\d.]+)'
+        match = re.search(pattern, alert, re.IGNORECASE)
+    
+    if match:
+        ticker, strike, otype, expDate, price = match.groups()
+        if expDate is None:            
+            if ticker in ['SPY', 'QQQ', 'IWM', 'DIA']:
+                bto = f"BTO {ticker} {strike.upper()}{otype[0]} 0DTE @{price}" 
+            else:
+                bto = f"BTO {ticker} {strike.upper()}{otype[0]} weeklies @{price}" 
+            alert = format_0dte_weeklies(bto, message, False)
+        else:
+            alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
+
+    if len(alert):
+        message.content = alert
+    return message
+
+
+def makeplays_main_formatting(message_):
+    """
+    Reformat Discord message from makeplays
+    """
+    message = MessageCopy(message_)
+    
+    alert = ''
+    for mb in message.embeds:
+        if mb.title == "Open": 
+            alert = mb.description.replace(" at ", " @ ")
+            if "0DTE" in alert.upper() or "1DTE" in alert.upper():        
+                alert = format_0dte_weeklies(alert, message, False)
+            if "BTO" not in alert:
+                alert = f"BTO {alert}"
+        elif mb.title.startswith("Close"):           
+            alert = mb.description.replace(" at ", " @ ")
+            if "STC" not in alert:
+                alert = f"STC {alert}"
+        else:
+            alert = f"{mb.title}: {mb.description}"
+    return alert
+
+def bishop_formatting(message_):
+    """
+    Reformat Discord message from bishop
+    """
+    message = MessageCopy(message_)
+    
+    alert = ''
+    for mb in message.embeds:
+        match = False
+        if mb.title == "I'm entering": 
+            action = "BTO"
+            match = True
+            msg = mb.description
+            extra = mb.description.split("@$")[1].split("\r\n\r\n*These are ONLY my opinions")[0].replace("\r\n\r\n", " ")
+            pattern = "\*\*Option:\*\* ([A-Z]+) (\d.+) ([PC]) (\d+\/\d+)\\r\\n\\r\\n\*\*Entry:\*\* @\$(\d+\.\d+)"
+        elif mb.title.startswith("Trimming"):           
+            action = "STC"
+            match = True
+            msg = mb.title
+            extra = "  " + mb.description.split("\r\n\r\n*These are ONLY my opinions")[0].replace("\r\n\r\n", " ")
+            pattern = "([A-Z]+) (\d.+) ([PC]) (\d+\/\d+) @\$(\d+\.\d+)"
+        
+        if match:
+            match = re.search(pattern, msg, re.IGNORECASE)
+            if match:
+                ticker, strike, otype, expdate, price = match.groups()                
+                extra = extra.replace(price, "")
+                alert = f"{action} {ticker} {strike.upper()}{otype} {expdate} @{price} {extra}"
+                if mb.title.startswith("Trimming"):
+                    alert += " trim"
+        if not match:
+            alert = f"{mb.title}: {mb.description}"
+    
+    if len(alert):
+        message.content = alert
+    return message
 
 def format_0dte_weeklies(contract, message, remove_price=True):
         "remove price when stc title is bto"
@@ -347,6 +449,13 @@ def format_0dte_weeklies(contract, message, remove_price=True):
             contract = re.sub(r"0DTE", msg_date,contract, flags=re.IGNORECASE)
             if remove_price:
                 contract = contract.split(" @")[0]
+        elif "1DTE" in contract.upper():
+            msg_date= message.created_at
+            msg_date += timedelta(days=days_until_friday)
+            msg_date = msg_date.strftime('%m/%d')
+            contract = re.sub(r"1DTE", msg_date,contract, flags=re.IGNORECASE)
+            if remove_price:
+                contract = contract.split(" @")[0]    
         elif "weeklies" in contract.lower():
             msg_date= message.created_at
             days_until_friday = (4 - msg_date.weekday() + 7) % 7
@@ -504,7 +613,7 @@ def moneymotive(message_):
     message = MessageCopy(message_)
     alert = message.content
     
-    if "%" in alert: # just status update
+    if "%" in alert and ":rotating_light:" not in alert: # just status update
         return message
     
     if ":rotating_light:" in alert and "/" not in alert and "0DTE" not in alert:

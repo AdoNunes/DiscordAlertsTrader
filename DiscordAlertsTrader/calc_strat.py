@@ -17,15 +17,15 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 filt_date_frm='',
                 filt_date_to='',
                 stc_date = 'eod', # 'eod' or 'stc alert"
-                max_underlying_price= 5000,
-                min_price= 10,
-                max_dte= 500,
+                max_underlying_price= 10000,
+                min_price= 1,
+                max_dte= 100,
                 min_dte= 0,
                 filt_hour_frm = "",
                 filt_hour_to = "",
                 include_authors = "",
-                exclude_traders= [ 'SPY'],
-                exclude_symbols= ['SPX',  'QQQ'],
+                exclude_traders= "",
+                exclude_symbols= [],
                 invert_contracts=False,
                 PT=[80],
                 pts_ratio = [1],
@@ -101,7 +101,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     verbose: bool, optional
         print verbose, by default False
     trade_amount: int, optional
-        none:original qty, if 1 one contract, > 1 trade value, by default 1
+        original qty, if 1 one contract, > 1 trade value, by default 1
     trade_type: str, optional
         any, bto or sto, by default any
     theta_client: object, optional
@@ -178,6 +178,12 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         ot = 'C' if order_type == 'call' else 'P' if order_type == 'put' else None
         port = port[port['Symbol'].str.split("_").str[1].str.contains(ot)]
     
+    de = port.loc[port['Asset'] == 'option', 'Symbol'].str.extract(r'_(\d{6})').iloc[:, 0]
+    de = pd.to_datetime(de, format='%m%d%y').dt.date
+    dte = pd.to_timedelta(de - pd.to_datetime(port['Date']).dt.date).dt.days
+    port['dte'] = dte
+    port['right'] = port['Symbol'].str.extract(r'([C|P])\d{6}$').iloc[:, 0]
+    
     if invert_contracts:
         port['Symbol'] = port['Symbol'].str.replace(r'C(\d+)', r'xo\1', regex=True)
         port['Symbol'] = port['Symbol'].str.replace(r'P(\d+)', r'C\1', regex=True)
@@ -211,6 +217,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     underlying = port['Symbol'].str.extract(r'[C|P](\d+(\.\d+)?)$').iloc[:, 0]
     port['underlying'] = pd.to_numeric(underlying)
     port['hour'] = pd.to_datetime(port['Date']).dt.hour
+    
     
     # do_plot = True
     for idx, row in port.iterrows():
@@ -458,21 +465,42 @@ def generate_report(port, param={}, no_quote=None, verbose=True):
 def grid_search(params_dict, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25]):
     # params_dict for calc_returns
     res = []
+    port_out = None
     for pt in PT:
         for sl in SL:
             for ts_buy in TS_buy:
                 for ts in TS:
+                    pnl_t = f'pt{pt}' if pt != 0 else ''
+                    pnl_t += f'_sl{sl}' if sl != 0 else ''
+                    pnl_t += f'_tsb{ts_buy}' if ts_buy != 0 else ''
+                    pnl_t += f'_ts{ts}' if ts != 0 else ''
+                
+                    pnl_t += f'_ts{ts}' if ts != 0 else ''
                     params_dict['PT'] = [pt]
                     params_dict['SL'] = sl
                     params_dict['TS_buy'] = ts_buy
                     params_dict['TS'] = ts
                     
-                    port, no_quote, param = calc_returns(dir_quotes=dir_quotes, theta_client=client, **params_dict)                    
+                    port, no_quote, param = calc_returns(dir_quotes=dir_quotes, theta_client=client, **params_dict)
+                    if port_out is None:
+                        port_out = port
+                    
+                    port_renamed = port[['strategy-PnL', 'strategy-PnL$']].rename(
+                        columns={'strategy-PnL': f'%{pnl_t}', 'strategy-PnL$': f'${pnl_t}'})
+                    port_out = pd.concat([port, port_renamed], axis=1)    
+                    
                     port = port[port['strategy-PnL'].notnull()]        
                     win = (port['strategy-PnL'] > 0).sum()/port['strategy-PnL'].count() 
                     res.append([pt, sl, ts_buy, ts, port['strategy-PnL'].mean(), port['strategy-PnL$'].sum(), len(port), win*100])
         print(f"Done with PT={pt}")
-    return res
+        
+    sorted_columns = ['Date', 'Symbol', 'Trader', 'Channel', 'Type','Price', 
+                        'Price-actual', 'Avged', 'PnL', 'PnL-actual', 'PnL$', 
+                        'PnL$-actual', 'STC-Price', 'STC-Price-actual','underlying', 'dte', 'right',
+                        'hour', 'max_pnl'] + [col for col in port_out.columns if col.startswith('%')] + [
+                            col for col in port_out.columns if col.startswith('$')]        
+    port_out = port_out[sorted_columns]
+    return res, port_out
 
 
 if __name__ == '__main__':
@@ -485,297 +513,30 @@ if __name__ == '__main__':
         client = None
         dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
 
-
-    params_bry = {
-        'fname_port':  'data/bryce_short_port.csv', 
+    params = {
+        'fname_port': 'data/moneymotive_port.csv',
+        'order_type': 'any',
         'last_days': None,
-        'filt_date_frm': '',
-        'filt_date_to': '',
-        'stc_date': 'eod',  # 'eod' or 'stc alert"
-        'max_underlying_price': "",
-        'min_price': 10,
-        'max_dte': 500,
-        'min_dte': 0,
-        'filt_hour_frm': "",
-        'filt_hour_to': "",
-        'include_authors': "bryce,Bryce000",
-        'exclude_traders': [], # 
-        'TS_buy_type':'inverse',
-        'max_margin': None,
-        'verbose': True,
-        'trade_amount': 300,
-        'trade_type': 'any'
-    }
-    do_sym = "SPX"
-    if do_sym == "SPX":
-        params_bry['exclude_symbols']= ['QQQ']
-        params_bry['PT']= 11
-        params_bry['TS']= 0
-        params_bry['SL']= 60
-        params_bry['TS_buy']= 10
-    elif do_sym == "QQQ":
-        params_bry['exclude_symbols']= ['SPX']
-        params_bry['PT']= 20
-        params_bry['TS']= 0
-        params_bry['SL']= 50
-        params_bry['TS_buy']= 5
-
-    params_enh = {
-        'fname_port': cfg['portfolio_names']['tracker_portfolio_name'],
-        'last_days': None,
-        'filt_date_frm': '',
-        'filt_date_to': '',
-        'stc_date':'stc alert',  # 'eod' or 'stc alert"
-        'max_underlying_price': "",
-        'min_price': 10,
-        'max_dte': 500,
-        'min_dte': 0,
-        'filt_hour_frm': "",
-        'filt_hour_to': "",
-        'include_authors': "enh",
-        'exclude_symbols': [],
-        'PT': 10,
-        'TS': 5,
-        'SL': 30,
-        'TS_buy': 0,
-        'TS_buy_type':'inverse',
-        'max_margin': None,
-        'verbose': False,
-        'trade_amount': None,
-        'trade_type': 'any'
-    }
-
-    params_dem = {
-        'fname_port': cfg['general']['data_dir'] + "/Demon_port.csv",
-        'last_days': 180,
-        'filt_date_frm': '',
-        'filt_date_to': '',
-        'stc_date':"stc alert", #'eod',  # 'eod' or 
-        'max_underlying_price': "",
-        'min_price': 10,
-        'max_dte': 500,
-        'min_dte': 0,
-        'filt_hour_frm': "",
-        'filt_hour_to': "",
-        'include_authors': "demon",
-        'exclude_symbols': [],
-        'PT': [20, 40, 80],
-        'pts_ratio' : [0.4, 0.3, 0.3],
-        'sl_update' : [[1.2, 0.95]],
-        'TS': 0,
-        'SL': 50,
-        'TS_buy': 0,
-        'TS_buy_type':'inverse',
-        'max_margin': None,
-        'short_under_amnt' : None,
-        'verbose': True,
-        'trade_amount': 1000,
-        "sell_bto": False,
-        "max_short_val": None,
-        "invert_contracts": False,
-    }
-
-
-    params_xt = {
-        'fname_port': cfg['general']['data_dir'] + "/roybaty_port_delay5.csv",
-        'last_days': 300,
-        'filt_date_frm': '',
-        'filt_date_to': '',
-        'stc_date':'stc alert',  # 'eod' or 'stc alert"
-        'max_underlying_price': 600,
-        'min_price': 10,
-        'max_dte': 500,
-        'min_dte': 0,
-        'filt_hour_frm': "",
-        'filt_hour_to': "",
-        'include_authors': "",
-        'exclude_symbols': [],
-        'PT': 100,
-        'TS': 0,
-        'SL': 20,
-        'TS_buy': 0,
-        'TS_buy_type':'inverse',
-        'max_margin': 50000,
-        'short_under_amnt' : 2000,
-        'verbose': True,
-        'trade_amount': 1,
-        'trade_type': 'stc',
-        "sell_bto": False,
-        "max_short_val": 2000,
-    }
-
-    params_flohai0 = {
-        'fname_port': cfg['general']['data_dir'] + "/flohai_weekly_port.csv",
-        'last_days': None,
-        'filt_date_frm': '',
-        'filt_date_to': '',
-        'stc_date':'eod',  # 'eod' or 'stc alert"
-        'max_underlying_price': 1500,
-        'min_price': 20,
-        'max_dte': 500,
-        'min_dte': 0,
-        'filt_hour_frm': "",
-        'filt_hour_to': "",
-        'include_authors': "",
-        'exclude_symbols': [],
-        'PT': 100,
-        'TS': 0,
-        'SL': 80,
-        'TS_buy': 0,
-        'TS_buy_type':'inverse',
-        'max_margin': 100000,
-        'short_under_amnt' : None,
-        'verbose': True,
-        'trade_amount': 1,
-        "sell_bto": False,
-        "max_short_val": 2000,
-    }
-
-    params_tradir = {
-        'fname_port': cfg['general']['data_dir'] + "/tradir_port.csv",
-        'order_type': 'any',
-        'last_days': 200,
-        'filt_date_frm': '',
-        'filt_date_to': '',
-        'stc_date':'eod',  # 'eod' or 'stc alert"
-        'max_underlying_price': 800,
-        'min_price': 10,
-        'max_dte': 50,
-        'min_dte': 0,
-        'filt_hour_frm': "",
-        'filt_hour_to': "",
-        'include_authors': "",
-        'exclude_symbols': [],
-        'PT': 100,
-        'TS': 0,
-        'SL': 80,
-        'TS_buy': 0,
-        'TS_buy_type':'inverse',
-        'max_margin': None,
-        'short_under_amnt' : None,
-        'verbose': True,
-        'trade_amount': 3,
-        "sell_bto": True,
-        "max_short_val": 1000,
-    }
-
-    params_flint = {
-        'fname_port': cfg['general']['data_dir'] + "/analysts_portfolio_bot.csv",
-        'order_type': 'any',
-        'last_days': 600,
-        'filt_date_frm': '',
-        'filt_date_to': '',
-        'stc_date':'stc alert', # 'eod',  # 'eod' or 
-        'max_underlying_price': 8000,
-        'min_price': 10,
-        'max_dte': 50,
-        'min_dte': 0,
-        'filt_hour_frm': "",
-        'filt_hour_to': "",
-        'include_authors': "Eclipse",
-        'exclude_symbols': [],
-        'PT': [70, 80],
-        'pts_ratio' : [0.5, 0.5],
-        'TS': 0,
-        'SL': 50,
-        'TS_buy': 0,
-        'TS_buy_type':'inverse',
-        'max_margin': None,
-        'short_under_amnt' : None,
-        'verbose': True,
-        'trade_amount': 1000,
-        "sell_bto": False,
-        "max_short_val": None,
-        "invert_contrats": False,
-    }
-    
-    params_bishop = {
-        'fname_port': cfg['general']['data_dir'] + "/bishop_port.csv",
-        'order_type': 'any',
-        'last_days': 600,
-        'filt_date_frm': '',
-        'filt_date_to': '',
-        'stc_date':'stc alert',# 'exp', #, #'eod',  # 'eod' or 
-        'max_underlying_price': 8000,
-        'min_price': 10,
-        'max_dte': 50,
-        'min_dte': 0,
-        'filt_hour_frm': "",
-        'filt_hour_to': "",
-        'include_authors': "bishop",
-        'exclude_symbols': [],
-        'PT': [20, 40, 80],
-        'pts_ratio' : [0.4, 0.3, 0.3],
-        'sl_update' : [[1.2, 0.95]],
-        'TS': 0,
-        'SL': 50,
-        'TS_buy': 0,
-        'TS_buy_type':'inverse',
-        'max_margin': None,
-        'short_under_amnt' : None,
-        'verbose': True,
-        'trade_amount': 1000,
-        "sell_bto": False,
-        "max_short_val": None,
-        "invert_contracts": False,
-    }
-    
-    
-    params_must = {
-        'fname_port': 'data/moustache_port.csv',
-        'order_type': 'any',
-        'last_days': 90,
-        'filt_date_frm': '',
-        'filt_date_to': '',
-        'stc_date':'stc alert',# 'exp', #, #'eod',  # 'eod' or 
-        'max_underlying_price': 8000,
-        'min_price': 10,
-        'max_dte': 50,
-        'min_dte': 0,
-        'filt_hour_frm': "",
-        'filt_hour_to': "",
-        'include_authors': "",
-        'exclude_symbols': [],
-        'PT': [15,25,35,45,55,65,75,],# [90],#
-        'pts_ratio' : [0.4,0.1,0.1,0.1,0.1,0.1,0.1,],# [0.4, 0.3, 0.3], # 
-        'sl_update' :[[1.15, 1], [1.3, 1.1], [1.5, 1.3]], #       
-        'SL': 40,
-        'TS': 0,
-        'TS_buy': 0,
-        'TS_buy_type':'inverse',
-        'max_margin': None,
-        'short_under_amnt' : None,
-        'verbose': True,
-        'trade_amount': 200,
-        "sell_bto": False,
-        "max_short_val": None,
-        "invert_contracts": False,
-    }
-    
-    params_demon = {
-        'fname_port': 'data/eclipse_port.csv',
-        'order_type': 'any',
-        'last_days': 200,
-        'filt_date_frm': '',
+        'filt_date_frm': "1/1",
         'filt_date_to': '',
         'stc_date':'eod',  #'exp',# 'exp', #, # 'eod' or 
         'max_underlying_price': 8000,
-        'min_price': 20,
-        'max_dte': 5,
+        'min_price': 10,
+        'max_dte': 10,
         'min_dte': 0,
         'filt_hour_frm': "",
         'filt_hour_to': "",
-        'include_authors': "eclipse",
+        'include_authors': "",
         'exclude_symbols': [],
-        'PT': [160], #[20,25,35,45,55,65,75,],# [90],#
+        'PT': [20], #[20,25,35,45,55,65,75,],# [90],#
         'pts_ratio' : [1],# [0.2,0.2,0.2,0.1,0.1,0.1,0.1,],# [0.4, 0.3, 0.3], # 
-        # 'sl_update' :[[1.30, 1.05], [2, 1.5]], #   
-        # 'avg_down': [[10, 50], [20, 50]], 
-        'SL': 95,
+        'sl_update' : None, #[[1.30, 1.05], [2, 1.5]], #   
+        'avg_down': None,# [[10, 50], [20, 50]], 
+        'SL': 20,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
-        'max_margin': 25000,
+        'max_margin': None,
         'short_under_amnt' : None,
         'verbose': True,
         'trade_amount': 1000,
@@ -783,50 +544,13 @@ if __name__ == '__main__':
         "max_short_val": None,
         "invert_contracts": False,
     }
-        
-    params_moneymotive = {
-        'fname_port': 'data/moneymotive_free_port.csv',
-        'order_type': 'any',
-        'last_days': 360,
-        'filt_date_frm': '',
-        'filt_date_to': '',
-        'stc_date': 'eod', #'exp',# 'exp', #, #'eod',  # or 
-        'max_underlying_price': 8000,
-        'min_price': 13,
-        'max_dte': 1,
-        'min_dte': 0,
-        'filt_hour_frm': "",
-        'filt_hour_to': 11,
-        'include_authors': "moneymotive",
-        'exclude_symbols': [],
-        'PT':[45], #[15,25,35,45,55,65,75,85],# [20], # [90],#
-        'pts_ratio' : [1], #[0.3,0.1,0.1,0.1,0.1,0.1,0.1,0.1],# [1],# [0.4, 0.3, 0.3], # 
-        'sl_update' :None,#[[1.20, 1.05], [2, 1.5]], #   
-        # 'avg_down': [[10, 50], [20, 50]], 
-        'SL': 50,
-        'TS': 0,
-        'TS_buy': 0,
-        'TS_buy_type':'inverse',
-        'max_margin': 25000,
-        'short_under_amnt' : None,
-        'verbose': True,
-        'trade_amount': 1000,
-        "sell_bto": True,
-        "max_short_val": None,
-    }
     import time as tt
     t0 = tt.time()
-    params = params_demon
     port, no_quote, param = calc_returns(dir_quotes=dir_quotes, theta_client=client, **params)
 
-        
     t1 = tt.time()
     print(f"Time to calc returns: {t1-t0:.2f} sec")
 
-    # print(port[['Date','Symbol','Trader', 'PnL', 'PnL-actual', 'strategy-PnL','PnL$', 'PnL$-actual',
-    #                 'strategy-PnL$','strategy-entry','strategy-exit', 'strategy-close_date']])
-    print(port[['Date','Symbol','Trader', 'strategy-PnL', 'strategy-PnL$','strategy-entry',
-                'strategy-exit', 'strategy-close_date']]) 
     sport = port[['Date','Symbol','Trader', 'Price', 'strategy-PnL',
                 'strategy-PnL$','strategy-entry','strategy-exit', 'strategy-close_date','reason_skip']] # 
 
@@ -856,8 +580,6 @@ if __name__ == '__main__':
                     + f"\nTS_buy {param['TS_buy']}, PT {param['PT']}, TS {param['TS']},  SL {param['SL']}"
                 # + f" \nat set order: avg PnL%={pnl_emp/ntot:.2f}, "\
                     # +f" ${param['trade_amount']*(pnl_emp/100):.0f} \n" \
-                        
-                
 
         fig.suptitle(title)
         port[stat_typeu].cumsum().plot(ax=axs[0,0], title=f'cumulative {stat_typeu}', grid=True, marker='o', linestyle='dotted')
@@ -876,25 +598,23 @@ if __name__ == '__main__':
         axs[1,1].set_xlabel("Trade number")
         axs[1,1].set_ylabel("%")
         plt.show(block=False)
-    # best PT 60, SL 45, TS 0, TS_buy 10
-    # best PT 40, SL 35, TS 25, TS_buy 0
 
-    # best PT 100., SL 40,   TS_buy 30.,  pnl -27.5, pnl $ -950,   trade count 32
-    # res = grid_search(port, PT=np.arange(30,120,10), TS=[0], SL=np.arange(30,100,5), TS_buy=[10,15,20,25,30, 35,40], max_margin=None)
     if 0:
-        # res = grid_search(params, PT= list(np.arange(0,60, 10)) + list(np.arange(60,150, 10)), SL=np.arange(10,60,10), TS_buy=[0,5,10,20,30], TS= [0, 10,20,50])
-        # res = grid_search(params, PT= list(np.arange(0,60, 10)) + list(np.arange(60,150, 10)), SL=np.arange(10,60,10), TS_buy=[0], TS= [0])
-        # res = grid_search(params, PT= list(np.arange(10,80, 20)), SL=np.arange(10,70,20), TS_buy=[0,5,10,20,30], TS= [0, 10,20,50])
-        res = grid_search(params, PT= list(np.arange(20,200, 10)), SL=np.arange(20,100,5), TS_buy=[0], TS= [0])
+        res, port_out = grid_search(params, PT= [30, 40], SL=[30], TS_buy=[0], TS= [0])
         # res = grid_search(params, PT= list(np.arange(10,140, 10)), SL=np.arange(10,90,10), TS_buy=[0], TS= [0])
-        # res = grid_search(params, PT= list(np.arange(0,270, 10)), SL=[20,30,40,50,60], TS_buy=[0,5,10,15,20,30], TS= [0,10,20,30,50,60])
     
         res = np.stack(res)
         sorted_indices = np.argsort(res[:, 4])
         sorted_array = res[sorted_indices].astype(int)
         print(sorted_array[-20:])
         hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
+        
         df = pd.DataFrame(sorted_array, columns=hdr)
-        df.to_csv(f"data/{param['include_authors']}_grid_search.csv", index=False)
+        
+        f_t_Date = f"from_{pd.to_datetime(port_out['Date']).min().date().strftime('%y_%m_%d')}"+\
+                    f"_to_{pd.to_datetime(port_out['Date']).max().date().strftime('%y_%m_%d')}"
+        pname = params['fname_port'].split("/")[-1].split('_port.csv')[0]
+        df.to_csv(f"data/analysis/{pname}{param['include_authors']}_grid_search_{f_t_Date}.csv", index=False)        
+        port_out.to_csv(f"data/analysis/{pname}{param['include_authors']}_port_strats_{f_t_Date}.csv", index=False)
         # PT 40,  SL 20,  trailing stop starting at PT: 25,    PNL avg : 5%,  return: $2750,   num trades: 53
         # print(result_td)
