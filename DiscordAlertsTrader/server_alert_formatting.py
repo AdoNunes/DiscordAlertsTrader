@@ -359,8 +359,7 @@ def makeplays_challenge_formatting(message_):
     alert = message.content
     alert = alert.replace('weekly contract', 'weeklies').replace(" at ", " @ ")
     alert = format_0dte_weeklies(alert, message, False)
-    print('formatting makeplays:dates', alert)
-    alert = message.content    
+
     # strike then exp date
     pattern = r'(?:BTO)?\s*([\d]+)?\s+([A-Z]+)\s+([\d.]+)([C|P])\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s+@\s*([\d.]+)'
     match = re.search(pattern, alert, re.IGNORECASE)
@@ -370,7 +369,6 @@ def makeplays_challenge_formatting(message_):
         match = re.search(pattern, alert, re.IGNORECASE)
     
     if match:
-        print('formatting makeplays: matched')
         ticker, strike, otype, expDate, price = match.groups()
         if expDate is None:            
             if ticker in ['SPY', 'QQQ', 'IWM', 'DIA']:
@@ -644,6 +642,12 @@ def eclipse_alerts(message_):
                 qty = re.search(r'(\d+)\s*Contracts', alert, re.IGNORECASE)
                 qty = qty.group(1) if qty else "1"
                 alert = f"BTO {qty} {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
+            else:
+                pattern = r'\$([A-Z]+)\s+([\d.]+)\s+(CALL|PUT)\s+(\d{1,2}\/\d{1,2})\s+\@\s*([\d.]+)'
+                match = re.search(pattern, alert, re.IGNORECASE)
+                if match:
+                    ticker, strike, otype, expDate, price = match.groups()
+                    alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
             
     message.content = alert
     return message
