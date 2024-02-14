@@ -174,14 +174,14 @@ class DiscordBot(discord.Client):
             return
         self.new_msg_acts(message)
 
-    async def on_message_edit(self, before, after):
-        # Ignore if the message is not from a user or if the bot itself edited the message
-        if after.channel.id not in self.channel_IDS.values() or  before.author.bot:
-            return
+    # async def on_message_edit(self, before, after):
+    #     # Ignore if the message is not from a user or if the bot itself edited the message
+    #     if after.channel.id not in self.channel_IDS.values() or  before.author.bot:
+    #         return
 
-        str_prt = f"Message edited by {before.author}: '{before.content}' -> '{after.content}'"
-        self.queue_prints.put([str_prt, "black"])
-        print(Fore.BLUE + str_prt)
+    #     str_prt = f"Message edited by {before.author}: '{before.content}' -> '{after.content}'"
+    #     self.queue_prints.put([str_prt, "black"])
+    #     print(Fore.BLUE + str_prt)
 
     async def load_previous_msgs(self):
         await self.wait_until_ready()

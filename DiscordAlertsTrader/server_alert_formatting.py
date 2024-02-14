@@ -350,14 +350,14 @@ def makeplays_challenge_formatting(message_):
     Reformat Discord message from makeplay trades
     """
     message = MessageCopy(message_)
-
+    print('formatting makeplays')
     if message.content  is None:
         return message
     
     alert = message.content
     alert = alert.replace('weekly contract', 'weeklies').replace(" at ", " @ ")
     alert = format_0dte_weeklies(alert, message, False)
-    
+    print('formatting makeplays:dates', alert)
     alert = message.content    
     # strike then exp date
     pattern = r'(?:BTO)?\s*([\d]+)?\s+([A-Z]+)\s+([\d.]+)([C|P])\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s+@\s*([\d.]+)'
@@ -368,6 +368,7 @@ def makeplays_challenge_formatting(message_):
         match = re.search(pattern, alert, re.IGNORECASE)
     
     if match:
+        print('formatting makeplays: matched')
         ticker, strike, otype, expDate, price = match.groups()
         if expDate is None:            
             if ticker in ['SPY', 'QQQ', 'IWM', 'DIA']:
@@ -378,8 +379,7 @@ def makeplays_challenge_formatting(message_):
         else:
             alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
 
-    if len(alert):
-        message.content = alert
+    message.content = alert
     return message
 
 
@@ -403,7 +403,9 @@ def makeplays_main_formatting(message_):
                 alert = f"STC {alert}"
         else:
             alert = f"{mb.title}: {mb.description}"
-    return alert
+
+    message.content = alert
+    return message
 
 def bishop_formatting(message_):
     """
@@ -451,7 +453,7 @@ def format_0dte_weeklies(contract, message, remove_price=True):
                 contract = contract.split(" @")[0]
         elif "1DTE" in contract.upper():
             msg_date= message.created_at
-            msg_date += timedelta(days=days_until_friday)
+            msg_date += timedelta(days=1)
             msg_date = msg_date.strftime('%m/%d')
             contract = re.sub(r"1DTE", msg_date,contract, flags=re.IGNORECASE)
             if remove_price:
