@@ -490,11 +490,11 @@ def get_pos(acc_inf):
         price= round(float(pos['averagePrice']), 2)
         Qty = pos['longQuantity']
         if Qty == 0:
-            Qty = eval(pos['shortQuantity'])
+            Qty = float(pos['shortQuantity'])
         cost = round(price * Qty, 2)
-        last = round(eval(pos["marketValue"]) / Qty, 2)
+        last = round(float(pos["marketValue"]) / Qty, 2)
         sym = pos['instrument']['symbol']
-        val = eval(pos["marketValue"])
+        val = float(pos["marketValue"])
         if pos['instrument']['assetType'] == "OPTION":
             cost = round(price * Qty * 100, 2)
             last = round(val / Qty, 2)/100
