@@ -26,32 +26,8 @@ class BaseBroker(ABC):
     def get_orders(self):
         pass
 
-    # @abstractmethod
-    # def get_order_status(self, order_id):
-    #     pass
-    
+    @abstractmethod
     def get_order_info(self, order_id):
-        #     sold_unts = order_info['orderLegCollection'][0]['quantity']
-
-        # if 'price' in order_info.keys():
-        #     stc_price = order_info['price']
-        # elif 'stopPrice' in order_info.keys():
-        #     stc_price = order_info['stopPrice']
-        # elif "orderActivityCollection" in order_info.keys():
-        #     prics = []
-        #     for ind in order_info["orderActivityCollection"]:
-        #         prics.append([ind['quantity'], ind['executionLegs'][0]['price']])
-        #         n_tot= sum([i[0] for i in prics])
-        #     stc_price =  sum([i[0]*i[1] for i in prics])/ n_tot
-
-        # bto_price = self.portfolio.loc[open_trade, "Price"]
-        # bto_price_alert = self.portfolio.loc[open_trade, "Price-alert"]
-        # bto_price_actual = self.portfolio.loc[open_trade, "Price-actual"]
-        # stc_PnL = float((stc_price - bto_price)/bto_price) *100
-
-        # xQty = sold_unts/ self.portfolio.loc[open_trade, "Qty"]
-
-        # date = order_info["closeTime"]
         pass
 
 
@@ -63,6 +39,13 @@ def get_brokerage(name=cfg['general']['BROKERAGE']):
         tda = TDA(accountId=accountId)
         tda.get_session()
         return tda
+    elif name.lower() == 'tradestation':
+        from .tradestation_api import TS
+        accountId = cfg['tradestation']['accountId']
+        accountId = None if len(accountId) == 0 else accountId
+        ts = TS(accountId=accountId)
+        ts.get_session()
+        return ts
     elif name.lower() == "webull":
         from .weBull_api import weBull
         wb = weBull()

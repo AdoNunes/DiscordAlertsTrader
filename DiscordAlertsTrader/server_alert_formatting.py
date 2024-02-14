@@ -37,6 +37,8 @@ def server_formatting(message):
         message = makeplays_main_formatting(message)
     elif message.channel.id in [1195073059770605568]:
         message = bishop_formatting(message)
+    elif message.channel.id in [897625103020490773]:
+        message = theta_warrior_elite(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     return message
@@ -438,6 +440,47 @@ def bishop_formatting(message_):
         if not match:
             alert = f"{mb.title}: {mb.description}"
     
+    if len(alert):
+        message.content = alert
+    return message
+
+def convert_date(input_date):
+    # Map month abbreviations to their numeric representation
+    month_mapping = {
+        'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04', 'MAY': '05', 'JUN': '06',
+        'JUL': '07', 'AUG': '08', 'SEP': '09', 'OCT': '10', 'NOV': '11', 'DEC': '12'
+    }    
+    # Extract day, month abbreviation, and year
+    day = input_date[:-5]
+    month_abbrev = input_date[-5:-2]
+    year = input_date[-2:]    
+    # Convert month abbreviation to numeric representation
+    month = month_mapping.get(month_abbrev.upper(), '00')
+    converted_date = f"{month}/{day}/20{year}"
+    return converted_date
+
+def theta_warrior_elite(message_):    
+    if not message_.content:
+        return message_
+    
+    message = MessageCopy(message_)
+    alert = message.content
+    
+    if alert is None:
+        return message
+    
+    pattern = re.search(r'\$(\w+).\S*\s*(BTO|STC)\s+(\d{1,2}\w{3}\d{2})\s+([\d.]+)([CPcp])\s+(?:at|@)\s+\$([\d.]+)', alert)
+    if pattern:
+        ticker, action, exp_date, strike, otype, price = pattern.groups()
+        exp_date = convert_date(exp_date)        
+        if action == "BTO":
+            alert = f"{action} {ticker} {strike}{otype} {exp_date} @{price}"
+        elif action == "STC":
+            alert = f"{action} {ticker} {strike}{otype} {exp_date} @{price}"
+            if 'trim' in message.content.lower():
+                alert += " trim"
+            
+            alert = format_0dte_weeklies(alert, message, False)
     if len(alert):
         message.content = alert
     return message

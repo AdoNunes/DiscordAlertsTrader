@@ -487,20 +487,17 @@ def get_pos(acc_inf):
     pos_tab = []
     pos_headings = ["Sym", "Last", "price", "PnL_%", "PnL","Qty", "Val", "Cost"]
     for pos in positions:
-        price= round(pos['averagePrice'], 2)
-        # pnl = pos['actualDayProfitLoss']
-        pnl_p = pos['currentDayProfitLossPercentage'] * 100
+        price= round(float(pos['averagePrice']), 2)
         Qty = pos['longQuantity']
         if Qty == 0:
-            Qty = pos['shortQuantity']
+            Qty = eval(pos['shortQuantity'])
         cost = round(price * Qty, 2)
-        last = round(pos["marketValue"] / Qty, 2)
+        last = round(eval(pos["marketValue"]) / Qty, 2)
         sym = pos['instrument']['symbol']
-        asset = pos['instrument']['assetType']
-        val = pos["marketValue"]
+        val = eval(pos["marketValue"])
         if pos['instrument']['assetType'] == "OPTION":
             cost = round(price * Qty * 100, 2)
-            last = round(pos["marketValue"] / Qty, 2)/100
+            last = round(val / Qty, 2)/100
 
         pnl_t = round(val - cost, 2)
         if  cost == 0:
@@ -565,7 +562,7 @@ def get_orders(acc_inf):
     for ordr in orders:
         col = not col
         ord_type = ordr['orderStrategyType']
-        if ord_type == "OCO":
+        if ord_type == "OCO" and ordr.get('childOrderStrategies') is not None:
             for chl in ordr['childOrderStrategies']:
                 nlen = len(ord_tab)
                 ord_tab, heads = order_info_pars(chl, ord_tab)

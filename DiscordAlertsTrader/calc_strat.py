@@ -177,13 +177,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         order_type = order_type.lower()
         ot = 'C' if order_type == 'call' else 'P' if order_type == 'put' else None
         port = port[port['Symbol'].str.split("_").str[1].str.contains(ot)]
-    
-    de = port.loc[port['Asset'] == 'option', 'Symbol'].str.extract(r'_(\d{6})').iloc[:, 0]
-    de = pd.to_datetime(de, format='%m%d%y').dt.date
-    dte = pd.to_timedelta(de - pd.to_datetime(port['Date']).dt.date).dt.days
-    port['dte'] = dte
-    port['right'] = port['Symbol'].str.extract(r'([C|P])\d{6}$').iloc[:, 0]
-    
+        
     if invert_contracts:
         port['Symbol'] = port['Symbol'].str.replace(r'C(\d+)', r'xo\1', regex=True)
         port['Symbol'] = port['Symbol'].str.replace(r'P(\d+)', r'C\1', regex=True)
@@ -217,8 +211,12 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     underlying = port['Symbol'].str.extract(r'[C|P](\d+(\.\d+)?)$').iloc[:, 0]
     port['underlying'] = pd.to_numeric(underlying)
     port['hour'] = pd.to_datetime(port['Date']).dt.hour
-    
-    
+    de = port.loc[port['Asset'] == 'option', 'Symbol'].str.extract(r'_(\d{6})').iloc[:, 0]
+    de = pd.to_datetime(de, format='%m%d%y').dt.date
+    dte = pd.to_timedelta(de - pd.to_datetime(port['Date']).dt.date).dt.days
+    port['dte'] = dte
+    port['right'] = port['Symbol'].str.extract(r'([C|P])\d+(\.\d+)?$').iloc[:, 0]
+
     # do_plot = True
     for idx, row in port.iterrows():
         # if idx != 27:
@@ -487,7 +485,7 @@ def grid_search(params_dict, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25]):
                     
                     port_renamed = port[['strategy-PnL', 'strategy-PnL$']].rename(
                         columns={'strategy-PnL': f'%{pnl_t}', 'strategy-PnL$': f'${pnl_t}'})
-                    port_out = pd.concat([port, port_renamed], axis=1)    
+                    port_out = pd.concat([port_out, port_renamed], axis=1)    
                     
                     port = port[port['strategy-PnL'].notnull()]        
                     win = (port['strategy-PnL'] > 0).sum()/port['strategy-PnL'].count() 
@@ -514,15 +512,15 @@ if __name__ == '__main__':
         dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
 
     params = {
-        'fname_port': 'data/moneymotive_port.csv',
+        'fname_port': 'data/kingmaker_port.csv',
         'order_type': 'any',
-        'last_days': None,
-        'filt_date_frm': "1/1",
+        'last_days': 300,
+        'filt_date_frm': "",
         'filt_date_to': '',
-        'stc_date':'eod',  #'exp',# 'exp', #, # 'eod' or 
-        'max_underlying_price': 8000,
+        'stc_date':'eod',# 'stc alert', #,  #'exp',# 'exp', #, # 'eod' or 
+        'max_underlying_price': 2000,
         'min_price': 10,
-        'max_dte': 10,
+        'max_dte': 100,
         'min_dte': 0,
         'filt_hour_frm': "",
         'filt_hour_to': "",
@@ -600,13 +598,13 @@ if __name__ == '__main__':
         plt.show(block=False)
 
     if 0:
-        res, port_out = grid_search(params, PT= [30, 40], SL=[30], TS_buy=[0], TS= [0])
-        # res = grid_search(params, PT= list(np.arange(10,140, 10)), SL=np.arange(10,90,10), TS_buy=[0], TS= [0])
+        # res, port_out = grid_search(params, PT= [30, 40], SL=[30], TS_buy=[0], TS= [0])
+        res, port_out = grid_search(params, PT= list(np.arange(20,150, 10)), SL=np.arange(20,100,10), TS_buy=[0], TS= [0])
     
         res = np.stack(res)
         sorted_indices = np.argsort(res[:, 4])
         sorted_array = res[sorted_indices].astype(int)
-        print(sorted_array[-20:])
+        print(sorted_array[:20])
         hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
         
         df = pd.DataFrame(sorted_array, columns=hdr)
