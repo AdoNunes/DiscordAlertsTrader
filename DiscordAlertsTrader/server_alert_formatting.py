@@ -364,20 +364,29 @@ def makeplays_challenge_formatting(message_):
     pattern = r'(?:BTO)?\s*([\d]+)?\s+([A-Z]+)\s+([\d.]+)([C|P])\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s+@\s*([\d.]+)'
     match = re.search(pattern, alert, re.IGNORECASE)
     # exp date then strike
+    strike_first = True
     if match is None:
         pattern = r'(?:BTO)?\s*([\d]+)?\s+([A-Z]+)\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s+([\d.]+)([C|P])\s+@\s*([\d.]+)'
         match = re.search(pattern, alert, re.IGNORECASE)
+        strike_first = False
     
     if match:
-        ticker, strike, otype, expDate, price = match.groups()
+        if strike_first:
+            qty, ticker, strike, otype, expDate, price = match.groups()
+        else:
+            qty, ticker, expDate, strike, otype, price = match.groups()
+        if qty is None:
+            qty = ""
+        else:
+            qty = f" {qty}"
         if expDate is None:            
             if ticker in ['SPY', 'QQQ', 'IWM', 'DIA']:
-                bto = f"BTO {ticker} {strike.upper()}{otype[0]} 0DTE @{price}" 
+                bto = f"BTO{qty} {ticker} {strike.upper()}{otype[0]} 0DTE @{price}" 
             else:
-                bto = f"BTO {ticker} {strike.upper()}{otype[0]} weeklies @{price}" 
+                bto = f"BTO{qty} {ticker} {strike.upper()}{otype[0]} weeklies @{price}" 
             alert = format_0dte_weeklies(bto, message, False)
         else:
-            alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
+            alert = f"BTO{qty} {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
 
     message.content = alert
     return message
