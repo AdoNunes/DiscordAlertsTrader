@@ -47,8 +47,18 @@ def server_formatting(message):
         message = crimson_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
+    else:
+        message = embed_to_content(message)
     return message
 
+def embed_to_content(message_):
+    """Convert embed message to content message"""
+    
+    message = MessageCopy(message_)
+    if message.content.startswith('@') and len(message.content.split()) == 1:
+        if message.embeds:
+            message.content = message.embeds[0].description
+    return message
 
 def tradeproelite_formatting(message_):
     """

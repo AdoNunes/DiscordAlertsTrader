@@ -302,7 +302,7 @@ def run_gui():
                 elif action == "STO":
                     action = "BTC"
             else:
-                action = "BTO"
+                action = "STC"
             price = price if price == "" else float(price)
             if "_" in symb:
                 # option

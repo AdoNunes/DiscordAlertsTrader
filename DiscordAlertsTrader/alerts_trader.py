@@ -1116,7 +1116,7 @@ class AlertsTrader():
                 self.save_logs("port")
                 continue
             
-            if trade["BTO-Status"]  in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION', 'AWAITING_MANUAL_REVIEW', "PARTIAL"]:
+            if trade["BTO-Status"]  in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION', 'PENDING_ACTIVATION', 'AWAITING_MANUAL_REVIEW', "PARTIAL"]:
                 order_status, order_info = self.get_order_info(trade['ordID'])
 
                 # Check if number filled Qty changed
@@ -1150,12 +1150,24 @@ class AlertsTrader():
                 
                 self.portfolio.loc[i, "filledQty"] = order_info['filledQuantity']
                 self.portfolio.loc[i, "BTO-Status"] = order_info['status']
-            
+
                 if order_status == 'REJECTED':
                     self.portfolio.loc[i, 'isOpen'] = 0
                     str_msg = f"BTO {order_info['orderLegCollection'][0]['instrument']['symbol']} Status: {order_status}"
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
+                elif order_status in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION', 'PENDING_ACTIVATION', 'AWAITING_MANUAL_REVIEW', "PARTIAL"] \
+                    and self.portfolio.loc[i,'Type'] == 'BTO':
+                    # see if too much time has passed
+                    bot_time = datetime.strptime(self.portfolio.loc[i, 'Date'], '%Y-%m-%d %H:%M:%S.%f')
+                    time_difference = (datetime.now() - bot_time).total_seconds()
+                    if cfg['order_configs']['kill_if_nofill'] not in ['0', '']:
+                        max_time = int(cfg['order_configs']['kill_if_nofill'])
+                        if time_difference > max_time:
+                            order_status = self.bksession.cancel_order(order_info['order_id'])
+                            str_msg = f"Killing order after not filling in {max_time} secs [{time_difference}] {order_info['orderLegCollection'][0]['instrument']['symbol']} Status: {order_status}"
+                            print(Back.GREEN + str_msg)
+                            self.queue_prints.put([str_msg, "", "green"])
                 trade = self.portfolio.iloc[i]
                 self.save_logs("port")
 
@@ -1163,7 +1175,10 @@ class AlertsTrader():
                 continue
 
             if trade.get("BTO-avg-Status") in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION', 'AWAITING_MANUAL_REVIEW', "PARTIAL"]:
-                ordID = trade['ordID'].split(",")[-1]
+                if isinstance(trade['ordID'], str):
+                    ordID = trade['ordID'].split(",")[-1]
+                else:
+                    ordID = trade['ordID']
                 order_status, order_info = self.get_order_info(ordID)
                 if order_info['status'] in ["FILLED", "EXECUTED"]:
                     

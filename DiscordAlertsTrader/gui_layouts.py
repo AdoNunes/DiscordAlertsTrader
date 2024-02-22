@@ -351,9 +351,13 @@ def layout_config(fnt_h, cfg):
                 tooltip='For stocks and options max value diff to accept current price,\nif not will lim to alerted price'), 
         sg.Input(cfg['order_configs']['max_price_diff'],key="cfg_order_configs.max_price_diff", enable_events=True,
                 tooltip='For stocks and options max value diff to accept current price,\nif not will lim to alerted price')],
+        [sg.Text("Kill BTO after x seconds:",
+                tooltip='If BTO alert is not filled in this time, it will cancel the order. Leave 0 or empty for None'), 
+        sg.Input(cfg['order_configs']['kill_if_nofill'],key="cfg_order_configs.kill_if_nofill",
+                tooltip='If BTO alert is not filled in this time, it will cancel the order', enable_events=True)],
         [sg.Text("Default exits (in quotes if not a number, eg. '20%', '50%TS20%'):",
-                tooltip='If not None, it will set up profit taking (up to 3) and stoploss if exit not provided in alert.\n' +\
-                ' can be value=1.1, percentage "30%", for PT can be "%" and a Trailing stop: "30%TS5%"\n' +\
+                tooltip='If not None, it will set up profit taking and stoploss if exit not provided in alert.\n' +\
+                'percentage "30%", for PT can be "%" and a Trailing stop: "30%TS5%". For webull pass "30%TS0%"\n' +\
                 'SL (stop loss) can be percentage: "30%" or trailing stop "TS30%"\n' +\
                 'add quotes to the exits values e.g. "10%"')], 
         [sg.Input(cfg['order_configs']['default_exits'], key="cfg_order_configs.default_exits",
@@ -362,8 +366,8 @@ def layout_config(fnt_h, cfg):
                 'SL (stop loss) can be percentage: "30%" or trailing stop "TS30%"\n' +\
                 'add quotes to the exits values e.g. "10%"', enable_events=True,)],
         [sg.Text("Exclude tickers [SPX should be SPXW]:",
-                 tooltip="will not trade them, [comma separated]")],
-        [sg.Input(cfg['order_configs']['exclude_tickers'], key="cfg_order_configs.exclude_tickers",
+                 tooltip="will not trade them, [comma separated]"),
+        sg.Input(cfg['order_configs']['exclude_tickers'], key="cfg_order_configs.exclude_tickers",
                  tooltip="will not trade them, [comma separated]", enable_events=True)],        
         [sg.Text("Default quantity:",
                 tooltip='If no quantity specified in the alert either "buy_one" or use "trade_capital"'), 
