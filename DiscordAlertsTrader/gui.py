@@ -317,7 +317,7 @@ def run_gui():
         # handle alert buttons
         elif event == '-toggle':
             state = window[event].GetText()
-            butts = ['-alert_to-', '-alert_BTO', '-alert_STC', '-alert_STO', '-alert_BTC', '-alert_exitupdate', 'alert_quotes']
+            butts = ['-alert_to-', '-alert_BTO', '-alert_STC', '-alert_STO', '-alert_BTC', '-alert_exitupdate', '-alert_quotes']
             if state == '▲':
                 window[event].update(text='▼')            
             else:

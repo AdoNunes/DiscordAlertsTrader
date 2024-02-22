@@ -7,19 +7,19 @@ def server_formatting(message):
         message = xtrades_formatting(message)
     elif message.guild.id == 836435995854897193:
         message = tradeproelite_formatting(message)
-    elif message.channel.id in [1144658745822035978, 1196385162490032128]:
+    elif message.channel.id in [1144658745822035978, 1196385162490032128, 1176558956123013230]:
         message = eclipse_alerts(message)
-    elif message.channel.id in [1005221780941709312]:
+    elif message.channel.id in [1005221780941709312, 1176559103431168001]:
         message = oculus_alerts(message)
     elif message.channel.id in [989674163331534929]:
         message = rough_alerts(message)
     elif message.channel.id in [972620961004269598]:
         message = kent_formatting(message)
-    elif message.channel.id in [894421928968871986]:
+    elif message.channel.id in [894421928968871986, 1184315998980022342, 1186220832226283560]:
         message = sirgoldman_formatting(message)
-    elif message.channel.id in [1090673126527996004, 1132799545491869857, 1106356727294726156, 1135628574511079505]:
+    elif message.channel.id in [1090673126527996004, 1132799545491869857, 1106356727294726156, 1135628574511079505, 1184315961726226502]:
         message = flint_formatting(message)
-    elif message.channel.id in [904543469266161674]:  
+    elif message.channel.id in [904543469266161674, 1209644125477933088]:  
         message = jpm_formatting(message)
     elif message.channel.id in [1087374395477078106]:
         message = nitro_formatting(message)
@@ -29,16 +29,22 @@ def server_formatting(message):
         message = owl_formatting(message)
     elif message.channel.id in [979906463487103006]:
         message = bear_alerts(message)
-    elif message.channel.id in [1107395495460081754]:
+    elif message.channel.id in [1107395495460081754, 1209855407636488212]:
         message = diesel_formatting(message)
     elif message.channel.id in [1204586438679863326,1204586623015067698, 1175535656915705959, 1049137689062035487]:
         message = makeplays_challenge_formatting(message)
     elif message.channel.id in [1188201803783876638, 1164747583638491156, 1204596671636443223]:
         message = makeplays_main_formatting(message)
-    elif message.channel.id in [1195073059770605568]:
+    elif message.channel.id in [1195073059770605568, 1175925024503378070]:
         message = bishop_formatting(message)
     elif message.channel.id in [897625103020490773]:
         message = theta_warrior_elite(message)
+    elif message.channel.id in [1152082112032292896, 884971446802219048, 1209855531758395423,1210140760800763914 ]:
+        message = kingmaker_main_formatting(message)
+    elif message.channel.id in [1139700590339969036, 1184315907376431114, 1183711389777399808]:
+        message = ddking_formatting(message)  
+    elif message.channel.id in [1102753361566122064]:
+        message = crimson_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     return message
@@ -659,6 +665,69 @@ def eclipse_alerts(message_):
                     alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
             
     message.content = alert
+    return message
+
+def kingmaker_main_formatting(message_):
+    """
+    Reformat Discord message from makeplays
+    """
+    message = MessageCopy(message_)
+    
+    alert = ''
+    for mb in message.embeds:
+        if mb.title == "Open":       
+            alert = mb.description.replace(" buy ", " ").replace(" Buy ", " ")
+            
+            pattern = r'([A-Z]+)\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s+\$([\d.]+)\s+(Call|Calls|calls|Puts|puts)\s+@?\$?([\d.]+)'
+            match = re.search(pattern, alert, re.IGNORECASE)
+            if match:
+                ticker, expDate, strike, otype, price = match.groups()
+                alert = f"BTO {ticker} {strike.upper()}{otype[0].upper()} {expDate} @{price}"
+        else:
+            alert = f"{mb.title}: {mb.description}"
+    if len(alert):
+        message.content = alert
+    return message
+
+def ddking_formatting(message_):
+    """
+    Reformat Discord message from ddking
+    """
+    message = MessageCopy(message_)
+    
+    alert = ''
+    for mb in message.embeds:
+        if "NEW SIGNAL" in mb.title: 
+            alert = mb.description.replace(" buy ", " ").replace(" Buy ", " ")
+        else:
+            alert = f"{mb.title}: {mb.description}"
+    
+    if len(alert):
+        message.content = alert
+    return message
+
+
+def crimson_formatting(message_):
+    """
+    Reformat Discord message from crimson
+    """
+    message = MessageCopy(message_)
+    
+    alert = ''
+    for mb in message.embeds:
+        if "NEW TRADE" in mb.title:
+            pattern = r'Ticker:\s*([\w\d]+).*Strike:\s*([\d.]+)([pc]).*Expiration:\s*(\d{1,2}\/\d{1,2}).*Entry Price:\s*([\d.]+)'
+            match = re.search(pattern, mb.description, re.IGNORECASE| re.DOTALL)
+            if match:
+                ticker, strike, otype, expDate, price = match.groups()
+                alert = f"BTO {ticker} {strike}{otype.upper()} {expDate} @{price}"
+            else:
+                alert = f"{mb.title}: {mb.description}"
+        else:
+            alert = f"{mb.title}: {mb.description}"
+    
+    if len(alert):
+        message.content = alert
     return message
 
 def moneymotive(message_):
