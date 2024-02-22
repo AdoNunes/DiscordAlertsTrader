@@ -361,7 +361,7 @@ def makeplays_challenge_formatting(message_):
     alert = format_0dte_weeklies(alert, message, False)
 
     # strike then exp date
-    pattern = r'(?:BTO)?\s*([\d]+)?\s+([A-Z]+)\s+([\d.]+)([C|P])\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s+@\s*([\d.]+)'
+    pattern = r'(?:BTO)?\s*([\d]+)?\s*([A-Z]+)\s+([\d.]+)([C|P])\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s+@\s*([\d.]+)'
     match = re.search(pattern, alert, re.IGNORECASE)
     # exp date then strike
     strike_first = True
