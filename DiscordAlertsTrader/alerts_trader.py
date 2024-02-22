@@ -272,7 +272,7 @@ class AlertsTrader():
             if self.cfg['shorting']['default_sto_qty'] == "buy_one":
                 order['Qty'] = 1                    
             elif self.cfg['shorting']['default_sto_qty'] == "underlying_capital":
-                order['Qty'] = int(eval(self.cfg['shorting']['underlying_capital'])//strike)
+                order['Qty'] = max(1, int(eval(self.cfg['shorting']['underlying_capital'])//strike))
 
             # Handle trade too expensive
             max_trade_val = float(self.cfg['shorting']['max_trade_capital'])
@@ -329,7 +329,6 @@ class AlertsTrader():
                             new_price =  round(order['price']*1.05,2)
                         elif order['action'] == "STC":
                             new_price =  round(order['price']*.95,2)
-                        # print(f"price reduced 5% to ensure fill from {order['price']} to {new_price}")
                     
                     order['price'] = self.round_price(new_price, order)
                     
@@ -367,7 +366,6 @@ class AlertsTrader():
                     price = price*100 if order["asset"] == "option" else price
                     max_trade_val = float(self.cfg['order_configs']['max_trade_capital'])
                     
-                    print('Before calc- order[Qty]', order['Qty'], self.cfg['order_configs']['default_bto_qty'], order.keys())
                     if 'Qty' not in order.keys() or order['Qty'] is None:
                         if self.cfg['order_configs']['default_bto_qty'] == "buy_one":
                             order['Qty'] = 1                    
@@ -375,7 +373,7 @@ class AlertsTrader():
                             order['Qty'] =  int(max(round(float(self.cfg['order_configs']['trade_capital'])/price), 1))
                     # elif self.cfg['order_configs']['default_bto_qty'] == "trade_capital":
                     #     order['Qty'] =  int(max(round(float(self.cfg['order_configs']['trade_capital'])/price), 1))
-                    print('After calc- order[Qty]', order['Qty'])
+                    
                     
                     if price * order['Qty'] > max_trade_val:
                         Qty_ori = order['Qty']
@@ -1133,7 +1131,7 @@ class AlertsTrader():
                     price = order_info.get("price")
                     self.portfolio.loc[i, "Price"] = price
                     self.disc_notifier(order_info)
-                    str_msg = f"BTO {order_info['orderLegCollection'][0]['instrument']['symbol']} filled @ {price}. Status: {order_status}"
+                    str_msg = f"ENTERED {order_info['orderLegCollection'][0]['instrument']['symbol']} filled @ {price}. Status: {order_status}"
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
                     
@@ -1268,7 +1266,7 @@ class AlertsTrader():
                 trade = self.portfolio.iloc[i]
                 STC_ordID = trade.get(STC+"-ordID")
 
-                if pd.isnull(STC_ordID) or trade[STC+"-Status"] =='FILLED':
+                if pd.isnull(STC_ordID) or trade[STC+"-Status"] in ['FILLED', 'REJECTED']:
                     continue
 
                 # Get status exit orders
@@ -1277,16 +1275,16 @@ class AlertsTrader():
 
                 order_status, order_info =  self.get_order_info(STC_ordID)
 
-                if order_status == 'CANCELED' and self.bksession.name in ['tda', 'ts'] and \
+                if order_status == 'CANCELED' and self.bksession.name == 'tda' and \
                     order_info['orderStrategyType'] == 'OCO':
-                    # Try next order number. OCO gets chancelled when one of child ordergets filled.
+                    # Try next order number. OCO gets canceled when one of child ordergets filled.
                     # This is for TDA OCO
                     STC_ordID = int(STC_ordID)
                     order_status, order_info =  self.get_order_info(int(STC_ordID) + 1)
                     if order_status == 'FILLED':
                         STC_ordID = STC_ordID + 1
                         self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID
-                    elif self.bksession.name == 'tda': # try the other one for tda
+                    else: # try the other one for tda
                         order_status, order_info =  self.get_order_info(STC_ordID + 2)
                         if order_status == 'FILLED':
                             STC_ordID = STC_ordID + 2
@@ -1415,7 +1413,7 @@ class AlertsTrader():
                     order['Qty'] = Qty[ii - 1]
                     order['xQty'] = xQty[ii - 1]
                     order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
-                    if self.bksession.name != 'tda':
+                    if self.bksession.name not in ['tda', 'ts']:
                         str_prt = f"WARNING: {self.bksession.name} does not support OCO orders. Only the PT will be sent without SL. For OCO pass a PT as a string with 0%TS (e.g. 50%TS0%) and SL."            
                         print(Back.RED + str_prt)
                         self.queue_prints.put([str_prt,"", "red"])
@@ -1574,19 +1572,29 @@ class AlertsTrader():
 
     def round_order_price(self, order, trade):
         # Round SL price to nearest increment
-        for exit in ['price', 'SL'] + [f"PT{i}" for i in range(1,self.max_stc_orders)]:
+        for exit in ['price', 'PT', 'SL'] + [f"PT{i}" for i in range(1,self.max_stc_orders)]:
             if order.get(exit) is not None and isinstance(order.get(exit), (int, float)):
                 order[exit] = self.round_price(order.get(exit), trade)
         return order
     
     def round_price(self, price, trade):
         # Round SL price to nearest increment        
-        if self.bksession.name == 'tda':
+        if self.bksession.name in ['tda']:
             if 'SPXW' in trade['Symbol']:
                 if price < 3.0:
                     increment = 0.05
                 else:
                     increment = 0.10
+            else:
+                increment = 0.01
+        elif self.bksession.name == 'ts':
+            if 'SPXW' in trade['Symbol']:
+                if price < 3.0:
+                    increment = 0.05
+                else:
+                    increment = 0.10
+            elif price > 3:
+                increment = 0.05
             else:
                 increment = 0.01
         elif trade['Symbol'] in ["SPY", "QQQ", "IWM"] and self.bksession.name == 'etrade':

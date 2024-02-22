@@ -263,6 +263,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 raise ImplementationError("thetadata quotes for stock not implemented")
             
             load_from_disk = False
+            append_quotes = False
             if op.exists(fquote):
                 quotes = pd.read_csv(fquote, on_bad_lines='skip')
                 if int(pd.to_datetime(row['Date'] ).timestamp()) in quotes['timestamp'].values and \
@@ -270,7 +271,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                         load_from_disk = True
                 else:                    
                     # print('missing dates', row['Symbol'], row['Date'], date_close, 'loading from thetadata')
-                    load_from_disk = True
+                    load_from_disk = False
+                    append_quotes = True
             
             if not load_from_disk:
                 dt_b = pd.to_datetime(row['Date'] ).date()
@@ -512,13 +514,13 @@ if __name__ == '__main__':
         dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
 
     params = {
-        'fname_port': 'data/kingmaker_port.csv',
+        'fname_port': 'data/sparsed_5min_port.csv',
         'order_type': 'any',
-        'last_days': 300,
+        'last_days': None,
         'filt_date_frm': "",
         'filt_date_to': '',
-        'stc_date':'eod',# 'stc alert', #,  #'exp',# 'exp', #, # 'eod' or 
-        'max_underlying_price': 2000,
+        'stc_date':'eod',#'exp',#'stc alert', # ,  # 'exp', #, # 'eod' or 
+        'max_underlying_price': 20000,
         'min_price': 10,
         'max_dte': 100,
         'min_dte': 0,
@@ -526,18 +528,18 @@ if __name__ == '__main__':
         'filt_hour_to': "",
         'include_authors': "",
         'exclude_symbols': [],
-        'PT': [20], #[20,25,35,45,55,65,75,],# [90],#
-        'pts_ratio' : [1],# [0.2,0.2,0.2,0.1,0.1,0.1,0.1,],# [0.4, 0.3, 0.3], # 
-        'sl_update' : None, #[[1.30, 1.05], [2, 1.5]], #   
+        'PT': [100], #[20,25,35,45,55,65,95,],# [90],#
+        'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], # 
+        'sl_update' :  None, #[[1.20, 1.05], [1.5, 1.3]], #   
         'avg_down': None,# [[10, 50], [20, 50]], 
-        'SL': 20,
+        'SL': 50,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
         'max_margin': None,
         'short_under_amnt' : None,
         'verbose': True,
-        'trade_amount': 1000,
+        'trade_amount': 1,
         "sell_bto": False,
         "max_short_val": None,
         "invert_contracts": False,
@@ -573,8 +575,8 @@ if __name__ == '__main__':
         if param['exclude_symbols']:
             excl = f"(no {param['exclude_symbols']})"
         title = f"{param['include_authors']} {excl} winrate {winp}% {winr}, trade amount {param['trade_amount']}" \
-            + f" \nat market: avg PnL%={result_td['strategy-PnL']['mean'].iloc[0]:.2f}, "\
-                +f"${result_td['strategy-PnL$']['sum'].iloc[0]:.0f}" \
+            + f" \nat market: avg PnL%={port['strategy-PnL'].mean():.2f}, "\
+                +f"${port['strategy-PnL$'].sum():.0f}" \
                     + f"\nTS_buy {param['TS_buy']}, PT {param['PT']}, TS {param['TS']},  SL {param['SL']}"
                 # + f" \nat set order: avg PnL%={pnl_emp/ntot:.2f}, "\
                     # +f" ${param['trade_amount']*(pnl_emp/100):.0f} \n" \
@@ -599,12 +601,12 @@ if __name__ == '__main__':
 
     if 0:
         # res, port_out = grid_search(params, PT= [30, 40], SL=[30], TS_buy=[0], TS= [0])
-        res, port_out = grid_search(params, PT= list(np.arange(20,150, 10)), SL=np.arange(20,100,10), TS_buy=[0], TS= [0])
+        res, port_out = grid_search(params, PT= list(np.arange(20,150, 10)) + [180, 200,250,300], SL=np.arange(20,101,10), TS_buy=[0], TS= [0])
     
         res = np.stack(res)
         sorted_indices = np.argsort(res[:, 4])
         sorted_array = res[sorted_indices].astype(int)
-        print(sorted_array[:20])
+        print(sorted_array[-20:])
         hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
         
         df = pd.DataFrame(sorted_array, columns=hdr)

@@ -295,6 +295,14 @@ def run_gui():
                 price = dt[pix][hdr.index('S-Price-actual')]
             if price == "":
                 price = dt[pix][hdr.index('S-Price')]
+            if 'Type' in hdr:
+                action = dt[pix][hdr.index('Type')]
+                if action == "BTO":
+                    action = "STC"
+                elif action == "STO":
+                    action = "BTC"
+            else:
+                action = "BTO"
             price = price if price == "" else float(price)
             if "_" in symb:
                 # option
@@ -302,14 +310,14 @@ def run_gui():
                 match = re.search(exp, symb, re.IGNORECASE)
                 if match:
                     symbol, date, type, strike = match.groups()
-                    symb_str = f"{auth}, STC {qty} {symbol} {strike}{type} {date[:2]}/{date[2:4]} @{price}"
+                    symb_str = f"{auth}, {action} {qty} {symbol} {strike}{type} {date[:2]}/{date[2:4]} @{price}"
             else:
-                symb_str= f"{auth}, STC {qty} {symb} @{price}"
+                symb_str= f"{auth}, {action} {qty} {symb} @{price}"
             window.Element("-subm-msg").Update(value=symb_str)
         # handle alert buttons
         elif event == '-toggle':
             state = window[event].GetText()
-            butts = ['-alert_to-', '-alert_BTO', '-alert_STC', '-alert_STO', '-alert_BTC', '-alert_exitupdate', 'alert_quotes']
+            butts = ['-alert_to-', '-alert_BTO', '-alert_STC', '-alert_STO', '-alert_BTC', '-alert_exitupdate', '-alert_quotes']
             if state == '▲':
                 window[event].update(text='▼')            
             else:
@@ -393,12 +401,12 @@ def run_gui():
             window.Element(event).Update(button_color=ori_col)
 
         elif event.startswith("cfg"):
-            print(event)
+            # print(event)
             if isinstance(window[event], sg.Checkbox):
                 f1,f2 = event.replace("cfg_", "").split(".")
-                print("before", cfg[f1][f2])
+                # print("before", cfg[f1][f2])
                 cfg[f1][f2] = str(values[event])
-                print("after", cfg[f1][f2])
+                print("changed", cfg[f1][f2])
             else:
                 cur_color = window.Element(event).TextColor
                 if cur_color != "red":
