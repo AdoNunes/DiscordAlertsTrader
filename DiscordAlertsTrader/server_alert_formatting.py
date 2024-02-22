@@ -697,7 +697,7 @@ def ddking_formatting(message_):
     
     alert = ''
     for mb in message.embeds:
-        if "NEW SIGNAL" in mb.title: 
+        if mb.title is not None and "NEW SIGNAL" in mb.title: 
             alert = mb.description.replace(" buy ", " ").replace(" Buy ", " ")
         else:
             alert = f"{mb.title}: {mb.description}"
@@ -715,7 +715,7 @@ def crimson_formatting(message_):
     
     alert = ''
     for mb in message.embeds:
-        if "NEW TRADE" in mb.title:
+        if mb.title is not None and "NEW TRADE" in mb.title:
             pattern = r'Ticker:\s*([\w\d]+).*Strike:\s*([\d.]+)([pc]).*Expiration:\s*(\d{1,2}\/\d{1,2}).*Entry Price:\s*([\d.]+)'
             match = re.search(pattern, mb.description, re.IGNORECASE| re.DOTALL)
             if match:
