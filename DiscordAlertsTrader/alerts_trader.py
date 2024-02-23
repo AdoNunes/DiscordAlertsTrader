@@ -61,7 +61,7 @@ class AlertsTrader():
                  portfolio_fname=cfg['portfolio_names']['portfolio_fname'] ,
                  alerts_log_fname=cfg['portfolio_names']['alerts_log_fname'],
                  queue_prints=queue.Queue(maxsize=10),
-                 update_portfolio=False,
+                 update_portfolio=True,
                  cfg=cfg
                  ):
         self.bksession = brokerage
