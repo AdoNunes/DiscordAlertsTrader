@@ -61,7 +61,7 @@ class AlertsTrader():
                  portfolio_fname=cfg['portfolio_names']['portfolio_fname'] ,
                  alerts_log_fname=cfg['portfolio_names']['alerts_log_fname'],
                  queue_prints=queue.Queue(maxsize=10),
-                 update_portfolio=True,
+                 update_portfolio=False,
                  cfg=cfg
                  ):
         self.bksession = brokerage
@@ -1251,7 +1251,7 @@ class AlertsTrader():
                     order['action'] = "BTC"
                     order['Symbol'] = trade["Symbol"]
                     qty_sold = np.nansum([trade[f"STC{i}-Qty"] for i in range(1,self.max_stc_orders)])
-                    order['Qty'] =  int(trade["filledQty"]) - qty_sold
+                    order['Qty'] =  int(int(trade["filledQty"]) - qty_sold)
                     order['price'] = quote
                     self.update_paused = True
                     _, order_id, order, _ = self.confirm_and_send(order, f'EOD {order["Symbol"]}', self.bksession.make_STC_lim)

@@ -45,6 +45,8 @@ def server_formatting(message):
         message = ddking_formatting(message)  
     elif message.channel.id in [1102753361566122064]:
         message = crimson_formatting(message)
+    elif message.channel.id in [1209854873344938044]:
+        message = prophet_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     else:
@@ -377,7 +379,7 @@ def makeplays_challenge_formatting(message_):
     alert = format_0dte_weeklies(alert, message, False)
 
     # strike then exp date
-    pattern = r'(?:BTO)?\s*([\d]+)?\s*([A-Z]+)\s+([\d.]+)([C|P])\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s+@\s*([\d.]+)'
+    pattern = r'(?:BTO)?\s*([\d]+)?\s*([A-Z]+)\s+([\d.]+)([C|P])\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s+@?\s*([\d.]+)'
     match = re.search(pattern, alert, re.IGNORECASE)
     # exp date then strike
     strike_first = True
@@ -740,6 +742,30 @@ def crimson_formatting(message_):
         message.content = alert
     return message
 
+def prophet_formatting(message_):
+    """
+    Reformat Discord message from prophet
+    """
+    message = MessageCopy(message_)
+    
+    alert = ''
+    for mb in message.embeds:
+        if mb.title is not None and "OPENING " in mb.title:            
+            pattern = r'Contract:\s*([A-Z]+)\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s+([\d.]+)([C|P])\s+@\s*([\d.]+)'
+            match = re.search(pattern, mb.description.replace("<", "@"), re.IGNORECASE| re.DOTALL)
+            if match:
+                ticker, expDate, strike, otype, price = match.groups()
+                alert = f"BTO {ticker} {strike}{otype.upper()} {expDate} @{price}"
+            else:
+                alert = f"{mb.title}: {mb.description}"
+        else:
+            alert = f"{mb.title}: {mb.description}"
+    
+    if len(alert):
+        message.content = alert
+    return message
+
+
 def moneymotive(message_):
     """
     Reformat Discord message from moneymotive to content message
@@ -751,6 +777,7 @@ def moneymotive(message_):
     alert = message.content
     
     if "%" in alert and ":rotating_light:" not in alert: # just status update
+        print("Moneymotive no '%' or no rotatig light")
         return message
     
     if ":rotating_light:" in alert and "/" not in alert and "0DTE" not in alert:
