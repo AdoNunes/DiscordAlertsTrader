@@ -8,7 +8,7 @@ from DiscordAlertsTrader.configurator import cfg
 from DiscordAlertsTrader.message_parser import parse_symbol
 from DiscordAlertsTrader.port_sim import filter_data, calc_trailingstop, calc_roi, calc_buy_trailingstop, get_hist_quotes, save_or_append_quote
 import matplotlib.pyplot as plt
-
+from DiscordAlertsTrader.marketdata.thetadata_api import ThetaClientAPI
 
 def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
@@ -263,22 +263,20 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 raise ImplementationError("thetadata quotes for stock not implemented")
             
             load_from_disk = False
-            append_quotes = False
             if op.exists(fquote):
                 quotes = pd.read_csv(fquote, on_bad_lines='skip')
                 if int(pd.to_datetime(row['Date'] ).timestamp()) in quotes['timestamp'].values and \
                     int(date_close.timestamp()) in quotes['timestamp'].values:
                         load_from_disk = True
                 else:                    
-                    # print('missing dates', row['Symbol'], row['Date'], date_close, 'loading from thetadata')
                     load_from_disk = False
-                    append_quotes = True
             
             if not load_from_disk:
                 dt_b = pd.to_datetime(row['Date'] ).date()
                 dt_s = date_close.date()
                 try:
-                    quotes = get_hist_quotes(row['Symbol'], [dt_b, dt_s], theta_client) 
+                    # quotes = get_hist_quotes(row['Symbol'], [dt_b, dt_s], theta_client) 
+                    quotes = client.get_hist_quotes(row['Symbol'], [dt_b, dt_s])
                 except:
                     if verbose:
                         print("no quotes for", row['Symbol'])
@@ -295,7 +293,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         else:
             quotes = pd.read_csv(fquote, on_bad_lines='skip')
 
-        
+        # drop nans
+        quotes = quotes.dropna().reset_index(drop=True)
         # get quotes within trade dates
         dates = quotes['timestamp']#.apply(lambda x: datetime.fromtimestamp(x))
         
@@ -507,39 +506,40 @@ if __name__ == '__main__':
     with_theta = True
     if with_theta:
         from thetadata import ThetaClient
-        client = ThetaClient(username=cfg['thetadata']['username'], passwd=cfg['thetadata']['passwd'])
+        client = ThetaClientAPI()
+        # client = ThetaClient(username=cfg['thetadata']['username'], passwd=cfg['thetadata']['passwd'])
         dir_quotes = cfg['general']['data_dir'] + '/hist_quotes'
     else:
         client = None
         dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
 
     params = {
-        'fname_port': 'data/sparsed_5min_port.csv',
+        'fname_port': 'data/demon_port.csv',
         'order_type': 'any',
         'last_days': None,
-        'filt_date_frm': "",
-        'filt_date_to': '',
+        'filt_date_frm': "ytd",
+        'filt_date_to': "",
         'stc_date':'eod',#'exp',#'stc alert', # ,  # 'exp', #, # 'eod' or 
-        'max_underlying_price': 20000,
-        'min_price': 10,
-        'max_dte': 100,
+        'max_underlying_price': 4000,
+        'min_price': 1,
+        'max_dte': 4,
         'min_dte': 0,
         'filt_hour_frm': "",
         'filt_hour_to': "",
         'include_authors': "",
         'exclude_symbols': [],
-        'PT': [100], #[20,25,35,45,55,65,95,],# [90],#
+        'PT': [300], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], # 
         'sl_update' :  None, #[[1.20, 1.05], [1.5, 1.3]], #   
         'avg_down': None,# [[10, 50], [20, 50]], 
-        'SL': 50,
+        'SL': 90,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
         'max_margin': None,
         'short_under_amnt' : None,
         'verbose': True,
-        'trade_amount': 1,
+        'trade_amount': 2000,
         "sell_bto": False,
         "max_short_val": None,
         "invert_contracts": False,
@@ -602,6 +602,7 @@ if __name__ == '__main__':
     if 0:
         # res, port_out = grid_search(params, PT= [30, 40], SL=[30], TS_buy=[0], TS= [0])
         res, port_out = grid_search(params, PT= list(np.arange(20,150, 10)) + [180, 200,250,300], SL=np.arange(20,101,10), TS_buy=[0], TS= [0])
+        res, port_out = grid_search(params, PT= list[30,60,80,120,170,200,250,300] , SL=[50, 80,90], TS_buy=[0], TS= [0])
     
         res = np.stack(res)
         sorted_indices = np.argsort(res[:, 4])

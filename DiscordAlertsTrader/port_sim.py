@@ -47,7 +47,8 @@ def get_hist_quotes(symbol:str, date_range:List[date], client, interval_size:int
     out['bid'] = out[DataType.BID]
     out['ask'] = out[DataType.ASK]
     out = out[['timestamp', 'bid', 'ask']]
-    out = out[(out['ask']!=0) & (out['bid']!=0)] # remove zero ask
+    out[(out['ask']==0) & (out['bid']==0)] = pd.NA
+    # out = out[(out['ask']!=0) & (out['bid']!=0)] # remove zero ask
     return out
 
 def save_or_append_quote(quotes, symbol, path_quotes, overwrite=False):

@@ -15,7 +15,7 @@ def server_formatting(message):
         message = rough_alerts(message)
     elif message.channel.id in [972620961004269598]:
         message = kent_formatting(message)
-    elif message.channel.id in [894421928968871986, 1184315998980022342, 1186220832226283560]:
+    elif message.channel.id in [894421928968871986, 1184315998980022342, 1186220832226283560, 1184315998980022342]:
         message = sirgoldman_formatting(message)
     elif message.channel.id in [1090673126527996004, 1132799545491869857, 1106356727294726156, 1135628574511079505, 1184315961726226502]:
         message = flint_formatting(message)
@@ -57,7 +57,7 @@ def embed_to_content(message_):
     """Convert embed message to content message"""
     
     message = MessageCopy(message_)
-    if message.content.startswith('@') and len(message.content.split()) == 1:
+    if message.content.startswith('<@') and len(message.content.split()) == 1:
         if message.embeds:
             message.content = message.embeds[0].description
     return message
