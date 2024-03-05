@@ -357,19 +357,24 @@ def get_live_quotes(portfolio, trader_port=False):
         
         quote_lst = quotes[-1].split(',')  # in ms
         try:
-            quotes_sym[sym] = float(quote_lst[1].replace('\n', '').replace(' ', ''))
+            quotes_sym[sym] = {"ask": float(quote_lst[2].replace('\n', '').replace(' ', '')),
+                               "bid":float(quote_lst[1].replace('\n', '').replace(' ', ''))
+                               }
         except:
             continue
             
     for sym in quotes_sym:
-        live_price = quotes_sym[sym]
-        if live_price == 0:
-            continue
         msk = portfolio['Symbol']==sym
         trades = portfolio.loc[msk]
         
         for ix, trade in trades.iterrows():
+            if "Type" in portfolio.columns:
+                if trade['Type'] == "BTO":
+                    live_price = quotes_sym[sym]['bid']
+                elif trade['Type'] == "STO":
+                    live_price = quotes_sym[sym]['ask']            
             portfolio.loc[ix, 'Live'] = live_price
+            
             if trade['isOpen'] == 0:
                 continue
             order= {
@@ -386,7 +391,7 @@ def get_live_quotes(portfolio, trader_port=False):
                 for k, v in stc_info.items():
                     if k == "STC-Qty":
                         continue
-                    portfolio.loc[msk,k] = v
+                    portfolio.loc[ix,k] = v
             portfolio.loc[ix, 'Live'] = live_price
     return portfolio
 

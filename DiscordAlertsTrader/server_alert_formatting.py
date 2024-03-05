@@ -21,7 +21,7 @@ def server_formatting(message):
         message = flint_formatting(message)
     elif message.channel.id in [904543469266161674, 1209644125477933088]:  
         message = jpm_formatting(message)
-    elif message.channel.id in [1087374395477078106]:
+    elif message.channel.id in [911389167169191946, 1158799914290139188]:
         message = nitro_formatting(message)
     elif message.channel.id in [1189288104545226773, 1012144319282556928]:
         message = moneymotive(message)
@@ -57,7 +57,8 @@ def embed_to_content(message_):
     """Convert embed message to content message"""
     
     message = MessageCopy(message_)
-    if message.content.startswith('<@') and len(message.content.split()) == 1:
+    if (message.content.startswith('<@') and len(message.content.split())) == 1 or \
+        (message.content.startswith('@')and len(message.content.split())):
         if message.embeds:
             message.content = message.embeds[0].description
     return message

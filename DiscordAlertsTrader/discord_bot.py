@@ -167,7 +167,7 @@ class DiscordBot(discord.Client):
         message = server_formatting(message)
         if custom:
             # await msg_custom_formated2(message)
-            alert = msg_custom_formated(message)
+            alert = msg_custom_formated(message, self.bksession)
             if alert is not None:
                 for msg in alert:
                     self.new_msg_acts(msg, False)

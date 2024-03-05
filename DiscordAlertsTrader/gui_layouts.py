@@ -329,7 +329,7 @@ def layout_config(fnt_h, cfg):
                     key="cfg_general.do_BTO_trades", tooltip='Accept Buy alerts and open trades', enable_events=True)],
         [sg.Checkbox('Do STC trades', cfg['general'].getboolean('Do_STC_trades'), text_color='black',
                     key="cfg_general.do_STC_trades", tooltip='Accept Sell alerts and close trade', enable_events=True)],
-        [sg.Checkbox('Sell @ current price', cfg['order_configs'].getboolean('sell_current_price'), text_color='black',
+        [sg.Checkbox('Trade @ current price', cfg['order_configs'].getboolean('sell_current_price'), text_color='black',
                     key="cfg_order_configs.sell_current_price", 
                     tooltip='When BTO alerts, sell current rather than alerted,\nif alerted is too low it will not fill if false', enable_events=True)],
         [sg.Checkbox('Accept repeated BTO alerts', cfg['order_configs'].getboolean('accept_repeated_bto_alerts'), text_color='black',
@@ -426,14 +426,14 @@ def layout_config(fnt_h, cfg):
     sg.Input(cfg['shorting']['BTC_EOD_PT_SL'], key="cfg_shorting.BTC_EOD_PT_SL", enable_events=True,
             tooltip="Before close, at 3:45 narrow the SL to 5% and PT to 10% of current price, can be empty"), sg.Stretch()],
     
-    [sg.Text("Qty based on", tooltip="Either 'buy_one' or use 'underlying_capital' to calculate quantity"),
-    sg.Drop(values=['buy_one', 'underlying_capital'], default_value=cfg['shorting']['default_sto_qty'], key="cfg_shorting.default_sto_qty",
-            tooltip=" Either 'buy_one' or use 'underlying_capital' to calculate quantity", size=(30,1), enable_events=True), sg.Stretch()],
+    [sg.Text("Qty based on", tooltip="Either 'buy_one' or use 'margin_capital' to calculate quantity"),
+    sg.Drop(values=['buy_one', 'margin_capital'], default_value=cfg['shorting']['default_sto_qty'], key="cfg_shorting.default_sto_qty",
+            tooltip=" Either 'buy_one' or use 'margin_capital' to calculate quantity", size=(30,1), enable_events=True), sg.Stretch()],
 
-    [sg.Text("Undelying capital $",
-            tooltip="Specify the $ amount per underlying, if 400 and option underlying is 100, it will buy 4 contracts"),
-    sg.Input(cfg['shorting']['underlying_capital'], key="cfg_shorting.underlying_capital", enable_events=True,
-            tooltip=" Either 'buy_one' or use 'underlying_capital' to calculate quantity"), sg.Stretch()],
+    [sg.Text("margin capital $",
+            tooltip="Specify the $ margin amount per trade, margin = underlying x 20"),
+    sg.Input(cfg['shorting']['margin_capital'], key="cfg_shorting.margin_capital", enable_events=True,
+            tooltip=" Either 'buy_one' or use 'margin_capital' to calculate quantity"), sg.Stretch()],
     
     [sg.Text("Max days to expiration", 
             tooltip="0 means expiring same day (more volatile and theta decay), 1 means next day, etc"),
@@ -449,9 +449,13 @@ def layout_config(fnt_h, cfg):
     sg.Input(cfg['shorting']['min_price'], key="cfg_shorting.min_price",  enable_events=True,
             tooltip="Min price contract, an option at 0.5 price is $50"), sg.Stretch()],
     
-    [sg.Text("Maximum $ per trade", tooltip="If the quantity is higher than this, it will only buy the max_trade_capital. If one contract is higher than this, it will not buy"),
+    [sg.Text("Minimum $ per trade", tooltip="If the quantity is higher than this, it will only buy the min_trade_capital. If one contract is higher than this, it will not buy"),
+    sg.Input(cfg['shorting']['min_trade_capital'], key="cfg_shorting.min_trade_capital", enable_events=True,
+            tooltip="If the quantity is higher than this, it will only buy the min_trade_capital. If one contract is higher than this, it will not buy"), sg.Stretch()],
+    
+    [sg.Text("Maximum $ per trade", tooltip="If the quantity is less than this, it will not trade"),
     sg.Input(cfg['shorting']['max_trade_capital'], key="cfg_shorting.max_trade_capital", enable_events=True,
-            tooltip="If the quantity is higher than this, it will only buy the max_trade_capital. If one contract is higher than this, it will not buy"), sg.Stretch()],
+            tooltip="If the quantity is less than this, it will not trade"), sg.Stretch()],
     
     [sg.Text("Authors subscribed:", tooltip="Traders to short, do not put the same names as in [order_configs (long)]. Me_short for GUI alert trigger")],
     [sg.Input(cfg['shorting']['authors_subscribed'], key="cfg_shorting.authors_subscribed",  enable_events=True,

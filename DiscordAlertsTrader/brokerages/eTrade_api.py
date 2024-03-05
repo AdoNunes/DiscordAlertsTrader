@@ -335,7 +335,7 @@ class eTrade(BaseBroker):
     def cancel_order(self, order_id:int):
         time.sleep(2)  # sleep as order status change is not instant
         print('canceling order', order_id)
-        resp = self.order_session.cancel_order(self.accountIdKey,order_id, resp_format='xml')
+        resp = self.order_session.cancel_order(self.accountIdKey,int(order_id), resp_format='xml')
         time.sleep(2)
         return resp
 
