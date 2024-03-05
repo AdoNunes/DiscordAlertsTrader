@@ -490,7 +490,7 @@ class TS(BaseBroker):
                     "Symbol": Symbol,
                     "Predicate": "Gt",
                     "TriggerKey": "STTN",
-                    "Price": str(Price)
+                    "Price": str(price_trigger)
                     }
                 }
 
