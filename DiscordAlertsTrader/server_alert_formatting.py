@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 
 def server_formatting(message):
     """Format server messages to standard alert format"""
+    if  message.guild is None:  # DM
+        return message
     if message.guild.id == 542224582317441034:
         message = xtrades_formatting(message)
     elif message.guild.id == 836435995854897193:
@@ -186,7 +188,7 @@ def jpa_formatting(message_):
     alert = ""
 
     for mb in message.embeds:   
-        if "jpa" in mb:
+        if "jpa" in mb.description:
             message.author.name = "JPA"     
         alert = format_0dte_weeklies(mb.description, message, False)
         alert = alert.replace(" calls", "C").replace(" puts", "P")

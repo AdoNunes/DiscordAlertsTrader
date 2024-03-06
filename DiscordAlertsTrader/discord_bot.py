@@ -14,7 +14,7 @@ from DiscordAlertsTrader.alerts_trader import AlertsTrader
 from DiscordAlertsTrader.alerts_tracker import AlertsTracker
 from DiscordAlertsTrader.server_alert_formatting import server_formatting
 try:
-    from .custom_msg_format import msg_custom_formated
+    from .custom_msg_format import msg_custom_formated, msg_custom_formated2
     print("custom message format loaded")
     custom = True
 except ImportError:
@@ -157,7 +157,7 @@ class DiscordBot(discord.Client):
     
     async def on_message(self, message):
         # only respond to channels in config or authorwise subscription
-        author = f"{message.author.name}#{message.author.discriminator}"    
+        author = f"{message.author.name}#{message.author.discriminator}".replace("#0", "")   
         if message.channel.id not in self.channel_IDS.values() and \
             author.lower() not in split_strip(self.cfg['discord']['auhtorwise_subscription']):
             return
@@ -166,7 +166,7 @@ class DiscordBot(discord.Client):
         
         message = server_formatting(message)
         if custom:
-            # await msg_custom_formated2(message)
+            await msg_custom_formated2(message)
             alert = msg_custom_formated(message, self.bksession)
             if alert is not None:
                 for msg in alert:
