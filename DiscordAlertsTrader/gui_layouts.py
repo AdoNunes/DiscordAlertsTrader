@@ -403,6 +403,12 @@ def layout_config(fnt_h, cfg):
     [sg.Checkbox("BTC at end of day (EOD)", default=cfg['shorting'].getboolean('BTC_EOD'), key="cfg_shorting.BTC_EOD",text_color='black',
                 tooltip="Close at end of day, if not overnight there might be big losses", enable_events=True), sg.Stretch()],
     
+    [sg.Checkbox("Accept repeated STO", default=cfg['shorting'].getboolean('accept_repeated_sto_alerts'), key="cfg_shorting.accept_repeated_sto_alerts",text_color='black',
+                tooltip="Trade repeated trades", enable_events=True), sg.Stretch()],
+    
+    [sg.Checkbox("Ignore qty in STO alerts", default=cfg['shorting'].getboolean('ignore_alert_qty'), key="cfg_shorting.ignore_alert_qty",text_color='black',
+                tooltip="Ignore qty in STO alerts", enable_events=True), sg.Stretch()],
+
     [sg.Text('Max price diff', 
              tooltip='Max difference allowed between alerted price and current price, if not will lim to alerted price'),
     sg.Input(cfg['shorting']['max_price_diff'], key="cfg_shorting.max_price_diff",  enable_events=True,

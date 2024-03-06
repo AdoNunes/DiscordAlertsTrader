@@ -517,7 +517,7 @@ def grid_search(params_dict, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25]):
 if __name__ == '__main__':
     import os
     with_theta = False
-    with_poly = False
+    with_poly = True
     if with_theta:
         from thetadata import ThetaClient
         client = ThetaClientAPI()
@@ -532,23 +532,23 @@ if __name__ == '__main__':
         dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
 
     params = {
-        'fname_port': 'data/trader_portfolio_ts.csv',
+        'fname_port': 'data/eclipse_port.csv',
         'order_type': 'any',
-        'last_days': 0,
+        'last_days': None,
         'filt_date_frm': "",
         'filt_date_to': "",
         'stc_date':'eod',#'exp',#'stc alert', # ,  # 'exp', #, # 'eod' or 
-        'max_underlying_price': 4000,
+        'max_underlying_price': 40000,
         'min_price': 10,
-        'max_dte': 5,
+        'max_dte': 55,
         'min_dte': 0,
         'filt_hour_frm': "",
-        'filt_hour_to': 12,
+        'filt_hour_to': "",
         'include_authors': "",
         'exclude_symbols': [],
-        'PT': [50], #[20,25,35,45,55,65,95,],# [90],#
+        'PT': [300], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], # 
-        'sl_update' :  None, #[[1.20, 1.05], [1.5, 1.3]], #   
+        'sl_update' :  None, #   [[1.20, 1.05], [1.5, 1.3]], # 
         'avg_down': None,# [[10, 50], [20, 50]], 
         'SL': 50,
         'TS': 0,

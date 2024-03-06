@@ -2,6 +2,7 @@ from datetime import datetime
 import time
 import json
 import pandas as pd
+import re
 
 from DiscordAlertsTrader.configurator import cfg
 from DiscordAlertsTrader.brokerages.tradestation import auth as tsa
@@ -23,7 +24,7 @@ class TS(BaseBroker):
         self.session = tsa.easy_client(cfg['tradestation']['client_id'], 
                            cfg['tradestation']['client_secret'], 
                            cfg['tradestation']['redirect_url'], 
-                           paper_trade=cfg['tradestation']['papertrade'])
+                           paper_trade=cfg['tradestation'].getboolean('papertrade'))
         
         if self.accountId is None:
             resp = self.session.get_accounts('adonunes12').json()
@@ -323,7 +324,26 @@ class TS(BaseBroker):
                     resend = True
             
         elif resp['Orders'][0]['Message'].startswith('Order failed. Reason: EC602:'):
-            print("The position is not open")            
+            print("The position is not open") 
+        elif resp['Orders'][0]['Message'].startswith('Order failed. Reason: EC1000: This order requires'):   
+            # reduce qty and resend
+            text = resp['Orders'][0]['Message']
+            
+            # get BPs
+            bp_req, bp_now = 1, 1            
+            match = re.search(r'This order requires \$([\d,\.]+)', text)
+            if match:
+                bp_req = float(match.group(1).replace(",", ""))     
+            match = re.search(r'current Buying Power values of \$([\d,.]+)', text)
+            if match:
+                bp_now = float(match.group(1).replace(",", ""))
+            
+            qty_o = int(new_order['Quantity'])
+            new_order['Quantity'] = str(int(qty_o * bp_now / bp_req))
+            
+            print(f"Not enough margin, qty reduced to {new_order['Quantity']} from {qty_o}")
+            return self.send_order(new_order)
+        
         else:
             print('stop here')
             

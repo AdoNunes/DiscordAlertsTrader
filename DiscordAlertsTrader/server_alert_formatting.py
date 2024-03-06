@@ -7,7 +7,7 @@ def server_formatting(message):
         message = xtrades_formatting(message)
     elif message.guild.id == 836435995854897193:
         message = tradeproelite_formatting(message)
-    elif message.channel.id in [1144658745822035978, 1196385162490032128, 1176558956123013230]:
+    elif message.channel.id in [1144658745822035978, 1196385162490032128, 1176558956123013230, 1213995695237763145]:
         message = eclipse_alerts(message)
     elif message.channel.id in [1005221780941709312, 1176559103431168001]:
         message = oculus_alerts(message)
@@ -23,7 +23,7 @@ def server_formatting(message):
         message = jpm_formatting(message)
     elif message.channel.id in [911389167169191946, 1158799914290139188]:
         message = nitro_formatting(message)
-    elif message.channel.id in [1189288104545226773, 1012144319282556928]:
+    elif message.channel.id in [1189288104545226773, 1012144319282556928, 1214378575554150440]:
         message = moneymotive(message)
     elif message.channel.id in [728711121128652851]:
         message = owl_formatting(message)
@@ -47,6 +47,8 @@ def server_formatting(message):
         message = crimson_formatting(message)
     elif message.channel.id in [1209854873344938044]:
         message = prophet_formatting(message)
+    elif message.channel.id in [1214652173171040256]:
+        message = jpa_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     else:
@@ -171,6 +173,37 @@ def sirgoldman_formatting(message_):
             message.content = alert
     return message
 
+def jpa_formatting(message_):
+    """
+    Reformat Discord message from JPA
+    
+    Bought $AMZN 177.5c for .95    
+    Bought $AAPL 180 calls for next week at 1.18    
+    Bought 3/1 $AAPL 180p for .62    
+    Bought $GOOGL 142c for .85
+    """
+    message = MessageCopy(message_)
+    alert = ""
+
+    for mb in message.embeds:   
+        if "jpa" in mb:
+            message.author.name = "JPA"     
+        alert = format_0dte_weeklies(mb.description, message, False)
+        alert = alert.replace(" calls", "C").replace(" puts", "P")
+        exp = r'\$([A-Z]+) ([\d.]+)(c|p|C) .* ([\d.]+)'
+        match = re.search(exp, alert, re.IGNORECASE| re.DOTALL)
+        if match:
+            contract, strike, otype, price = match.groups()
+            # get exp date
+            match = re.search(r'(\d{1,2}\/\d{1,2})', alert)
+            if match:
+                expdate = match.group(1)
+                alert = f"BTO {contract} {strike}{otype.upper()} {expdate} @{price}"
+            else:
+                alert = f"BTO {contract} {strike}{otype.upper()} weeklies @{price}"
+                alert = format_0dte_weeklies(alert, message, False)
+    message.content = alert
+    return message
 
 def nitro_formatting(message_):
     """
@@ -193,7 +226,7 @@ def nitro_formatting(message_):
             else:
                 price = None
             if exp_date is None: 
-                if strike in ["QQQ", "SPY", "IWM"]:
+                if contract in ["QQQ", "SPY", "IWM"]:
                     exp_date = "0DTE"
                 else:
                     exp_date = "Weeklies"
@@ -527,12 +560,17 @@ def format_0dte_weeklies(contract, message, remove_price=True):
             contract = re.sub(r"1DTE", msg_date,contract, flags=re.IGNORECASE)
             if remove_price:
                 contract = contract.split(" @")[0]    
-        elif "weeklies" in contract.lower():
+        elif "weeklies" in contract.lower() or "next week" in contract.lower():
             msg_date= message.created_at
             days_until_friday = (4 - msg_date.weekday() + 7) % 7
+            patt = "Weeklies"
+            if "NEXT WEEK" in contract.upper():
+                days_until_friday += 7  # Move to next week
+                patt = "Next Week"
+
             msg_date += timedelta(days=days_until_friday)
             msg_date = msg_date.strftime('%m/%d')
-            contract =  re.sub(r"Weeklies", msg_date,contract, flags=re.IGNORECASE)
+            contract =  re.sub(patt, msg_date,contract, flags=re.IGNORECASE)
             if remove_price:
                 contract = contract.split(" @")[0]
         return contract
