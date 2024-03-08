@@ -6,10 +6,14 @@ from datetime import datetime, timedelta, date, time
 import numpy as np
 from DiscordAlertsTrader.configurator import cfg
 from DiscordAlertsTrader.message_parser import parse_symbol
-from DiscordAlertsTrader.port_sim import filter_data, calc_trailingstop, calc_roi, calc_buy_trailingstop, get_hist_quotes, save_or_append_quote
+from DiscordAlertsTrader.port_sim import filter_data, calc_trailingstop, calc_roi, calc_buy_trailingstop, save_or_append_quote
 import matplotlib.pyplot as plt
 from DiscordAlertsTrader.marketdata.thetadata_api import ThetaClientAPI
 from DiscordAlertsTrader.marketdata.polygon import get_poly_data_askbid
+
+def date_local(date_str):
+    return pd.to_datetime(date_str).tz_localize('America/New_York').tz_convert('UTC')
+
 
 def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 dir_quotes= cfg['general']['data_dir'] + '/live_quotes',
@@ -28,6 +32,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 exclude_traders= "",
                 exclude_symbols= [],
                 invert_contracts=False,
+                initial_price = "ask",
                 PT=[80],
                 pts_ratio = [1],
                 TS=0,
@@ -36,6 +41,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 TS_buy_type= 'inverse',
                 avg_down=None,
                 sl_update = None,
+                pt_update = None,
                 max_margin = None,
                 short_under_amnt = None,
                 sell_bto=False,
@@ -44,7 +50,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 trade_amount=1,
                 trade_type = 'any',
                 theta_client = None,
-                poly = False,
+                with_poly = False,
                 do_plot = False
                 ):
     """simulate trade and get returns
@@ -75,6 +81,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         List symbols to exclude, by default ['SPX',  'QQQ']
     invert_contracts : bool, optional
         Truns a put in to a call and viceversa, by default False
+    initial_price : str, optional
+        'ask', 'bid', "price_actual", "ask_+10" == ask +10, by default 'ask'
     PT : list of int, optional
         Profit target percent, by default [80]
     pts_ratio : list of int, optional
@@ -92,6 +100,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         list of lists with [% avg down, % quantity], eg [[30, 50]] average at -30%, 50% initial quantity, by default [0]
     sl_update : list, optional
         list of lists with [ratio triger and sl], eg [[1.3, 1.1]] update SL at 30%, to 10% SLy, by default None
+    pt_update : list, optional
+        list of lists with [ratio triger and pt], eg [[0.8, 1.1]] update PT at -20%, to 10% PT, by default None
     max_margin : int, optional
         max margin to use for shorting, by default None
     short_under_amnt : int, optional
@@ -108,7 +118,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         any, bto or sto, by default any
     theta_client: object, optional
         client to get historical quotes, by default None
-    poly: bool, optional
+    with_poly: bool, optional
         use polygon data, by default False
     do_plot: bool, optional
         plot quotes, by default False
@@ -131,6 +141,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             'order_type': order_type,
             'max_underlying_price': max_underlying_price,
             'min_price': min_price,
+            "initial_price": initial_price,
             'max_dte': max_dte,
             'min_dte': min_dte,
             "hour_frm": filt_hour_frm,
@@ -148,6 +159,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             'TS_buy_type' : TS_buy_type,
             'avg_down': avg_down,
             'sl_update': sl_update,
+            'pt_update': pt_update,
             'max_margin': max_margin,
             'short_under_amnt': short_under_amnt,
             'sell_bto':sell_bto,
@@ -175,13 +187,28 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                     filt_hour_frm=filt_hour_frm,
                     filt_hour_to=filt_hour_to          
                     )
+    
     if trade_type != 'any':
         port = port[port['Type'] == trade_type.upper()]
+    
     if order_type != 'any':
         order_type = order_type.lower()
         ot = 'C' if order_type == 'call' else 'P' if order_type == 'put' else None
         port = port[port['Symbol'].str.split("_").str[1].str.contains(ot)]
-        
+    
+    if sell_bto:
+        port.loc[port['Type'] == 'BTO', 'Type'] = 'STO'
+    
+    # calc underlying, dte, right
+    underlying = port['Symbol'].str.extract(r'[C|P](\d+(\.\d+)?)$').iloc[:, 0]
+    port['underlying'] = pd.to_numeric(underlying)
+    port['hour'] = pd.to_datetime(port['Date']).dt.hour
+    de = port.loc[port['Asset'] == 'option', 'Symbol'].str.extract(r'_(\d{6})').iloc[:, 0]
+    de = pd.to_datetime(de, format='%m%d%y').dt.date
+    dte = pd.to_timedelta(de - pd.to_datetime(port['Date']).dt.date).dt.days
+    port['dte'] = dte
+    port['right'] = port['Symbol'].str.extract(r'([C|P])\d+(\.\d+)?$').iloc[:, 0]
+
     if invert_contracts:
         port['Symbol'] = port['Symbol'].str.replace(r'C(\d+)', r'xo\1', regex=True)
         port['Symbol'] = port['Symbol'].str.replace(r'P(\d+)', r'C\1', regex=True)
@@ -191,8 +218,6 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     if len(port) == 0:
         print("No trades to calculate")
         exit()
-    if sell_bto:
-        port.loc[port['Type'] == 'BTO', 'Type'] = 'STO'
 
     pt = [1 + p/100 for p in PT]
     ts = TS/100
@@ -206,25 +231,13 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     port['strategy-close_date'] = pd.NaT   
     port['reason_skip'] = np.nan
     
-    no_quote = []
+
     do_margin = False if max_margin is None else True
     if do_margin:  
-        port['margin'] = np.nan  
-        port = port.reset_index(drop=True)
-        qty_t = 1        
-    underlying = port['Symbol'].str.extract(r'[C|P](\d+(\.\d+)?)$').iloc[:, 0]
-    port['underlying'] = pd.to_numeric(underlying)
-    port['hour'] = pd.to_datetime(port['Date']).dt.hour
-    de = port.loc[port['Asset'] == 'option', 'Symbol'].str.extract(r'_(\d{6})').iloc[:, 0]
-    de = pd.to_datetime(de, format='%m%d%y').dt.date
-    dte = pd.to_timedelta(de - pd.to_datetime(port['Date']).dt.date).dt.days
-    port['dte'] = dte
-    port['right'] = port['Symbol'].str.extract(r'([C|P])\d+(\.\d+)?$').iloc[:, 0]
-
-    # do_plot = True
+        port['margin'] = np.nan
+    
+    # Iterate over the trades
     for idx, row in port.iterrows():
-        # if idx != 27:
-        #     continue
         if pd.isna(row['Price-actual']) and not with_theta and not with_poly:
             if verbose:
                 print("no current price, skip")
@@ -233,19 +246,17 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         
         if do_margin:
             trade_margin = row['underlying'] * 100 * 0.2
-            trade_open_date = pd.to_datetime(row['Date']).tz_localize('UTC')
+            trade_open_date = pd.to_datetime(row['Date']).tz_localize('America/New_York')
             if idx:
-                open_trades = port.iloc[:idx][(pd.to_datetime(port.iloc[:idx]['strategy-close_date']).dt.tz_convert('UTC') >= trade_open_date)]
+                open_trades = port.iloc[:idx][port.iloc[:idx]['strategy-close_date']>= trade_open_date]
                 margin = open_trades['margin'].sum() + trade_margin
                 if margin > max_margin:
                     if verbose:
                         print(f"skipping trade {row['Symbol']} due to margin too high at {margin}")
                     port.loc[idx, 'reason_skip'] = 'margin too high'
                     continue
-            # else:
-                # print("margin", margin, "trade margin", trade_margin, "symbol", row['Symbol'])
 
-        # get STC date
+        # get STC date and quotes
         if stc_date == 'eod':
             date_close = row['Date'].replace("T00:00:00+0000", " 15:55:00.000000")
             date_close = pd.to_datetime(date_close).replace(hour=15, minute=55, second=0, microsecond=0)
@@ -259,57 +270,15 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         elif stc_date == 'exp':
             ord_in = parse_symbol(row['Symbol'])
             date_close = pd.to_datetime(f"{ord_in['exp_month']}/{ord_in['exp_day']}/{ord_in['exp_year']} 15:55:00.000000")
-
-        # Load data from disk or thetadata
-        fquote = f"{dir_quotes}/{row['Symbol']}.csv"
-        if with_theta or with_poly:            
-            load_from_disk = False
-            if op.exists(fquote):
-                quotes = pd.read_csv(fquote, on_bad_lines='skip')
-                if int(pd.to_datetime(row['Date'] ).timestamp()) in quotes['timestamp'].values and \
-                    int(date_close.timestamp()) in quotes['timestamp'].values:
-                        load_from_disk = True
-                else:                    
-                    load_from_disk = False
-            
-            if not load_from_disk:                
-                try:
-                    if with_theta:
-                        dt_b = pd.to_datetime(row['Date'] ).date()
-                        dt_s = date_close.date()
-                        # quotes = get_hist_quotes(row['Symbol'], [dt_b, dt_s], theta_client) 
-                        quotes = client.get_hist_quotes(row['Symbol'], [dt_b, dt_s])
-                    else:
-                        date_start = pd.to_datetime(row['Date']).tz_localize('America/New_York').tz_convert('UTC')
-                        date_end = date_close.tz_localize('America/New_York').tz_convert('UTC')
-                        quotes = get_poly_data_askbid(row['Symbol'], date_start.timestamp()*1000, date_end.timestamp()*1000, 'second',  ask='h', bid = 'l')
-                except:
-                    if verbose:
-                        print("no quotes for", row['Symbol'])
-                    port.loc[idx, 'reason_skip'] = 'no quotes'
-                    continue
-                # if abs(dt_s - dt_b).days < 400:
-                save_or_append_quote(quotes, row['Symbol'], dir_quotes)
-                print("saving...", row['Symbol'], row['Date'])
-        elif not op.exists(fquote):            
-            if verbose:
-                no_quote.append(row['Symbol'])
-            port.loc[idx, 'reason_skip'] = 'no quotes'
-            continue    
-        else:
-            quotes = pd.read_csv(fquote, on_bad_lines='skip')
+        
+        quotes, port = process_quotes(dir_quotes, idx, port, date_close, with_theta, with_poly, verbose)
 
         # drop nans
         quotes = quotes.dropna().reset_index(drop=True)
-        # get quotes within trade dates
-        dates = quotes['timestamp']#.apply(lambda x: datetime.fromtimestamp(x))
         
-        if 'bid' in quotes:
-            ask = quotes['ask']
-        else:
-            ask = quotes[' quote']
-        msk = (dates >= pd.to_datetime(row['Date']).timestamp()) & (dates <= pd.to_datetime(date_close).timestamp()) & (ask > 0)
-
+        # get quotes within trade dates
+        dates = quotes['timestamp']        
+        msk = (dates >= date_local(row['Date']).timestamp()) & (dates <= date_local(date_close).timestamp()) & (quotes['ask'] > 0)
         if not msk.any():
             if verbose:
                 print("quotes outside with dates", row['Symbol'])
@@ -318,30 +287,48 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
 
         # get quotes within trade dates, ask and bid
         quotes = quotes[msk].reset_index(drop=True)      
-        quotes = quotes.iloc[::3]
-        if 'bid' in quotes:
-            bad_data_times = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x, tz=pytz.utc)).dt.time
-            bad_data_times = bad_data_times != pd.Timestamp("09:30:01").time() 
-            quotes = quotes[(quotes['ask']!=0) & (quotes['bid']!=0) & ( bad_data_times)].reset_index(drop=True) 
-            if port.loc[idx, 'Type'] == 'BTO':                
-                bid = quotes['bid']
-                ask = quotes['ask']
-            elif port.loc[idx, 'Type'] == 'STO':
-                bid = quotes['ask']
-                ask = quotes['bid']
-                
-            dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x, tz=pytz.utc))
-            if not len(ask):
-                print("no quotes", row['Symbol'])
-                continue
-            
-        else:
-            bid = quotes[' quote']
-            ask = quotes[' quote']
-            dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))
-            price_curr = row['Price-actual']
-        price_curr = ask.iloc[0]
+        # quotes = quotes.iloc[::3]
+
+        bad_data_times = pd.to_datetime(quotes['timestamp'], unit='s', utc=True).dt.tz_convert('America/New_York').dt.time
+        bad_data_times = bad_data_times != pd.Timestamp("09:30:01").time() 
+        quotes = quotes[(quotes['ask']!=0) & (quotes['bid']!=0) & (bad_data_times)].reset_index(drop=True) 
         
+        if len(quotes) == 0:
+            if verbose:
+                print("no quotes", row['Symbol'])
+            port.loc[idx, 'reason_skip'] = 'no quotes'
+            continue
+        
+        # Set initial price
+        if 'ask' in initial_price:
+            price_curr = quotes['ask'].iloc[0]
+        elif 'bid' in initial_price:
+            price_curr = quotes['bid'].iloc[0]
+        elif 'price_actual' in initial_price:
+            price_curr = row['Price-actual']
+        
+        offset = None
+        if "_" in initial_price:
+            offset = initial_price.split("_")[1]
+            if "+" in offset:
+                price_curr = price_curr *  ( 1 + float(offset[1:])/100)
+            elif "-" in offset:
+                price_curr = price_curr * ( 1 - float(offset[1:])/100)
+        
+        # set bid and ask
+        if port.loc[idx, 'Type'] == 'BTO':                
+            bid = quotes['bid']
+            ask = quotes['ask']
+        elif port.loc[idx, 'Type'] == 'STO':
+            bid = quotes['ask']
+            ask = quotes['bid']
+            
+        dates = pd.to_datetime(quotes['timestamp'], unit='s', utc=True).dt.tz_convert('America/New_York')
+        
+        if not len(ask):
+            print("no quotes", row['Symbol'])
+            continue
+
         # add margin even if not triggered by ts buy
         if do_margin:
             port.loc[idx, 'margin'] = trade_margin
@@ -350,12 +337,29 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             plt.figure()
             tstm = quotes['timestamp']
             tstm -= tstm[0]
-            plt.plot(tstm, bid.values, "-o")
-            plt.plot(tstm[0], price_curr, "bo")
-            
-        trigger_index = 0       
+            plt.plot(tstm, bid.values, "-o", label="bid")
+            plt.plot(tstm, ask.values, "-.", label="ask")           
+            plt.plot(tstm[0], row['Price'], "rd", label="alert price")
+            plt.plot(tstm[0], row['Price-actual'], "bo", label="actual price")
+        
+        # Check if initial price is triggered
+        trigger_index = 0  
+
+        start = price_curr <= ask
+        if start.sum():
+            trigger_index = start.idxmax()
+            ask = ask[trigger_index:]
+            bid = bid[trigger_index:]
+            if do_plot:
+                plt.plot(tstm.loc[trigger_index], ask.loc[trigger_index], "gp", label="triggered price offset")
+        else:
+            if verbose:
+                print("initial price not triggered", row['Symbol'])
+            port.loc[idx, 'reason_skip'] = 'no initial price'
+            continue
+
         if ts_buy and TS_buy_type == 'inverse':         
-            price_curr, trigger_index, pt_index = calc_trailingstop(ask, 0, price_curr*ts_buy)
+            price_curr, trigger_index, pt_index = calc_trailingstop(ask, price_curr, price_curr*ts_buy)
             if trigger_index == len(ask)-1:
                 if verbose:
                     print("no trigger index", row['Symbol'])
@@ -372,11 +376,12 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             raise TypeError("TS_buy_type must be long or short")
 
         if do_plot:
-            plt.plot(tstm[trigger_index],bid[trigger_index], "go")
+            plt.plot(tstm[trigger_index], bid[trigger_index], "go")
         
         rois = []
         for ipt in pt:
-            roi_actual, = calc_roi(bid.loc[trigger_index:], PT=ipt, TS=ts, SL=sl, do_plot=False, initial_prices=price_curr,sl_update=sl_update, avgdown=avg_down)
+            roi_actual, = calc_roi(bid.loc[trigger_index:], PT=ipt, TS=ts, SL=sl, do_plot=False, 
+                                    initial_prices=price_curr,sl_update=sl_update, avgdown=avg_down, pt_update=pt_update)
             rois.append(roi_actual)
         
         rois_r = np.array(rois)
@@ -397,12 +402,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         if roi_actual[-2] == len(bid)-1:        
             port.loc[idx, 'last'] = 1
         
-        try:
-            dt_close= dates.loc[roi_actual[-2]].tz_localize('UTC')
-        except TypeError:
-            dt_close= dates.loc[roi_actual[-2]]
-            
-            
+
+        dt_close= dates.loc[roi_actual[-2]].tz_convert('America/New_York')
         port.loc[idx, 'strategy-close_date'] = dt_close
         pnl = roi_actual[2]
         mult = .1 if row['Asset'] == 'stock' else 1
@@ -436,8 +437,83 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         port.loc[idx, 'PnL$-actual'] = port.loc[idx, 'PnL-actual']*port.loc[idx, 'Price-actual']*qty_t
         if qty_ratio > 1:
             port.loc[idx, 'reason_skip'] = f"avg down {qty_ratio}"
+        
+    return port, param
 
-    return port, no_quote, param
+
+def process_quotes(dir_quotes, idx, port, date_close, with_theta=False, with_poly=False, verbose=False):
+    """
+    Process quotes for a given trade.
+
+    Args:        
+        dir_quotes (str): Directory path where quotes are stored.
+        idx (int): Index of the trade row in the DataFrame.
+        port (pandas.DataFrame): DataFrame containing trade data.
+        date_close (str): Datetime when to close the trade.
+        with_theta (bool, optional): Whether to include theta in processing. Defaults to False.
+        with_poly (bool, optional): Whether to include poly in processing. Defaults to False.
+        verbose (bool, optional): Whether to print verbose messages. Defaults to False.
+
+    Returns:
+        None
+    """
+    row = port.loc[idx]
+    
+    # File path for the quote
+    fquote = f"{dir_quotes}/{row['Symbol']}.csv"
+
+    if with_theta or with_poly:
+        load_from_disk = False
+        
+        # Check if quote file exists
+        if op.exists(fquote):
+            quotes = pd.read_csv(fquote, on_bad_lines='skip')
+            
+            # Check if we have quotes for the trade dates (quotes are full days)
+            date_start = pd.to_datetime(row['Date']).date()
+            date_end = date_close.date()
+            all_dates = [date_start + timedelta(days=x) for x in range((date_end - date_end).days + 1)]
+            all_dates = [d for d in all_dates if d.weekday() < 5]
+            
+            converted_dates = quotes[::10]['timestamp'].apply(
+                lambda x: pd.to_datetime(x, unit='s').tz_localize('UTC').tz_convert('America/New_York').date()).unique()
+            
+            # Check if all trade dates have quotes available
+            if all([d in converted_dates for d in all_dates]):
+                load_from_disk = True
+        
+        # If quotes are not loaded from disk, fetch them from the source
+        if not load_from_disk:
+            try:
+                if with_theta:
+                    # Fetch quotes using theta
+                    dt_b = pd.to_datetime(row['Date']).date()
+                    dt_s = pd.to_datetime(row['Date_close']).date()
+                    quotes = client.get_hist_quotes(row['Symbol'], [dt_b, dt_s])
+                else:
+                    # Fetch quotes using poly
+                    date_start = pd.to_datetime(row['Date']).replace(hour=9, minute=30, second=0, microsecond=0)
+                    date_end = pd.to_datetime(row['Date_close']).replace(hour=15, minute=55, second=0, microsecond=0)
+                    quotes = get_poly_data_askbid(row['Symbol'], date_start.timestamp()*1000, date_end.timestamp()*1000, 'second',  ask='h', bid='l')
+                    quotes['timestamp'] = quotes['timestamp'] // 1000
+            except Exception as e:
+                if verbose:
+                    print("No quotes for", row['Symbol'], e)
+                port.loc[idx, 'reason_skip'] = 'no quotes'
+                return
+
+            # Save or append quotes
+            save_or_append_quote(quotes, row['Symbol'], dir_quotes)
+            print("Saving...", row['Symbol'], row['Date'])
+    elif not op.exists(fquote):        
+        port.loc[idx, 'reason_skip'] = 'no quotes'
+        return
+    else:
+        # Load quotes from disk
+        quotes = pd.read_csv(fquote, on_bad_lines='skip')
+        quotes.rename(columns={' quote_ask':"ask", ' quote' :'bid'}, inplace=True)
+    return quotes, port
+
 
 def generate_report(port, param={}, no_quote=None, verbose=True):
     if no_quote is not None and verbose:
@@ -516,15 +592,15 @@ def grid_search(params_dict, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25]):
 
 if __name__ == '__main__':
     import os
-    with_theta = False
-    with_poly = True
+    with_theta = True
+    with_poly = False
     if with_theta:
         from thetadata import ThetaClient
         client = ThetaClientAPI()
         # client = ThetaClient(username=cfg['thetadata']['username'], passwd=cfg['thetadata']['passwd'])
         dir_quotes = cfg['general']['data_dir'] + '/hist_quotes'
     elif with_poly:
-        dir_quotes = cfg['general']['data_dir'] + '/hisy_quotes_poly'
+        dir_quotes = cfg['general']['data_dir'] + '/hist_quotes_poly'
         os.makedirs(dir_quotes, exist_ok=True)
         client = None
     else:
@@ -534,37 +610,40 @@ if __name__ == '__main__':
     params = {
         'fname_port': 'data/eclipse_port.csv',
         'order_type': 'any',
-        'last_days': None,
+        'last_days': 60,
         'filt_date_frm': "",
         'filt_date_to': "",
-        'stc_date':'eod',#'exp',#'stc alert', # ,  # 'exp', #, # 'eod' or 
+        'stc_date':'eod',#'exp', #,'stc alert', #'exp',# ,  #  # 'eod' or 
         'max_underlying_price': 40000,
         'min_price': 10,
-        'max_dte': 55,
+        'max_dte': 5,
         'min_dte': 0,
         'filt_hour_frm': "",
         'filt_hour_to': "",
         'include_authors': "",
         'exclude_symbols': [],
-        'PT': [300], #[20,25,35,45,55,65,95,],# [90],#
+        'initial_price' : 'ask', # 'ask_+10',
+        'PT': [100], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], # 
         'sl_update' :  None, #   [[1.20, 1.05], [1.5, 1.3]], # 
-        'avg_down': None,# [[10, 50], [20, 50]], 
-        'SL': 50,
-        'TS': 0,
-        'TS_buy': 0,
+        "pt_update" : [[0.7, 1], [.6, 0.8], [.5, 0.7] , [.4, 0.6], [.3, 0.5]], #  None, # 
+        'avg_down':[[1.5, 1]], #  
+        'SL': 40,
+        'TS': 10,
+        'TS_buy': 10,
         'TS_buy_type':'inverse',
-        'max_margin': None,
-        'short_under_amnt' : None,
+        'max_margin': 100000,
+        'short_under_amnt' : 5000,
         'verbose': True,
         'trade_amount': 1000,
-        "sell_bto": False,
-        "max_short_val": 3000,
+        "sell_bto": True,
+        "max_short_val": 4000,
         "invert_contracts": False,
+        "do_plot":False
     }
     import time as tt
     t0 = tt.time()
-    port, no_quote, param = calc_returns(dir_quotes=dir_quotes, theta_client=client, poly=with_poly, **params)
+    port, param = calc_returns(dir_quotes=dir_quotes, theta_client=client, with_poly=with_poly, **params)
 
     t1 = tt.time()
     print(f"Time to calc returns: {t1-t0:.2f} sec")
@@ -572,7 +651,7 @@ if __name__ == '__main__':
     sport = port[['Date','Symbol','Trader', 'Price', 'strategy-PnL',
                 'strategy-PnL$','strategy-entry','strategy-exit', 'strategy-close_date','reason_skip']] # 
 
-    result_td =  generate_report(port, param, no_quote, verbose=True)
+    result_td =  generate_report(port, param, None, verbose=True)
 
     if 1:
         import matplotlib.pyplot as plt

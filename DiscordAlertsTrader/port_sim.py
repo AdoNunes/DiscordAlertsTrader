@@ -13,6 +13,7 @@ except ImportError:
 
 def get_timestamp(row):
         date_time = (row[DataType.DATE] + timedelta(milliseconds=row[DataType.MS_OF_DAY]))
+        
         return date_time.timestamp()
 
 def get_hist_quotes(symbol:str, date_range:List[date], client, interval_size:int=1000):
@@ -384,7 +385,7 @@ def calc_SL(data:pd.Series, sl:float, update:list=None):
     else:
         return None, None
 
-def calc_PT(data:pd.Series, pt:float):
+def calc_PT(data:pd.Series, pt:float, update:list=None):
     """Calculate the Profit Target for a given series of quotes
     
     Parameters
@@ -393,6 +394,8 @@ def calc_PT(data:pd.Series, pt:float):
         Series of quotes
     pt : float
         Profit target
+    update : list, optional
+        List of tuples with target and new profit target, by default None
     
     Returns
     -------
@@ -401,15 +404,36 @@ def calc_PT(data:pd.Series, pt:float):
     """
     
     start = data >= pt
+    pt_inx_vals = []
     # normal SL
     if start.sum():
         pt_index = start.idxmax()
         pt_val = data.loc[pt_index]
-        return pt_val, pt_index, pt_index
+        pt_inx_vals.append([pt_val, pt_index, pt_index])
+    # SL update after PT
+    if update is not None:
+        for pt, new_pt in update:
+            start = data <= pt
+            # if PT reached
+            if start.sum():
+                pt_index = start.idxmax()
+                filtered_quotes = data.loc[pt_index:]
+                pt_trig = filtered_quotes >= new_pt
+                # if SL reached
+                if pt_trig.sum():
+                    pt_index = pt_trig.idxmax()
+                    pt_val = data.loc[pt_index]
+                    pt_inx_vals.append([pt_val, pt_index, pt_index])
+    
+    if pt_inx_vals:
+        # get the min SL
+        inx = np.argmin([int(i[1]) for i in pt_inx_vals])
+        pt_inx_vals = pt_inx_vals[inx]
+        return pt_inx_vals
     return None, None, None
 
 def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False, initial_prices=None, sl_update:list=None,
-             avgdown:list=None)->list:
+             avgdown:list=None, pt_update:list=None)->list:
     """Calculate roi for a given series of quotes
 
     Parameters
@@ -427,9 +451,14 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
     initial_price : float, optional
         initial price, by default None
     sl_update : list, optional
-        list of tuples with target and new stop loss, by default None
+        list of tuples with target and new stop loss, eg [(1.1, 0.8)] at 10% change SL 
+        to -20%, by default None
     avgdown : list, optional
-        list with lists of [percentage price, percentage quantity] default None
+        list with lists of [percentage fraction price, percentage fraction quantity], 
+        eg [ 0.8, 0.5], at price -20% buy 50% original qty default None
+    pt_update : list, optional
+        list of tuples with target and new profit target, eg [(1.1, 1.2)] at 10% change PT 
+        to 20%, by default None
 
     Returns
     -------
@@ -453,11 +482,20 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
         # check if ds before PT
         pt = initial_price * PT
         trigger_price, trigger_index, pt_index = calc_PT(quotes, pt)
-        for dws in avgdown:            
-            sl_index, sl_val = calc_SL(quotes, initial_price *(1-dws[0]/100), [])            
-            if (trigger_index is None and sl_index is not None) or \
-                (trigger_index and sl_index and trigger_index > sl_index):
-                ds_inf.append([sl_index, sl_val, dws[1]/100])
+        for dws in avgdown:   
+            # avg down case         
+            if dws[0] < 1:
+                sl_index, sl_val = calc_SL(quotes, initial_price *dws[0], [])            
+                if (trigger_index is None and sl_index is not None) or \
+                    (trigger_index and sl_index and trigger_index > sl_index):
+                    ds_inf.append([sl_index, sl_val, dws[1]])
+            # avg up case
+            else:
+                sl_index, sl_val = calc_SL(quotes, initial_price *SL, [])
+                pt_val, pt_index, pt_index = calc_PT(quotes, initial_price *dws[0])
+                if (sl_index is None and pt_index is not None) or \
+                    (sl_index and pt_index and sl_index > pt_index):
+                    ds_inf.append([pt_index, pt_val, dws[1]])
         if len(ds_inf):
             # make average price
             tot_qty_ratio = sum([1] + [i[2] for i in ds_inf])
@@ -470,8 +508,15 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
     
     ts = initial_price * TS
     
+    # convert SL update into price
+    new_pt_update = None
+    if pt_update:
+        new_pt_update = []
+        for ut, upt in pt_update:
+            new_pt_update.append([initial_price *ut, initial_price * upt])
+            
     if TS == 0:
-        trigger_price, trigger_index, pt_index = calc_PT(quotes, pt)
+        trigger_price, trigger_index, pt_index = calc_PT(quotes, pt, new_pt_update)
     else:
         trigger_price, trigger_index, pt_index = calc_trailingstop(quotes, pt, ts)
 

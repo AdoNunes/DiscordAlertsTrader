@@ -325,6 +325,7 @@ class TS(BaseBroker):
             
         elif resp['Orders'][0]['Message'].startswith('Order failed. Reason: EC602:'):
             print("The position is not open") 
+            
         elif resp['Orders'][0]['Message'].startswith('Order failed. Reason: EC1000: This order requires'):   
             # reduce qty and resend
             text = resp['Orders'][0]['Message']
@@ -342,6 +343,19 @@ class TS(BaseBroker):
             new_order['Quantity'] = str(int(qty_o * bp_now / bp_req))
             
             print(f"Not enough margin, qty reduced to {new_order['Quantity']} from {qty_o}")
+            return self.send_order(new_order)
+        
+        elif resp['Orders'][0]['Message'].startswith('Order failed. Reason: EC702:'):   
+            # reduce qty and resend
+            text = resp['Orders'][0]['Message']
+            
+            new_qty = int(re.search(r'Order failed. Reason: EC702: You are \w+ ([\d.]+) shares!', text).group(1).replace(".00", ""))
+            if new_order.get('Orders'):
+                for ix in range(len(new_order['Orders'])):
+                    new_order['Orders'][ix]['Quantity'] = str(new_qty)
+            else:
+                new_order['Quantity'] = str(new_qty)
+            print(f"Order with to many cons, qty reduced to {new_qty}")
             return self.send_order(new_order)
         
         else:

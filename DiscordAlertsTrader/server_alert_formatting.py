@@ -188,7 +188,7 @@ def jpa_formatting(message_):
     alert = ""
 
     for mb in message.embeds:   
-        if "jpa" in mb.description:
+        if "Jpa" in mb.description:
             message.author.name = "JPA"     
         alert = format_0dte_weeklies(mb.description, message, False)
         alert = alert.replace(" calls", "C").replace(" puts", "P")

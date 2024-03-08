@@ -705,6 +705,9 @@ class AlertsTrader():
 
             order_status, order_info = self.get_order_info(order_id)
             self.portfolio.loc[open_trade,'BTO-avg-Status'] = order_status
+            # if np.integer or int, turn to str
+            if isinstance(self.portfolio.loc[open_trade,"ordID"], np.integer):
+                self.portfolio.loc[open_trade,"ordID"] = str(self.portfolio.loc[open_trade,"ordID"])                
             self.portfolio.loc[open_trade,"ordID"] += f',{order_id}'
 
             if pd.isnull(self.portfolio.loc[open_trade, "Avged"]):
@@ -712,7 +715,6 @@ class AlertsTrader():
                 self.portfolio.loc[open_trade, "Avged-prices-alert"] = alert_price
                 self.portfolio.loc[open_trade, "Avged-prices"] = order_info["price"]
                 self.portfolio.loc[open_trade, "Avged-Qty"] = order_info['quantity']
-
             else:
                 self.portfolio.loc[open_trade, "Avged"] += 1
                 al_pr = self.portfolio.loc[open_trade, "Avged-prices-alert"]
@@ -738,6 +740,9 @@ class AlertsTrader():
             print(Back.GREEN + str_msg)
             self.queue_prints.put([str_msg, "", "green"])
 
+            if self.portfolio.loc[open_trade, "filledQty"] > self.portfolio.loc[open_trade, "Qty"]:
+                raise ValueError(f"Filled qty {self.portfolio.loc[open_trade, 'filledQty']} larger than Qty {self.portfolio.loc[open_trade, 'Qty']}")
+            
             #Log portfolio, trades_log
             log_alert['action'] = "BTO-avg"
             log_alert["portfolio_idx"] = len(self.portfolio) - 1
@@ -1144,7 +1149,12 @@ class AlertsTrader():
                 continue
             
             if trade["BTO-Status"] not in ['FILLED', "CANCELED", "REJECTED"]:# in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION', 'PENDING_ACTIVATION', 'AWAITING_MANUAL_REVIEW', "PARTIAL"]:
-                order_status, order_info = self.get_order_info(trade['ordID'])
+                # if str and has comma, take first
+                if isinstance(trade['ordID'], str):
+                    ordID = trade['ordID'].split(",")[-1]
+                else:
+                    ordID = trade['ordID']
+                order_status, order_info = self.get_order_info(ordID)
                 if order_status == "REJECTED":
                     self.portfolio.loc[i, "BTO-Status"] = order_status
                     self.portfolio.loc[i, 'isOpen'] = 0
@@ -1208,7 +1218,7 @@ class AlertsTrader():
             if pd.isnull(trade["filledQty"]) or trade["filledQty"] == 0:
                 continue
 
-            if trade.get("BTO-avg-Status") in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION', 'AWAITING_MANUAL_REVIEW', "PARTIAL"]:
+            if trade.get("BTO-avg-Status") not in ['FILLED', "CANCELED", "REJECTED"]:
                 if isinstance(trade['ordID'], str):
                     ordID = trade['ordID'].split(",")[-1]
                 else:
