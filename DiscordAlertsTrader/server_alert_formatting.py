@@ -829,7 +829,7 @@ def moneymotive(message_):
         alert = format_0dte_weeklies(alert, message, remove_price=False)
         message.content = alert
     
-    pattern = r'\$?(\w+)\s+([\d.]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2})\s+@\s*([\d.]+)'
+    pattern = r'\$?(\w+)\s+([\d.]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2})\s*\w*\s+@\s*([\d.]+)'
     match = re.search(pattern, alert, re.IGNORECASE)
     if match:
         ticker, strike, otype, expDate, price = match.groups()
