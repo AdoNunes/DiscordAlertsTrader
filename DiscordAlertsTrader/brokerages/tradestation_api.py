@@ -31,17 +31,32 @@ class TS(BaseBroker):
             self.accountId, = [ k['Name'] for k in resp if k['TypeDescription'] == cfg['tradestation']['acct_type']]
             
         success = self.session._logged_in
+        if not success:
+            self.session._grab_refresh_token()
+            print("Requested a new token at start of session")
+            success = self.session._logged_in
         if success:
             print("Logged in TradeStation successfully")
         else:
             print("Failed to log in TradeStation")
         return success
 
+    def check_closed_session(self, resp):
+        if resp == {'Error': 'Unauthorized', 'Message': 'Error - Dual logon'}:
+            status = self.get_session()
+            print("new token requested. Connected:", status)
+            return True
+        return False
+    
     def get_quotes(self, symbol:list):
         symbol = [self._convert_option_tots(s) for s in symbol]
         
         resp = self.session.get_quote_snapshots(symbol).json()
         
+        refreshed = self.check_closed_session(resp)
+        if refreshed:
+            resp = self.session.get_quote_snapshots(symbol).json()
+
         quotes = {}
         for quote in resp.get('Quotes', []):
             ticker = self._convert_option_fromts(quote['Symbol'])

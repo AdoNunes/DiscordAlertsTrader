@@ -20,14 +20,15 @@ def layout_console(ttl='Discord messages from subscribed channels',
     return layout, key
 
 def trigger_alerts_layout():
-    tp_chan = "Select portfolios to trigger alert.\'nuser' for your portfolio only. Will bypass false do_BTO and do_BTC and make the trade \n" +\
+    tp_chan = "Select portfolios to trigger alert.\n'user' for your portfolio only. Will bypass false do_BTO and do_BTC and make the trade \n" +\
                 "'analysts' for the alerts tracker,\n'all' for both"
     tp_trig = "Click portfolio row number to prefill the STC alert. Alerts can look like\n" +\
-                "BTO: Author#1234, BTO 1 AAA 115C 05/30 @2.5 PT 3.5TS30% PT2 4 SL TS40%, '%' for percentage, TS for Trailing Stop\n" +\
-                "STC: Author#1234, STC 1 AAA 115C 05/30 @3\n" +\
-                "STO: Author#1234, STC 1 AAA 115C 05/30 @2.5 PT 40% SL 50% \n" +\
-                "BTC: Author#1234, STC 1 AAA 115C 05/30 @2 \n" +\
-                "Exit Update: Author#1234, exit update AAA 115C 05/30 PT 80% SL 2\n"
+                "BTO: Author, BTO 1 AAA 115C 05/30 @2.5 PT 3.5TS30% PT2 4 SL TS40% -> '%' for percentage, TS for Trailing Stop\n" +\
+                "STC: Author, STC 1 AAA 115C 05/30 @3\n" +\
+                "Exit Update: Author, exit update AAA 115C 05/30 PT 80% SL 2\n" +\
+                "Exit Update: Author, exit update AAA 115C 05/30 isopen:no\n"  +\
+                "Exit Update: Author, exit update AAA 115C 05/30 cancelAVG\n"  +\
+                "Get quotes: Author, BTO 1 AAA 115C 05/30 @m" 
     lay = [[
            sg.Text('to portfolio:', tooltip=tp_chan),
            sg.Combo(['both', 'user', 'analysts'], default_value='analysts', key="_chan_trigg_",tooltip=tp_chan, readonly=True, size=(15,1)),
@@ -413,25 +414,25 @@ def layout_config(fnt_h, cfg):
              tooltip='Max difference allowed between alerted price and current price, if not will lim to alerted price'),
     sg.Input(cfg['shorting']['max_price_diff'], key="cfg_shorting.max_price_diff",  enable_events=True,
             tooltip='Max difference allowed between alerted price and current price, if not will lim to alerted price'), sg.Stretch()],
-    
+
     [sg.Text("STO Tailing Stop: %",
             tooltip="Trail the price until it drops a %, can be empty so no trailing stop"),
     sg.Input(cfg['shorting']['STO_trailingstop'], key="cfg_shorting.STO_trailingstop", enable_events=True,
             tooltip="Trail the price until it drops a %, can be empty so no trailing stop"), sg.Stretch()],
-    
+
     [sg.Text("BTC PT (profit target) %", tooltip="The percentage to trigger BTC at a profit, can be empty so no PT"),
     sg.Input(cfg['shorting']['BTC_PT'], key="cfg_shorting.BTC_PT",  enable_events=True,
              tooltip="The percentage to trigger BTC at a profit, can be empty so no PT"), sg.Stretch()],
-    
+
     [sg.Text("BTC SL (stop loss) %", tooltip="The percentage to trigger BTC at a profit, can be empty so no PT"),
     sg.Input(cfg['shorting']['BTC_SL'], key="cfg_shorting.BTC_SL",  enable_events=True,
              tooltip="The percentage to trigger BTC at a stoploss, can be empty so no SL"), sg.Stretch()],
-    
+
     [sg.Text("EOD PT and SL %", 
             tooltip="Before close, at 3:45 narrow the SL to 5% and PT to 10% of current price, can be empty"),
     sg.Input(cfg['shorting']['BTC_EOD_PT_SL'], key="cfg_shorting.BTC_EOD_PT_SL", enable_events=True,
             tooltip="Before close, at 3:45 narrow the SL to 5% and PT to 10% of current price, can be empty"), sg.Stretch()],
-    
+
     [sg.Text("Qty based on", tooltip="Either 'buy_one' or use 'margin_capital' to calculate quantity"),
     sg.Drop(values=['buy_one', 'margin_capital'], default_value=cfg['shorting']['default_sto_qty'], key="cfg_shorting.default_sto_qty",
             tooltip=" Either 'buy_one' or use 'margin_capital' to calculate quantity", size=(30,1), enable_events=True), sg.Stretch()],
@@ -440,12 +441,12 @@ def layout_config(fnt_h, cfg):
             tooltip="Specify the $ margin amount per trade, margin = underlying x 20"),
     sg.Input(cfg['shorting']['margin_capital'], key="cfg_shorting.margin_capital", enable_events=True,
             tooltip=" Either 'buy_one' or use 'margin_capital' to calculate quantity"), sg.Stretch()],
-    
+
     [sg.Text("Max days to expiration", 
             tooltip="0 means expiring same day (more volatile and theta decay), 1 means next day, etc"),
     sg.Input(cfg['shorting']['max_dte'], key="cfg_shorting.max_dte", enable_events=True,
             tooltip="0 means expiring same day (more volatile and theta decay), 1 means next day, etc"), sg.Stretch()],
-    
+
     [sg.Text("Max underlying value", 
              tooltip= "Max value of the underlying, margin is usually 100 * strike * 0.20, so SPX 4400 requires about $8k maring"),
     sg.Input(cfg['shorting']['max_strike'], key="cfg_shorting.max_strike", enable_events=True,
@@ -454,15 +455,15 @@ def layout_config(fnt_h, cfg):
     [sg.Text("Min price contract", tooltip="Min price contract, an option at 0.5 price is $50"),
     sg.Input(cfg['shorting']['min_price'], key="cfg_shorting.min_price",  enable_events=True,
             tooltip="Min price contract, an option at 0.5 price is $50"), sg.Stretch()],
-    
+
     [sg.Text("Minimum $ per trade", tooltip="If the quantity is higher than this, it will only buy the min_trade_capital. If one contract is higher than this, it will not buy"),
     sg.Input(cfg['shorting']['min_trade_capital'], key="cfg_shorting.min_trade_capital", enable_events=True,
             tooltip="If the quantity is higher than this, it will only buy the min_trade_capital. If one contract is higher than this, it will not buy"), sg.Stretch()],
-    
+
     [sg.Text("Maximum $ per trade", tooltip="If the quantity is less than this, it will not trade"),
     sg.Input(cfg['shorting']['max_trade_capital'], key="cfg_shorting.max_trade_capital", enable_events=True,
             tooltip="If the quantity is less than this, it will not trade"), sg.Stretch()],
-    
+
     [sg.Text("Authors subscribed:", tooltip="Traders to short, do not put the same names as in [order_configs (long)]. Me_short for GUI alert trigger")],
     [sg.Input(cfg['shorting']['authors_subscribed'], key="cfg_shorting.authors_subscribed",  enable_events=True,
             tooltip="Traders to short, do not put the same names as in [order_configs (long)]. Me_short for GUI alert trigger")],
@@ -470,7 +471,7 @@ def layout_config(fnt_h, cfg):
     lay = [[sg.Text("Session Configuration (change config.ini for permanent changes)", font=(fnt_h+ ' bold'), text_color='black', justification='center')],
         [sg.Frame('General', frame1, title_color='lightred', tooltip='General configurations')],
         [sg.Frame('Long Trading', frame2, title_color='lightred', tooltip='Config for long trading'), 
-        sg.Frame('Short Trading', frame3, title_color='lightred', tooltip='Config for long trading')],
+        sg.Frame('Short Trading', frame3, title_color='lightred', tooltip='Config for short trading')],
         [sg.ReadButton("Save", button_color=('white', 'black'),  bind_return_key=True, key="cfg_button")]
         ]
     

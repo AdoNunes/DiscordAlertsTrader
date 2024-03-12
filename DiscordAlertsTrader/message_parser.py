@@ -120,8 +120,17 @@ def parse_trade_alert(msg, asset=None):
                 order['Symbol'] = make_optionID(**order)
                 str_ext += f"{strike.upper()} {expDate}"
             order, str_ext = make_order_exits(order, msg, str_ext, asset_type)
+            
+            if "isopen:no" in msg.lower():
+                order["isopen"] = False
+                str_ext += " isopen:no"
+            elif "cancelavg" in msg.lower():
+                order["cancelavg"] = True
+                str_ext += " cancelAvg"
+            
             return str_ext, order
         return None, None
+
 
 def fix_index_symbols(symbol):
     if symbol.upper() == "SPX": 
@@ -129,7 +138,7 @@ def fix_index_symbols(symbol):
     elif symbol.upper() == "NDX":
         symbol = "NDXP"
     return symbol
-    
+
 
 def trailingstop(msg):
     # inverse TSbuy

@@ -129,10 +129,10 @@ def fit_table_elms(Widget_element):
     Widget_element.resizeColumnsToContents()
 
 # sg.theme('Dark Blue 3')
-sg.SetOptions(font=("Helvitica 11"))
+sg.SetOptions(font=("Helvitica 13"))
 
 fnt_b  ="Helvitica 11"
-fnt_h  ="Helvitica 11"
+fnt_h  ="Helvitica 13"
 
 ly_cons, MLINE_KEY = gl.layout_console('Discord messages from all the channels', '-MLINE-')
 ly_cons_subs, MLINE_SUBS_KEY = gl.layout_console('Discord messages only from subscribed authors',

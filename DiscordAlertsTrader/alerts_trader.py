@@ -505,6 +505,36 @@ class AlertsTrader():
                      }
 
         if order['action'] == "ExitUpdate" and isOpen:
+            if order.get("isopen"):
+                # close position command
+                self.close_open_exit_orders(open_trade)
+                self.portfolio.loc[open_trade, "isOpen"] = 0
+                self.save_logs("port")
+                
+                symb = self.portfolio.loc[open_trade, "Symbol"]
+                msg = f"Position marked as closed: {symb}"
+                print(Back.GREEN + msg)
+                self.queue_prints.put([msg, "", "green"])                
+                return
+            
+            elif order.get('cancelavg'):
+                # cancel avg price
+                trade = self.portfolio.loc[open_trade]
+                if not pd.isnull(trade["avgID"]):
+                    if isinstance(trade['ordID'], str):
+                        ordID = trade['ordID'].split(",")[-1]
+                    else:
+                        ordID = trade['ordID']
+                    order_status = self.bksession.cancel_order(ordID)
+                    order_status = order_status.replace("UROUT", "CANCELED")                    
+                    self.portfolio.loc[i, "BTO-avg-Status"] = order_status
+                    
+                    symb = self.portfolio.loc[open_trade, "Symbol"]
+                    msg = f"Cancelled avg order for {symb}"
+                    print(Back.GREEN + msg)
+                    self.queue_prints.put([msg, "", "green"])                
+                return
+            
             # Pause updater to avoid overlapping
             self.update_paused = True
 
@@ -695,7 +725,7 @@ class AlertsTrader():
             order_response, order_id, order, _ = self.confirm_and_send(order, pars,
                                                                        self.bksession.make_BTO_lim_order)
             self.save_logs("port")
-            if order_response is None:  #Assume trade not accepted
+            if order_response is None:  # Assume trade not accepted
                 log_alert['action'] = "BTO-Avg-notAccepted"
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
                 self.save_logs(["alert"])
@@ -1148,13 +1178,14 @@ class AlertsTrader():
                 self.save_logs("port")
                 continue
             
-            if trade["BTO-Status"] not in ['FILLED', "CANCELED", "REJECTED"]:# in ["QUEUED", "WORKING", 'OPEN', 'AWAITING_CONDITION', 'PENDING_ACTIVATION', 'AWAITING_MANUAL_REVIEW', "PARTIAL"]:
+            if trade["BTO-Status"] not in ['FILLED', "CANCELED", "REJECTED"]:
                 # if str and has comma, take first
                 if isinstance(trade['ordID'], str):
-                    ordID = trade['ordID'].split(",")[-1]
+                    ordID = trade['ordID'].split(",")[0]
                 else:
                     ordID = trade['ordID']
                 order_status, order_info = self.get_order_info(ordID)
+                
                 if order_status == "REJECTED":
                     self.portfolio.loc[i, "BTO-Status"] = order_status
                     self.portfolio.loc[i, 'isOpen'] = 0
@@ -1218,12 +1249,20 @@ class AlertsTrader():
             if pd.isnull(trade["filledQty"]) or trade["filledQty"] == 0:
                 continue
 
-            if trade.get("BTO-avg-Status") not in ['FILLED', "CANCELED", "REJECTED"]:
+            if not pd.isnull(trade.get("BTO-avg-Status")) and trade.get("BTO-avg-Status") not in ['FILLED', "CANCELED", "REJECTED", "MISSING"]:
                 if isinstance(trade['ordID'], str):
                     ordID = trade['ordID'].split(",")[-1]
                 else:
                     ordID = trade['ordID']
                 order_status, order_info = self.get_order_info(ordID)
+                
+                if order_status == "MISSING":
+                    self.portfolio.loc[i, "BTO-avg-Status"] = "MISSING"
+                    str_msg = f"BTO-avg {trade['Symbol']} order ID not found, probably canceled"
+                    print(Back.GREEN + str_msg)
+                    self.queue_prints.put([str_msg, "", "green"])
+                    continue
+                
                 if order_info['status'] in ["FILLED", "EXECUTED"]:
                     
                     or_price = self.portfolio.loc[i,"Price"]*self.portfolio.loc[i, "filledQty"]
@@ -1349,6 +1388,12 @@ class AlertsTrader():
                             STC_ordID = STC_ordID + 2
                             self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID
 
+                elif "PARTIAL" in order_status:
+                    # Update filled qty
+                    self.portfolio.loc[i, STC + "-Qty"] = order_info['filledQuantity']
+                    self.log_filled_STC(STC_ordID, i, STC)
+                    self.portfolio.loc[i, STC +"-xQty"] = np.nan
+                
                 self.portfolio.loc[i, STC+"-Status"] = order_status
                 trade = self.portfolio.iloc[i]
 
