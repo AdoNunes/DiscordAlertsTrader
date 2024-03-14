@@ -87,7 +87,8 @@ def period_to_date(period):
         return current_date.replace(day=1)
     elif period == 'ytd':
         return current_date.replace(month=1, day=1)
-    
+
+
 def port_cap_trades(data, max_trade_val:int=None, min_con_val:int=None, max_u_qty:int=None, 
                     max_underlying:int=None, max_dte:int=None, min_dte:int=None):
     """Cap portfolio trades

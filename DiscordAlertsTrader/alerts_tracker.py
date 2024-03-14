@@ -4,6 +4,7 @@ import copy
 import os.path as op
 from datetime import datetime, date
 
+from.message_parser import parse_option_under
 from .alerts_trader import find_last_trade, option_date
 from .configurator import cfg
 
@@ -27,6 +28,8 @@ class AlertsTracker():
 
         if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
+            if "underlying" not in self.portfolio.columns:
+                self.portfolio['underlying'] = None
         else:
             self.portfolio = pd.DataFrame(columns=self.cfg["col_names"]['tracker_portfolio'].split(",") )
             self.portfolio.to_csv(self.portfolio_fname, index=False)
@@ -92,6 +95,8 @@ class AlertsTracker():
         date = order.get("Date", get_date())
         if order['Qty'] is None:
             order['Qty'] = 1
+            
+        option_info = parse_option_under(order['Symbol'])
         new_trade = {
             "Date": date,
             "Symbol": order['Symbol'],
@@ -103,7 +108,8 @@ class AlertsTracker():
             "Price-actual": order.get("Actual Cost"),
             "Trader": order['Trader'],
             "SL": order.get("SL"),
-            "Channel" : chan
+            "Channel" : chan,
+            "underlying": option_info.get("strike", None),
             }        
         self.portfolio =pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)
 

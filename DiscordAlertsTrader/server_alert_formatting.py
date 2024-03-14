@@ -51,6 +51,8 @@ def server_formatting(message):
         message = prophet_formatting(message)
     elif message.channel.id in [1214652173171040256]:
         message = jpa_formatting(message)
+    elif message.channel.id in [1216951944933933137]:
+        message = prophi_alerts(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     else:
@@ -842,6 +844,27 @@ def moneymotive(message_):
             ticker, strike, otype, price, expDate = match.groups()
             alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
             message.content = alert
+    return message
+
+def prophi_alerts(message_):    
+    # $dg 15 mar 24 $167.5c $3.35
+
+    message = MessageCopy(message_)
+    alert = ""
+
+    for mb in message.embeds:   
+        message.author.name = mb.description.split(":")[0]
+        
+        exp = r'\$([A-Z]+) (\d{1,2} [A-Z]{3} \d{1,2}) \$([\d.]+)(c|p|C) \$([\d.]+)'
+        match = re.search(exp, alert, re.IGNORECASE| re.DOTALL)
+        if match:
+            contract, expdate, strike, otype, price = match.groups()
+            # day month scripted year to expdate
+            
+            expdate = convert_date(expdate.upper().replace(" ",""))
+            alert = f"BTO {contract} {strike}{otype.upper()} {expdate} @{price}"
+            
+    message.content = alert
     return message
 
 def bear_alerts(message_):

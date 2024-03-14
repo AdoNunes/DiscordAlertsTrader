@@ -158,7 +158,8 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
             "PnL$-alert","PnL-actual","PnL$-actual", 
             "STC-Price", "STC-Price-actual", "STC-Price-alert",
             "STC-Prices","STC-Prices-actual", "STC-Prices-alert",
-            'STC1-Status','STC1-Qty', 'STC2-Status', 'STC2-Qty', 'STC3-Status',  'STC3-Qty',                      
+            'STC1-Status','STC1-Qty', 'STC2-Status', 'STC2-Qty', 'STC3-Status',  'STC3-Qty',       
+            'exit_plan', 'BTO-avg-Status', 'STC1-ordID', 'STC2-ordID', 'STC3-ordID',          
             ]
     cols = ['Live'] + cols
         
@@ -183,7 +184,8 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
 
 def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',                  
                      track_filt_date_to='', track_filt_sym='', track_filt_chn='',
-                     track_exc_author='', track_exc_chn='',**kwargs ):
+                     track_exc_author='', track_exc_chn='', track_dte_max='',
+                     track_dte_min='', **kwargs ):
     fname_port = cfg['portfolio_names']['tracker_portfolio_name']
     if not op.exists(fname_port):
         return [],[]
@@ -201,7 +203,9 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
                             filt_chn=track_filt_chn,
                             filt_sym=track_filt_sym,
                             exc_author=track_exc_author,
-                            exc_chn=track_exc_chn
+                            exc_chn=track_exc_chn,
+                            max_dte=track_dte_max,
+                            min_dte= track_dte_min,
                         )
     except Exception as e:
         print("error during tracker filter data", e)
@@ -219,8 +223,14 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     data["N Alerts"]= data['Avged']
     data['Trader'] = data['Trader'].apply(lambda x: x.split('(')[0].split('#')[0])
     
+    if 'underlying' in data.columns:
+        max_margin = eval(cfg['shorting']['margin_capital'])
+        data['Margin'] = data.apply(lambda x: 100*x['Price-actual'] *(max_margin/(20*x['underlying'])),axis=1)
+    else:
+        data['Margin'] = 0
+        
     frm_cols = ['Qty', 'N Alerts', 'STC-Qty','STC-Price','STC-Price-actual','PnL','PnL-actual',
-                'PnL$','PnL$-actual', 'Price', 'Price-actual']
+                'PnL$','PnL$-actual', 'Price', 'Price-actual', 'Margin']
     for cfrm in frm_cols:
         data[cfrm] = pd_col_str_frmt(data[cfrm])
     
@@ -228,7 +238,8 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
         data['Live'] = pd_col_str_frmt(data['Live'])
     
     cols = ['isOpen','PnL','PnL-actual', 'PnL$','PnL$-actual', 'Date', 'Symbol', 'Trader', 'Price',
-            "Price-actual", 'Qty', 'N Alerts','STC-Qty','STC-Price','STC-Price-actual','STC-Date','Channel'
+            "Price-actual", 'Qty', 'N Alerts','STC-Qty','STC-Price','STC-Price-actual','STC-Date','Channel',
+            'Margin'
             ]
     cols = ['Live'] + cols
 

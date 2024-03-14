@@ -931,9 +931,9 @@ class AlertsTrader():
                 qr = qty_bought/position['trader_qty']
                 order['Qty'] = max(round(order['Qty']/qr), 1)
             # Sell all and close waiting stc orders
-            if (order['xQty'] == 1 and order['Qty'] is None) or i == 3:
-                if i == 3 and order['xQty'] != 1:
-                    print("Selling all, max supported STC is 3")
+            if (order['xQty'] == 1 and order['Qty'] is None) or i == self.max_stc_orders:
+                if i == self.max_stc_orders and order['xQty'] != 1:
+                    print(f"Selling all, max supported STC is {self.max_stc_orders}")
                     self.queue_prints.put(["Selling all, max supported STC is 3", "", "green"])
                 elif order['xQty'] == 1:
                     print("Selling all, got xQTY =1, check if not true")              

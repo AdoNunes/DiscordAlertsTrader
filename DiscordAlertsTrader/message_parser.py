@@ -479,4 +479,18 @@ def parse_symbol(symbol:str):
             "strike": eval(match.group(6))
             }
         return option
-    
+
+def parse_option_under(symbol:str):
+    # symbol: APPL_092623P426
+    match = re.match(r"^([A-Z]+)_(\d{2})(\d{2})(\d{2})([CP])((?:\d+)(?:\.\d+)?)", symbol)
+
+    if match:
+        option ={
+            "symbol": match.group(1),
+            "exp_month": int(match.group(2)),
+            "exp_day": int(match.group(3)),
+            "exp_year": 2000+int(match.group(4)),
+            "put_or_call": match.group(5),
+            "strike": eval(match.group(6))
+            }
+        return option

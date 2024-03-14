@@ -1,10 +1,7 @@
 */config.ini
+data/*
 custom_msg_format.py
 secrets_td.json
-data/*_message_history.csv
-data/trader_logger.csv
-data/trader_portfolio.csv
-data/live_quotes/
 tokens.json
 *.DS_Store
 * - Copy.csv

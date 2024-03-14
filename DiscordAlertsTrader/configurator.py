@@ -24,6 +24,7 @@ def update_port_cols():
     if os.path.exists(cfg['portfolio_names']['portfolio_fname']):
         trader = pd.read_csv(cfg['portfolio_names']['portfolio_fname'])    
         trader = trader.rename(columns=portfolio_newcols)
+        
         if "open_trailingstop" not in trader.columns:
             trader['open_trailingstop'] = None
         if 'trader_qty' not in trader.columns:
@@ -83,7 +84,7 @@ cfg['portfolio_names']['mock_alerts_log_fname'] = './tests/trader_logger_simulat
 portfolio_cols = ",".join([
                 "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Price-alert", "Price-actual",
                 "Qty", "filledQty", "Avged", "Avged-prices", "exit_plan", "ordID", "Risk", "trailingstop", "PnL", "PnL$",
-                "PnL-alert", "PnL$-alert","PnL-actual","PnL$-actual"
+                "PnL-alert", "PnL$-alert","PnL-actual","PnL$-actual", "underlying",
                 ] + [
                     "STC%d-%s"% (i, v) for v in
                     ["alerted", "Status", "Qty", "xQty", "Price", "Price-alert", "Price-actual", "PnL","Date", "ordID"]

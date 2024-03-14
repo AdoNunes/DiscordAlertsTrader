@@ -117,7 +117,11 @@ def layout_traders(data_n_headers, font_body, font_header):
             sg.Text(' To: ', tooltip=tlp_date), sg.Combo(['today', 'week', 'month'], default_value='',
                                                          key=f'track_filt_date_to', tooltip=tlp_date),
             sg.Text(' Symbols: ',tooltip=tip), sg.Input(key=f'track_filt_sym',tooltip=tip),
-            sg.Text(' Channels: ',tooltip=tip), sg.Input(key=f'track_filt_chn',tooltip=tip)
+            sg.Text(' Channels: ',tooltip=tip), sg.Input(key=f'track_filt_chn',tooltip=tip),
+            sg.Text(' DTE: min', tooltip="Days To Expiration min"), 
+            sg.Input(key=f'track_dte_min', tooltip="Days To Expiration min"),
+            sg.Text(' max', tooltip="Days To Expiration max"), 
+            sg.Input(key=f'track_dte_max', tooltip="Days To Expiration max"),
             ],[ 
             sg.Text("Exclude: |"),
             sg.Checkbox("Closed", key="-track-Closed", enable_events=True),
@@ -130,6 +134,7 @@ def layout_traders(data_n_headers, font_body, font_header):
             sg.Checkbox("BTO", key="-track-bto", enable_events=True),
             sg.Checkbox("STO", key="-track-sto", enable_events=True),
             sg.Text('| Authors: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_exc_author', tooltip=tip),
+            sg.Text('Symbols: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_exc_sym',tooltip=tip),
             sg.Text('Channels: ', auto_size_text=True,tooltip=tip), sg.Input(key=f'track_exc_chn',tooltip=tip),
             ],[sg.ReadButton("Update", button_color=('white', 'black'),bind_return_key=True, key="_upd-track_")]
             ])],
