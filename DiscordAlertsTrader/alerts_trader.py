@@ -1372,6 +1372,8 @@ class AlertsTrader():
                     STC_ordID = int(float(STC_ordID))  # Might be read as a float
 
                 order_status, order_info =  self.get_order_info(STC_ordID)
+                if order_status is None:
+                    continue
 
                 if order_status == 'CANCELED' and self.bksession.name == 'tda' and \
                     order_info['orderStrategyType'] == 'OCO':

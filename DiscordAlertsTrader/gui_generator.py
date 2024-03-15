@@ -184,7 +184,8 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
 
 def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',                  
                      track_filt_date_to='', track_filt_sym='', track_filt_chn='',
-                     track_exc_author='', track_exc_chn='', track_dte_max='',
+                     track_exc_author='', track_exc_sym='', track_exc_chn='',
+                     track_dte_max='',
                      track_dte_min='', **kwargs ):
     fname_port = cfg['portfolio_names']['tracker_portfolio_name']
     if not op.exists(fname_port):
@@ -204,6 +205,7 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
                             filt_sym=track_filt_sym,
                             exc_author=track_exc_author,
                             exc_chn=track_exc_chn,
+                            exc_sym=track_exc_sym,
                             max_dte=track_dte_max,
                             min_dte= track_dte_min,
                         )

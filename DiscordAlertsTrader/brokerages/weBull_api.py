@@ -101,7 +101,11 @@ class weBull:
         enteredTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00")
         timestamp = int(order['orders'][0]['updateTime0'])/1000
         closeTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00")
-        asset = order['orders'][0]['tickerType'].lower()
+        asset = order['orders'][0].get('tickerType')
+        if asset is None:
+            asset = "stock"
+            print("order missing key 'tickerType'")
+        asset = asset.lower()
         if asset == 'option':            
             yer, mnt, day = order['orders'][0]['optionExpireDate'].split("-")
             otype = order['orders'][0]['optionType'][0].upper()
