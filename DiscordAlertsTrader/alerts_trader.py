@@ -1255,7 +1255,8 @@ class AlertsTrader():
                 else:
                     ordID = trade['ordID']
                 order_status, order_info = self.get_order_info(ordID)
-                
+                if order_info is None:
+                    continue
                 if order_status == "MISSING":
                     self.portfolio.loc[i, "BTO-avg-Status"] = "MISSING"
                     str_msg = f"BTO-avg {trade['Symbol']} order ID not found, probably canceled"

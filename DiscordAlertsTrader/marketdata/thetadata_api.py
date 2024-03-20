@@ -3,43 +3,99 @@ See https://http-docs.thetadata.us/docs/theta-data-rest-api-v2/vuoxgmabm17e9-usi
 """
 
 from datetime import date, datetime, timedelta
-import re
+import io
 from typing import List
 import os.path as op
 from colorama import Fore
 import pandas as pd
 import pytz
+import requests
 
 from thetadata import DataType, DateRange, OptionReqType, OptionRight
 from thetadata import ThetaClient
 
 from DiscordAlertsTrader.configurator import cfg
 from DiscordAlertsTrader.port_sim import save_or_append_quote
+from DiscordAlertsTrader.message_parser import parse_symbol
 
 def get_timestamp(row):
         date_time = (row[DataType.DATE] + timedelta(milliseconds=row[DataType.MS_OF_DAY])) # ET
         date_time = date_time.replace(tzinfo=pytz.timezone('US/Eastern'))
         return date_time.timestamp()
 
-def parse_symbol(symbol:str):
-    # symbol: APPL_092623P426
-    match = re.match(r"^([A-Z]+)_(\d{2})(\d{2})(\d{2})([CP])((?:\d+)(?:\.\d+)?)", symbol)
+def get_timestamp_(row):
+        date_time = ( datetime.strptime(str(int(row['date'])), "%Y%m%d")  + timedelta(milliseconds=row['ms_of_day'])) # ET
+        date_time = pytz.timezone('America/New_York').localize(date_time).astimezone(pytz.utc)
+        return date_time.timestamp()
 
-    if match:
-        option ={
-            "symbol": match.group(1),
-            "exp_month": int(match.group(2)),
-            "exp_day": int(match.group(3)),
-            "exp_year": 2000+int(match.group(4)),
-            "put_or_call": match.group(5),
-            "strike": eval(match.group(6))
-            }
-        return option
+def ms_to_time(ms_of_day: int) -> datetime.time:
+    """Converts milliseconds of day to a time object."""
+    return datetime(year=2000, month=1, day=1, hour=int((ms_of_day / (1000 * 60 * 60)) % 24),
+                    minute=int(ms_of_day / (1000 * 60)) % 60, second=int((ms_of_day / 1000) % 60),
+                    microsecond=(ms_of_day % 1000) * 1000).time()
+
+
+def _format_strike(strike: float) -> int:
+    """Round USD to the nearest tenth of a cent, acceptable by the terminal."""
+    return round(strike * 1000)
+
+
+def _format_date(dt: date) -> str:
+    """Format a date obj into a string acceptable by the terminal."""
+    return dt.strftime("%Y%m%d")
+
 
 class ThetaClientAPI:
     def __init__(self):
          self.client = ThetaClient(launch=False)
          self.dir_quotes = cfg['general']['data_dir'] + '/hist_quotes'
+
+    def get_hist_trades(self, symbol: str, date_range: List[date], interval_size: int=1000):
+        """send request and get historical trades for an option symbol"""
+        
+        symb_info = parse_symbol(symbol)
+        expdate = date(symb_info['exp_year'], symb_info['exp_month'], symb_info['exp_day']).strftime("%Y%m%d")
+        root = symb_info['symbol']
+        right = symb_info['put_or_call']
+        strike = _format_strike(symb_info['strike'])
+        date_s = _format_date(date_range[0])
+        date_e = _format_date(date_range[1])
+        
+        url = f'http://127.0.0.1:25510/v2/hist/option/trade_quote?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&rth=true' 
+        header ={'Accept': 'application/json'}
+        response = requests.get(url, headers=header)
+        
+        # get quotes and trades to merge the with second level quotes
+        df = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
+        # Apply the function row-wise to compute the timestamp and store it in a new column
+        df['timestamp'] = df.apply(get_timestamp_, axis=1)
+        df['timestamp'] = df['timestamp'].astype(int)
+        df['volume'] = df['size']
+        df['last'] = df['price']
+        df = df[['timestamp', 'bid', 'ask', 'last', 'volume']]
+        # round to second and group by second
+        agg_funcs = {'bid': 'last',
+                    'ask': 'last',
+                    'last': 'last',
+                    'volume': 'sum'}
+        df_last = df.groupby('timestamp').agg(agg_funcs).reset_index()        
+        df_last['count'] = df.groupby('timestamp').size().values
+
+        # get quotes
+        url = f'http://127.0.0.1:25510/v2/hist/option/quote?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&ivl={interval_size}' 
+        header ={'Accept': 'application/json'}
+        response_quotes = requests.get(url, headers=header)
+        df_q = pd.read_csv(io.StringIO(response_quotes.content.decode('utf-8')))
+        df_q['timestamp'] = df_q.apply(get_timestamp_, axis=1)
+        df_q = df_q[['timestamp', "ask", "bid"]]
+        # merge quotes and trades
+        merged_df = pd.merge(df_last, df_q, on='timestamp', how='right')
+        # rename cols
+        merged_df.rename(columns={'ask_y': 'ask', 'bid_y': 'bid'}, inplace=True)
+        merged_df = merged_df[['timestamp', 'bid', 'ask', 'last', 'volume']]
+        merged_df['last'] = merged_df['last'].ffill()
+        return merged_df
+
 
     def get_hist_quotes(self, symbol: str, date_range: List[date], interval_size: int=1000):
         # symbol: APPL_092623P426

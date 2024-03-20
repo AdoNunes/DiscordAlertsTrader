@@ -434,7 +434,7 @@ def calc_PT(data:pd.Series, pt:float, update:list=None):
     return None, None, None
 
 def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False, initial_prices=None, sl_update:list=None,
-             avgdown:list=None, pt_update:list=None)->list:
+             avgdown:list=None, pt_update:list=None, ask:pd.Series=None, last:pd.Series=None, action:str='BTO')->list:
     """Calculate roi for a given series of quotes
 
     Parameters
@@ -460,17 +460,27 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
     pt_update : list, optional
         list of tuples with target and new profit target, eg [(1.1, 1.2)] at 10% change PT 
         to 20%, by default None
+    ask : pd.Series
+        ask quote, used to calculate SL
+    last : pd.Series
+        last quote, used to calculate SL
+    action : str, optional
+        action type bto or stc, by default 'BTO'
 
     Returns
     -------
     list
         initial price, sell price, ROI with TS, ROI without TS, and sell_index, qty_ratio
     """
+    assert action.upper() in ["BTO", "STO"], "action must be BTO or STO"
+    act = "B" if action.upper() == "BTO" else "S"
     roi = []
-
-
     quotes = quotes.dropna()
-
+    if last is None:
+        last = quotes
+    if ask is None:
+        ask = quotes
+        
     if initial_prices is None:
         initial_price = quotes.iloc[0]
     else:
@@ -480,28 +490,31 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
     ds_inf = []
     tot_qty_ratio = 1
     if avgdown is not None:
-        # check if ds before PT
+        # check if ds before PT/sl (use last to mimick stop trigger, avg down with ask)
         pt = initial_price * PT
-        trigger_price, trigger_index, pt_index = calc_PT(quotes, pt)
+        qt = quotes if act == "B" else last
+        _, trigger_index, _ = calc_PT(qt, pt)  # avg down case 
+        qs = last if act == "B" else quotes  
+        sl_index, _ = calc_SL(qs, initial_price *SL, [])  # avg up case   
         for dws in avgdown:   
             # avg down case         
             if dws[0] < 1:
-                sl_index, sl_val = calc_SL(quotes, initial_price *dws[0], [])            
-                if (trigger_index is None and sl_index is not None) or \
-                    (trigger_index and sl_index and trigger_index > sl_index):
-                    ds_inf.append([sl_index, sl_val, dws[1]])
+                asl_index, asl_val = calc_SL(ask, initial_price *dws[0], [])            
+                if (trigger_index is None and asl_index is not None) or \
+                    (trigger_index and asl_index and trigger_index > asl_index):
+                    ds_inf.append([asl_index, asl_val, dws[1]])
             # avg up case
             else:
-                sl_index, sl_val = calc_SL(quotes, initial_price *SL, [])
-                pt_val, pt_index, pt_index = calc_PT(quotes, initial_price *dws[0])
-                if (sl_index is None and pt_index is not None) or \
-                    (sl_index and pt_index and sl_index > pt_index):
-                    ds_inf.append([pt_index, pt_val, dws[1]])
+                apt_val, apt_index, apt_index = calc_PT(ask, initial_price *dws[0])
+                if (sl_index is None and apt_index is not None) or \
+                    (sl_index and apt_index and sl_index > apt_index):
+                    ds_inf.append([apt_index, apt_val, dws[1]])
         if len(ds_inf):
             # make average price
             tot_qty_ratio = sum([1] + [i[2] for i in ds_inf])
             initial_price = sum([initial_price] + [i[1]*i[2] for i in ds_inf])/tot_qty_ratio
             quotes = quotes[quotes.index >= ds_inf[-1][0]]
+            last = last[last.index >= ds_inf[-1][0]]
             sl = initial_price * SL
     
     # Calculate the PT, SL and trailing stop levels
@@ -517,7 +530,12 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
             new_pt_update.append([initial_price *ut, initial_price * upt])
             
     if TS == 0:
-        trigger_price, trigger_index, pt_index = calc_PT(quotes, pt, new_pt_update)
+        if act == "B":
+            trigger_price, trigger_index, pt_index = calc_PT(quotes, pt, new_pt_update)
+        else:            
+            _, trigger_index, pt_index = calc_PT(last, pt, new_pt_update)
+            if trigger_index is not None:
+                trigger_price = quotes.loc[trigger_index]
     else:
         trigger_price, trigger_index, pt_index = calc_trailingstop(quotes, pt, ts)
 
@@ -528,7 +546,12 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
         for upt, usl in sl_update:
             new_update.append([initial_price *upt, initial_price * usl])
         # print(f"initial {initial_price}, PT {pt} Sl {sl} update{new_update}")
-    sl_index, sl_val = calc_SL(quotes, sl, new_update)
+    if act == "S":
+        sl_index, sl_val = calc_SL(quotes, sl, new_update)
+    else:
+        sl_index, sl_val = calc_SL(last, sl, new_update)
+        if sl_index is not None:
+            sl_val = quotes.loc[sl_index]
 
     if do_plot:
         plt.figure()

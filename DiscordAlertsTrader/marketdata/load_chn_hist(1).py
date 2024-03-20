@@ -22,7 +22,7 @@ after, date_after = "", ""
 get_date_after_from_port = True
 re_download = False
 delete_port = False
-author = "vader"
+author = "og-alerts"
 
 
 def get_timestamp(row):
@@ -68,9 +68,9 @@ def save_or_append_quote(quotes, symbol, path_quotes, overwrite=False):
 chan_ids = {
     "theta_warrior_elite": 897625103020490773,
     "demon": 904396043498709072,
-    "eclipse": 1196385162490032128,
+    "eclipse": 1213995695237763145,
     "moneymotive": 1012144319282556928,
-    "moneymotiveA+": 1189288104545226773,
+    "moneymotiveA+": 1214378575554150440,
     "bishop": 1195073059770605568,
     "makeplays": 1164747583638491156,
     "kingmaker": 1152082112032292896,
@@ -80,6 +80,8 @@ chan_ids = {
     "crimson": 1102753361566122064,
     "HHscanner": 1095786767514341507,
     "vader": 1207716385346822245,
+    "gianni": 1209992523083415603,
+    "og-alerts": 1207717868716826645,
     }
 chan_id = chan_ids[author]
 if not use_theta_rest_api:
