@@ -1392,6 +1392,9 @@ class AlertsTrader():
                             self.portfolio.loc[i, STC + "-ordID"] =  STC_ordID
 
                 elif "PARTIAL" in order_status:
+                    # check if partial has changed since last time
+                    if order_info['filledQuantity'] == self.portfolio.loc[i, STC + "-Qty"]:
+                        continue
                     # Update filled qty
                     self.portfolio.loc[i, STC + "-Qty"] = order_info['filledQuantity']
                     self.log_filled_STC(STC_ordID, i, STC)
