@@ -3,13 +3,14 @@ import time
 import json
 import pandas as pd
 import re
+import functools
 
 from DiscordAlertsTrader.configurator import cfg
 from DiscordAlertsTrader.brokerages.tradestation import auth as tsa
 from DiscordAlertsTrader.brokerages import BaseBroker
 
 
-def retry_on_exception(retries=3, do_raise=False, fallback_method=None):
+def retry_on_exception(retries=2, do_raise=False, fallback_method=None):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -72,6 +73,7 @@ class TS(BaseBroker):
             return True
         return False
     
+    @retry_on_exception()
     def get_quotes(self, symbol:list):
         symbol = [self._convert_option_tots(s) for s in symbol]
         
@@ -209,6 +211,7 @@ class TS(BaseBroker):
         acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
         return acc_inf
 
+    @retry_on_exception()
     def get_order_info(self, order_id):  
         """
         order_status = 'REJECTED' | "FILLED" | "WORKING"
@@ -305,6 +308,7 @@ class TS(BaseBroker):
                                         "Price", "action"])
         return df_pos, df_ordr
 
+    @retry_on_exception(retries=1)
     def send_order(self, new_order):  
         if new_order.get("Type") is not None:
             resp = self.session.place_group_order(new_order).json()
@@ -382,7 +386,7 @@ class TS(BaseBroker):
             new_order['Quantity'] = str(int(qty_o * bp_now / bp_req))
             
             print(f"Not enough margin, qty reduced to {new_order['Quantity']} from {qty_o}")
-            return self.send_order(new_order)
+            resend = True
         
         elif resp['Orders'][0]['Message'].startswith('Order failed. Reason: EC702:'):   
             # reduce qty and resend
@@ -395,15 +399,17 @@ class TS(BaseBroker):
             else:
                 new_order['Quantity'] = str(new_qty)
             print(f"Order with to many cons, qty reduced to {new_qty}")
-            return self.send_order(new_order)
+            resend = True
         
         else:
             print('stop here')
             
         if resend:
+            print("resenting order")
             return self.send_order(new_order)
         return None, None
     
+    @retry_on_exception(retries=1)
     def cancel_order(self, order_id):
         if not isinstance(order_id, str):
             order_id = str(int(order_id))

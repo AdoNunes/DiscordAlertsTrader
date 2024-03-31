@@ -505,7 +505,7 @@ class AlertsTrader():
                      }
 
         if order['action'] == "ExitUpdate" and isOpen:
-            if order.get("isopen"):
+            if order.get("isopen") == False:
                 # close position command
                 self.close_open_exit_orders(open_trade)
                 self.portfolio.loc[open_trade, "isOpen"] = 0

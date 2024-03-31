@@ -372,6 +372,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             trigger_index = start.idxmax()
             ask = ask[trigger_index:]
             bid = bid[trigger_index:]
+            last = last[trigger_index:]
             if do_plot:
                 plt.plot(tstm.loc[trigger_index], ask.loc[trigger_index], "gp", label="triggered price offset")
         else:
@@ -668,9 +669,9 @@ if __name__ == '__main__':
         dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
 
     params = {
-        'fname_port': 'data/ddking_port.csv',
+        'fname_port': 'data/EM_port.csv',
         'order_type': 'any',
-        'last_days': 6,
+        'last_days': 300,
         'filt_date_frm': "",
         'filt_date_to': "",
         'stc_date':'eod',#'exp', #,'stc alert', #'exp',# ,  #  # 'eod' or 
@@ -679,28 +680,28 @@ if __name__ == '__main__':
         'max_dte': 4,
         'min_dte': 0,
         'filt_hour_frm': "",
-        'filt_hour_to': 16,
+        'filt_hour_to': 13,
         'include_authors': "",
         'exclude_symbols': [],
         'initial_price' : 'ask', # 'ask_+10',
-        'PT': [150], #[20,25,35,45,55,65,95,],# [90],#
+        'PT': [120], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], # 
         'sl_update' :  None, #   [[1.20, 1.05], [1.5, 1.3]], # 
         # "pt_update" :  [[0.7, 1.2], [.6, 1.1], [.5,1] ], #  None, #
-        'avg_down':[[1.5, 1]], #  
-        'SL': 40,
+        'avg_down': [[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .1],[1.5, .1],[1.6, .1]], # 
+        'SL': 80,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
         'max_margin': 1000000,
         'short_under_amnt' : 2000,
-        'min_trade_val': 30,
+        'min_trade_val': 600,
         'verbose': True,
-        'trade_amount': None,
+        'trade_amount': 1000,
         "sell_bto": True,
-        "max_short_val": 100000,
+        "max_short_val": 5000,
         "invert_contracts": False,
-        "do_plot": True
+        "do_plot": False
     }
     import time as tt
     t0 = tt.time()
@@ -757,9 +758,10 @@ if __name__ == '__main__':
         axs[1,1].set_ylabel("%")
         plt.show(block=False)
 
-    if 0:
+    if 1:
         params['theta_client'] = client
         params['with_poly'] = with_poly
+        params['dir_quotes'] = dir_quotes
         # res, port_out = grid_search(params, PT= [30, 40], SL=[30], TS_buy=[0], TS= [0])
         res, port_out = grid_search(params, PT= list(np.arange(20,150, 10)) + [180, 200,250,300], SL=np.arange(20,101,10), TS_buy=[0], TS= [0])
         # res, port_out = grid_search(params, PT= list[30,60,80,120,170,200,250,300] , SL=[50, 80,90], TS_buy=[0], TS= [0])
@@ -775,7 +777,7 @@ if __name__ == '__main__':
         f_t_Date = f"from_{pd.to_datetime(port_out['Date']).min().date().strftime('%y_%m_%d')}"+\
                     f"_to_{pd.to_datetime(port_out['Date']).max().date().strftime('%y_%m_%d')}"
         pname = params['fname_port'].split("/")[-1].split('_port.csv')[0]
-        df.to_csv(f"data/analysis/{pname}{param['include_authors']}_grid_search_{f_t_Date}.csv", index=False)        
-        port_out.to_csv(f"data/analysis/{pname}{param['include_authors']}_port_strats_{f_t_Date}_poly.csv", index=False)
+        df.to_csv(f"data/analysis/{pname}{param['include_authors']}_grid_search_{f_t_Date}_ask_.5avgdown.csv", index=False)        
+        port_out.to_csv(f"data/analysis/{pname}{param['include_authors']}_port_strats_{f_t_Date}_ask_.5avgdown.csv", index=False)
         # PT 40,  SL 20,  trailing stop starting at PT: 25,    PNL avg : 5%,  return: $2750,   num trades: 53
         # print(result_td)

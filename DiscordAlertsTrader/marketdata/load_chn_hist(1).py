@@ -22,7 +22,7 @@ after, date_after = "", ""
 get_date_after_from_port = True
 re_download = False
 delete_port = False
-author = "og-alerts"
+author = "EM"
 
 
 def get_timestamp(row):
@@ -82,6 +82,7 @@ chan_ids = {
     "vader": 1207716385346822245,
     "gianni": 1209992523083415603,
     "og-alerts": 1207717868716826645,
+    "EM": 1126325195301462117,
     }
 chan_id = chan_ids[author]
 if not use_theta_rest_api:

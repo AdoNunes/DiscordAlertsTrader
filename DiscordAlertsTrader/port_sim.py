@@ -475,11 +475,16 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
     assert action.upper() in ["BTO", "STO"], "action must be BTO or STO"
     act = "B" if action.upper() == "BTO" else "S"
     roi = []
-    quotes = quotes.dropna()
+    msk = ~quotes.isna()
+    quotes = quotes[msk]
     if last is None:
         last = quotes
+    else:
+        last = last[msk]
     if ask is None:
         ask = quotes
+    else:
+        ask = ask[msk]
         
     if initial_prices is None:
         initial_price = quotes.iloc[0]

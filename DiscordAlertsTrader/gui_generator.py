@@ -172,7 +172,7 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
         sumtotal = {c:"" for c in data.columns}
         for sumcol in ["PnL","PnL-alert","PnL-actual"]:
             sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).mean():.2f}'
-        for sumcol in [ "PnL$","PnL$-alert","PnL$-actual"]:
+        for sumcol in [ "PnL$","PnL$-alert","PnL$-actual", 'Qty', 'filledQty']:
             sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).sum():.2f}'
         sumtotal['Date'] = data.iloc[len(data)-1]['Date']
         sumtotal['Symbol'] = "Total Average"

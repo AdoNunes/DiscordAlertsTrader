@@ -24,11 +24,10 @@ def update_port_cols():
     if os.path.exists(cfg['portfolio_names']['portfolio_fname']):
         trader = pd.read_csv(cfg['portfolio_names']['portfolio_fname'])    
         trader = trader.rename(columns=portfolio_newcols)
-        
-        if "open_trailingstop" not in trader.columns:
-            trader['open_trailingstop'] = None
-        if 'trader_qty' not in trader.columns:
-            trader['trader_qty'] = None   
+        new_cols = ["open_trailingstop", "trader_qty", "BTO-avg-Status"]
+        for col in new_cols:
+            if col not in trader.columns:
+                trader[col] = None 
         for col in ["STC%d-%s"% (i, v) for v in
                     ["alerted", "Status", "Qty", "xQty", "Price", "Price-alert", "Price-actual", "PnL","Date", "ordID"]
                     for i in range(1,int(cfg['order_configs']['max_stc_orders'])+1)]:
@@ -84,7 +83,7 @@ cfg['portfolio_names']['mock_alerts_log_fname'] = './tests/trader_logger_simulat
 portfolio_cols = ",".join([
                 "Date", "Symbol", "Trader", "isOpen", "BTO-Status", "Asset", "Type", "Price", "Price-alert", "Price-actual",
                 "Qty", "filledQty", "Avged", "Avged-prices", "exit_plan", "ordID", "Risk", "trailingstop", "PnL", "PnL$",
-                "PnL-alert", "PnL$-alert","PnL-actual","PnL$-actual", "underlying",
+                "PnL-alert", "PnL$-alert","PnL-actual","PnL$-actual", "underlying", "BTO-avg-Status"
                 ] + [
                     "STC%d-%s"% (i, v) for v in
                     ["alerted", "Status", "Qty", "xQty", "Price", "Price-alert", "Price-actual", "PnL","Date", "ordID"]
