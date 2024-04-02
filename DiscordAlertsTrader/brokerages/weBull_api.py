@@ -3,7 +3,7 @@ import time
 from datetime import datetime
 from webull import webull, paper_webull
 from DiscordAlertsTrader.configurator import cfg
-
+from DiscordAlertsTrader.brokerages import retry_on_exception
 
 class weBull:
     def __init__(self, paper_trading: bool = False) -> None:
@@ -230,6 +230,7 @@ class weBull:
                                     }
         return resp
 
+    @retry_on_exception()
     def send_order(self, new_order:dict):
         if new_order['asset'] == 'option':
             final_order = {}
@@ -261,6 +262,7 @@ class weBull:
         order_response.update(ord_inf) 
         return order_response, order_id
     
+    @retry_on_exception()
     def cancel_order(self, order_id:int):
         resp = self.session.cancel_order(order_id)
         return resp

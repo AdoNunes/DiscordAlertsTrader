@@ -415,6 +415,13 @@ def layout_config(fnt_h, cfg):
     [sg.Checkbox("Ignore qty in STO alerts", default=cfg['shorting'].getboolean('ignore_alert_qty'), key="cfg_shorting.ignore_alert_qty",text_color='black',
                 tooltip="Ignore qty in STO alerts", enable_events=True), sg.Stretch()],
 
+    [sg.Text("STO price:",
+                tooltip='Use price: bid, ask, last or alert'), 
+        sg.Drop(values=['bid', 'ask', 'last', 'alert'], default_value=cfg['shorting']['STO_price'],
+                key="cfg_shorting.STO_price",
+                tooltip='Use price: bid, ask, last or alert'),
+        sg.Stretch()],
+
     [sg.Text('Max price diff', 
              tooltip='Max difference allowed between alerted price and current price, if not will lim to alerted price'),
     sg.Input(cfg['shorting']['max_price_diff'], key="cfg_shorting.max_price_diff",  enable_events=True,

@@ -1,6 +1,26 @@
 from abc import ABC, abstractmethod
 from ..configurator import cfg
 
+import functools
+
+def retry_on_exception(retries=2, do_raise=False):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(1, retries+1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    print(f"Exception occurred: {e}. Retrying... (Attempt {attempt}/{retries})")
+            
+            if do_raise:
+                raise Exception(f"Method {func.__name__} failed after {retries} retries.")
+            else:
+                print(f"Method {func.__name__} failed after {retries} retries. Returning...")
+        return wrapper
+    return decorator
+
+
 class BaseBroker(ABC):
     @abstractmethod
     def __init__(self, api_key, secret_key, passphrase):

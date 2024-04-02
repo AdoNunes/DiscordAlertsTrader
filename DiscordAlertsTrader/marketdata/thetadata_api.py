@@ -96,8 +96,28 @@ class ThetaClientAPI:
         merged_df['last'] = merged_df['last'].ffill()
         return merged_df
 
+    def get_geeks(self, symbol: str, date_range: List[date], interval_size: int=1000):
+        """send request and get historical trades for an option symbol"""
+        
+        symb_info = parse_symbol(symbol)
+        expdate = date(symb_info['exp_year'], symb_info['exp_month'], symb_info['exp_day']).strftime("%Y%m%d")
+        root = symb_info['symbol']
+        right = symb_info['put_or_call']
+        strike = _format_strike(symb_info['strike'])
+        date_s = _format_date(date_range[0])
+        date_e = _format_date(date_range[1])
+        
+        url = f'http://127.0.0.1:25510/v2/hist/option/greeks?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&rth=true&ivl={interval_size}' 
+        header ={'Accept': 'application/json'}
+        response = requests.get(url, headers=header)
+        
+        df_q = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
+        df_q['timestamp'] = df_q.apply(get_timestamp_, axis=1)
+        
+        return df_q
 
     def get_hist_quotes(self, symbol: str, date_range: List[date], interval_size: int=1000):
+        """send request and get historical quotes for an option symbol"""
         # symbol: APPL_092623P426
         # date_range: [date(2021, 9, 24), date(2021, 9, 24)] start and end date, or start date only
         # interval_size: 1000 (milliseconds)

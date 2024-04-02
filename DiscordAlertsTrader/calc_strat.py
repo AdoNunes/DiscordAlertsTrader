@@ -547,6 +547,7 @@ def process_quotes(dir_quotes, idx, port, date_close, with_theta=False, with_pol
                     dt_b = pd.to_datetime(row['Date']).date()
                     dt_s = date_close.date()
                     # quotes = client.get_hist_quotes(row['Symbol'], [dt_b, dt_s])
+                    geeks = client.get_geeks(row['Symbol'], [dt_b, dt_s])
                     quotes = client.get_hist_trades(row['Symbol'], [dt_b, dt_s])
                     
                 else:
@@ -677,29 +678,29 @@ if __name__ == '__main__':
         'stc_date':'eod',#'exp', #,'stc alert', #'exp',# ,  #  # 'eod' or 
         'max_underlying_price': 4000,
         'min_price': 10,
-        'max_dte': 4,
+        'max_dte': 14,
         'min_dte': 0,
         'filt_hour_frm': "",
-        'filt_hour_to': 13,
+        'filt_hour_to': 15,
         'include_authors': "",
         'exclude_symbols': [],
         'initial_price' : 'ask', # 'ask_+10',
-        'PT': [120], #[20,25,35,45,55,65,95,],# [90],#
+        'PT': [90], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], # 
         'sl_update' :  None, #   [[1.20, 1.05], [1.5, 1.3]], # 
-        # "pt_update" :  [[0.7, 1.2], [.6, 1.1], [.5,1] ], #  None, #
-        'avg_down': [[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .1],[1.5, .1],[1.6, .1]], # 
-        'SL': 80,
+        "pt_update" : [ [.3,0.7]], #   None, # 
+        'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #  
+        'SL': 90,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
-        'max_margin': 1000000,
+        'max_margin': 100000,
         'short_under_amnt' : 2000,
-        'min_trade_val': 600,
+        'min_trade_val': 500,
         'verbose': True,
         'trade_amount': 1000,
         "sell_bto": True,
-        "max_short_val": 5000,
+        "max_short_val": 1000,
         "invert_contracts": False,
         "do_plot": False
     }

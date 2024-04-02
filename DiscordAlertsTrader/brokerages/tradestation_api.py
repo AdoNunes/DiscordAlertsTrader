@@ -7,31 +7,7 @@ import functools
 
 from DiscordAlertsTrader.configurator import cfg
 from DiscordAlertsTrader.brokerages.tradestation import auth as tsa
-from DiscordAlertsTrader.brokerages import BaseBroker
-
-
-def retry_on_exception(retries=2, do_raise=False, fallback_method=None):
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            for attempt in range(1, retries+1):
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    print(f"Exception occurred: {e}. Retrying... (Attempt {attempt}/{retries})")
-            
-            # if fallback_method:
-            #     try:
-            #         fallback_method()
-            #         return func(*args, **kwargs)
-            #     except Exception as e:
-            #         print("Could not execute renew access method.", e)
-            if do_raise:
-                raise Exception(f"Method {func.__name__} failed after {retries} retries.")
-            else:
-                print(f"Method {func.__name__} failed after {retries} retries. Returning...")
-        return wrapper
-    return decorator
+from DiscordAlertsTrader.brokerages import BaseBroker, retry_on_exception
 
 
 class TS(BaseBroker):
@@ -95,6 +71,7 @@ class TS(BaseBroker):
                             'description': "",
                             'askPrice': float(quote.get("Ask")),  
                             'bidPrice': float(quote.get("Bid")),    
+                            'lastPrice': float(quote.get("Last")),
                             'quoteTimeInLong': quoteTimeInLong,
                             "status": ''
                             }

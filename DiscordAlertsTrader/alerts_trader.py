@@ -135,7 +135,7 @@ class AlertsTrader():
             pars_str = pars_str + f" Qty:{order['Qty']}({int(order['xQty']*100)}%)"
         return pars_str
 
-    def disc_notifier(self,order_info):
+    def disc_notifier(self,order_info, action=None):
         from discord_webhook import DiscordWebhook
         if not self.send_alert_to_discord:
             return
@@ -150,14 +150,15 @@ class AlertsTrader():
             elif order_info['childOrderStrategies'][1]['status'] == "FILLED":
                 order_info = order_info['childOrderStrategies'][1]
         
-        if order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_OPEN", "BUY", 'BUY_OPEN']:
-            action = "BTO"
-        elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_CLOSE", "SELL", "SELL_CLOSE"]:
-            action = "STC"
-        elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_OPEN", "SELL_SHORT", 'SELL_OPEN']:
-            action = "STO"
-        elif order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_CLOSE", "BUY_TO_COVER", 'BUY_CLOSE']:
-            action = "BTC"
+        if action is None:
+            if order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_OPEN", "BUY", 'BUY_OPEN']:
+                action = "BTO"
+            elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_CLOSE", "SELL", "SELL_CLOSE"]:
+                action = "STC"
+            elif order_info['orderLegCollection'][0]['instruction'] in ["SELL_TO_OPEN", "SELL_SHORT", 'SELL_OPEN']:
+                action = "STO"
+            elif order_info['orderLegCollection'][0]['instruction'] in ["BUY_TO_CLOSE", "BUY_TO_COVER", 'BUY_CLOSE']:
+                action = "BTC"
 
         symbol = ordersymb_to_str(order_info['orderLegCollection'][0]['instrument']['symbol'])
         msg = f"{action} {int(order_info['filledQuantity'])} {symbol} @{order_info.get('price')}"
@@ -171,15 +172,14 @@ class AlertsTrader():
             webhook.execute()
             print("webhook sent")
         
-        if self.discord_channel is not None:
-            # self.discord_send(msg, self.discord_channel)
-            # self.discord_channel.send(msg.upper())
-            print("discord channel message sent")
 
     def price_now(self, symbol, price_type="BTO", pflag=0):
         "pflag: 0: return str, 1: return float"
+        "price_type: BTO, STO, BTC, STC, last"
         if price_type in ["BTO", "BTC"]:
             ptype = 'askPrice'
+        elif price_type == 'last':
+            ptype = 'lastPrice'
         else:
             ptype= 'bidPrice'
         try:
