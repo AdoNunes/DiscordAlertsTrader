@@ -255,13 +255,21 @@ class AlertsTrader():
                     self.queue_prints.put([str_msg, "", "red"])
                     return "no", order, False
             
-            if self.cfg['shorting']['STO_trailingstop'] != "":
-                # first check price ask
-                order["price_actual"] = self.price_now(order['Symbol'], 'BTO', 1 )
-                pdiff = round((order['price']-order["price_actual"])/order['price']*100,1)
-                
+            # use current price as ask, bid or last, or alerted
+            sto_price = cfg['shorting']['STO_price']
+            check_price = True
+            if sto_price == 'alert':
+                check_price = False            
+            ptype = "BTO" if sto_price == "ask" else "last" if sto_price == "last" else "STO"
+            if check_price:
+                order["price_actual"] = self.price_now(order['Symbol'], ptype, 1 )
+            else:
+                order["price_actual"] = order['price']
+            pdiff = round((order['price']-order["price_actual"])/order['price']*100,1)
+            
+            if self.cfg['shorting']['STO_trailingstop'] != "":                            
                 # if pdiff too large, trigger trailing only when price target
-                if pdiff >= eval(self.cfg['shorting']['max_price_diff']):
+                if pdiff > eval(self.cfg['shorting']['max_price_diff']):
                     order['price_trigger'] = order["price_actual"]      
                     str_msg = f"STO alert price diff too high: {pdiff}% at {order['price_actual']}, trailing will trigger at {order['price']}"
                     print(Back.GREEN + str_msg)
@@ -271,9 +279,11 @@ class AlertsTrader():
             
             else:
                 # if price diff not too high, use current price
-                pdiff = round((order['price']-order["price_actual"])/order['price']*100,1)
                 if pdiff < eval(self.cfg['shorting']['max_price_diff']):
-                    order['price'] = self.price_now(order['Symbol'], 'BTO', 1 )
+                    if check_price:
+                        order['price'] = self.price_now(order['Symbol'], ptype, 1 )
+                    else:   
+                        order['price'] = order['price_actual']
                 else:
                     str_msg = f"STO alert price diff too high: {pdiff}% at {order['price_actual']}, keeping original price of {order['price']}"
                     print(Back.GREEN + str_msg)
@@ -309,6 +319,7 @@ class AlertsTrader():
             return "yes", order, False
         # decide if do BTC based on alert
         elif order['action'] == "BTC":
+            
             return "yes", order, False
         else:
             return "no", order, False

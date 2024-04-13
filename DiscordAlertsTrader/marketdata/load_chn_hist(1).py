@@ -22,7 +22,7 @@ after, date_after = "", ""
 get_date_after_from_port = True
 re_download = False
 delete_port = False
-author = "EM"
+author = "moneymotiveA+"
 
 
 def get_timestamp(row):
@@ -83,6 +83,7 @@ chan_ids = {
     "gianni": 1209992523083415603,
     "og-alerts": 1207717868716826645,
     "EM": 1126325195301462117,
+    "vader-swings":1223379548675117088,
     }
 chan_id = chan_ids[author]
 if not use_theta_rest_api:
@@ -254,7 +255,7 @@ for ix, row in msg_hist.iterrows():  # .loc[ix:].iterrows(): #
         if resp == "STCwithout BTO":
             print("STC without BTO", order["Symbol"], order["Date"])
 
-tracker.portfolio['spread'] = 100*(tracker.portfolio['bid']-tracker.portfolio['Price-actual'])/tracker.portfolio['Price-actual']
+tracker.portfolio['spread'] = 100*(tracker.portfolio['price_actual_bid']-tracker.portfolio['Price-actual'])/tracker.portfolio['Price-actual']
 # tracker.portfolio = tracker.portfolio[tracker.portfolio['spread'].abs()<15]
 # tracker.portfolio['ask'] = tracker.portfolio['Price-actual']
 # tracker.portfolio['Price-actual']  = tracker.portfolio['bid']

@@ -179,7 +179,7 @@ layout = [[sg.TabGroup([
         ]
 layout += gl.trigger_alerts_layout()
 print(3)
-window = sg.Window('Discord Alerts Trader', layout,size=(100, 800), # force_toplevel=True,
+window = sg.Window(f'Discord Alerts Trader - with broker {bksession.name}', layout,size=(100, 800), # force_toplevel=True,
                     auto_size_text=True, resizable=True)
 print(4)
 def mprint_queue(queue_item_list, subscribed_author=False):

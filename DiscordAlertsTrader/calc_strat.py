@@ -448,7 +448,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         for ipt in pt:
             roi_actual, = calc_roi(bid.loc[trigger_index:],  PT=ipt, TS=ts, SL=sl, do_plot=False, 
                                     initial_prices=price_curr,sl_update=sl_update, avgdown=avg_down_,
-                                    pt_update=pt_update,  last=last, ask=ask, action=port.loc[idx, 'Type'])
+                                    pt_update=pt_update,  last=last.loc[trigger_index:], ask=ask.loc[trigger_index:],
+                                    action=port.loc[idx, 'Type'])
             rois.append(roi_actual)
         
         rois_r = np.array(rois)

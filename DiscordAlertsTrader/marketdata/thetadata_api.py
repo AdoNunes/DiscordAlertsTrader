@@ -99,6 +99,8 @@ class ThetaClientAPI:
     def get_geeks(self, symbol: str, date_range: List[date], interval_size: int=1000):
         """send request and get historical trades for an option symbol"""
         
+        # symbol = "ACB_040524C6.5"
+        # date_range = [date(2024, 4, 5), date(2024, 4, 5)]
         symb_info = parse_symbol(symbol)
         expdate = date(symb_info['exp_year'], symb_info['exp_month'], symb_info['exp_day']).strftime("%Y%m%d")
         root = symb_info['symbol']
@@ -114,7 +116,12 @@ class ThetaClientAPI:
         df_q = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
         df_q['timestamp'] = df_q.apply(get_timestamp_, axis=1)
         
-        return df_q
+        trades = self.get_hist_trades( symbol, date_range, interval_size)
+        merged_df = pd.merge(trades[['timestamp', 'last', 'volume']], df_q, on='timestamp', how='right')
+        df = merged_df[['timestamp', 'bid', 'ask', 'last', 'volume', 'delta', 'theta',
+                        'vega', 'lambda', 'implied_vol', 'underlying_price']]
+        # df.to_csv(symbol+".csv")
+        return df
 
     def get_hist_quotes(self, symbol: str, date_range: List[date], interval_size: int=1000):
         """send request and get historical quotes for an option symbol"""
