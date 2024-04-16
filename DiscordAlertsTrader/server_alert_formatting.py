@@ -9,9 +9,10 @@ def server_formatting(message):
         message = xtrades_formatting(message)
     elif message.guild.id == 836435995854897193:
         message = tradeproelite_formatting(message)
-    elif message.channel.id in [1144658745822035978, 1196385162490032128, 1176558956123013230, 1213995695237763145, 1224336566907044032]:
+    elif message.channel.id in [1144658745822035978, 1196385162490032128, 1176558956123013230,
+                                1213995695237763145, 1224336566907044032, 1167905511711178953]:
         message = eclipse_alerts(message)
-    elif message.channel.id in [1005221780941709312, 1176559103431168001]:
+    elif message.channel.id in [1005221780941709312, 1176559103431168001, 1222679083155193867]:
         message = oculus_alerts(message)
     elif message.channel.id in [989674163331534929]:
         message = rough_alerts(message)
@@ -19,11 +20,12 @@ def server_formatting(message):
         message = kent_formatting(message)
     elif message.channel.id in [894421928968871986, 1184315998980022342, 1186220832226283560, 1184315998980022342]:
         message = sirgoldman_formatting(message)
-    elif message.channel.id in [1090673126527996004, 1132799545491869857, 1106356727294726156, 1135628574511079505, 1184315961726226502]:
+    elif message.channel.id in [1090673126527996004, 1132799545491869857, 1106356727294726156, 
+                                1135628574511079505, 1184315961726226502, 1184286853734600704]:
         message = flint_formatting(message)
-    elif message.channel.id in [904543469266161674, 1209644125477933088]:  
+    elif message.channel.id in [904543469266161674, 1209644125477933088, 1221952610987147284, ]:  
         message = jpm_formatting(message)
-    elif message.channel.id in [911389167169191946, 1158799914290139188]:
+    elif message.channel.id in [911389167169191946, 1158799914290139188, 1221952209542053949]:
         message = nitro_formatting(message)
     elif message.channel.id in [1189288104545226773, 1012144319282556928, 1214378575554150440]:
         message = moneymotive(message)
@@ -37,7 +39,7 @@ def server_formatting(message):
         message = makeplays_challenge_formatting(message)
     elif message.channel.id in [1188201803783876638, 1164747583638491156, 1204596671636443223]:
         message = makeplays_main_formatting(message)
-    elif message.channel.id in [1195073059770605568, 1175925024503378070]:
+    elif message.channel.id in [1195073059770605568, 1175925024503378070, 1168198165250441256]:
         message = bishop_formatting(message)
     elif message.channel.id in [897625103020490773]:
         message = theta_warrior_elite(message)
@@ -185,6 +187,7 @@ def jpa_formatting(message_):
     Bought $AAPL 180 calls for next week at 1.18    
     Bought 3/1 $AAPL 180p for .62    
     Bought $GOOGL 142c for .85
+    or look for symbol end of msg
     """
     message = MessageCopy(message_)
     alert = ""
@@ -192,6 +195,15 @@ def jpa_formatting(message_):
     for mb in message.embeds:   
         if "Jpa" in mb.description:
             message.author.name = "JPA"     
+        if "Contract Found:" in mb.description:
+            # Contract Found: AAPL_041924_170_P Live Price: 1.11 Alert Price: 1.11
+            exp = r'([A-Z]+)_([\d]+)_([\d]+)_(c|p|C) .* ([\d.]+)'
+            match = re.search(exp, message, re.IGNORECASE)
+            if match:
+                contract, expiration, strike, otype, price = match.groups()
+                expiration = f"{expiration[:2]}/{expiration[2:4]}"
+                alert = f"BTO {contract} {expiration} {strike}{otype.upper()} @{price}"
+                continue
         alert = format_0dte_weeklies(mb.description, message, False)
         alert = alert.replace(" calls", "C").replace(" puts", "P")
         exp = r'\$([A-Z]+) ([\d.]+)(c|p|C) .* ([\d.]+)'
@@ -705,7 +717,7 @@ def eclipse_alerts(message_):
             alert = f"BTO {qty} {ticker} {strike.upper()} {expDate} @{price}{chall}"
         else: # diff format
             
-            pattern = r'\$?(\w+)\s+\$?([\d.]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2})\s+@([\d.]+)'
+            pattern = r'\$?(\w+)\s+\$?([\d.]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2})\s+@\s*([\d.]+)'
             match = re.search(pattern, alert, re.IGNORECASE)
             if match:
                 ticker, strike, otype, expDate, price = match.groups()
@@ -718,6 +730,12 @@ def eclipse_alerts(message_):
                 if match:
                     ticker, strike, otype, expDate, price = match.groups()
                     alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
+                else:
+                    pattern = r'\$([A-Z]+)\s+(\d{1,2}\/\d{1,2})\s+\$*([\d.]+)\s+(CALL|PUT)\s+\@\s*([\d.]+)'
+                    match = re.search(pattern, alert, re.IGNORECASE)
+                    if match:
+                        ticker, expDate, strike, otype, price = match.groups()
+                        alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
             
     message.content = alert
     return message
@@ -863,7 +881,8 @@ def prophi_alerts(message_):
             
             expdate = convert_date(expdate.upper().replace(" ",""))
             alert = f"BTO {contract} {strike}{otype.upper()} {expdate} @{price}"
-            
+        else:
+            alert = mb.description
     message.content = alert
     return message
 
