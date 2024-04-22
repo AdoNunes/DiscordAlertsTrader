@@ -407,7 +407,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             qty_t = max(1, short_under_amnt//port.loc[idx,'underlying'])
             if max_short_val is not None and qty_t*price_curr*100 > max_short_val:
                 qty_t = max(max_short_val// (price_curr*100), 1)
-            if "min_trade_val" is not None:
+            if min_trade_val is not None:
                 if qty_t*price_curr*100 < min_trade_val:
                     if verbose:
                         print("skipping trade due to min trade val", row['Symbol'])

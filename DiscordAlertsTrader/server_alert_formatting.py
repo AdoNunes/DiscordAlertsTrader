@@ -198,7 +198,7 @@ def jpa_formatting(message_):
         if "Contract Found:" in mb.description:
             # Contract Found: AAPL_041924_170_P Live Price: 1.11 Alert Price: 1.11
             exp = r'([A-Z]+)_([\d]+)_([\d]+)_(c|p|C) .* ([\d.]+)'
-            match = re.search(exp, message, re.IGNORECASE)
+            match = re.search(exp, mb.description, re.IGNORECASE)
             if match:
                 contract, expiration, strike, otype, price = match.groups()
                 expiration = f"{expiration[:2]}/{expiration[2:4]}"
