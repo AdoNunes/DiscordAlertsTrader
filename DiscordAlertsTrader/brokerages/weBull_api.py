@@ -24,7 +24,7 @@ class weBull:
 
         self.success = wb.get_trade_token(cfg["webull"]['TRADING_PIN'])
         self.session = wb
-        if self.success: 
+        if self.success:
             print(f"Logging into webull: Success!")
         else:
             print(f"Logging into webull: Failed!")
@@ -34,10 +34,10 @@ class weBull:
         """
         Call portfolio API to retrieve a list of positions held in the specified account
         """
-        data = self.session.get_account()       
+        data = self.session.get_account()
 
         acc_inf ={
-            'securitiesAccount':{   
+            'securitiesAccount':{
                 'positions':[],
                 'accountId' : str(data['secAccountId']),
                 'currentBalances':{
@@ -67,10 +67,10 @@ class weBull:
 
         # get orders and add them to acc_inf
         orders = self.session.get_history_orders(count=10)
-        orders_inf =[]  
+        orders_inf =[]
         if isinstance(orders, dict) and orders.get('success') is False:
             raise ValueError("Order entpoint obsolete, go to webull/endpoints.py (actual webull package) line 144 and remove '&startTime=1970-0-1'")
-        
+
         for order in orders:
             order_status = order['status'].upper()
             if order_status in ['CANCELLED', 'FAILED']:
@@ -79,24 +79,24 @@ class weBull:
         acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
         return acc_inf
 
-    def get_order_info(self, order_id): 
+    def get_order_info(self, order_id):
         """ Get order info from order_id, mimicks the order_info from TDA API"""
-        orders = self.session.get_history_orders()      
+        orders = self.session.get_history_orders()
         for order in orders:
             if order['orders'][0]['orderId'] == order_id:
                 order_status = order['status'].upper().replace("CANCELLED", "CANCELED")
-                order_info = self.format_order(order)         
+                order_info = self.format_order(order)
                 return order_status, order_info
         return None, None
 
     def format_order(self, order:dict):
         """ output format for order_response. Order, mimicks the order_info from TDA API"""
         stopPrice= order['orders'][0].get('stpPrice')
-        
+
         price = order['orders'][0].get('avgFilledPrice')
         if price is None:
             price = order['orders'][0].get('lmtPrice')
-            
+
         timestamp = int(order['orders'][0]['createTime0'])/1000
         enteredTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00")
         timestamp = int(order['orders'][0]['updateTime0'])/1000
@@ -106,7 +106,7 @@ class weBull:
             asset = "stock"
             print("order missing key 'tickerType'")
         asset = asset.lower()
-        if asset == 'option':            
+        if asset == 'option':
             yer, mnt, day = order['orders'][0]['optionExpireDate'].split("-")
             otype = order['orders'][0]['optionType'][0].upper()
             symbol = f"{order['orders'][0]['symbol']}_{mnt}{day}{yer[2:]}{otype}{order['orders'][0]['optionExercisePrice']}".replace(".00","")
@@ -132,13 +132,13 @@ class weBull:
                 'instrument':{'symbol': symbol},
                 'instruction': order['orders'][0]['action'],
                 'quantity': eval(order['filledQuantity']),
-            }]             
-        }    
+            }]
+        }
         return order_info
 
     def format_option(self, opt_ticker:str)->dict:
         """From ticker_monthdayyear[callput]strike to dict {ticker, year-month-day,optionType,strikePrice"""
-        exp = r"(\w+)_(\d{2})(\d{2})(\d{2})([CP])([\d.]+)"        
+        exp = r"(\w+)_(\d{2})(\d{2})(\d{2})([CP])([\d.]+)"
         match = re.search(exp, opt_ticker, re.IGNORECASE)
         if match:
             symbol, mnt, day, yer, type, strike = match.groups()
@@ -154,7 +154,7 @@ class weBull:
             print('No format_option match for', opt_ticker)
 
     def reformat_option(self, opt_info:dict)->str:
-        "From dict to standard option format ticker_monthdayyear[callput]strike"      
+        "From dict to standard option format ticker_monthdayyear[callput]strike"
         yer, mnt, day = opt_info['date'].split("-")
         otype = opt_info['direction'][0].upper()
         return f"{opt_info['ticker']}_{mnt}{day}{yer[2:]}{otype}{opt_info['strike']}"
@@ -165,7 +165,7 @@ class weBull:
             opt_info = self.format_option(symb)
             if opt_info:
                 options_data = self.session.get_options(stock=opt_info['ticker'],
-                                                        direction=opt_info['direction'], 
+                                                        direction=opt_info['direction'],
                                                         expireDate=opt_info['date'])
                 filtered_options_data = [option for option in options_data if option['strikePrice'] == opt_info['strike'] and \
                     option[opt_info['direction']]['expireDate'] == opt_info['date']]
@@ -184,9 +184,9 @@ class weBull:
         elif direction == 'out':
             return symbol.replace("SPX", "SPXW")
 
-    def get_quotes(self, symbol:list) -> dict:  
+    def get_quotes(self, symbol:list) -> dict:
         resp = {}
-        for symb in symbol:        
+        for symb in symbol:
             if "_" in symb:
                 symb = self.fix_symbol(symb, "in")
                 opt_info = self.format_option(symb)
@@ -194,17 +194,17 @@ class weBull:
                     try:
                         option_id = self.get_option_id(symb)
                         quote = self.session.get_option_quote(stock=opt_info['ticker'], optionId=option_id)
-                        
+
                         ts = quote['data'][0]['tradeStamp']
                         ask = eval(quote['data'][0]['askList'][0]['price'])
                         bid = eval(quote['data'][0]['bidList'][0]['price'])
                         ticker = self.fix_symbol(self.reformat_option(opt_info), 'out')
-                        
+
                         resp[ticker] = {
                                         'symbol' : ticker,
                                         'description': option_id,
-                                        'askPrice': ask,  
-                                        'bidPrice': bid,    
+                                        'askPrice': ask,
+                                        'bidPrice': bid,
                                         'quoteTimeInLong': ts
                                         }
                     except Exception as e:
@@ -215,7 +215,7 @@ class weBull:
                                         }
             else:
                 quote = self.session.get_quote(symb)
-                if quote and quote['template']=='stock':                
+                if quote and quote['template']=='stock':
                     resp[symb] = {
                                 'symbol' : quote['symbol'],
                                 'description': quote['disSymbol'],
@@ -237,17 +237,17 @@ class weBull:
             for key, val in new_order.items():
                 if key  in ['optionId', 'lmtPrice', 'stpPrice', 'action', 'orderType', 'enforce', 'quant']:
                     final_order[key] = val
-            order_response = self.session.place_order_option(**final_order)     
+            order_response = self.session.place_order_option(**final_order)
         else:
             final_order = {}
             if new_order.get('lmtPrice'):
                 new_order['price'] = new_order.pop('lmtPrice')
             for key, val in new_order.items():
-                if key in ['stock', 'tId', 'price', 'action', 'orderType', 'enforce', 'quant', 
+                if key in ['stock', 'tId', 'price', 'action', 'orderType', 'enforce', 'quant',
                            'outsideRegularTradingHour', 'stpPrice', 'trial_value', 'trial_type']:
                     final_order[key] = val
             order_response = self.session.place_order(**final_order)
-        
+
         if order_response.get('success') is False:
             print("Order failed", order_response)
             return None, None
@@ -258,10 +258,11 @@ class weBull:
             order_id = order_response['orderId']
         time.sleep(3) # 3 secs to wait for order to show up in history
         _, ord_inf = self.get_order_info(order_id)
-        
-        order_response.update(ord_inf) 
+
+        order_response.update(ord_inf)
         return order_response, order_id
-    
+
+
     @retry_on_exception()
     def cancel_order(self, order_id:int):
         resp = self.session.cancel_order(order_id)
@@ -276,7 +277,7 @@ class weBull:
 
     def make_BTO_lim_order(self, Symbol:str, Qty:int, price:float, action="BTO", **kwarg):
         "Buy with a limit order"
-        
+
         kwargs = {}
         if action == "BTO":
             kwargs['action'] = "BUY"
@@ -289,78 +290,78 @@ class weBull:
             optionId = self.get_option_id(Symbol)
             if optionId is None:
                 print("No optionId found for", Symbol)
-                return None        
+                return None
             kwargs['optionId'] = optionId
         else:
             kwargs['asset'] ='stock'
             kwargs['outsideRegularTradingHour'] = True
             kwargs['stock'] = Symbol
-        
+
         kwargs['enforce'] ='GTC'
-        kwargs['quant'] = Qty  
-        kwargs['orderType'] = 'LMT' 
+        kwargs['quant'] = Qty
+        kwargs['orderType'] = 'LMT'
         kwargs['lmtPrice'] = price
         return kwargs
 
     def make_Lim_SL_order(self, Symbol:str, Qty:int,  PT:float, SL:None, action="STC", **kwarg):
-        """Sell with a limit order and a stop loss order"""        
+        """Sell with a limit order and a stop loss order"""
         kwargs = {}
         if action == "STC":
             kwargs['action'] = "SELL"
         elif action == "BTC":
             print("BTC not available for WeBull")
             return
-        
+
         Symbol = self.fix_symbol(Symbol, "in")
         if "_" in Symbol:
             kwargs['asset'] = 'option'
             optionId = self.get_option_id(Symbol)
             if optionId is None:
                 print("No optionId found for", Symbol)
-                return None        
+                return None
             kwargs['optionId'] = optionId
         else:
             kwargs['asset'] ='stock'
             kwargs['outsideRegularTradingHour'] = True
             kwargs['stock'] = Symbol
-        
+
         kwargs['enforce'] ='GTC'
-        kwargs['quant'] = Qty 
+        kwargs['quant'] = Qty
         if SL is not None:
             print("WARNING: webull api does not support OCO, setting a SL only, do not provide SL to send PT")
-            kwargs['orderType'] = 'STP' 
+            kwargs['orderType'] = 'STP'
             kwargs['lmtPrice'] = SL
         else:
             print("WARNING: webull api does not support OCO, sending PT without SL")
-            kwargs['orderType'] = 'LMT' 
+            kwargs['orderType'] = 'LMT'
             kwargs['lmtPrice'] = PT
         return kwargs
 
     def make_STC_lim(self, Symbol:str, Qty:int, price:float, strike=None, action="STC", **kwarg):
-        """Sell with a limit order and a stop loss order"""        
+        """Sell with a limit order and a stop loss order"""
         kwargs = {}
         if action == "STC":
             kwargs['action'] = "SELL"
         elif action == "BTC":
             print("BTC not available for WeBull")
             return
-        
+
         Symbol = self.fix_symbol(Symbol, "in")
         if "_" in Symbol:
             kwargs['asset'] = 'option'
             optionId = self.get_option_id(Symbol)
             if optionId is None:
                 print("No optionId found for", Symbol)
-                return None        
+                return None
             kwargs['optionId'] = optionId
         else:
             kwargs['asset'] ='stock'
             kwargs['outsideRegularTradingHour'] = True
             kwargs['stock'] = Symbol
-        
+
         kwargs['enforce'] ='GTC'
-        kwargs['quant'] = Qty  
-        kwargs['orderType'] = 'LMT' 
+        kwargs['quant'] = Qty
+        kwargs['orderType'] = 'LMT'
         kwargs['lmtPrice'] = price
         return kwargs
 
@@ -372,14 +373,14 @@ class weBull:
         elif action == "BTC":
             print("BTC not available for WeBull")
             return
-        
+
         Symbol = self.fix_symbol(Symbol, "in")
         if "_" in Symbol:
             kwargs['asset'] = 'option'
             optionId = self.get_option_id(Symbol)
             if optionId is None:
                 print("No optionId found for", Symbol)
-                return None        
+                return None
             kwargs['optionId'] = optionId
         else:
             kwargs['asset'] ='stock'
@@ -387,8 +388,8 @@ class weBull:
             kwargs['stock'] = Symbol
 
         kwargs['enforce'] ='GTC'
-        kwargs['quant'] = Qty 
-        kwargs['orderType'] = 'STP' 
+        kwargs['quant'] = Qty
+        kwargs['orderType'] = 'STP'
         kwargs['stpPrice'] = SL
         kwargs['lmtPrice'] = SL
         return kwargs
@@ -401,17 +402,17 @@ class weBull:
         elif action == "BTC":
             print("BTC not available for WeBull")
             return
-        
+
         Symbol = self.fix_symbol(Symbol, "in")
         if "_" in Symbol:
             print("WARNING webull does not support trailing stop for options")
-            return {}        
+            return {}
 
         kwargs['asset'] ='stock'
         kwargs['outsideRegularTradingHour'] = True
         kwargs['stock'] = Symbol
         kwargs['enforce'] ='GTC'
-        kwargs['quant'] = Qty 
+        kwargs['quant'] = Qty
         kwargs['orderType'] = 'STP TRAIL'
         kwargs['trial_value'] = trail_stop_const
         kwargs['trial_type'] = 'DOLLAR'
@@ -419,7 +420,7 @@ class weBull:
         return kwargs
 
 
-if 0:
+if __name__ == "__main__":
     self = weBull()
     self.get_session()
     self.get_account_info()
