@@ -9,6 +9,8 @@ def server_formatting(message):
         message = xtrades_formatting(message)
     elif message.guild.id == 836435995854897193:
         message = tradeproelite_formatting(message)
+    elif message.guild.id == 1204779568058335232:
+        message = prosperitytrades_formatting(message)
     elif message.channel.id in [1144658745822035978, 1196385162490032128, 1176558956123013230, 1213995695237763145, 1224336566907044032]:
         message = eclipse_alerts(message)
     elif message.channel.id in [1005221780941709312, 1176559103431168001]:
@@ -82,6 +84,23 @@ def tradeproelite_formatting(message_):
     if message_.author.name == 'EnhancedMarket':
         message = MessageCopy(message_)
         message.author.name = 'enhancedmarket'
+        message.author.discriminator = '0'
+        return message
+    
+    return message_
+
+def prosperitytrades_formatting(message_):
+    """
+    Reformat Discord message from PT to change generate alerts bot to author
+    """
+    # Don't do anything if not Xtrade message
+    if message_.guild.id != 1204779568058335232:
+        return message_
+    
+    # Change bot to author
+    if message_.author.name == 'vader-alerts':
+        message = MessageCopy(message_)
+        message.author.name = 'lordvader32'
         message.author.discriminator = '0'
         return message
     

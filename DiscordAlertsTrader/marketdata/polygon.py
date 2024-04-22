@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd 
 from DiscordAlertsTrader.configurator import cfg
 
-def get_poly_data(asset, start, end, range):
+def get_poly_data_rest(asset, start, end, range):
     """
     asset : str : ticker symbol, options be like O:TSLA240209C00200000
     start : int : start time in milliseconds
@@ -19,31 +19,15 @@ def get_poly_data(asset, start, end, range):
     return resp.json()
 
 
-def get_poly_data_formatted(asset, start, end, range):
+def get_poly_data(asset, start, end, range, ask='h', bid = 'l', asset_type='O'):
     """
     asset : str : ticker symbol, options be like O:TSLA240209C00200000
     start : int : start time in milliseconds
     end : int : end time in milliseconds
     range : str : time range, minute or second
-    """
-    data = get_poly_data(option_to_poly(asset), start, end, range)
-    # local_timezone = pytz.timezone('America/New_York')
-    # # match theta where 9 30 is utc but actually is EST
-    # for ix, d in enumerate(data['results']):
-    #     data['results'][ix]['t'] = datetime.strptime(datetime.fromtimestamp(d['t']/1000).replace(tzinfo=pytz.utc).astimezone(local_timezone).strftime('%m/%d/%Y %H:%M:%S'),
-    #                             '%m/%d/%Y %H:%M:%S').timestamp()
-    df = pd.DataFrame(data['results'])
-    return df
-
-
-def get_poly_data_askbid(asset, start, end, range, ask='h', bid = 'l'):
-    """
-    asset : str : ticker symbol, options be like O:TSLA240209C00200000
-    start : int : start time in milliseconds
-    end : int : end time in milliseconds
-    range : str : time range, minute or second
-    ask : str : ask column name (h for high)
+    ask : str : ask column name (h for high), if None will return all fields
     bid : str : bid column name (l for low)
+    asset_type: str : asset type, O for option S for stock
     
     c The close price for the symbol in the given time period.
     h The highest price for the symbol in the given time period.
@@ -54,7 +38,17 @@ def get_poly_data_askbid(asset, start, end, range, ask='h', bid = 'l'):
     v The trading volume of the symbol in the given time period.
     vw The volume weighted average price.
     """
-    df = get_poly_data_formatted(asset, start, end, range)
+
+    if asset_type == 'O':
+        symbol = option_to_poly(asset)
+    elif asset_type == 'S':
+        symbol = asset
+    res = get_poly_data_rest(symbol, start, end, range)
+    
+    df = pd.DataFrame(res['results'])
+    if ask is None:
+        return df
+    
     df['ask'] = df[ask]
     df['bid'] = df[bid]
     df['timestamp'] = df['t']

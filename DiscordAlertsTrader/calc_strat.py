@@ -9,7 +9,7 @@ from DiscordAlertsTrader.message_parser import parse_symbol
 from DiscordAlertsTrader.port_sim import filter_data, calc_trailingstop, calc_roi, calc_buy_trailingstop, save_or_append_quote
 import matplotlib.pyplot as plt
 from DiscordAlertsTrader.marketdata.thetadata_api import ThetaClientAPI
-from DiscordAlertsTrader.marketdata.polygon import get_poly_data_askbid
+from DiscordAlertsTrader.marketdata.polygon import get_poly_data
 
 def date_local(date_str):
     return pd.to_datetime(date_str).tz_localize('America/New_York').tz_convert('UTC')
@@ -283,7 +283,6 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         elif stc_date == 'exp':
             ord_in = parse_symbol(row['Symbol'])
             date_close = pd.to_datetime(f"{ord_in['exp_month']}/{ord_in['exp_day']}/{ord_in['exp_year']} 15:55:00.000000")
-            dd
         
         quotes, port = process_quotes(dir_quotes, idx, port, date_close, with_theta, with_poly, verbose, theta_client)
         if quotes is None:
@@ -301,7 +300,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             continue
 
         # get quotes within trade dates, ask and bid
-        quotes = quotes[msk].reset_index(drop=True)      
+        quotes = quotes[msk].reset_index(drop=True)  
+        quotes = quotes[3:].reset_index(drop=True) 
         # quotes = quotes.iloc[::3]
 
         bad_data_times = pd.to_datetime(quotes['timestamp'], unit='s', utc=True).dt.tz_convert('America/New_York').dt.time
@@ -532,7 +532,7 @@ def process_quotes(dir_quotes, idx, port, date_close, with_theta=False, with_pol
             all_dates = [date_start + timedelta(days=x) for x in range((date_end - date_end).days + 1)]
             all_dates = [d for d in all_dates if d.weekday() < 5]
             
-            sampl_ix = max(len(quotes), len(quotes) // 8)
+            sampl_ix = min(len(quotes), 1000)
             converted_dates = quotes[::sampl_ix]['timestamp'].apply(
                 lambda x: pd.to_datetime(x, unit='s').tz_localize('UTC').tz_convert('America/New_York').date()).unique()
             
@@ -548,15 +548,16 @@ def process_quotes(dir_quotes, idx, port, date_close, with_theta=False, with_pol
                     dt_b = pd.to_datetime(row['Date']).date()
                     dt_s = date_close.date()
                     # quotes = client.get_hist_quotes(row['Symbol'], [dt_b, dt_s])
-                    geeks = client.get_geeks(row['Symbol'], [dt_b, dt_s])
+                    # geeks = client.get_geeks(row['Symbol'], [dt_b, dt_s])
                     quotes = client.get_hist_trades(row['Symbol'], [dt_b, dt_s])
-                    
+                    if quotes is None:
+                        raise Exception("No quotes")
                 else:
                     # Fetch quotes using poly
                     date_start = datetime.strptime(row['Date'], '%Y-%m-%d %H:%M:%S.%f').date().strftime('%Y-%m-%d')
                     date_end = date_close.date().strftime('%Y-%m-%d')                    
                     
-                    quotes = get_poly_data_askbid(row['Symbol'], date_start, date_end, 'second',  ask='h', bid='l')
+                    quotes = get_poly_data(row['Symbol'], date_start, date_end, 'second',  ask='h', bid='l')
                     quotes['timestamp'] = quotes['timestamp'] // 1000
             except Exception as e:
                 if verbose:
@@ -671,37 +672,37 @@ if __name__ == '__main__':
         dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
 
     params = {
-        'fname_port': 'data/EM_port.csv',
+        'fname_port': 'data/screener_algo.csv',
         'order_type': 'any',
         'last_days': 300,
         'filt_date_frm': "",
         'filt_date_to': "",
         'stc_date':'eod',#'exp', #,'stc alert', #'exp',# ,  #  # 'eod' or 
-        'max_underlying_price': 4000,
+        'max_underlying_price': 40000,
         'min_price': 10,
-        'max_dte': 14,
-        'min_dte': 0,
+        'max_dte': 10,
+        'min_dte': 2,
         'filt_hour_frm': "",
-        'filt_hour_to': 15,
+        'filt_hour_to': "",
         'include_authors': "",
         'exclude_symbols': [],
         'initial_price' : 'ask', # 'ask_+10',
-        'PT': [90], #[20,25,35,45,55,65,95,],# [90],#
+        'PT': [140], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], # 
         'sl_update' :  None, #   [[1.20, 1.05], [1.5, 1.3]], # 
-        "pt_update" : [ [.3,0.7]], #   None, # 
-        'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #  
-        'SL': 90,
+        # "pt_update" : [ [.3,0.7]], #   None, # 
+        # 'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #  
+        'SL': 40,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
-        'max_margin': 100000,
+        # 'max_margin': 100000,
         'short_under_amnt' : 2000,
         'min_trade_val': 500,
         'verbose': True,
-        'trade_amount': 1000,
-        "sell_bto": True,
-        "max_short_val": 1000,
+        'trade_amount': 1,
+        # "sell_bto": True,
+        "max_short_val": 4000,
         "invert_contracts": False,
         "do_plot": False
     }
@@ -760,7 +761,7 @@ if __name__ == '__main__':
         axs[1,1].set_ylabel("%")
         plt.show(block=False)
 
-    if 1:
+    if 0:
         params['theta_client'] = client
         params['with_poly'] = with_poly
         params['dir_quotes'] = dir_quotes
