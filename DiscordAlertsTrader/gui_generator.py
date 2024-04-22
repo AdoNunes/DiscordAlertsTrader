@@ -227,7 +227,10 @@ def get_tracker_data(exclude={}, track_filt_author='', track_filt_date_frm='',
     
     if 'underlying' in data.columns:
         max_margin = eval(cfg['shorting']['margin_capital'])
-        data['Margin'] = data.apply(lambda x: 100*x['Price-actual'] *(max_margin/(20*x['underlying'])),axis=1)
+        try:
+            data['Margin'] = data.apply(lambda x: 100*x['Price-actual'] *(max_margin/(20*x['underlying'])),axis=1)
+        except:
+            data['Margin'] = 0
     else:
         data['Margin'] = 0
         

@@ -65,6 +65,8 @@ class ThetaClientAPI:
         header ={'Accept': 'application/json'}
         response = requests.get(url, headers=header)
         
+        if  response.content == b'No data for contract.':
+            return None
         # get quotes and trades to merge the with second level quotes
         df = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
         # Apply the function row-wise to compute the timestamp and store it in a new column
@@ -112,7 +114,8 @@ class ThetaClientAPI:
         url = f'http://127.0.0.1:25510/v2/hist/option/greeks?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&rth=true&ivl={interval_size}' 
         header ={'Accept': 'application/json'}
         response = requests.get(url, headers=header)
-        
+        if response.content == b'No data for contract.':
+            return None
         df_q = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
         df_q['timestamp'] = df_q.apply(get_timestamp_, axis=1)
         
