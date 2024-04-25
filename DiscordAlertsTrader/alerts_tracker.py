@@ -97,6 +97,8 @@ class AlertsTracker():
             order['Qty'] = 1
             
         option_info = parse_option_under(order['Symbol'])
+        if option_info is  None:
+            option_info = {}
         new_trade = {
             "Date": date,
             "Symbol": order['Symbol'],
