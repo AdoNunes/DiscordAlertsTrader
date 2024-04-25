@@ -257,7 +257,7 @@ for ix, row in msg_hist.iterrows():  # .loc[ix:].iterrows(): #
         if resp == "STCwithout BTO":
             print("STC without BTO", order["Symbol"], order["Date"])
 
-tracker.portfolio['spread'] = 100*(tracker.portfolio['price_actual_bid']-tracker.portfolio['Price-actual'])/tracker.portfolio['Price-actual']
+tracker.portfolio['spread'] = 100*(tracker.portfolio['bid']-tracker.portfolio['Price-actual'])/tracker.portfolio['Price-actual']
 # tracker.portfolio = tracker.portfolio[tracker.portfolio['spread'].abs()<15]
 # tracker.portfolio['ask'] = tracker.portfolio['Price-actual']
 # tracker.portfolio['Price-actual']  = tracker.portfolio['bid']

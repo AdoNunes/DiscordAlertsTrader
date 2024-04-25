@@ -49,7 +49,7 @@ class TS(BaseBroker):
             return True
         return False
     
-    @retry_on_exception()
+    @retry_on_exception(sleep=1)
     def get_quotes(self, symbol:list):
         symbol = [self._convert_option_tots(s) for s in symbol]
         
@@ -188,7 +188,7 @@ class TS(BaseBroker):
         acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
         return acc_inf
 
-    @retry_on_exception()
+    @retry_on_exception(sleep=1)
     def get_order_info(self, order_id):  
         """
         order_status = 'REJECTED' | "FILLED" | "WORKING"
@@ -285,7 +285,7 @@ class TS(BaseBroker):
                                         "Price", "action"])
         return df_pos, df_ordr
 
-    @retry_on_exception(retries=1)
+    @retry_on_exception(retries=1, sleep=1)
     def send_order(self, new_order):  
         if new_order.get("Type") is not None:
             resp = self.session.place_group_order(new_order).json()
@@ -386,7 +386,7 @@ class TS(BaseBroker):
             return self.send_order(new_order)
         return None, None
     
-    @retry_on_exception(retries=1)
+    @retry_on_exception(retries=1, sleep=1)
     def cancel_order(self, order_id):
         if not isinstance(order_id, str):
             order_id = str(int(order_id))

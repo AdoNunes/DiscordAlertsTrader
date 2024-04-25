@@ -2,7 +2,7 @@
 See https://http-docs.thetadata.us/docs/theta-data-rest-api-v2/vuoxgmabm17e9-using-the-python-api-and-the-rest-api for instructions on how to use thetadata's REST API
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 import io
 from typing import List
 import os.path as op
@@ -10,6 +10,7 @@ from colorama import Fore
 import pandas as pd
 import pytz
 import requests
+import numpy as np
 
 from thetadata import DataType, DateRange, OptionReqType, OptionRight
 from thetadata import ThetaClient
@@ -98,7 +99,7 @@ class ThetaClientAPI:
         merged_df['last'] = merged_df['last'].ffill()
         return merged_df
 
-    def get_geeks(self, symbol: str, date_range: List[date], interval_size: int=1000):
+    def get_geeks(self, symbol: str, date_range: List[date], interval_size: int=1000, get_trades=True):
         """send request and get historical trades for an option symbol"""
         
         # symbol = "ACB_040524C6.5"
@@ -110,21 +111,107 @@ class ThetaClientAPI:
         strike = _format_strike(symb_info['strike'])
         date_s = _format_date(date_range[0])
         date_e = _format_date(date_range[1])
+
+        fquote = f"{self.dir_quotes}/{symbol}.csv"
+        fetch_data = True
+        if op.exists(fquote):
+            df = pd.read_csv(fquote)
+            df['date'] = pd.to_datetime(df['timestamp'], unit='s').dt.date
+            ds,de =  pd.to_datetime(date_s).date(),  pd.to_datetime(date_e).date()
+            if ds in df['date'].values and de in df['date'].values:
+                print(f"{Fore.GREEN} Found data for {symbol}: {date_s} to {date_e}")
+                fetch_data = False
+                data = df[(df['date']>=ds) & (df['date']<=de)]
+
+        if fetch_data:
+            print(f"{Fore.YELLOW} Fetching data from thetadata for {symbol}: {date_s} to {date_e}")
+            url = f'http://127.0.0.1:25510/v2/hist/option/greeks?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&rth=true&ivl={interval_size}' 
+            header ={'Accept': 'application/json'}
+            response = requests.get(url, headers=header)
+            if response.content.startswith(b'No data for'):
+                return None
+            df_q = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
+            df_q['timestamp'] = df_q.apply(get_timestamp_, axis=1)
+            if not get_trades:
+                return df_q
+            
+            trades = self.get_hist_trades( symbol, date_range, interval_size)
+            merged_df = pd.merge(trades[['timestamp', 'last', 'volume']], df_q, on='timestamp', how='right')
+            data = merged_df[['timestamp', 'bid', 'ask', 'last', 'volume', 'delta', 'theta',
+                            'vega', 'lambda', 'implied_vol', 'underlying_price']]
+            save_or_append_quote(data, symbol, self.dir_quotes)
         
-        url = f'http://127.0.0.1:25510/v2/hist/option/greeks?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&rth=true&ivl={interval_size}' 
+        return data
+
+    def get_delta_strike(self, ticker: str, exp_date: str, delta:float, right:str, timestamp:int, stock_price = None):
+        """_summary_
+
+        Parameters
+        ----------
+        ticker : str
+            root ticker
+        exp_date : str
+             yyyymmdd eg 20220930
+        delta : float
+            fraction delta, 40 delta = 0.4
+        right : str
+            either C or P
+        timesetamp : int
+            time when to look for delta
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        
+        url = f"http://127.0.0.1:25510/v2/list/strikes?root={ticker}&exp={exp_date}"
         header ={'Accept': 'application/json'}
         response = requests.get(url, headers=header)
-        if response.content == b'No data for contract.':
+        if response.content.startswith(b'No data for'):
             return None
-        df_q = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
-        df_q['timestamp'] = df_q.apply(get_timestamp_, axis=1)
         
-        trades = self.get_hist_trades( symbol, date_range, interval_size)
-        merged_df = pd.merge(trades[['timestamp', 'last', 'volume']], df_q, on='timestamp', how='right')
-        df = merged_df[['timestamp', 'bid', 'ask', 'last', 'volume', 'delta', 'theta',
-                        'vega', 'lambda', 'implied_vol', 'underlying_price']]
-        # df.to_csv(symbol+".csv")
-        return df
+        # get strikes, use underlying stock price if not available
+        strikes = response.json()['response']
+        if stock_price is None:
+            mid = round(len(strikes)/2)
+        else:
+            mid = np.argmin([abs(s - stock_price*1000) for s in strikes])  
+        st_done = []
+        while True:
+            strike = strikes[mid]
+            # date to ny time
+            dt = datetime.fromtimestamp(timestamp, tz=pytz.utc).astimezone(pytz.timezone('America/New_York'))
+            date_s = dt.date().strftime("%Y%m%d")
+            url = f'http://127.0.0.1:25510/v2/hist/option/greeks?exp={exp_date}&right={right}&strike={strike}&start_date={date_s}&end_date={date_s}&use_csv=true&root={ticker}&rth=true&ivl=1000' 
+            header ={'Accept': 'application/json'}
+            print('getting delta for strike', strike)
+            response = requests.get(url, headers=header)
+            if response.content.startswith(b'No data for'):
+                print('None')
+                continue
+            df_q = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
+            
+            df_q['time'] = df_q['ms_of_day'].apply(ms_to_time)
+            gk = df_q[df_q['time'] == dt.time()]
+            
+            this_delta = gk.iloc[0]['delta']
+            print("delta", this_delta, strike)
+            if abs(this_delta - delta) < 0.1:
+                break
+            elif this_delta > delta:
+                mid += 1
+            elif this_delta < delta:
+                mid -= 1
+            else:
+                sss
+            if strike in st_done:
+                print("no delta found")
+                break
+        exp_date_f = exp_date
+        return f"{ticker}_{exp_date}{right}{strike}", this_delta
+        
+
 
     def get_hist_quotes(self, symbol: str, date_range: List[date], interval_size: int=1000):
         """send request and get historical quotes for an option symbol"""
