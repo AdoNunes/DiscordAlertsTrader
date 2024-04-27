@@ -251,20 +251,20 @@ def jpa_formatting(message_):
                 expiration = f"{expiration[:2]}/{expiration[2:4]}"
                 alert = f"BTO {contract} {expiration} {strike}{otype.upper()} @{price}"
                 continue
-        alert = format_0dte_weeklies(mb.description, message, False)
-        alert = alert.replace(" calls", "C").replace(" puts", "P")
-        exp = r'\$([A-Z]+) ([\d.]+)(c|p|C) .* ([\d.]+)'
-        match = re.search(exp, alert, re.IGNORECASE| re.DOTALL)
-        if match:
-            contract, strike, otype, price = match.groups()
-            # get exp date
-            match = re.search(r'(\d{1,2}\/\d{1,2})', alert)
-            if match:
-                expdate = match.group(1)
-                alert = f"BTO {contract} {strike}{otype.upper()} {expdate} @{price}"
-            else:
-                alert = f"BTO {contract} {strike}{otype.upper()} weeklies @{price}"
-                alert = format_0dte_weeklies(alert, message, False)
+        # alert = format_0dte_weeklies(mb.description, message, False)
+        # alert = alert.replace(" calls", "C").replace(" puts", "P")
+        # exp = r'\$([A-Z]+) ([\d.]+)(c|p|C) .* ([\d.]+)'
+        # match = re.search(exp, alert, re.IGNORECASE| re.DOTALL)
+        # if match:
+        #     contract, strike, otype, price = match.groups()
+        #     # get exp date
+        #     match = re.search(r'(\d{1,2}\/\d{1,2})', alert)
+        #     if match:
+        #         expdate = match.group(1)
+        #         alert = f"BTO {contract} {strike}{otype.upper()} {expdate} @{price}"
+        #     else:
+        #         alert = f"BTO {contract} {strike}{otype.upper()} weeklies @{price}"
+        #         alert = format_0dte_weeklies(alert, message, False)
     message.content = alert
     return message
 
@@ -536,33 +536,35 @@ def bishop_formatting(message_):
     Reformat Discord message from bishop
     """
     message = MessageCopy(message_)
-
+    
     alert = ''
     for mb in message.embeds:
+        if mb.description:
+            alert += mb.description
+    if not len(alert):
+        alert = message.content
+    
+    for mb in message.embeds:
         match = False
-        if mb.title == "I'm entering":
+        if "I'm entering" in alert:
             action = "BTO"
             match = True
-            msg = mb.description
-            extra = mb.description.split("@$")[1].split("\r\n\r\n*These are ONLY my opinions")[0].replace("\r\n\r\n", " ")
+            extra = alert.split("@$")[1].split("\r\n\r\n*These are ONLY my opinions")[0].replace("\r\n\r\n", " ")
             pattern = "\*\*Option:\*\* ([A-Z]+) (\d.+) ([PC]) (\d+\/\d+)\\r\\n\\r\\n\*\*Entry:\*\* @\$(\d+\.\d+)"
-        elif mb.title.startswith("Trimming"):
+        elif "Trimming" in alert:
             action = "STC"
             match = True
-            msg = mb.title
             extra = "  " + mb.description.split("\r\n\r\n*These are ONLY my opinions")[0].replace("\r\n\r\n", " ")
             pattern = "([A-Z]+) (\d.+) ([PC]) (\d+\/\d+) @\$(\d+\.\d+)"
 
         if match:
-            match = re.search(pattern, msg, re.IGNORECASE)
+            match = re.search(pattern, alert, re.IGNORECASE)
             if match:
                 ticker, strike, otype, expdate, price = match.groups()
                 extra = extra.replace(price, "")
                 alert = f"{action} {ticker} {strike.upper()}{otype} {expdate} @{price} {extra}"
-                if mb.title.startswith("Trimming"):
+                if "Trimming" in alert:
                     alert += " trim"
-        if not match:
-            alert = f"{mb.title}: {mb.description}"
 
     if len(alert):
         message.content = alert
@@ -927,7 +929,7 @@ def prophi_alerts(message_):
             # day month scripted year to expdate
 
             expdate = convert_date(expdate.upper().replace(" ",""))
-            alert = f"BTO {contract} {strike}{otype.upper()} {expdate} @{price}"
+            alert = f"BTO {contract.upper()} {strike}{otype.upper()} {expdate.replace('/2024', '')} @{price}"
         else:
             alert = mb.description
     message.content = alert

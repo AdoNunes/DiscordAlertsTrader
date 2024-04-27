@@ -22,7 +22,7 @@ after, date_after = "", ""
 get_date_after_from_port = True
 re_download = False
 delete_port = False
-author = "HHscanner"
+author = "oculus"
 
 
 def get_timestamp(row):
@@ -74,7 +74,7 @@ chan_ids = {
     "bishop": 1195073059770605568,
     "makeplays": 1164747583638491156,
     "kingmaker": 1152082112032292896,
-    "oculus": 1005221780941709312,
+    "oculus": 1222679083155193867,
     'diesel': 1107395495460081754,
     'ddking': 1139700590339969036,
     "crimson": 1102753361566122064,
@@ -257,7 +257,7 @@ for ix, row in msg_hist.iterrows():  # .loc[ix:].iterrows(): #
         if resp == "STCwithout BTO":
             print("STC without BTO", order["Symbol"], order["Date"])
 
-tracker.portfolio['spread'] = 100*(tracker.portfolio['price_actual_bid']-tracker.portfolio['Price-actual'])/tracker.portfolio['Price-actual']
+tracker.portfolio['spread'] = 100*(tracker.portfolio['bid']-tracker.portfolio['Price-actual'])/tracker.portfolio['Price-actual']
 # tracker.portfolio = tracker.portfolio[tracker.portfolio['spread'].abs()<15]
 # tracker.portfolio['ask'] = tracker.portfolio['Price-actual']
 # tracker.portfolio['Price-actual']  = tracker.portfolio['bid']
