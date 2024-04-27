@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from ..configurator import cfg
-
+import time
 import functools
 
-def retry_on_exception(retries=2, do_raise=False):
+def retry_on_exception(retries=2, do_raise=False, sleep=False):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -12,7 +12,8 @@ def retry_on_exception(retries=2, do_raise=False):
                     return func(*args, **kwargs)
                 except Exception as e:
                     print(f"Exception occurred: {e}. Retrying... (Attempt {attempt}/{retries})")
-            
+                    if sleep:
+                        time.sleep(1)
             if do_raise:
                 raise Exception(f"Method {func.__name__} failed after {retries} retries.")
             else:

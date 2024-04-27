@@ -102,12 +102,12 @@ class AlertsTrader():
                 time.sleep(1)
                 continue
             t0 = time.time()
-            # try:
-            self.update_orders()
-            # except Exception as ex:
-            #     str_msg = f"Error raised during port update, trying again later. Error: {ex}"
-            #     print(Back.RED + str_msg)
-            #     self.queue_prints.put([str_msg, "", "red"])
+            try:
+                self.update_orders()
+            except Exception as ex:
+                str_msg = f"Error raised during port update, trying again later. Error: {ex}"
+                print(Back.RED + str_msg)
+                self.queue_prints.put([str_msg, "", "red"])
             
             if time.time() - t0 < self.order_update_rate:
                 time.sleep(self.order_update_rate - (time.time() - t0))

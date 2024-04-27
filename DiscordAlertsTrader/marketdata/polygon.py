@@ -12,6 +12,7 @@ def get_poly_data_rest(asset, start, end, range):
     range : str : time range, minute or second
     """
     url = f"https://api.polygon.io/v2/aggs/ticker/{asset}/range/1/{range}/{start}/{end}?adjusted=true&sort=asc&limit=50000&apiKey={cfg['polygon']['key']}"
+    print(url)
     resp = requests.request("GET", url)
     if 'error' in resp.text:
         print(resp.text)
