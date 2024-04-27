@@ -18,12 +18,14 @@ def server_formatting(message):
         message = oculus_alerts(message)
     elif message.channel.id in [989674163331534929]:
         message = rough_alerts(message)
+    elif message.channel.id in [1221951275998908527]:
+        message = clutch_trades(message)
     elif message.channel.id in [972620961004269598]:
         message = kent_formatting(message)
     elif message.channel.id in [894421928968871986, 1184315998980022342, 1186220832226283560, 1184315998980022342]:
         message = sirgoldman_formatting(message)
     elif message.channel.id in [1090673126527996004, 1132799545491869857, 1106356727294726156,
-                                1135628574511079505, 1184315961726226502, 1184286853734600704]:
+                                1135628574511079505, 1184315961726226502, 1184286853734600704, 1225021701281021994]:
         message = flint_formatting(message)
     elif message.channel.id in [904543469266161674, 1209644125477933088, 1221952610987147284, ]:
         message = jpm_formatting(message)
@@ -118,6 +120,8 @@ def flint_formatting(message_):
     for mb in message.embeds:
         if mb.description:
             alert += mb.description
+    if not len(alert):
+        alert = message.content
     if len(alert):
         pattern = r'([A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s(\d{1,2}\/\d{1,2})\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
         match = re.search(pattern, alert, re.IGNORECASE)
@@ -162,6 +166,30 @@ def jpm_formatting(message_):
             alert = f"{mb.title}: {mb.description}"
         message.content = alert
     return message
+
+def clutch_trades(message_):
+    """
+    Reformat Discord message from clutch trades
+    """
+    message = MessageCopy(message_)
+    alert = ''
+    for mb in message.embeds:
+        if mb.description:
+            alert += mb.description
+    if not len(alert):
+        alert = message.content
+    
+    if len(alert):
+        pattern = r'(\d{1,2}\/\d{1,2})\s*([A-Z]+)\s(\d+[.\d+]*[c|p|C|P])\s*(\d+(?:[.]\d+)?|\.\d+)'
+        match = re.search(pattern, alert, re.IGNORECASE)
+        if match:
+            expdate, ticker, strike, price = match.groups()
+            # BTO always have SL
+            action = "BTO" 
+            alert = f"{action} {ticker} {strike.upper()} {expdate} @{price}"
+        message.content = alert
+    return message
+
 
 def kent_formatting(message_):
     """
