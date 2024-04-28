@@ -22,7 +22,7 @@ after, date_after = "", ""
 get_date_after_from_port = True
 re_download = False
 delete_port = False
-author = "HHscanner"
+author = "vader"
 
 
 def get_timestamp(row):

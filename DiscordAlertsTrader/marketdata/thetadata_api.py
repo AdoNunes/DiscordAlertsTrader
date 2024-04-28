@@ -178,8 +178,10 @@ class ThetaClientAPI:
         else:
             mid = np.argmin([abs(s - stock_price*1000) for s in strikes])  
         st_done = []
+        st_info = []
+        cnt = 0
         while True:
-            strike = strikes[mid]
+            strike = strikes[min(mid, len(strikes)-1)]
             # date to ny time
             dt = datetime.fromtimestamp(timestamp, tz=pytz.utc).astimezone(pytz.timezone('America/New_York'))
             date_s = dt.date().strftime("%Y%m%d")
@@ -188,16 +190,29 @@ class ThetaClientAPI:
             print('getting delta for strike', strike)
             response = requests.get(url, headers=header)
             if response.content.startswith(b'No data for'):
-                print('None')
+                cnt += 1
+                if cnt > 25:
+                    print("stuck in the loop, returning")
+                    return None, None
                 continue
             df_q = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
             
-            df_q['time'] = df_q['ms_of_day'].apply(ms_to_time)
-            gk = df_q[df_q['time'] == dt.time()]
+            # delete zeros bid-ask, geeks are wrong
+            df_q = df_q[ (df_q['ask']!=0)].reset_index(drop=True)
+            if not len(df_q):
+                mid += 1
+                cnt += 1
+                if cnt > 25:
+                    print("stuck in the loop, returning")
+                    return None, None
+                continue
+            # get geeks at time
+            ms_of_day = (dt.hour*3600 + dt.minute*60 + dt.second)* 1000 
+            ix_g = np.argmin(abs(df_q['ms_of_day'] - ms_of_day))
+            this_delta = df_q.iloc[ix_g]['delta']
             
-            this_delta = gk.iloc[0]['delta']
             print("delta", this_delta, strike)
-            if abs(this_delta - delta) < 0.1:
+            if abs(abs(this_delta) - delta) < 0.1:
                 break
             elif this_delta > delta:
                 mid += 1
@@ -206,10 +221,18 @@ class ThetaClientAPI:
             else:
                 sss
             if strike in st_done:
-                print("no delta found")
+                
+                st_done.append(strike)
+                st_info.append((strike, this_delta))
+                inx_closer = np.argmin([abs(s[1] - delta) for s in st_info])
+                this_delta = st_info[inx_closer][1]
+                print("no delta found, closest is", this_delta, st_info[inx_closer][0])
                 break
-        exp_date_f = exp_date
-        return f"{ticker}_{exp_date}{right}{strike}", this_delta
+            st_done.append(strike)
+            st_info.append((strike, this_delta))
+        
+        exp_date_f = datetime.strptime(exp_date, "%Y%m%d").strftime("%m%d%y")
+        return f"{ticker}_{exp_date_f}{right}{strike/1000}".replace(".0", ""), this_delta
         
 
 
