@@ -67,7 +67,7 @@ def save_or_append_quote(quotes, symbol, path_quotes, overwrite=False):
 
 chan_ids = {
     "theta_warrior_elite": 897625103020490773,
-    "demon": 1167160585511776357,
+    "demon": 904396043498709072,
     "eclipse": 1213995695237763145,
     "moneymotive": 1012144319282556928,
     "moneymotiveA+": 1214378575554150440,
@@ -187,7 +187,9 @@ for ix, row in msg_hist.iterrows():  # .loc[ix:].iterrows(): #
     dt = datetime.strptime(row["Date"], "%m/%d/%Y %H:%M:%S.%f")  # + timedelta(hours=2)
     order["Date"] = dt.strftime("%Y-%m-%d %H:%M:%S.%f")
 
-    tsm = round(pd.to_datetime(order["Date"]).tz_localize('America/New_York').tz_convert('UTC').timestamp())
+    # on a mac when downloaded using the docker version of discordchartexporter, the timestamp is in UTC
+    if not is_mac:
+        tsm = round(pd.to_datetime(order["Date"]).tz_localize('America/New_York').tz_convert('UTC').timestamp())
 
     full_date = (
         order["expDate"] + f"/{year}"
@@ -250,9 +252,7 @@ for ix, row in msg_hist.iterrows():  # .loc[ix:].iterrows(): #
     except:
         print("No date match for", order["Symbol"], order["Date"])
         continue
-    
-    tracker.portfolio['isOpen'] = 0
-    
+
     if order["action"] == "STC":
         if resp == "STCwithout BTO":
             print("STC without BTO", order["Symbol"], order["Date"])
@@ -262,6 +262,3 @@ tracker.portfolio['spread'] = 100*(tracker.portfolio['bid']-tracker.portfolio['P
 # tracker.portfolio['ask'] = tracker.portfolio['Price-actual']
 # tracker.portfolio['Price-actual']  = tracker.portfolio['bid']
 tracker.portfolio.to_csv(tracker.portfolio_fname, index=False)
-
-
-

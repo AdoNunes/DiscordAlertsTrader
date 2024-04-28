@@ -53,7 +53,7 @@ class ThetaClientAPI:
 
     def get_hist_trades(self, symbol: str, date_range: List[date], interval_size: int=1000):
         """send request and get historical trades for an option symbol"""
-        
+
         symb_info = parse_symbol(symbol)
         expdate = date(symb_info['exp_year'], symb_info['exp_month'], symb_info['exp_day']).strftime("%Y%m%d")
         root = symb_info['symbol']
@@ -61,11 +61,11 @@ class ThetaClientAPI:
         strike = _format_strike(symb_info['strike'])
         date_s = _format_date(date_range[0])
         date_e = _format_date(date_range[1])
-        
-        url = f'http://127.0.0.1:25510/v2/hist/option/trade_quote?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&rth=true' 
+
+        url = f'http://127.0.0.1:25510/v2/hist/option/trade_quote?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&rth=true'
         header ={'Accept': 'application/json'}
         response = requests.get(url, headers=header)
-        
+
         if  response.content == b'No data for contract.':
             return None
         # get quotes and trades to merge the with second level quotes
@@ -81,11 +81,11 @@ class ThetaClientAPI:
                     'ask': 'last',
                     'last': 'last',
                     'volume': 'sum'}
-        df_last = df.groupby('timestamp').agg(agg_funcs).reset_index()        
+        df_last = df.groupby('timestamp').agg(agg_funcs).reset_index()
         df_last['count'] = df.groupby('timestamp').size().values
 
         # get quotes
-        url = f'http://127.0.0.1:25510/v2/hist/option/quote?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&ivl={interval_size}' 
+        url = f'http://127.0.0.1:25510/v2/hist/option/quote?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&ivl={interval_size}'
         header ={'Accept': 'application/json'}
         response_quotes = requests.get(url, headers=header)
         df_q = pd.read_csv(io.StringIO(response_quotes.content.decode('utf-8')))
@@ -101,7 +101,7 @@ class ThetaClientAPI:
 
     def get_geeks(self, symbol: str, date_range: List[date], interval_size: int=1000, get_trades=True):
         """send request and get historical trades for an option symbol"""
-        
+
         # symbol = "ACB_040524C6.5"
         # date_range = [date(2024, 4, 5), date(2024, 4, 5)]
         symb_info = parse_symbol(symbol)
@@ -144,14 +144,14 @@ class ThetaClientAPI:
         return data
 
     def get_delta_strike(self, ticker: str, exp_date: str, delta:float, right:str, timestamp:int, stock_price = None):
-        """_summary_
+        """gets the strike for a given delta, if not found returns the closest delta
 
         Parameters
         ----------
         ticker : str
             root ticker
         exp_date : str
-             yyyymmdd eg 20220930
+            yyyymmdd eg 20220930
         delta : float
             fraction delta, 40 delta = 0.4
         right : str
@@ -233,7 +233,6 @@ class ThetaClientAPI:
         
         exp_date_f = datetime.strptime(exp_date, "%Y%m%d").strftime("%m%d%y")
         return f"{ticker}_{exp_date_f}{right}{strike/1000}".replace(".0", ""), this_delta
-        
 
 
     def get_hist_quotes(self, symbol: str, date_range: List[date], interval_size: int=1000):
@@ -256,12 +255,12 @@ class ThetaClientAPI:
             df = pd.read_csv(fquote)
             df['date'] = pd.to_datetime(df['timestamp'], unit='s').dt.date
             if drange.start in df['date'].values and drange.end in df['date'].values:
-                print(f"{Fore.GREEN} Found data for {symbol}: {drange.start} to {drange.end}")
+                print(f"Found data for {symbol}: {drange.start} to {drange.end}")
                 fetch_data = False
                 data = df[(df['date']>=drange.start) & (df['date']<=drange.end)]
 
         if fetch_data:
-            print(f"{Fore.YELLOW} Fetching data from thetadata for {symbol}: {drange.start} to {drange.end}")
+            print(f"Fetching data from thetadata for {symbol}: {drange.start} to {drange.end}")
             data = self.client.get_hist_option_REST(
                 req=OptionReqType.QUOTE,
                 root=option['symbol'],
@@ -280,9 +279,51 @@ class ThetaClientAPI:
             data = data[['timestamp', 'bid', 'ask']]
             data[(data['ask']==0) & (data['bid']==0)] = pd.NA
             # data = data[(data['ask']!=0)] # remove zero ask & (data['bid']!=0)
-            
+
             save_or_append_quote(data, symbol, self.dir_quotes)
-        
+
+
+    def get_hist_quotes_stock(self, symbol: str, date_range: List[date], interval_size: int=1000):
+        # symbol: AAPL
+        # date_range: [date(2021, 9, 24), date(2021, 9, 24)] start and end date, or start date only
+        # interval_size: 1000 (milliseconds)
+
+        if len(date_range) == 1:
+            drange = DateRange(date_range[0], date_range[0])
+        else:
+            drange = DateRange(date_range[0], date_range[1])
+
+        fquote = f"{self.dir_quotes}/{symbol}.csv"
+        fetch_data = True
+        if op.exists(fquote):
+            df = pd.read_csv(fquote)
+            df['date'] = pd.to_datetime(df['timestamp'], unit='s').dt.date
+            if drange.start in df['date'].values and drange.end in df['date'].values:
+                # print(f"Found data for {symbol}: {drange.start} to {drange.end}")
+                fetch_data = False
+                data = df[(df['date']>=drange.start) & (df['date']<=drange.end)]
+
+        if fetch_data:
+            # print(f"Fetching data from thetadata for {symbol}: {drange.start} to {drange.end}")
+            data = self.client.get_hist_stock_REST(
+                req=OptionReqType.QUOTE,
+                root=symbol,
+                date_range=drange,
+                interval_size=interval_size,
+                use_rth=False,
+            )
+
+            # Apply the function row-wise to compute the timestamp and store it in a new column
+            data['timestamp'] = data.apply(get_timestamp, axis=1)
+            data['timestamp'] = data['timestamp'].astype(int)
+            data['bid'] = data[DataType.BID]
+            data['ask'] = data[DataType.ASK]
+            data = data[['timestamp', 'bid', 'ask']]
+            data = data[(data['ask']!=0) | (data['bid']!=0)]
+            # data = data[(data['ask']!=0)] # remove zero ask & (data['bid']!=0)
+
+            save_or_append_quote(data, symbol, self.dir_quotes)
+
         return data
 
     def get_price_at_time(self, symbol: str, unixtime: int, price_type: str="BTO"):
@@ -304,7 +345,7 @@ class ThetaClientAPI:
                     fetch_quote = False
                     quotes = df_date
 
-        
+
         if fetch_quote:
             date = pd.to_datetime(unixtime, unit='s').date()
             try:
@@ -317,14 +358,24 @@ class ThetaClientAPI:
         idx = quotes['timestamp'].searchsorted(unixtime, side='right')
         if idx < len(quotes):
             return quotes[side].iloc[idx], quotes['timestamp'].iloc[idx] - unixtime
-        
+
         print(f"{Fore.RED} Error: price for {symbol} not found at {datetime.fromtimestamp(unixtime)}")
         return -1, 0
 
 
 if __name__ == "__main__":
     client = ThetaClientAPI()
-    symbol = "RDW_022324C3"
-    date_range = [date(2024, 2, 23)]
-    quotes = client.get_hist_quotes(symbol, date_range)
-    print(quotes)
+    # symbol = "RDW_022324C3"
+    # date_range = [date(2024, 2, 23)]
+    # quotes = client.get_hist_quotes(symbol, date_range)
+    # print(quotes)
+
+    data = client.client.get_hist_stock_REST(
+        req=OptionReqType.QUOTE,
+        root='FLGC',
+        date_range=DateRange(date(2024, 3, 25), date(2024, 3, 25)),
+        interval_size=1000,
+        use_rth=True,
+    )
+
+    print(data.head())
