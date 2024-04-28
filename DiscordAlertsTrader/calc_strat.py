@@ -473,7 +473,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             port.loc[idx, 'last'] = 1
         
         dt_close= dates.loc[roi_actual[-2]].tz_convert('America/New_York')
-        port.loc[idx, 'strategy-close_date'] = dt_close
+        port.loc[idx, 'strategy-close_date'] = pd.to_datetime(dt_close)
         pnl = roi_actual[2]
         qty_ratio = roi_actual[-1]
         mult = .1 if row['Asset'] == 'stock' else 1
@@ -672,37 +672,37 @@ if __name__ == '__main__':
         dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
 
     params = {
-        'fname_port': 'data/screener_algo.csv',
+        'fname_port': 'data/oculus_port.csv',
         'order_type': 'any',
-        'last_days': 300,
+        'last_days': 30,
         'filt_date_frm': "",
         'filt_date_to': "",
         'stc_date':'eod',#'exp', #,'stc alert', #'exp',# ,  #  # 'eod' or 
         'max_underlying_price': 40000,
         'min_price': 10,
         'max_dte': 10,
-        'min_dte': 2,
+        'min_dte': 0,
         'filt_hour_frm': "",
         'filt_hour_to': "",
         'include_authors': "",
         'exclude_symbols': [],
         'initial_price' : 'ask', # 'ask_+10',
-        'PT': [140], #[20,25,35,45,55,65,95,],# [90],#
+        'PT': [300], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], # 
         'sl_update' :  None, #   [[1.20, 1.05], [1.5, 1.3]], # 
         # "pt_update" : [ [.3,0.7]], #   None, # 
         # 'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #  
-        'SL': 40,
+        'SL': 30,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
         # 'max_margin': 100000,
-        'short_under_amnt' : 2000,
-        'min_trade_val': 500,
+        # 'short_under_amnt' : 2000,
+        # 'min_trade_val': 500,
         'verbose': True,
-        'trade_amount': 1,
+        'trade_amount': 1000,
         # "sell_bto": True,
-        "max_short_val": 4000,
+        # "max_short_val": 4000,
         "invert_contracts": False,
         "do_plot": False
     }
@@ -714,7 +714,7 @@ if __name__ == '__main__':
     print(f"Time to calc returns: {t1-t0:.2f} sec")
 
     sport = port[['Date','Symbol','Trader', 'Price', 'strategy-PnL',
-                'strategy-PnL$','strategy-entry','strategy-exit', 'strategy-close_date','reason_skip']] # 
+                'strategy-PnL$','strategy-entry','strategy-exit', 'strategy-close_date','max_pnl']] # 
 
     result_td =  generate_report(port, param, None, verbose=True)
 
@@ -766,7 +766,7 @@ if __name__ == '__main__':
         params['with_poly'] = with_poly
         params['dir_quotes'] = dir_quotes
         # res, port_out = grid_search(params, PT= [30, 40], SL=[30], TS_buy=[0], TS= [0])
-        res, port_out = grid_search(params, PT= list(np.arange(20,150, 10)) + [180, 200,250,300], SL=np.arange(20,101,10), TS_buy=[0], TS= [0])
+        res, port_out = grid_search(params, PT= list([5] + np.arange(10,150, 10)) + [180, 200,250,300], SL=np.arange(20,101,10), TS_buy=[0], TS= [0])
         # res, port_out = grid_search(params, PT= list[30,60,80,120,170,200,250,300] , SL=[50, 80,90], TS_buy=[0], TS= [0])
     
         res = np.stack(res)

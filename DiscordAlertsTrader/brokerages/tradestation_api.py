@@ -307,6 +307,10 @@ class TS(BaseBroker):
 
     def fix_order(self, new_order, resp):  
         resend = False
+        
+        pattern_bp = r"Order failed\. Reason: This Order requires \$([\d,]+\.\d+) of Buying Power"
+        pattern_open = r"Order failed\. Reason: You are short (\d+) contracts with \d+ remaining on buy orders!"
+        
         if any("not rounded to a valid price increment" in r['Message'] for r in resp['Orders']):   
             print("Fixing order price")
             # find order index and get increment val with re and fix it
@@ -330,7 +334,10 @@ class TS(BaseBroker):
                             new_order['StopPrice'] = str(round(round(price/increment)*increment, 2))
                     resend = True
         # find not closed orders and cancel them
-        if any(r['Message'].startswith('Order failed. Reason: EC704: ') for r in resp['Orders']):
+        # if any(r['Message'].startswith('Order failed. Reason: EC704: ') for r in resp['Orders']):
+        #     "Order failed. Reason: You are short 1 contracts with 1 remaining on buy orders!"
+        # Iterate over resp['Orders'] and check if any message matches the pattern
+        elif any(re.match(pattern_open, r['Message']) for r in resp['Orders']):
             print("Another order still active, cancelling it")
             orders = self.session.get_orders([self.accountId]).json()
             for order_ in orders['Orders']:
@@ -346,7 +353,8 @@ class TS(BaseBroker):
         elif resp['Orders'][0]['Message'].startswith('Order failed. Reason: EC602:'):
             print("The position is not open") 
             
-        elif resp['Orders'][0]['Message'].startswith('Order failed. Reason: EC1000: This order requires'):   
+        elif re.match(pattern_bp, resp['Orders'][0]['Message']):   
+            # 'Order failed. Reason: This Order requires $83,596.42 of Buying Power; this exceeds your available Buying Power of $82,255.05'
             # reduce qty and resend
             text = resp['Orders'][0]['Message']
             
@@ -355,7 +363,8 @@ class TS(BaseBroker):
             match = re.search(r'This order requires \$([\d,\.]+)', text)
             if match:
                 bp_req = float(match.group(1).replace(",", ""))     
-            match = re.search(r'current Buying Power values of \$([\d,.]+)', text)
+            # match = re.search(r'current Buying Power values of \$([\d,.]+)', text)            
+            match = re.search(r'this exceeds your available Buying Power of \$([\d,.]+)', text)
             if match:
                 bp_now = float(match.group(1).replace(",", ""))
             
