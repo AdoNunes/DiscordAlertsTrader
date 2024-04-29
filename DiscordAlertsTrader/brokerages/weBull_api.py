@@ -261,14 +261,8 @@ class weBull:
 
         order_response.update(ord_inf)
         return order_response, order_id
-<<<<<<< HEAD
-    
+
     @retry_on_exception(sleep=1)
-=======
-
-
-    @retry_on_exception()
->>>>>>> 7e19c8c800b6edbbd1b24395c0d09b784f12946c
     def cancel_order(self, order_id:int):
         resp = self.session.cancel_order(order_id)
         return resp
