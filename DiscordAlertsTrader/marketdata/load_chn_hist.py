@@ -22,7 +22,7 @@ after, date_after = "", ""
 get_date_after_from_port = True
 re_download = False
 delete_port = False
-author = "vader"
+author = "rough"
 
 
 def get_timestamp(row):
@@ -84,6 +84,7 @@ chan_ids = {
     "og-alerts": 1207717868716826645,
     "EM": 1126325195301462117,
     "vader-swings":1223379548675117088,
+    "rough": 989674163331534929,
     }
 chan_id = chan_ids[author]
 if not use_theta_rest_api:
@@ -169,7 +170,7 @@ tracker = AlertsTracker(
 )
 
 dt = None
-for ix, row in msg_hist.iterrows():  # .loc[ix:].iterrows(): #
+for ix, row in msg_hist.loc[ix:].iterrows():  # .loc[ix:].iterrows(): #
     print(ix)
     alert = row["Content"]
     if pd.isnull(alert) or not len(alert) or alert in ["@everyone", "@Elite Options"]:
@@ -201,6 +202,12 @@ for ix, row in msg_hist.iterrows():  # .loc[ix:].iterrows(): #
         if len(full_date.split("/")) == 2
         else "%m/%d/%Y" if len(full_date.split("/")[2]) == 4 else "%m/%d/%y"
     )
+    try:
+        datetime.strptime(full_date, dt_fm).date()
+    except ValueError:
+        print("Incorrect date format", full_date, dt_fm)
+        continue
+        
     if datetime.strptime(full_date, dt_fm).date() < dt.date():
         print("Order date in the past, skipping", order["expDate"], order["Date"])
         resp = tracker.trade_alert(order, live_alert=False, channel=author)

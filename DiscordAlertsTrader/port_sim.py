@@ -461,7 +461,7 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
         list of tuples with target and new profit target, eg [(1.1, 1.2)] at 10% change PT 
         to 20%, by default None
     ask : pd.Series
-        ask quote, used to calculate SL
+        ask quote, used to calculate SL (use bid if STO)
     last : pd.Series
         last quote, used to calculate SL
     action : str, optional
@@ -487,7 +487,7 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
         ask = ask[msk]
         
     if initial_prices is None:
-        initial_price = quotes.iloc[0]
+        initial_price = ask.iloc[0]
     else:
         initial_price = initial_prices
     sl = initial_price * SL
@@ -552,7 +552,7 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
             new_update.append([initial_price *upt, initial_price * usl])
         # print(f"initial {initial_price}, PT {pt} Sl {sl} update{new_update}")
     if act == "S":
-        sl_index, sl_val = calc_SL(quotes, sl, new_update)
+        sl_index, sl_val = calc_SL(ask, sl, new_update)
     else:
         sl_index, sl_val = calc_SL(last, sl, new_update)
         if sl_index is not None:
@@ -564,11 +564,11 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
 
     # no TP no SL, then use the last value
     if trigger_index is None and sl_index is None:
-        sell_price = quotes.iloc[-1]
+        sell_price = last.iloc[-1]
         no_ts_sell = sell_price
-        sell_index = quotes.index[-1]
+        sell_index = last.index[-1]
         if do_plot:
-            plt.plot(quotes.index[len(quotes)-1], (quotes.iloc[-1]-quotes.iloc[0])/quotes.iloc[0], marker='o', alpha=.5)
+            plt.plot(last.index[len(last)-1], (last.iloc[-1]-last.iloc[0])/last.iloc[0], marker='o', alpha=.5)
     # no TP, use SL
     elif trigger_index is None:
         sell_price = sl_val

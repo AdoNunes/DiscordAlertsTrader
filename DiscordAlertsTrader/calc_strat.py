@@ -682,9 +682,9 @@ if __name__ == '__main__':
         dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
 
     params = {
-        'fname_port': 'data/oculus_port.csv',
+        'fname_port': 'data/rough_port.csv',
         'order_type': 'any',
-        'last_days': 30,
+        'last_days': 400,
         'filt_date_frm': "",
         'filt_date_to': "",
         'stc_date':'eod',#'exp', #,'stc alert', #'exp',# ,  #  # 'eod' or
@@ -693,26 +693,26 @@ if __name__ == '__main__':
         'max_dte': 10,
         'min_dte': 0,
         'filt_hour_frm': "",
-        'filt_hour_to': "",
+        'filt_hour_to': 12,
         'include_authors': "",
         'exclude_symbols': [],
-        'initial_price' : 'ask', # 'ask_+10',
-        'PT': [90], #[20,25,35,45,55,65,95,],# [90],#
+        'initial_price' : 'ask_+30', # 'ask_+10',
+        'PT': [50], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], #
         'sl_update' :  None, #   [[1.20, 1.05], [1.5, 1.3]], #
-        "pt_update" : [ [.3,0.7]], #   None, #
-        'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #
-        'SL': 90,
+        # "pt_update" : [ [.3,0.7]], #   None, #
+        # 'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #
+        'SL': 40,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
         # 'max_margin': 100000,
         'short_under_amnt' : 2000,
-        'min_trade_val': .01,
+        'min_trade_val': 10,
         'verbose': True,
         'trade_amount': 1000,
-        # "sell_bto": True,
-        # "max_short_val": 4000,
+        "sell_bto": True,
+        "max_short_val": 4000,
         "invert_contracts": False,
         "do_plot": False
     }
@@ -728,7 +728,7 @@ if __name__ == '__main__':
 
     result_td =  generate_report(port, param, None, verbose=True)
 
-    if 0:
+    if 1:
         import matplotlib.pyplot as plt
 
         stat_type =  'strategy-PnL' # 'PnL' #  'PnL-actual'#
@@ -769,7 +769,7 @@ if __name__ == '__main__':
         port[stat_type].plot(ax=axs[1,1], title=stat_type, grid=True, marker='o', linestyle='dotted')
         axs[1,1].set_xlabel("Trade number")
         axs[1,1].set_ylabel("%")
-        plt.show(block=True)
+        plt.show(block=False)
 
     if 0:
         params['theta_client'] = client

@@ -180,9 +180,9 @@ class weBull:
     def fix_symbol(self, symbol:str, direction:str):
         "Fix symbol for options, direction in or out of webull format"
         if direction == 'in':
-            return symbol.replace("SPXW", "SPX")
+            return symbol.replace("SPXW", "SPX").replace("NDXP", "NDX")
         elif direction == 'out':
-            return symbol.replace("SPX", "SPXW")
+            return symbol.replace("SPX", "SPXW").replace("NDX", "NDXP")
 
     def get_quotes(self, symbol:list) -> dict:
         resp = {}

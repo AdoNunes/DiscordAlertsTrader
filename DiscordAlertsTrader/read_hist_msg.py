@@ -41,6 +41,23 @@ def kent_formatting(message):
             alert += mb['description']
     return alert
 
+
+def rough_formatting(message):
+    """
+    Reformat Discord message from rough to content message
+    """
+    alert = message['content']
+    if message['content'] is None:
+        return ""
+    
+    pattern = r'\b(BTO)?\b(\d{1,2}\/\d{1,2})?\s*([A-Z]+)\s*(\d+[.\d+]*[c|p|C|P])\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
+    match = re.search(pattern, alert, re.IGNORECASE)
+    if match:
+        action, expDate, ticker, strike, price = match.groups()
+        alert = f"BTO {ticker} {strike.upper()} {expDate} @{price}"
+    return alert
+
+
 def pbt_formatting(message):
     """
     Reformat Discord message from PBT
@@ -468,6 +485,9 @@ def parse_hist_msg(fname, author):
         elif author == "pbt":
             content = pbt_formatting(msg)
             msg["author"]["name"] = "pbt"
+        elif author == "rough":
+            content = rough_formatting(msg)
+            msg["author"]["name"] = "rough"
 
 
         pars, order = parse_trade_alert(content)

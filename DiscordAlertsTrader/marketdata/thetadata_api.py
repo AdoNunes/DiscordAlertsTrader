@@ -281,6 +281,7 @@ class ThetaClientAPI:
             # data = data[(data['ask']!=0)] # remove zero ask & (data['bid']!=0)
 
             save_or_append_quote(data, symbol, self.dir_quotes)
+        return data
 
 
     def get_hist_quotes_stock(self, symbol: str, date_range: List[date], interval_size: int=1000):
