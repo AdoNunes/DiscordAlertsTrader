@@ -838,6 +838,8 @@ def wolfwebull_formatting(message_):
 
     alert = ''
     for mb in message.embeds:
+        if not mb.description:
+            continue
         alert = mb.description.replace(" Call ", "C").replace(" Put ", "P")
 
         pattern = r'([A-Z]+)\s+\$([\d.]+)(C|P)\s+@\s*([\d.]+)'
@@ -848,7 +850,7 @@ def wolfwebull_formatting(message_):
             alert = f"BTO {ticker} {strike.upper()}{otype.upper()} {expDate} @{price}"
             alert = format_0dte_weeklies(alert, message, False)
         else:
-            alert = f"{mb.description}"
+            print("match not found for Wolf")
 
     if len(alert):
         message.content = alert
