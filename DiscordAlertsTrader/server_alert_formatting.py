@@ -840,13 +840,14 @@ def wolfwebull_formatting(message_):
     for mb in message.embeds:
         if not mb.description:
             continue
-        alert = mb.description.replace(" Call ", "C").replace(" Put ", "P")
+        alert = mb.description.replace(" Call", "C").replace(" Put", "P")
 
-        pattern = r'([A-Z]+)\s+\$([\d.]+)(C|P)\s+@\s*([\d.]+)'
+        pattern = r'([A-Z]+)\s+\$([\d.]+)(C|P)\s+(\d{1,2}\/\d{1,2})?\s*@\s*([\d.]+)'
         match = re.search(pattern, alert, re.IGNORECASE)
         if match:
-            ticker, strike, otype, price = match.groups()
-            expDate= "0DTE" if ticker in ["SPY", "QQQ"] else 'weeklies'
+            ticker, strike, otype, expDate, price = match.groups()
+            if expDate is None:
+                expDate= "0DTE" if ticker in ["SPY", "QQQ"] else 'weeklies'
             alert = f"BTO {ticker} {strike.upper()}{otype.upper()} {expDate} @{price}"
             alert = format_0dte_weeklies(alert, message, False)
         else:
