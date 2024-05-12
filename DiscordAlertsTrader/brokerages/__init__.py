@@ -86,3 +86,10 @@ def get_brokerage(name=cfg['general']['BROKERAGE']):
             print("Got error: \n", e, "\n Trying again...if it fails again, rerun the application.")
             et.get_session()
         return et
+    elif name.lower() == 'ibkr':
+        from .ibkr_api import IBKR
+        accountId = cfg['IBKR']['accountId']
+        accountId = None if len(accountId) == 0 else accountId
+        ibkr = IBKR(accountId=accountId)
+        ibkr.get_session()
+        return ibkr
