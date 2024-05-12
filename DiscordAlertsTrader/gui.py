@@ -221,8 +221,7 @@ for el in els:
 
 for chn in chns:
     table = window[f"{chn}_table"].Widget.horizontalHeader()
-    # QHeaderView.Stretch
-    # table.setSectionResizeMode(2, QHeaderView.Stretch) ## giving error PySide6.QtWidgets.QHeaderView.setSectionResizeMode: name 'PySide6' is not defined"
+    table.setSectionResizeMode(2, QHeaderView.Stretch)
     window[f"{chn}_table"].Widget.scrollToBottom()
 
 print(6)
