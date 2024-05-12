@@ -74,12 +74,7 @@ class IBKR(BaseBroker):
         orders_inf =[]
 
         for trade in trades:
-            # print(trade)
-            test = self.ib.reqTickers(Stock('AAPL', 'SMART', 'USD'))
 
-            # for _,r in enumerate(test):
-            #     print(r.contract.symbol, r.time, r.bid, r.ask, r.close)
-            # print(trade.order.orderId)
             order = trade.order
             status = trade.orderStatus.status
             order_info = {
