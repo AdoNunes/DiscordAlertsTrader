@@ -195,31 +195,6 @@ $ Paste the full URL redirect here:
 
 In your browser go to the link, accept TD ameritrade pop-up and copy the link you get re-directed. Once entered you will have your secrets_td.json
 
-## IBKR
-_______________
-
-To access the IBKR account for trading and info is necessary to install
-ib_insync from:
-
-```pip install ib_insync```
-
-Once you have your IBKR account, edit config.ini IBKR section. There needs to be:
-
-```
-[IBKR]
-account = DU722... # real money account starts with 'U'
-host = 127.0.0.1
-port = 7497 #use 7496 for real money account
-client_id = 123 # can be any integer
-```
-
-Follow the steps in IBKR Trader Workstation to enable API access
-
-1. Go to File -> Global Configuration -> API -> Settings
-2. Check the "Enable ActiveX and Socket Clients" box
-3. Uncheck the "Read-Only API" box
-4. Check the "Allow connections from localhost only" box
-
 ## Disclaimer
 _________
 
@@ -228,3 +203,4 @@ This is still a Work in Progress project. I get good results using the package, 
 The code and package provided in this repository is provided "as is" and without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement. In no event shall the author or contributors be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the code or package or the use or other dealings in the code or package.
 
 Please use this code and package at your own risk. The author and contributors disclaim all liability and responsibility for any errors or issues that may arise from its use. It is your responsibility to test and validate the code and package for your particular use case.
+
