@@ -1,6 +1,6 @@
 from ib_insync import *
-from . import BaseBroker
-from ..configurator import cfg
+from DiscordAlertsTrader.brokerages import BaseBroker
+from DiscordAlertsTrader.configurator import cfg
 from datetime import datetime
 import time
 
@@ -14,9 +14,10 @@ class IBKR(BaseBroker):
         if self.ib.isConnected():
             return True
         else:
-            self.ib.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=cfg['IBKR']['clientId'], account=cfg['IBKR']['accountId'])
+            self.ib.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=cfg['IBKR']['clientId'])
             self.ib.sleep(0.1)
             return self.ib.isConnected()
+    
     def get_account_info(self):
         data = self.ib.accountValues()
         # print(data)
@@ -141,6 +142,7 @@ class IBKR(BaseBroker):
     
     def get_quotes(self, symbol:list):
         pass
+    
     def send_order(self, side:str, order_type:str, quantity:int, contract: dict, price=None, stop_price=None):
         
         order = Order()
@@ -246,3 +248,16 @@ class IBKR(BaseBroker):
                 }
                 formatted_order = self.format_order(order_info)
                 return formatted_order
+
+
+if __name__ == '__main__':
+    accountId = cfg['IBKR']['accountId']
+    accountId = None if len(accountId) == 0 else accountId
+    ibkr = IBKR(accountId=accountId)
+    ibkr.get_session()
+    
+    # request quotes for symbols = ["NFLX_051724C450", "AMD_051724C100"]
+    
+    # example of send_order
+    
+    
