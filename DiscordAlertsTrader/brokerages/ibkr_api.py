@@ -414,30 +414,19 @@ class IBKR(BaseBroker):
         
         quotes = {}
         for symbol in symbols:
-            if (" " in symbol):
-                symbol_kwargs = self._convert_option_fromts(symbol)
-
-                contract = Option(symbol=symbol_kwargs['symbol'], lastTradeDateOrContractMonth=symbol_kwargs['lastTradeDateOrContractMonth'], \
-                                  strike=symbol_kwargs['strike'], right=symbol_kwargs['right'], \
-                                    exchange='SMART', currency='USD')
-            elif ("_" in symbol):
-                symbol_kwargs = self._convert_option_tots(symbol)
-                contract = Option(symbol=symbol_kwargs['symbol'], lastTradeDateOrContractMonth=symbol_kwargs['lastTradeDateOrContractMonth'], \
-                                  strike=symbol_kwargs['strike'], right=symbol_kwargs['right'], \
-                                    exchange='SMART', currency='USD')
-            else:
-                contract = Stock(symbol, 'SMART', 'USD')
-            
+            con_id = self.get_con_id(symbol)
+            print(con_id)
+            contract = Contract(conId=con_id)
             contract = self.ib.qualifyContracts(contract)[0]
             self.ib.sleep(0.1)
             quote = self.ib.reqTickers(contract)
             self.ib.sleep(0.1)
             quotes[symbol] = {
                 'symbol': symbol,
-                'mid': (quote[-1].ask + quote[-1].bid / 2) if quote[-1].ask and quote[-1].bid else float('nan'),
+                'mid': ((quote[-1].ask + quote[-1].bid) / 2) if quote[-1].ask and quote[-1].bid else float('nan'),
                 'bid': quote[-1].bid,
                 'ask': quote[-1].ask,
-                'quoteTimeInLong': int(round(quote[-1].time)) if quote[-1].time else None,
+                'quoteTimeInLong': int(round(quote[-1].time.timestamp())) if quote[-1].time else None,
             }
         
         return quotes
@@ -513,17 +502,19 @@ class IBKR(BaseBroker):
         }
             
 
-if __name__ == '__main__':
+##### Uncomment for testing
 
-    ibkr = IBKR()
-    ibkr.get_session()
-    print(ibkr.get_account_info())
+# if __name__ == '__main__':
 
-    symbols = ["NFLX_051724C450", "AMD_051724C100"]
+#     ibkr = IBKR()
+#     ibkr.get_session()
+#     print(ibkr.get_account_info())
 
-    # quotes = ibkr.get_quotes(symbols)
+#     symbols = ["NFLX_051724C450", "AMD_051724C100"]
 
-    # print(quotes)
+#     quotes = ibkr.get_quotes(symbols)
+
+#     print(quotes)
     # order = ibkr.make_BTO_lim_order("NFLX_051724C450", 1, 605)
     # print(order)
 
