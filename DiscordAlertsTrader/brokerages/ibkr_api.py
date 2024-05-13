@@ -87,9 +87,9 @@ class IBKR(BaseBroker):
                 "orderId": order.orderId,
                 "stopPrice": order.auxPrice if order.orderType == 'STP' else None,
                 'orderType':  order.orderType,
-                'placedTime': trade.log[0].time if trade.log else int(time.time()*1000),
-                'enteredTime': trade.fills[0].time if trade.fills else int(time.time()*1000),
-                "closeTime": trade.fills[-1].time if trade.fills else int(time.time()*1000),
+                'placedTime': trade.log[0].time.timestamp() if trade.log else None,
+                'enteredTime': trade.fills[0].time if trade.fills else None,
+                "closeTime": trade.fills[-1].time if trade.fills else None,
                 'orderLegCollection':[{
                     'instrument':{'symbol':trade.contract.symbol},
                     'instruction': order.action,
@@ -107,7 +107,7 @@ class IBKR(BaseBroker):
     def format_order(self, order:dict):
         """ output format for order_response.Order, mimicks the order_info from TDA API"""
         stopPrice= order['stopPrice']
-        timestamp = order['placedTime'].timestamp()/1000 if order['placedTime'] else None
+        timestamp = order['placedTime']/1000 if order['placedTime'] else None
         enteredTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00") if timestamp else None
         if 'closeTime' in order:
             timestamp = order['closeTime']/1000 if order['closeTime'] else None
@@ -221,7 +221,7 @@ class IBKR(BaseBroker):
         order.orderType = order_dict['orderType']
         order.tif = order_dict['enforce']
         order.transmit = True
-        order.outsideRth = order_dict['outsideRegularTradingHour']
+        order.outsideRth = order_dict['outsideRegularTradingHour'] if 'outsideRegularTradingHour' in order_dict else False
 
         if(order.orderType == 'LMT'):
             order.lmtPrice = order_dict['lmtPrice']
@@ -523,8 +523,8 @@ if __name__ == '__main__':
 
     # quotes = ibkr.get_quotes(symbols)
 
-    
-    # order = ibkr.make_BTO_lim_order("NFLX", 1, 605)
+    # print(quotes)
+    # order = ibkr.make_BTO_lim_order("NFLX_051724C450", 1, 605)
     # print(order)
 
     # order_id = ibkr.send_order(order)
