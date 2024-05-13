@@ -220,6 +220,12 @@ Follow the steps in IBKR Trader Workstation to enable API access
 3. Uncheck the "Read-Only API" box
 4. Check the "Allow connections from localhost only" box
 
+### Getting Quotes
+
+You need to subscribe to market data to get quotes. You can do this by logging into your IBKR account and going to 
+IBKR web portal. Then type on the search bar "Market Data Subscriptions" and subscribe to the exchanges you want to get quotes from.
+
+
 ## Disclaimer
 _________
 
