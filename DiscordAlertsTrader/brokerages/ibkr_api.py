@@ -204,6 +204,7 @@ class IBKR(BaseBroker):
 
                 }
                 formatted_order = self.format_order(order_info)
+                return formatted_order
     
     def fix_symbol(self, symbol:str, direction:str):
         "Fix symbol for options, direction in or out of webull format"
