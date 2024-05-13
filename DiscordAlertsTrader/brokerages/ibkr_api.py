@@ -107,7 +107,7 @@ class IBKR(BaseBroker):
     def format_order(self, order:dict):
         """ output format for order_response.Order, mimicks the order_info from TDA API"""
         stopPrice= order['stopPrice']
-        timestamp = order['placedTime']/1000 if order['placedTime'] else None
+        timestamp = order['placedTime'].timestamp()/1000 if order['placedTime'] else None
         enteredTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00") if timestamp else None
         if 'closeTime' in order:
             timestamp = order['closeTime']/1000 if order['closeTime'] else None
@@ -241,8 +241,13 @@ class IBKR(BaseBroker):
         #refer to https://ib-insync.readthedocs.io/api.html#module-ib_insync.contract
 
         contract = Contract(conId=order_dict['conId'])
+        contract = self.ib.qualifyContracts(contract)[0] 
+        self.ib.sleep(0.1)
         
         trade = self.ib.placeOrder(contract, order)
+        print(contract)
+        print(order)
+        print(trade)
         self.ib.sleep(0.1)
 
         return trade.order.orderId
@@ -432,7 +437,7 @@ class IBKR(BaseBroker):
                 'mid': (quote[-1].ask + quote[-1].bid / 2) if quote[-1].ask and quote[-1].bid else float('nan'),
                 'bid': quote[-1].bid,
                 'ask': quote[-1].ask,
-                'quoteTimeInLong': int(round(quote[-1].time))
+                'quoteTimeInLong': int(round(quote[-1].time)) if quote[-1].time else None,
             }
         
         return quotes
@@ -516,14 +521,14 @@ if __name__ == '__main__':
 
     symbols = ["NFLX_051724C450", "AMD_051724C100"]
 
-    quotes = ibkr.get_quotes(symbols)
-    #print(ibkr.get_orders())
-    #print(ibkr.get_order_info(1))
-    #print(ibkr.cancel_order(1))
-    #print(ibkr.send_order('BUY', 'LMT', 1, {'symbol':'AAPL', 'secType':'STK', 'exchange':'SMART', 'currency':'USD', 'primaryExchange':'NASDAQ'}, 100))
-    #print(ibkr.send_order('SELL', 'LMT', 1, {'symbol':'AAPL', 'secType':'STK', 'exchange':'SMART', 'currency':'USD', 'primaryExchange':'NASDAQ'}, 100))
-    #print(ibkr.send_order('BUY', 'STP', 1, {'symbol':'AAPL', 'secType':'STK', 'exchange':'SMART', 'currency':'USD', 'primaryExchange':'NASDAQ'}, 100, 90))
-    #print(ibkr.send_order('SELL', 'STP', 1, {'symbol':'AAPL', 'secType':'STK', 'exchange':'SMART', 'currency':'USD', 'primaryExchange':'NASDAQ'}, 100, 90))
-    #print(ibkr.send_order('BUY', 'LMT', 1, {'symbol':'AAPL', 'secType':'OPT', 'exchange':'SMART', 'currency':'USD', 'primaryExchange':'NASDAQ', 'lastTradeDateOrContractMonth':'20211217', 'strike': 150, 'right':'C', 'multiplier':100, 'localSymbol':'AAPL  211217C00150000'}, 100))
-    #print(ibkr.send_order('SELL', 'LMT', 1, {'symbol':'AAPL', 'secType':'OPT', 'exchange':'SMART', 'currency':'USD', 'primaryExchange':'NASDAQ', 'lastTradeDateOrContractMonth':'20211217', 'strike': 150, 'right':'C', 'multiplier':100, 'localSymbol':'AAPL  211217C00150000'}, 100))
-    #print(ibkr.send_order('BUY', 'STP', 1, {'symbol':'AAPL', 'secType':'OPT', 'exchange':'SMART', 'currency':'USD', 'primaryExchange':'NASDAQ', 'lastTradeDateOrContractMonth':'20211217', 'strike': 150, '
+    # quotes = ibkr.get_quotes(symbols)
+
+    
+    # order = ibkr.make_BTO_lim_order("NFLX", 1, 605)
+    # print(order)
+
+    # order_id = ibkr.send_order(order)
+    # print(order_id)
+
+    # order = ibkr.cancel_order(order_id)
+    # print(order)
