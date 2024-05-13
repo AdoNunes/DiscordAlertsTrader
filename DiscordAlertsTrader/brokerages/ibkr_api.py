@@ -434,6 +434,8 @@ class IBKR(BaseBroker):
                 'ask': quote[-1].ask,
                 'quoteTimeInLong': int(round(quote[-1].time))
             }
+        
+        return quotes
     
     def _convert_option_fromts(self, ticker):
         """
