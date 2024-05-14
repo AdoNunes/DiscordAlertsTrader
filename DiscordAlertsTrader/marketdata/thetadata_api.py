@@ -51,9 +51,8 @@ class ThetaClientAPI:
          self.client = ThetaClient(launch=False)
          self.dir_quotes = cfg['general']['data_dir'] + '/hist_quotes'
 
-    def get_hist_trades(self, symbol: str, date_range: List[date], interval_size: int=1000):
-        """send request and get historical trades for an option symbol"""
-
+    def info_option(self, symbol: str, date_range: List[date]):
+        
         symb_info = parse_symbol(symbol)
         expdate = date(symb_info['exp_year'], symb_info['exp_month'], symb_info['exp_day']).strftime("%Y%m%d")
         root = symb_info['symbol']
@@ -61,6 +60,11 @@ class ThetaClientAPI:
         strike = _format_strike(symb_info['strike'])
         date_s = _format_date(date_range[0])
         date_e = _format_date(date_range[1])
+        return expdate, root, right, strike, date_s, date_e
+        
+    def get_hist_trades(self, symbol: str, date_range: List[date], interval_size: int=1000):
+        """send request and get historical trades for an option symbol"""
+        expdate, root, right, strike, date_s, date_e = self.info_option(symbol, date_range)
 
         url = f'http://127.0.0.1:25510/v2/hist/option/trade_quote?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&rth=true'
         header ={'Accept': 'application/json'}
@@ -99,22 +103,15 @@ class ThetaClientAPI:
         merged_df['last'] = merged_df['last'].ffill()
         return merged_df
 
-    def get_geeks(self, symbol: str, date_range: List[date], interval_size: int=1000, get_trades=True):
+    def get_geeks(self, symbol: str, date_range: List[date], interval_size: int=1000, get_trades=True, load_from_file=True):
         """send request and get historical trades for an option symbol"""
-
         # symbol = "ACB_040524C6.5"
         # date_range = [date(2024, 4, 5), date(2024, 4, 5)]
-        symb_info = parse_symbol(symbol)
-        expdate = date(symb_info['exp_year'], symb_info['exp_month'], symb_info['exp_day']).strftime("%Y%m%d")
-        root = symb_info['symbol']
-        right = symb_info['put_or_call']
-        strike = _format_strike(symb_info['strike'])
-        date_s = _format_date(date_range[0])
-        date_e = _format_date(date_range[1])
+        expdate, root, right, strike, date_s, date_e = self.info_option(symbol, date_range)
 
         fquote = f"{self.dir_quotes}/{symbol}.csv"
         fetch_data = True
-        if op.exists(fquote):
+        if op.exists(fquote) and load_from_file:
             df = pd.read_csv(fquote)
             df['date'] = pd.to_datetime(df['timestamp'], unit='s').dt.date
             ds,de =  pd.to_datetime(date_s).date(),  pd.to_datetime(date_e).date()
@@ -122,6 +119,7 @@ class ThetaClientAPI:
                 print(f"{Fore.GREEN} Found data for {symbol}: {date_s} to {date_e}")
                 fetch_data = False
                 data = df[(df['date']>=ds) & (df['date']<=de)]
+                data.reset_index(drop=True, inplace=True)
 
         if fetch_data:
             print(f"{Fore.YELLOW} Fetching data from thetadata for {symbol}: {date_s} to {date_e}")
@@ -142,6 +140,21 @@ class ThetaClientAPI:
             save_or_append_quote(data, symbol, self.dir_quotes)
         
         return data
+
+    def get_currentgeeks(self, symbol: str, date_range: List[date]):
+        
+        expdate, root, right, strike, date_s, date_e = self.info_option(symbol, date_range)
+        url = f'http://127.0.0.1:25510/v2/bulk_snapshot/option/greeks?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&rth=true'
+        header ={'Accept': 'application/json'}
+        response_quotes = requests.get(url, headers=header)
+        df_q = pd.read_csv(io.StringIO(response_quotes.content.decode('utf-8')))
+        df_q['timestamp'] = df_q.apply(get_timestamp_, axis=1)
+        if not len(df_q):
+            return None
+        df_q = df_q[(df_q.strike == strike) & (df_q.right == right)].reset_index(drop=True)
+        data = df_q[['timestamp', 'bid', 'ask', 'delta', 'theta', 'vega', 'lambda', 'implied_vol', 'underlying_price']]
+        return data
+
 
     def get_delta_strike(self, ticker: str, exp_date: str, delta:float, right:str, timestamp:int, stock_price = None):
         """gets the strike for a given delta, if not found returns the closest delta
@@ -234,7 +247,22 @@ class ThetaClientAPI:
         exp_date_f = datetime.strptime(exp_date, "%Y%m%d").strftime("%m%d%y")
         return f"{ticker}_{exp_date_f}{right}{strike/1000}".replace(".0", ""), this_delta
 
-
+    def get_open_interest(self, symbol: str, date_range: List[date]):
+        
+        expdate, root, right, strike, date_s, date_e = self.info_option(symbol, date_range)
+        
+        # date to ny time
+        url = f'http://127.0.0.1:25510/v2/hist/option/open_interest?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}' 
+        header ={'Accept': 'application/json'}
+        response = requests.get(url, headers=header)
+        if response.content.startswith(b'No data for'):
+            return None
+        # get quotes and trades to merge the with second level quotes
+        df = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
+        df['ms_of_day'] = df['ms_of_day'].astype(float)
+        df['timestamp'] = df.apply(get_timestamp_, axis=1)
+        return df
+        
     def get_hist_quotes(self, symbol: str, date_range: List[date], interval_size: int=1000):
         """send request and get historical quotes for an option symbol"""
         # symbol: APPL_092623P426
@@ -380,3 +408,4 @@ if __name__ == "__main__":
     )
 
     print(data.head())
+

@@ -564,10 +564,7 @@ def process_quotes(dir_quotes, idx, port, date_close, with_theta=False, with_pol
                     date_start = datetime.strptime(row['Date'], '%Y-%m-%d %H:%M:%S.%f').date().strftime('%Y-%m-%d')
                     date_end = date_close.date().strftime('%Y-%m-%d')
 
-                    quotes = get_poly_data(row['Symbol'], date_start, date_end, 'second',  ask='h', bid='l')
-                    date_end = date_close.date().strftime('%Y-%m-%d')
-
-                    quotes = get_poly_data(row['Symbol'], date_start, date_end, 'second',  ask='h', bid='l')
+                    quotes = get_poly_data(row['Symbol'], date_start, date_end, 'second',  ask='h', bid='l', dir_quotes=None)
                     quotes['timestamp'] = quotes['timestamp'] // 1000
             except Exception as e:
                 if verbose:
@@ -682,32 +679,33 @@ if __name__ == '__main__':
         dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
 
     params = {
-        'fname_port': 'data/rough_port.csv',
+        # 'fname_port': '../algoalerter/data\HHscanner_port_delta0.4_179feats_ssnorm_ML_65conf.csv',
+        'fname_port': 'data/prophi_port.csv',
         'order_type': 'any',
-        'last_days': 400,
+        'last_days': 133,
         'filt_date_frm': "",
         'filt_date_to': "",
         'stc_date':'eod',#'exp', #,'stc alert', #'exp',# ,  #  # 'eod' or
         'max_underlying_price': 40000,
         'min_price': 10,
-        'max_dte': 10,
-        'min_dte': 0,
+        'max_dte': 4,
+        'min_dte': 2,
         'filt_hour_frm': "",
-        'filt_hour_to': 12,
+        'filt_hour_to': 11,
         'include_authors': "",
-        'exclude_symbols': [],
-        'initial_price' : 'ask_+30', # 'ask_+10',
+        'exclude_symbols': ["SPY", "QQQ"],
+        'initial_price' : 'bid', # 'ask_+10',
         'PT': [50], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], #
         'sl_update' :  None, #   [[1.20, 1.05], [1.5, 1.3]], #
         # "pt_update" : [ [.3,0.7]], #   None, #
-        # 'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #
-        'SL': 40,
+        #'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #
+        'SL': 50,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
-        # 'max_margin': 100000,
-        'short_under_amnt' : 2000,
+        'max_margin': 400000,
+        'short_under_amnt' : 1500,
         'min_trade_val': 10,
         'verbose': True,
         'trade_amount': 1000,
@@ -730,7 +728,7 @@ if __name__ == '__main__':
 
     if 1:
         import matplotlib.pyplot as plt
-
+        port.reset_index(drop=True, inplace=True)
         stat_type =  'strategy-PnL' # 'PnL' #  'PnL-actual'#
         stat_typeu = stat_type.replace("PnL", "PnL$")
         fig, axs = plt.subplots(2, 2, figsize=(10, 10))

@@ -73,7 +73,11 @@ class TS(BaseBroker):
                             'bidPrice': float(quote.get("Bid")),    
                             'lastPrice': float(quote.get("Last")),
                             'quoteTimeInLong': quoteTimeInLong,
-                            "status": ''
+                            "status": '',
+                            "OpenInterest": float(quote.get('DailyOpenInterest')),  
+                            "BidSize": float(quote.get('BidSize')), 
+                            "AskSize": float(quote.get('AskSize')), 
+                            "LastSize": float(quote.get('Last')),
                             }
         
         for quote in resp.get('Errors', []):
@@ -562,3 +566,14 @@ class TS(BaseBroker):
         return order
         
 
+
+if __name__ == '__main__':
+    ts = TS()
+    ts.get_session()
+    print(ts.get_quotes(['NFLX_051024C620', 'SPY']))
+    # res = ts.session.stream_option_chain('NFLX', '05-10-2024')
+    # # print(ts.get_account_info())
+    # # print(ts.get_positions_orders())
+    # for line in res.iter_lines():
+    #     if line:
+    #         print(line)

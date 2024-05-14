@@ -11,7 +11,11 @@ from DiscordAlertsTrader.marketdata.thetadata_api import ThetaClientAPI
 from DiscordAlertsTrader.message_parser import parse_trade_alert
 from DiscordAlertsTrader.configurator import cfg
 from DiscordAlertsTrader.alerts_tracker import AlertsTracker
-from DiscordAlertsTrader.read_hist_msg import parse_hist_msg
+try:
+    from DiscordAlertsTrader.read_hist_msg_mine import parse_hist_msg
+except ImportError:
+    from DiscordAlertsTrader.read_hist_msg import parse_hist_msg
+
 from DiscordAlertsTrader.port_sim import get_hist_quotes
 import re
 
@@ -22,7 +26,7 @@ after, date_after = "", ""
 get_date_after_from_port = True
 re_download = False
 delete_port = False
-author = "rough"
+author = "prophi"
 
 
 def get_timestamp(row):
@@ -78,13 +82,16 @@ chan_ids = {
     'diesel': 1107395495460081754,
     'ddking': 1139700590339969036,
     "crimson": 1102753361566122064,
-    "HHscanner": 1095786767514341507,
+    "HHscanner": 1093839987079909396,
     "vader": 1207716385346822245,
     "gianni": 1209992523083415603,
     "og-alerts": 1207717868716826645,
     "EM": 1126325195301462117,
     "vader-swings":1223379548675117088,
     "rough": 989674163331534929,
+    'opccpro': 1125655265312776274,
+    "bear": 1221951478621540384,
+    'prophi': 1216951944933933137,
     }
 chan_id = chan_ids[author]
 if not use_theta_rest_api:
@@ -170,7 +177,7 @@ tracker = AlertsTracker(
 )
 
 dt = None
-for ix, row in msg_hist.loc[ix:].iterrows():  # .loc[ix:].iterrows(): #
+for ix, row in msg_hist.loc[:].iterrows():  # .loc[ix:].iterrows(): #
     print(ix)
     alert = row["Content"]
     if pd.isnull(alert) or not len(alert) or alert in ["@everyone", "@Elite Options"]:
@@ -207,7 +214,7 @@ for ix, row in msg_hist.loc[ix:].iterrows():  # .loc[ix:].iterrows(): #
     except ValueError:
         print("Incorrect date format", full_date, dt_fm)
         continue
-        
+    tracker.portfolio["isOpen"] = 0
     if datetime.strptime(full_date, dt_fm).date() < dt.date():
         print("Order date in the past, skipping", order["expDate"], order["Date"])
         resp = tracker.trade_alert(order, live_alert=False, channel=author)

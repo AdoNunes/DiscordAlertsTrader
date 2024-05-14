@@ -60,6 +60,11 @@ def get_brokerage(name=cfg['general']['BROKERAGE']):
         tda = TDA(accountId=accountId)
         tda.get_session()
         return tda
+    elif name.lower() == 'schwab':  
+        from .schwab_api import SW
+        sc = SW()
+        sc.get_session()
+        return sc
     elif name.lower() == 'tradestation':
         from .tradestation_api import TS
         accountId = cfg['tradestation']['accountId']
