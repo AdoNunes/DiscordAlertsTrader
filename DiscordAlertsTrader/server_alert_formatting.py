@@ -545,28 +545,28 @@ def bishop_formatting(message_):
             alert += mb.description
     if not len(alert):
         alert = message.content
-    
-    for mb in message.embeds:
-        match = False
-        if "I'm entering" in alert:
-            action = "BTO"
-            match = True
-            extra = alert.split("@$")[1].split("\r\n\r\n*These are ONLY my opinions")[0].replace("\r\n\r\n", " ")
-            pattern = "\*\*Option:\*\* ([A-Z]+) (\d.+) ([PC]) (\d+\/\d+)\\r\\n\\r\\n\*\*Entry:\*\* @\$(\d+\.\d+)"
-        elif "Trimming" in alert:
-            action = "STC"
-            match = True
-            extra = "  " + mb.description.split("\r\n\r\n*These are ONLY my opinions")[0].replace("\r\n\r\n", " ")
-            pattern = "([A-Z]+) (\d.+) ([PC]) (\d+\/\d+) @\$(\d+\.\d+)"
+        print("bishop", alert)
+        
+    match = False
+    if "I'm entering" in alert:
+        action = "BTO"
+        match = True
+        extra = alert.split("@$")[1].split("\r\n\r\n*These are ONLY my opinions")[0].replace("\r\n\r\n", " ")
+        pattern = "\*\*Option:\*\* ([A-Z]+) (\d.+) ([PC]) (\d+\/\d+)\\r\\n\\r\\n\*\*Entry:\*\* @\$(\d+\.\d+)"
+    elif "Trimming" in alert:
+        action = "STC"
+        match = True
+        extra = "  " + mb.description.split("\r\n\r\n*These are ONLY my opinions")[0].replace("\r\n\r\n", " ")
+        pattern = "([A-Z]+) (\d.+) ([PC]) (\d+\/\d+) @\$(\d+\.\d+)"
 
+    if match:
+        match = re.search(pattern, alert, re.IGNORECASE)
         if match:
-            match = re.search(pattern, alert, re.IGNORECASE)
-            if match:
-                ticker, strike, otype, expdate, price = match.groups()
-                extra = extra.replace(price, "")
-                alert = f"{action} {ticker} {strike.upper()}{otype} {expdate} @{price} {extra}"
-                if "Trimming" in alert:
-                    alert += " trim"
+            ticker, strike, otype, expdate, price = match.groups()
+            extra = extra.replace(price, "")
+            alert = f"{action} {ticker} {strike.upper()}{otype} {expdate} @{price} {extra}"
+            if "Trimming" in alert:
+                alert += " trim"
 
     if len(alert):
         message.content = alert
@@ -951,14 +951,16 @@ def prophi_alerts(message_):
         message.author.name = mb.description.split(":")[0]
 
         exp = r'\$([A-Z]+) (\d{1,2} [A-Z]{3} \d{1,2}) \$([\d.]+)(c|p|C) \$([\d.]+)'
-        match = re.search(exp, alert, re.IGNORECASE| re.DOTALL)
+        match = re.search(exp, mb.description, re.IGNORECASE| re.DOTALL)
         if match:
+            print("match for prophi")
             contract, expdate, strike, otype, price = match.groups()
             # day month scripted year to expdate
 
             expdate = convert_date(expdate.upper().replace(" ",""))
             alert = f"BTO {contract.upper()} {strike}{otype.upper()} {expdate.replace('/2024', '')} @{price}"
         else:
+            print("no match for prophi")
             alert = mb.description
     message.content = alert
     return message
