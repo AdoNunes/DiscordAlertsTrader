@@ -227,7 +227,7 @@ class IBKR(BaseBroker):
             order.lmtPrice = order_dict['lmtPrice']
         
         if(order.orderType == 'STP'):
-            order.auxPrice = order_dict['lmtPrice']
+            order.auxPrice = order_dict['stpPrice']
         
         if(order.orderType == 'TRAIL'):
             if(order_dict['trial_type'] == 'DOLLAR'):
@@ -238,36 +238,51 @@ class IBKR(BaseBroker):
         if(order.orderType == 'STP LMT'):
             order.lmtPrice = order_dict['lmtPrice']
             order.auxPrice = order_dict['stpPrice']
+
+        if(order.orderType == 'OCA'):
+            order1 = Order()
+            order1.action = order_dict['action']
+            order1.totalQuantity = order_dict['quant']
+            order1.orderType = 'LMT'
+            order1.lmtPrice = order_dict['takeProfit']
+
+            order2 = Order()
+            order2.action = order_dict['action']
+            order2.totalQuantity = order_dict['quant']
+            order2.orderType = 'STP'
+            order2.auxPrice = order_dict['stopLoss']
+
+            oca_orders = [order1, order2]
+            orders = self.ib.oneCancelsAll(oca_orders, ocaGroup = "OCA_" + str(time.time()), ocaType=1)
+
+
         #refer to https://ib-insync.readthedocs.io/api.html#module-ib_insync.contract
 
         contract = Contract(conId=order_dict['conId'])
         contract = self.ib.qualifyContracts(contract)[0] 
         self.ib.sleep(0.1)
         
-        trade = self.ib.placeOrder(contract, order)
-        print(contract)
-        print(order)
-        print(trade)
-        self.ib.sleep(0.1)
+        if(order.orderType == 'OCA'):
+            order_ids = []
+            for o in orders:
+                self.ib.placeOrder(contract, o)
+                order_ids.append(o.orderId)
+                self.ib.sleep(0.1)
+            return order_ids
+        else:
 
-        return trade.order.orderId
+            trade = self.ib.placeOrder(contract, order)
+            print(contract)
+            print(order)
+            print(trade)
+            self.ib.sleep(0.1)
+
+            return trade.order.orderId
     
     def get_con_id(self, symbol:str):
         "Get contract id for a given symbol"
         if "_" in symbol:
-            symbol_kwargs = self._convert_option_tots(symbol)
-            contract = Option(symbol=symbol_kwargs['symbol'], lastTradeDateOrContractMonth=symbol_kwargs['lastTradeDateOrContractMonth'], \
-                              strike=symbol_kwargs['strike'], right=symbol_kwargs['right'], \
-                                exchange='SMART', currency='USD')
-            contracts = self.ib.qualifyContracts(contract)
-            contract = contracts[0] if contracts else None
-            conId = contract.conId if contract else None
-            return conId
-        elif " " in symbol:
-            symbol_kwargs = self._convert_option_fromts(symbol)
-            contract = Option(symbol=symbol_kwargs['symbol'], lastTradeDateOrContractMonth=symbol_kwargs['lastTradeDateOrContractMonth'], \
-                              strike=symbol_kwargs['strike'], right=symbol_kwargs['right'], \
-                                exchange='SMART', currency='USD')
+            contract = self._convert_option_to_ibkr(symbol)
             contracts = self.ib.qualifyContracts(contract)
             contract = contracts[0] if contracts else None
             conId = contract.conId if contract else None
@@ -304,7 +319,7 @@ class IBKR(BaseBroker):
 
         return kwargs if kwargs['conId'] is not None else None
 
-    def make_Lim_SL_order(self, Symbol:str, Qty:int,  PT:float, SL:None, action="STC", **kwarg):
+    def make_Lim_SL_order(self, Symbol:str, Qty:int,  PT:float, SL:float, action="STC",  **kwarg):
         """Sell with a limit order and a stop loss order"""        
         kwargs = {}
         if action == "STC":
@@ -324,14 +339,18 @@ class IBKR(BaseBroker):
         kwargs['enforce'] ='GTC'
         kwargs['quant'] = Qty 
         kwargs['conId'] = self.get_con_id(Symbol)
-        if SL is not None:
-            print("WARNING: webull api does not support OCO, setting a SL only, do not provide SL to send PT")
-            kwargs['orderType'] = 'STP' 
-            kwargs['lmtPrice'] = SL
-        else:
-            print("WARNING: webull api does not support OCO, sending PT without SL")
-            kwargs['orderType'] = 'LMT' 
-            kwargs['lmtPrice'] = PT
+
+        kwargs['takeProfit'] = PT
+        kwargs['stopLoss'] = SL
+        kwargs['orderType'] = 'OCA'
+        # if SL is not None:
+        #     print("WARNING: webull api does not support OCO, setting a SL only, do not provide SL to send PT")
+        #     kwargs['orderType'] = 'STP' 
+        #     kwargs['lmtPrice'] = SL
+        # else:
+        #     print("WARNING: webull api does not support OCO, sending PT without SL")
+        #     kwargs['orderType'] = 'LMT' 
+        #     kwargs['lmtPrice'] = PT
         return kwargs if kwargs['conId'] is not None else None
 
     def make_STC_lim(self, Symbol:str, Qty:int, price:float, strike=None, action="STC", **kwarg):
@@ -377,7 +396,7 @@ class IBKR(BaseBroker):
 
         kwargs['enforce'] ='GTC'
         kwargs['quant'] = Qty 
-        kwargs['orderType'] = 'STP LMT' 
+        kwargs['orderType'] = 'STP' 
         kwargs['stpPrice'] = SL
         kwargs['lmtPrice'] = SL
         kwargs['conId'] = self.get_con_id(Symbol)
@@ -431,9 +450,9 @@ class IBKR(BaseBroker):
         
         return quotes
     
-    def _convert_option_fromts(self, ticker):
+    def _convert_option_from_ibkr(self, ticker: Option):
         """
-        Convert ticker from 'NFLX 051724C450' to 
+        Convert ticker from
 
         {
             'symbol':'NFLX',
@@ -442,31 +461,22 @@ class IBKR(BaseBroker):
             'right':'C',
         }
         
+        to 'NFLX_051724C450'
+
         Parameters:
-        ticker (str): Ticker in the original format.
+        ticker (Option): Ticker in the IBKR format.
         
         Returns:
-        dict: kwargs in desired format.
+        str.
         """
-        if "_" not in ticker:
-            return ticker
-        symb, option_part = ticker.split(" ")  # Split the ticker by spaces
-        date = option_part[2:4]
-        month = option_part[:2]
-        year = '20' + option_part[4:6]
 
-        date = year + month + date
-        right = (option_part[6])
-        strike = int(option_part[7:])
+        date = ticker.lastTradeDateOrContractMonth
+        year = date[2:4]
+        month = date[4:6]
+        day = date[6:]
+        return ticker.symbol + "_" + month + day + year + ticker.right + str(ticker.strike)
 
-        return {
-            'symbol': symb,
-            'lastTradeDateOrContractMonth': date,
-            'strike': strike,
-            'right': right
-        }
-
-    def _convert_option_tots(self, ticker):
+    def _convert_option_to_ibkr(self, ticker):
         """
         Convert ticker from 'NFLX_051724C450' to 
 
@@ -481,7 +491,7 @@ class IBKR(BaseBroker):
         ticker (str): Ticker in the original format.
         
         Returns:
-        dict: kwargs in desired format.
+        Contract (Option): Option Class in desired format.
         """
         if "_" not in ticker:
             return ticker
@@ -493,13 +503,10 @@ class IBKR(BaseBroker):
         date = year + month + date
         right = (option_part[6])
         strike = int(option_part[7:])
-
-        return {
-            'symbol': symb,
-            'lastTradeDateOrContractMonth': date,
-            'strike': strike,
-            'right': right
-        }
+    
+        return Option(symbol=symb, lastTradeDateOrContractMonth=date, \
+                              strike=strike, right=right, \
+                                exchange='SMART', currency='USD')
             
 
 ##### Uncomment for testing
@@ -510,16 +517,21 @@ class IBKR(BaseBroker):
 #     ibkr.get_session()
 #     print(ibkr.get_account_info())
 
-#     symbols = ["NFLX_051724C450", "AMD_051724C100"]
+#     # symbols = ["NFLX_051724C450", "AMD_051724C100"]
 
-#     quotes = ibkr.get_quotes(symbols)
+#     # quotes = ibkr.get_quotes(symbols)
 
-#     print(quotes)
-    # order = ibkr.make_BTO_lim_order("NFLX_051724C450", 1, 605)
-    # print(order)
+#     # print(quotes)
+#     # order = ibkr.make_BTO_lim_order("NFLX_051724C450", 1, 605)
+#     # print(order)
 
-    # order_id = ibkr.send_order(order)
-    # print(order_id)
+#     # order_id = ibkr.send_order(order)
+#     # print(order_id)
 
-    # order = ibkr.cancel_order(order_id)
-    # print(order)
+#     # order = ibkr.cancel_order(order_id)
+#     # print(order)
+
+#     make_Lim_SL_order = ibkr.make_Lim_SL_order("AMZN", 1, 200, 150)
+#     order_id = ibkr.send_order(make_Lim_SL_order)
+
+#     print(order_id)
