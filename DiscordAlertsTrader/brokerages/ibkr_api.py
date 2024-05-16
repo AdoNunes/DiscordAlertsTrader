@@ -74,12 +74,7 @@ class IBKR(BaseBroker):
         orders_inf =[]
 
         for trade in trades:
-            # print(trade)
-            test = self.ib.reqTickers(Stock('AAPL', 'SMART', 'USD'))
 
-            # for _,r in enumerate(test):
-            #     print(r.contract.symbol, r.time, r.bid, r.ask, r.close)
-            # print(trade.order.orderId)
             order = trade.order
             status = trade.orderStatus.status
             order_info = {
@@ -92,9 +87,9 @@ class IBKR(BaseBroker):
                 "orderId": order.orderId,
                 "stopPrice": order.auxPrice if order.orderType == 'STP' else None,
                 'orderType':  order.orderType,
-                'placedTime': trade.log[0].time if trade.log else int(time.time()*1000),
-                'enteredTime': trade.fills[0].time if trade.fills else int(time.time()*1000),
-                "closeTime": trade.fills[-1].time if trade.fills else int(time.time()*1000),
+                'placedTime': trade.log[0].time.timestamp() if trade.log else None,
+                'enteredTime': trade.fills[0].time if trade.fills else None,
+                "closeTime": trade.fills[-1].time if trade.fills else None,
                 'orderLegCollection':[{
                     'instrument':{'symbol':trade.contract.symbol},
                     'instruction': order.action,
@@ -139,45 +134,7 @@ class IBKR(BaseBroker):
             }]             
         }
         return order_info
-    
-    def get_quotes(self, symbol:list):
-        pass
-    
-    def send_order(self, side:str, order_type:str, quantity:int, contract: dict, price=None, stop_price=None):
-        
-        order = Order()
-        order.action = side
-        order.totalQuantity = quantity
-        order.orderType = order_type
-        order.tif = 'GTC'
-        order.transmit = True
 
-        if(order_type == 'LMT'):
-            order.lmtPrice = price
-        
-        if(order_type == 'STP'):
-            order.auxPrice = stop_price
-        
-        #refer to https://ib-insync.readthedocs.io/api.html#module-ib_insync.contract
-
-        contract = Contract()
-        contract.symbol = contract['symbol']
-        contract.secType = contract['secType'] # refer to https://ib-insync.readthedocs.io/api.html#module-ib_insync.contract
-        contract.exchange = contract['exchange']
-        contract.currency = contract['currency']
-        contract.primaryExchange = contract['primaryExchange']
-
-        if(contract['secType'] == 'OPT'):
-            contract.lastTradeDateOrContractMonth = contract['lastTradeDateOrContractMonth'] # should be in format 'YYYYMMDD'
-            contract.strike = contract['strike']
-            contract.right = contract['right']
-            contract.multiplier = contract['multiplier']
-            contract.localSymbol = contract['localSymbol']
-        
-        trade = self.ib.placeOrder(contract, order)
-        self.ib.sleep(0.1)
-
-        return trade.order.orderId
     def cancel_order(self, order_id):
         
         open_orders = self.ib.openOrders()
@@ -248,16 +205,333 @@ class IBKR(BaseBroker):
                 }
                 formatted_order = self.format_order(order_info)
                 return formatted_order
+    
+    def fix_symbol(self, symbol:str, direction:str):
+        "Fix symbol for options, direction in or out of webull format"
+        if direction == 'in':
+            return symbol.replace("SPXW", "SPX").replace("NDXP", "NDX")
+        elif direction == 'out':
+            return symbol.replace("SPX", "SPXW").replace("NDX", "NDXP")
+    
+    def send_order(self, order_dict:dict):
+        
+        order = Order()
+        order.action = order_dict['action']
+        order.totalQuantity = order_dict['quant']
+        order.orderType = order_dict['orderType']
+        order.tif = order_dict['enforce']
+        order.transmit = True
+        order.outsideRth = order_dict['outsideRegularTradingHour'] if 'outsideRegularTradingHour' in order_dict else False
+
+        if(order.orderType == 'LMT'):
+            order.lmtPrice = order_dict['lmtPrice']
+        
+        if(order.orderType == 'STP'):
+            order.auxPrice = order_dict['stpPrice']
+        
+        if(order.orderType == 'TRAIL'):
+            if(order_dict['trial_type'] == 'DOLLAR'):
+                order.trailStopPrice = order_dict['trial_value']
+            elif(order_dict['trial_type'] == 'PERCENT'):
+                order.trailStopPrice = order_dict['trial_value']
+        
+        if(order.orderType == 'STP LMT'):
+            order.lmtPrice = order_dict['lmtPrice']
+            order.auxPrice = order_dict['stpPrice']
+
+        if(order.orderType == 'OCA'):
+            order1 = Order()
+            order1.action = order_dict['action']
+            order1.totalQuantity = order_dict['quant']
+            order1.orderType = 'LMT'
+            order1.lmtPrice = order_dict['takeProfit']
+
+            order2 = Order()
+            order2.action = order_dict['action']
+            order2.totalQuantity = order_dict['quant']
+            order2.orderType = 'STP'
+            order2.auxPrice = order_dict['stopLoss']
+
+            oca_orders = [order1, order2]
+            orders = self.ib.oneCancelsAll(oca_orders, ocaGroup = "OCA_" + str(time.time()), ocaType=1)
 
 
-if __name__ == '__main__':
-    accountId = cfg['IBKR']['accountId']
-    accountId = None if len(accountId) == 0 else accountId
-    ibkr = IBKR(accountId=accountId)
-    ibkr.get_session()
+        #refer to https://ib-insync.readthedocs.io/api.html#module-ib_insync.contract
+
+        contract = Contract(conId=order_dict['conId'])
+        contract = self.ib.qualifyContracts(contract)[0] 
+        self.ib.sleep(0.1)
+        
+        if(order.orderType == 'OCA'):
+            order_ids = []
+            for o in orders:
+                self.ib.placeOrder(contract, o)
+                order_ids.append(o.orderId)
+                self.ib.sleep(0.1)
+            return order_ids
+        else:
+
+            trade = self.ib.placeOrder(contract, order)
+            print(contract)
+            print(order)
+            print(trade)
+            self.ib.sleep(0.1)
+
+            return trade.order.orderId
     
-    # request quotes for symbols = ["NFLX_051724C450", "AMD_051724C100"]
+    def get_con_id(self, symbol:str):
+        "Get contract id for a given symbol"
+        if "_" in symbol:
+            contract = self._convert_option_to_ibkr(symbol)
+            contracts = self.ib.qualifyContracts(contract)
+            contract = contracts[0] if contracts else None
+            conId = contract.conId if contract else None
+            return conId
+        else:
+            contracts = self.ib.qualifyContracts(Stock(symbol, 'SMART', 'USD'))
+            contract = contracts[0] if contracts else None
+            conId = contract.conId if contract else None
+            return conId
     
-    # example of send_order
+    def make_BTO_lim_order(self, Symbol:str, Qty:int, price:float, action="BTO", **kwarg):
+        "Buy with a limit order"
+
+        kwargs = {}
+        if action == "BTO":
+            kwargs['action'] = "BUY"
+        elif action == "STO":
+            kwargs['action'] = "SELL"
+        Symbol = self.fix_symbol(Symbol, "in")
+
+        if (("_" in Symbol) or (" " in Symbol)):
+            kwargs['asset'] = 'OPT'
+
+        else:
+            kwargs['asset'] ='STK'
+            kwargs['outsideRegularTradingHour'] = True
+            kwargs['stock'] = Symbol
+            
+        kwargs['enforce'] ='GTC'
+        kwargs['quant'] = Qty  
+        kwargs['orderType'] = 'LMT' 
+        kwargs['lmtPrice'] = price
+        kwargs['conId'] = self.get_con_id(Symbol)
+
+        return kwargs if kwargs['conId'] is not None else None
+
+    def make_Lim_SL_order(self, Symbol:str, Qty:int,  PT:float, SL:float, action="STC",  **kwarg):
+        """Sell with a limit order and a stop loss order"""        
+        kwargs = {}
+        if action == "STC":
+            kwargs['action'] = "SELL"
+        elif action == "BTC":
+            kwargs['action'] = "BUY"
+
+        Symbol = self.fix_symbol(Symbol, "in")
+        if (("_" in Symbol) or (" " in Symbol)):
+            kwargs['asset'] = 'OPT'
+
+        else:
+            kwargs['asset'] ='STK'
+            kwargs['outsideRegularTradingHour'] = True
+            kwargs['stock'] = Symbol
+
+        kwargs['enforce'] ='GTC'
+        kwargs['quant'] = Qty 
+        kwargs['conId'] = self.get_con_id(Symbol)
+
+        kwargs['takeProfit'] = PT
+        kwargs['stopLoss'] = SL
+        kwargs['orderType'] = 'OCA'
+        # if SL is not None:
+        #     print("WARNING: webull api does not support OCO, setting a SL only, do not provide SL to send PT")
+        #     kwargs['orderType'] = 'STP' 
+        #     kwargs['lmtPrice'] = SL
+        # else:
+        #     print("WARNING: webull api does not support OCO, sending PT without SL")
+        #     kwargs['orderType'] = 'LMT' 
+        #     kwargs['lmtPrice'] = PT
+        return kwargs if kwargs['conId'] is not None else None
+
+    def make_STC_lim(self, Symbol:str, Qty:int, price:float, strike=None, action="STC", **kwarg):
+        """Sell with a limit order and a stop loss order"""        
+        kwargs = {}
+        if action == "STC":
+            kwargs['action'] = "SELL"
+        elif action == "BTC":
+            kwargs['action'] = "BUY"
+
+        Symbol = self.fix_symbol(Symbol, "in")
+        if "_" in Symbol:
+            kwargs['asset'] = 'OPT'
+            
+        else:
+            kwargs['asset'] ='STK'
+            kwargs['outsideRegularTradingHour'] = True
+            kwargs['stock'] = Symbol
+
+        kwargs['enforce'] ='GTC'
+        kwargs['quant'] = Qty  
+        kwargs['orderType'] = 'LMT' 
+        kwargs['lmtPrice'] = price
+        kwargs['conId'] = self.get_con_id(Symbol)
+
+        return kwargs if kwargs['conId'] is not None else None
+
+    def make_STC_SL(self, Symbol:str, Qty:int, SL:float, action="STC", **kwarg):
+        """Sell with a stop loss order"""
+        kwargs = {}
+        if action == "STC":
+            kwargs['action'] = "SELL"
+        elif action == "BTC":
+            kwargs['action'] = "BUY"
+
+        Symbol = self.fix_symbol(Symbol, "in")
+        if "_" in Symbol:
+            kwargs['asset'] = 'OPT'
+        else:
+            kwargs['asset'] ='STK'
+            kwargs['outsideRegularTradingHour'] = False
+            kwargs['stock'] = Symbol
+
+        kwargs['enforce'] ='GTC'
+        kwargs['quant'] = Qty 
+        kwargs['orderType'] = 'STP' 
+        kwargs['stpPrice'] = SL
+        kwargs['lmtPrice'] = SL
+        kwargs['conId'] = self.get_con_id(Symbol)
+
+        return kwargs if kwargs['conId'] is not None else None
+
+    def make_STC_SL_trailstop(self, Symbol:str, Qty:int,  trail_stop_const:float, action="STC", **kwarg):
+        "trail_stop_const"
+        kwargs = {}
+        if action == "STC":
+            kwargs['action'] = "SELL"
+        elif action == "BTC":
+            kwargs['action'] = "BUY"
+
+        Symbol = self.fix_symbol(Symbol, "in")
+        if "_" in Symbol:
+            kwargs['asset'] = 'OPT'
+        else:
+            kwargs['asset'] ='STK'
+            kwargs['outsideRegularTradingHour'] = True
+            kwargs['stock'] = Symbol    
+
+        kwargs['enforce'] ='GTC'
+        kwargs['quant'] = Qty 
+        kwargs['orderType'] = 'TRAIL'
+        kwargs['trial_value'] = trail_stop_const
+        kwargs['trial_type'] = 'DOLLAR'
+        kwargs['outsideRegularTradingHour'] = True
+        kwargs['conId'] = self.get_con_id(Symbol)
+
+        return kwargs if kwargs['conId'] is not None else None
     
+    def get_quotes(self, symbol:list):
+        
+        quotes = {}
+        for symbol in symbols:
+            con_id = self.get_con_id(symbol)
+            print(con_id)
+            contract = Contract(conId=con_id)
+            contract = self.ib.qualifyContracts(contract)[0]
+            self.ib.sleep(0.1)
+            quote = self.ib.reqTickers(contract)
+            self.ib.sleep(0.1)
+            quotes[symbol] = {
+                'symbol': symbol,
+                'mid': ((quote[-1].ask + quote[-1].bid) / 2) if quote[-1].ask and quote[-1].bid else float('nan'),
+                'bid': quote[-1].bid,
+                'ask': quote[-1].ask,
+                'quoteTimeInLong': int(round(quote[-1].time.timestamp())) if quote[-1].time else None,
+            }
+        
+        return quotes
     
+    def _convert_option_from_ibkr(self, ticker: Option):
+        """
+        Convert ticker from
+
+        {
+            'symbol':'NFLX',
+            'lastTradeDateOrContractMonth':'20240517',
+            'strike': 450,
+            'right':'C',
+        }
+        
+        to 'NFLX_051724C450'
+
+        Parameters:
+        ticker (Option): Ticker in the IBKR format.
+        
+        Returns:
+        str.
+        """
+
+        date = ticker.lastTradeDateOrContractMonth
+        year = date[2:4]
+        month = date[4:6]
+        day = date[6:]
+        return ticker.symbol + "_" + month + day + year + ticker.right + str(ticker.strike)
+
+    def _convert_option_to_ibkr(self, ticker):
+        """
+        Convert ticker from 'NFLX_051724C450' to 
+
+        {
+            'symbol':'NFLX',
+            'lastTradeDateOrContractMonth':'20240517',
+            'strike': 450,
+            'right':'C',
+        }
+        
+        Parameters:
+        ticker (str): Ticker in the original format.
+        
+        Returns:
+        Contract (Option): Option Class in desired format.
+        """
+        if "_" not in ticker:
+            return ticker
+        symb, option_part = ticker.split("_")  # Split the ticker by spaces
+        date = option_part[2:4]
+        month = option_part[:2]
+        year = '20' + option_part[4:6]
+
+        date = year + month + date
+        right = (option_part[6])
+        strike = int(option_part[7:])
+    
+        return Option(symbol=symb, lastTradeDateOrContractMonth=date, \
+                              strike=strike, right=right, \
+                                exchange='SMART', currency='USD')
+            
+
+##### Uncomment for testing
+
+# if __name__ == '__main__':
+
+#     ibkr = IBKR()
+#     ibkr.get_session()
+#     print(ibkr.get_account_info())
+
+#     # symbols = ["NFLX_051724C450", "AMD_051724C100"]
+
+#     # quotes = ibkr.get_quotes(symbols)
+
+#     # print(quotes)
+#     # order = ibkr.make_BTO_lim_order("NFLX_051724C450", 1, 605)
+#     # print(order)
+
+#     # order_id = ibkr.send_order(order)
+#     # print(order_id)
+
+#     # order = ibkr.cancel_order(order_id)
+#     # print(order)
+
+#     make_Lim_SL_order = ibkr.make_Lim_SL_order("AMZN", 1, 200, 150)
+#     order_id = ibkr.send_order(make_Lim_SL_order)
+
+#     print(order_id)
