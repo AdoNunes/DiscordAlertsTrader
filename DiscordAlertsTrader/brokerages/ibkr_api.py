@@ -511,27 +511,27 @@ class IBKR(BaseBroker):
 
 ##### Uncomment for testing
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
 
-#     ibkr = IBKR()
-#     ibkr.get_session()
-#     print(ibkr.get_account_info())
+    ibkr = IBKR()
+    ibkr.get_session()
+    print(ibkr.get_account_info())
 
-#     # symbols = ["NFLX_051724C450", "AMD_051724C100"]
+    symbols = ["NFLX_051724C450", "AMD_051724C100"]
 
-#     # quotes = ibkr.get_quotes(symbols)
+    quotes = ibkr.get_quotes(symbols)
 
-#     # print(quotes)
-#     # order = ibkr.make_BTO_lim_order("NFLX_051724C450", 1, 605)
-#     # print(order)
+    print(quotes)
+    order = ibkr.make_BTO_lim_order("NFLX_051724C450", 1, 605)
+    print(order)
 
-#     # order_id = ibkr.send_order(order)
-#     # print(order_id)
+    order_id = ibkr.send_order(order)
+    print(order_id)
 
-#     # order = ibkr.cancel_order(order_id)
-#     # print(order)
+    order = ibkr.cancel_order(order_id)
+    print(order)
 
-#     make_Lim_SL_order = ibkr.make_Lim_SL_order("AMZN", 1, 200, 150)
-#     order_id = ibkr.send_order(make_Lim_SL_order)
+    make_Lim_SL_order = ibkr.make_Lim_SL_order("AMZN", 1, 200, 150)
+    order_id = ibkr.send_order(make_Lim_SL_order)
 
-#     print(order_id)
+    print(order_id)

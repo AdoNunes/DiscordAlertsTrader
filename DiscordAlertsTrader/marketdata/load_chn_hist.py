@@ -26,7 +26,7 @@ after, date_after = "", ""
 get_date_after_from_port = True
 re_download = False
 delete_port = False
-author = "prophi"
+author = "sti"
 
 
 def get_timestamp(row):
@@ -92,6 +92,8 @@ chan_ids = {
     'opccpro': 1125655265312776274,
     "bear": 1221951478621540384,
     'prophi': 1216951944933933137,
+    "stb": 959672267929956413,
+    "sti": 1175048558639058985,
     }
 chan_id = chan_ids[author]
 if not use_theta_rest_api:
@@ -214,7 +216,7 @@ for ix, row in msg_hist.loc[:].iterrows():  # .loc[ix:].iterrows(): #
     except ValueError:
         print("Incorrect date format", full_date, dt_fm)
         continue
-    tracker.portfolio["isOpen"] = 0
+    #tracker.portfolio["isOpen"] = 0
     if datetime.strptime(full_date, dt_fm).date() < dt.date():
         print("Order date in the past, skipping", order["expDate"], order["Date"])
         resp = tracker.trade_alert(order, live_alert=False, channel=author)
@@ -276,3 +278,5 @@ tracker.portfolio['spread'] = 100*(tracker.portfolio['bid']-tracker.portfolio['P
 # tracker.portfolio['ask'] = tracker.portfolio['Price-actual']
 # tracker.portfolio['Price-actual']  = tracker.portfolio['bid']
 tracker.portfolio.to_csv(tracker.portfolio_fname, index=False)
+
+tracker.close_expired()
