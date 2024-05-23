@@ -37,11 +37,12 @@ If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed.
 
 
 **Current Discord servers being used**:
-- **EnhancedMarket** TradeProElite (profitable strategies about 10-8k month [fully pays $100 membership], uses software to quickly send trade alerts for minimal delay even for scalpings and uses a bot to track trades alerted PnL and market price PnL, full transparency. Good for learning how to trade with live sessions): invite links with 5 day trials: [Gold](https://whop.com/tradeproelite/?d2c=true&directPlanId=plan_j1IIQmDRiu63q&pass=prod_rJqBNfMDOprhs&a=transverseblouse3c34) or [VIP (with live trading)](https://whop.com/tradeproelite/?d2c=true&directPlanId=plan_dz8MNZD1bO6Vi&pass=prod_KtXKwzfXMW7ck&a=transverseblouse3c34)
-- **Xtrades** (alerts with market price data tracked with a bot, their stats posted on their web match what you can get, multiple analysts, see historical trades in the GUI Analysts tabs [$38 membership]): [invite link](https://app.xtrades.net/invite/4lk91GuPz0KsoJWYP74ieg)
-- **BullTrades** (good for shorting [bad trades, delayed alerts, they show alerted PnL but hide market priced PnL], see historical trades in this repo data/analyst_portfolio_bulltrades.csv(5/10 to 8/7) and [stats screenshot image](media/bulltrades_stats_05_08.png)): [invite link](https://bulltrades.net/?ref=ndrjogi)
+- **EnhancedMarket** TradeProElite (profitable strategies about 10-8k month that's what EnhancedMarket makes [fully pays $49/week membership], uses software to send trade alerts with minimal delay even for scalps and uses my bot to track trade' alerted PnL and market price PnL, full transparency. Good for learning how to trade with live sessions): [invite link](https://whop.com/tradeproelite/?d2c=true&directPlanId=plan_Tsd3DPmZoN5nW&pass=prod_KtXKwzfXMW7ck&a=transverseblouse3c34))
+- **Prosperity Trades** Vader the analyst uses my alerter bot that reads filled orders in webull and sends a discord alert, it also uses my tracking bot to register alerted and market PnL [invite link](https://whop.com/checkout/plan_hVOeBlJUWJRpP?d2c=true&a=transverseblouse3c34)
 
-Supports any Discord channel with structured BTP/STC alerts as message contents (server_formatting.py has functions to change different server formattings, including embedded messages)
+
+
+Supports any Discord channel with structured BTP/STC alerts as message contents (server_formatting.py has functions to change different server formattings, including embedded messages). It has over 20 custom analysts' formatting. 
 
 
 Let me know if you find the package useful or need support by dropping me a DM or visiting the [discord server](https://discord.gg/9ejghcjpar)
