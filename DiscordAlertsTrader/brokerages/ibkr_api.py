@@ -74,64 +74,48 @@ class IBKR(BaseBroker):
         orders_inf =[]
 
         for trade in trades:
-
-            order = trade.order
-            status = trade.orderStatus.status
-            order_info = {
-                'status': status,
-                'quantity': order.totalQuantity,
-                'filledQuantity': order.filledQuantity,
-                'price':trade.orderStatus.avgFillPrice,
-                'orderStrategyType': 'SINGLE',
-                "order_id" : order.orderId,
-                "orderId": order.orderId,
-                "stopPrice": order.auxPrice if order.orderType == 'STP' else None,
-                'orderType':  order.orderType,
-                'placedTime': trade.log[0].time.timestamp() if trade.log else None,
-                'enteredTime': trade.fills[0].time if trade.fills else None,
-                "closeTime": trade.fills[-1].time if trade.fills else None,
-                'orderLegCollection':[{
-                    'instrument':{'symbol':trade.contract.symbol},
-                    'instruction': order.action,
-                    'quantity': order.filledQuantity,
-                }]             
-
-            }
-            formatted_order = self.format_order(order_info)
+            formatted_order = self.format_order(trade)
             orders_inf.append(formatted_order)
 
         acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
         # print(acc_inf)
         return acc_inf
 
-    def format_order(self, order:dict):
+    def format_order(self, trade:dict):
         """ output format for order_response.Order, mimicks the order_info from TDA API"""
-        stopPrice= order['stopPrice']
-        timestamp = order['placedTime']/1000 if order['placedTime'] else None
-        enteredTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00") if timestamp else None
-        if 'closeTime' in order:
-            timestamp = order['closeTime']/1000 if order['closeTime'] else None
-            closeTime = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S+00") if timestamp else None
-        else:
-            closeTime = enteredTime
-        status = order['status'].upper().replace('FILLED','FILLED').replace('SUBMITTED','WORKING').replace('CANCELLED','CANCELED')
+        
+        order = trade.order
+        
+        status = trade.orderStatus.status
+        status = status.upper().replace('SUBMITTED','WORKING').replace('CANCELLED','CANCELED')
+        
+        placedTime = trade.log[0].time.timestamp() if trade.log else None
+        placedTime = datetime.fromtimestamp(placedTime).strftime("%Y-%m-%dT%H:%M:%S+00") if placedTime else None
+        
+        enteredTime = trade.fills[0].time if trade.fills else None
+        enteredTime = datetime.fromtimestamp(enteredTime).strftime("%Y-%m-%dT%H:%M:%S+00") if enteredTime else None
+        
+        closeTime  = trade.fills[-1].time if trade.fills else None
+        closeTime  = datetime.fromtimestamp(closeTime).strftime("%Y-%m-%dT%H:%M:%S+00") if closeTime else None
+        
         order_info = {
             'status': status,
-            'quantity': order['quantity'],
-            'filledQuantity': order['filledQuantity'],
-            'price':order['price'],
+            'quantity': order.totalQuantity,
+            'filledQuantity': order.filledQuantity if order.filledQuantity<= order.totalQuantity else 0,
+            'price': trade.orderStatus.avgFillPrice,
             'orderStrategyType': 'SINGLE',
-            "order_id" : order['orderId'],
-            "orderId": order['orderId'],
-            "stopPrice": stopPrice if stopPrice else None,
-            'orderType':  order['orderType'],
+            "order_id" : order.orderId,
+            "orderId": order.orderId,
+            "stopPrice": order.auxPrice if order.orderType == 'STP' else None,
+            'orderType':  order.orderType,
+            'placedTime': placedTime,
             'enteredTime': enteredTime,
             "closeTime": closeTime,
             'orderLegCollection':[{
-                'instrument':{'symbol':order['orderLegCollection'][0]['instrument']['symbol']},
-                'instruction': order['orderLegCollection'][0]['instruction'],
-                'quantity': order['orderLegCollection'][0]['quantity'],
-            }]             
+                'instrument':{'symbol':trade.contract.symbol},
+                'instruction': order.action,
+                'quantity': order.filledQuantity,
+            }]
         }
         return order_info
 
@@ -144,66 +128,22 @@ class IBKR(BaseBroker):
                 self.ib.sleep(0.1)
                 return True
         return False
+    
     def get_orders(self):
-        
         trades = self.ib.trades()
         orders_inf =[]
         for trade in trades:
-            order = trade.order
-            status = trade.orderStatus.status
-            order_info = {
-                'status': status,
-                'quantity': order.totalQuantity,
-                'filledQuantity': order.filledQuantity,
-                'price':trade.orderStatus.avgFillPrice,
-                'orderStrategyType': 'SINGLE',
-                "order_id" : order.orderId,
-                "orderId": order.orderId,
-                "stopPrice": order.auxPrice if order.orderType == 'STP' else None,
-                'orderType':  order.orderType,
-                'placedTime': trade.log[0].time if trade.log else int(time.time()*1000),
-                'enteredTime': trade.fills[0].time if trade.fills else int(time.time()*1000),
-                "closeTime": trade.fills[-1].time if trade.fills else int(time.time()*1000),
-                'orderLegCollection':[{
-                    'instrument':{'symbol':trade.contract.symbol},
-                    'instruction': order.action,
-                    'quantity': order.filledQuantity,
-                }]             
-
-            }
-            formatted_order = self.format_order(order_info)
+            formatted_order = self.format_order(trade)
             orders_inf.append(formatted_order)
         return orders_inf
-    def get_order_info(self, order_id):
-        
+    
+    def get_order_info(self, order_id):        
         self.ib.sleep(0.1)
         trades = self.ib.trades()
 
         for trade in trades:
-            order = trade.order
-            if order.orderId == order_id:
-                status = trade.orderStatus.status
-                order_info = {
-                    'status': status,
-                    'quantity': order.totalQuantity,
-                    'filledQuantity': order.filledQuantity,
-                    'price':trade.orderStatus.avgFillPrice,
-                    'orderStrategyType': 'SINGLE',
-                    "order_id" : order.orderId,
-                    "orderId": order.orderId,
-                    "stopPrice": order.auxPrice if order.orderType == 'STP' else None,
-                    'orderType':  order.orderType,
-                    'placedTime': trade.log[0].time if trade.log else int(time.time()*1000),
-                    'enteredTime': trade.fills[0].time if trade.fills else int(time.time()*1000),
-                    "closeTime": trade.fills[-1].time if trade.fills else int(time.time()*1000),
-                    'orderLegCollection':[{
-                        'instrument':{'symbol':trade.contract.symbol},
-                        'instruction': order.action,
-                        'quantity': order.filledQuantity,
-                    }]             
-
-                }
-                formatted_order = self.format_order(order_info)
+            if trade.order.orderId == order_id:
+                formatted_order = self.format_order(trade)
                 return formatted_order
     
     def fix_symbol(self, symbol:str, direction:str):
@@ -516,13 +456,16 @@ if __name__ == '__main__':
     ibkr = IBKR()
     ibkr.get_session()
     print(ibkr.get_account_info())
-
-    symbols = ["NFLX_051724C450", "AMD_051724C100"]
+    
+    ord_inf = ibkr.get_order_info(44)
+    print(ord_inf)
+    
+    symbols = ["META_053124C480", "AMD_053124C170"]
 
     quotes = ibkr.get_quotes(symbols)
-
+    ddd
     print(quotes)
-    order = ibkr.make_BTO_lim_order("NFLX_051724C450", 1, 605)
+    order = ibkr.make_BTO_lim_order("META_053124C480", 1, 605)
     print(order)
 
     order_id = ibkr.send_order(order)
@@ -535,3 +478,5 @@ if __name__ == '__main__':
     order_id = ibkr.send_order(make_Lim_SL_order)
 
     print(order_id)
+    
+    

@@ -970,34 +970,42 @@ def bear_alerts(message_):
     Reformat Discord message from bear to content message
     """
     message = MessageCopy(message_)
-    alert = ""
+    alert = ''
     for mb in message.embeds:
-        if mb.title is not None and mb.title.replace(":", "") in ['Daytrade', "LOTTO", "Swing"]:
-            description = mb.description
-            contract_match = re.search(r'\*\*Contract:\*\* \$([A-Z]+) (\d{1,2}\/\d{1,2}) ([\d.]+)([cCpP])', description)
-            fill_match = re.search(r'\*\*Entry:\*\* ([\d.]+)', description)
+        if mb.description:
+            alert += mb.description
 
+    if any(p in alert for p in  ['Daytrade', "LOTTO", "Swing"]):
+        type_al = [p in alert for p in  ['Daytrade', "LOTTO", "Swing"]][0]
+        contract_match = re.search(r'\*\*Contract:\*\* \$([A-Z]+) (\d{1,2}\/\d{1,2}) ([\d.]+)([cCpP])', alert)
+        fill_match = re.search(r'\*\*Entry:\*\*\s*\@?\$?\s*([\d.]+)', alert)
+        
+        if contract_match is None:
+            contract_match = re.search(r'\*\*Ticker: \$([A-Z]+)\*\*.*\*Contract: (\d{1,2}\/\d{1,2})\s+([\d.]+)([cCpP])', alert)
+            fill_match = re.search(r'\*\*Entry:\s*\@?\$?\s*([\d.]+)\*\*', alert)
             if contract_match is None:
-                alert = f"{mb.title}: {mb.description}"
-                continue
-            contract, exp_date, strike, otype = contract_match.groups()
-            if fill_match is not None:
-                price= float(fill_match.groups()[0])
-            else:
-                price = None
-            if exp_date is None:
-                if strike in ["QQQ", "SPY", "IWM"]:
-                    exp_date = "0DTE"
-                else:
-                    exp_date = "Weeklies"
-            bto = f"BTO {contract} {strike}{otype.upper()} {exp_date} @{price} {mb.title}"
-            alert += format_0dte_weeklies(bto, message, False)
+                message.content = alert
+                return message
+        
+        contract, exp_date, strike, otype = contract_match.groups()
+        if fill_match is not None:
+            price= float(fill_match.groups()[0])
         else:
-            alert = f"{mb.title}: {mb.description}"
-
-    if len(alert):
-        message.content = alert
+            price = None
+        alert += f"BTO {contract} {strike}{otype.upper()} {exp_date} @{price} {type_al}"
+        
+    elif any(a in alert.lower() for a in ["trim", "closing", "full profit", "fully close"]):            
+        contract_match = re.search(r'\*\*Contract:\*\* \$([A-Z]+) (\d{1,2}\/\d{1,2}) ([\d.]+)([cCpP])', alert)
+        if contract_match:
+            contract, exp_date, strike, otype = contract_match.groups()
+            alert = f"STC {contract} {strike}{otype.upper()} {exp_date} @0"
+            if 'trim' in alert.lower():                    
+                alert += " trim"
+        else:
+            print("Contract not found in bear_formatting", alert)
+    message.content = alert
     return message
+
 
 
 def rough_alerts(message_):
