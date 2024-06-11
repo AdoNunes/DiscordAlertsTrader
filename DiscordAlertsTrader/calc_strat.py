@@ -276,6 +276,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             date_close = pd.to_datetime(date_close).replace(hour=15, minute=55, second=0, microsecond=0)
         elif stc_date == 'stc alert':
             date_close = pd.to_datetime(row['STC-Date'])
+            date_close = date_close.tz_localize(None)
             if pd.isna(date_close):
                 ord_in = parse_symbol(row['Symbol'])
                 date_close = pd.to_datetime(f"{ord_in['exp_month']}/{ord_in['exp_day']}/{ord_in['exp_year']} 15:55:00.000000")
@@ -680,36 +681,36 @@ if __name__ == '__main__':
 
     params = {
         # 'fname_port': '../algoalerter/data\HHscanner_port_delta0.4_179feats_ssnorm_ML_65conf.csv',
-        'fname_port': 'data/prophi_port.csv',
+        'fname_port': 'data/bear_stc_port.csv',
         'order_type': 'any',
         'last_days': 133,
         'filt_date_frm': "",
         'filt_date_to': "",
-        'stc_date':'eod',#'exp', #,'stc alert', #'exp',# ,  #  # 'eod' or
+        'stc_date':'stc alert', #'eod',#'exp', #,'exp',# ,  #  # 'eod' or
         'max_underlying_price': 40000,
         'min_price': 10,
-        'max_dte': 4,
-        'min_dte': 2,
+        'max_dte': 40,
+        'min_dte': 0,
         'filt_hour_frm': "",
-        'filt_hour_to': 11,
+        'filt_hour_to': "",
         'include_authors': "",
-        'exclude_symbols': ["SPY", "QQQ"],
-        'initial_price' : 'bid', # 'ask_+10',
-        'PT': [50], #[20,25,35,45,55,65,95,],# [90],#
+        # 'exclude_symbols': ["SPY", "QQQ"],
+        'initial_price' : 'ask', # 'ask_+10',
+        'PT': [200], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], #
         'sl_update' :  None, #   [[1.20, 1.05], [1.5, 1.3]], #
         # "pt_update" : [ [.3,0.7]], #   None, #
         #'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #
-        'SL': 50,
-        'TS': 0,
+        'SL': 80,
+        'TS': 80,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
-        'max_margin': 400000,
-        'short_under_amnt' : 1500,
+        # 'max_margin': 400000,
+        # 'short_under_amnt' : 1500,
         'min_trade_val': 10,
         'verbose': True,
         'trade_amount': 1000,
-        "sell_bto": True,
+        # "sell_bto": True,
         "max_short_val": 4000,
         "invert_contracts": False,
         "do_plot": False

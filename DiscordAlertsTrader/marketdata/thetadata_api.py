@@ -11,6 +11,7 @@ import pandas as pd
 import pytz
 import requests
 import numpy as np
+from scipy.stats import norm
 
 from thetadata import DataType, DateRange, OptionReqType, OptionRight
 from thetadata import ThetaClient
@@ -155,6 +156,49 @@ class ThetaClientAPI:
         data = df_q[['timestamp', 'bid', 'ask', 'delta', 'theta', 'vega', 'lambda', 'implied_vol', 'underlying_price']]
         return data
 
+    def get_delta_strike2(self, ticker: str, exp_date: str, delta:float, right:str, timestamp:int, stock_price = None):
+        """gets the strike for a given delta, if not found returns the closest delta
+
+        Parameters
+        ----------
+        ticker : str
+            root ticker
+        exp_date : str
+            yyyymmdd eg 20220930
+        delta : float
+            fraction delta, 40 delta = 0.4
+        right : str
+            either C or P
+        timesetamp : int
+            time when to look for delta
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        # date to ny time
+        dt = datetime.fromtimestamp(timestamp, tz=pytz.utc).astimezone(pytz.timezone('America/New_York'))        
+        total_ms = (dt.hour * 3600 + dt.minute * 60 + dt.second)*1000    
+        date_s = dt.date().strftime("%Y%m%d")
+        url =f"http://127.0.0.1:25510/v2/bulk_at_time/option/greeks?root={ticker}&exp={exp_date}&right={right}&start_date={date_s}&end_date={date_s}&ivl={total_ms}&use_csv=true"
+        
+        header ={'Accept': 'application/json'}
+        response = requests.get(url, headers=header)
+        if response.content.startswith(b'No data for'):
+            print(f"{Fore.RED} No data for {ticker} {exp_date}")
+            return None, None
+        df_q = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
+
+        if not len(df_q):
+            return None, None
+        df_q_ = df_q[df_q.right == right]
+        
+        delta_row = df_q_.iloc[np.argmin(np.abs(np.abs(df_q_['delta']) - np.abs(delta)))]
+        
+        exp_date_f = datetime.strptime(exp_date, "%Y%m%d").strftime("%m%d%y")
+        return f"{ticker}_{exp_date_f}{right}{delta_row['strike']/1000}".replace(".0", ""), delta_row['delta']
+
 
     def get_delta_strike(self, ticker: str, exp_date: str, delta:float, right:str, timestamp:int, stock_price = None):
         """gets the strike for a given delta, if not found returns the closest delta
@@ -184,20 +228,39 @@ class ThetaClientAPI:
         if response.content.startswith(b'No data for'):
             return None
         
+        # date to ny time
+        dt = datetime.fromtimestamp(timestamp, tz=pytz.utc).astimezone(pytz.timezone('America/New_York'))
+        date_s = dt.date().strftime("%Y%m%d")
+        
         # get strikes, use underlying stock price if not available
         strikes = response.json()['response']
         if stock_price is None:
             mid = round(len(strikes)/2)
+            expdate = datetime.strptime(exp_date, "%Y%m%d").strftime("%m%d%y")
+            geeks = self.get_geeks(f"{ticker}_{expdate}{right}{strikes[mid]/1000}", [dt.date(),dt.date()], get_trades=False)
+            if geeks is not None:
+                ix_t = np.argmin(abs(geeks['timestamp'] - timestamp))
+                stock_price = geeks.iloc[ix_t]['underlying_price']
+            else:
+                stock_price = strikes[mid]
+        
+            # get closes delta based on BS
+            exp = datetime.strptime(exp_date, "%Y%m%d").replace(hour=16)
+            dte = (exp - dt.replace(tzinfo=None) ).seconds
+            
+            strike = find_closest_strike(stock_price, dte, right, delta, [s/1000 for s in strikes])
+            mid = np.argmin([abs(s - strike*1000) for s in strikes])
         else:
-            mid = np.argmin([abs(s - stock_price*1000) for s in strikes])  
+            mid = np.argmin([abs(s - stock_price*100) for s in strikes])
+            
+        if mid == 0:
+            mid = round(len(strikes)/2)
         st_done = []
         st_info = []
         cnt = 0
         while True:
             strike = strikes[min(mid, len(strikes)-1)]
-            # date to ny time
-            dt = datetime.fromtimestamp(timestamp, tz=pytz.utc).astimezone(pytz.timezone('America/New_York'))
-            date_s = dt.date().strftime("%Y%m%d")
+
             url = f'http://127.0.0.1:25510/v2/hist/option/greeks?exp={exp_date}&right={right}&strike={strike}&start_date={date_s}&end_date={date_s}&use_csv=true&root={ticker}&rth=true&ivl=1000' 
             header ={'Accept': 'application/json'}
             print('getting delta for strike', strike)
@@ -213,9 +276,9 @@ class ThetaClientAPI:
             # delete zeros bid-ask, geeks are wrong
             df_q = df_q[ (df_q['ask']!=0)].reset_index(drop=True)
             if not len(df_q):
-                mid += 1
+                mid += 1 if right == 'C' else -1
                 cnt += 1
-                if cnt > 25:
+                if cnt > 20:
                     print("stuck in the loop, returning")
                     return None, None
                 continue
@@ -225,11 +288,11 @@ class ThetaClientAPI:
             this_delta = df_q.iloc[ix_g]['delta']
             
             print("delta", this_delta, strike)
-            if abs(abs(this_delta) - delta) < 0.1:
+            if abs(this_delta) - abs(delta) < 0.1:
                 break
-            elif this_delta > delta:
+            elif this_delta > delta :
                 mid += 1
-            elif this_delta < delta:
+            elif this_delta < delta :
                 mid -= 1
             else:
                 sss
@@ -311,7 +374,17 @@ class ThetaClientAPI:
             save_or_append_quote(data, symbol, self.dir_quotes)
         return data
 
+    def get_expdates(self, symbol: str):
+        """get expirations from a symbol"""
 
+        url = f'http://127.0.0.1:25510/v2/list/expirations?root={symbol}'
+        header ={'Accept': 'application/json'}
+        response = requests.get(url, headers=header)
+
+        if  response.content == b'No data for contract.':
+            return None
+        return response.json()['response']
+        
     def get_hist_quotes_stock(self, symbol: str, date_range: List[date], interval_size: int=1000):
         # symbol: AAPL
         # date_range: [date(2021, 9, 24), date(2021, 9, 24)] start and end date, or start date only
@@ -390,6 +463,60 @@ class ThetaClientAPI:
 
         print(f"{Fore.RED} Error: price for {symbol} not found at {datetime.fromtimestamp(unixtime)}")
         return -1, 0
+
+    def calculate_delta(S, K, T, r, sigma):
+        d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+        delta = norm.cdf(-d1)
+        return delta
+#
+
+def black_scholes_delta(S, K, T, r, sigma, option_type):
+    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    if option_type[0].upper() == 'C':
+        delta = norm.cdf(d1)
+    elif option_type[0].upper() == 'P':
+        delta = -norm.cdf(-d1)
+    return delta
+
+
+def find_closest_strike(S:float, dte:int, option_type:str, target_delta:float, strike_prices:list,
+                        sigma=0.2, r:float=0.05):
+    """_summary_
+
+    Parameters
+    ----------
+    S : float
+        Current stock price
+    dte : float
+        Time to expiration (in days)    
+    option_type : str
+        either C or P
+    target_delta : float
+        delta value to find the closest strike to
+    strike_prices : list
+        _description_
+    sigma : float, optional
+        _description_, by default 0.2
+    r : float
+        Risk-free interest rate
+
+    Returns
+    -------
+    float
+        closest strike to the target delta
+    """
+    # dte to years
+    T = dte / (365 * 24 * 60 * 60)
+    closest_strike = None
+    min_delta_diff = float('inf')
+    for strike in strike_prices:
+        delta = black_scholes_delta(S, strike, T, r, sigma, option_type)
+        delta_diff = abs(abs(delta) - abs(target_delta))
+        if delta_diff < min_delta_diff:
+            min_delta_diff = delta_diff
+            closest_strike = strike
+    return closest_strike
+
 
 
 if __name__ == "__main__":
