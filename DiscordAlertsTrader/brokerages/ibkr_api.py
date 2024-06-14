@@ -369,7 +369,7 @@ class IBKR(BaseBroker):
 
         return kwargs if kwargs['conId'] is not None else None
     
-    def get_quotes(self, symbol:list):
+    def get_quotes(self, symbols:list):
         
         quotes = {}
         for symbol in symbols:
