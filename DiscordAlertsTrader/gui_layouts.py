@@ -48,6 +48,7 @@ def trigger_alerts_layout():
             sg.Button("BTC", key='-alert_BTC', size=(10,1), tooltip="Once clicked portfolio row change prefilled to STC", visible=True),
             sg.Button("ExitUpdate", key='-alert_exitupdate', size=(20,1), tooltip="Once clicked portfolio row change prefilled STC to exit update", visible=True),
             sg.Button("Get quotes", key='-alert_quotes', size=(20,1), tooltip="get quotes from alerts in trigger box. In alert pass prices as @m to get market price", visible=True),
+            sg.Button("Plot quotes", key='-alert_plot', size=(20,1), tooltip="plot daily quotes from alerts in trigger box", visible=True),
             sg.Stretch()
            ]
            ]

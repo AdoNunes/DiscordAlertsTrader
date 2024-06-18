@@ -860,21 +860,26 @@ def wolfwebull_formatting(message_):
 def crimson_formatting(message_):
     """
     Reformat Discord message from crimson
-    """
+    """    
     message = MessageCopy(message_)
-
     alert = ''
     for mb in message.embeds:
-        if mb.title is not None and "NEW TRADE" in mb.title:
-            pattern = r'Ticker:\s*([\w\d]+).*Strike:\s*([\d.]+)([pc]).*Expiration:\s*(\d{1,2}\/\d{1,2}).*Entry Price:\s*([\d.]+)'
-            match = re.search(pattern, mb.description, re.IGNORECASE| re.DOTALL)
-            if match:
-                ticker, strike, otype, expDate, price = match.groups()
-                alert = f"BTO {ticker} {strike}{otype.upper()} {expDate} @{price}"
-            else:
-                alert = f"{mb.title}: {mb.description}"
-        else:
-            alert = f"{mb.title}: {mb.description}"
+        if mb.description:
+            alert += mb.description
+    if not len(alert):
+        alert = message.content
+    
+    pattern = r'([A-Z]+)\s+([\d.]+)([p|c])\s+(\d{1,2}\/\d{1,2})(?:[A-Z0-9 ]*)?\s+([\d.]+)'
+    match = re.search(pattern, alert, re.IGNORECASE| re.DOTALL)
+    if match:
+        ticker, strike, otype, expDate, price = match.groups()
+        alert = f"BTO {ticker} {strike}{otype.upper()} {expDate} @{price}"
+    else:
+        pattern = r'([A-Z]+)\s+(\d{1,2}\/\d{1,2})\s+([\d.]+)([p|c])(?:[A-Z0-9 ]*)?\s+([\d.]+)'
+        match = re.search(pattern, alert, re.IGNORECASE| re.DOTALL)
+        if match:
+            ticker, expDate, strike, otype, price = match.groups()
+            alert = f"BTO {ticker} {strike}{otype.upper()} {expDate} @{price}"
 
     if len(alert):
         message.content = alert

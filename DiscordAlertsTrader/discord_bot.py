@@ -94,7 +94,7 @@ class DiscordBot(discord.Client):
             track_symb = set(self.tracker.portfolio.loc[msk_tk, 'Symbol'].to_list() + \
                 self.trader.portfolio.loc[msk_td, 'Symbol'].to_list())
             if not len(track_symb):
-                time.sleep(10)
+                time.sleep(5)
                 continue
             # save quotes to file
             try:

@@ -15,6 +15,7 @@ import re
 import queue
 import PySimpleGUIQt as sg
 from PySide2.QtWidgets import QHeaderView
+import matplotlib.pyplot as plt
 
 from DiscordAlertsTrader.brokerages import get_brokerage
 from DiscordAlertsTrader import gui_generator as gg
@@ -100,11 +101,11 @@ def get_live_quotes(symbol, tracker, max_delay=2):
     try:
         tmp = quotes[-1].split(',') # in s  
         if len(tmp) == 3:
-            timestamp, ask, bid = tmp
+            timestamp, bid, ask = tmp
         else:
             timestamp, ask = tmp
             bid = ask
-        bid = bid.strip().replace('\n', '')
+        ask = ask.strip().replace('\n', '')
         quote = [ask, bid]
     except:
         print("Error reading quote", symbol, quotes[-1])
@@ -122,6 +123,56 @@ def get_live_quotes(symbol, tracker, max_delay=2):
         return quote
     return quote
 
+
+def quotes_plotting(symbol, trader=None, tracker=None):
+    dir_quotes = cfg['general']['data_dir'] + '/live_quotes'
+    
+    fquote = f"{dir_quotes}/{symbol}.csv"
+    if not op.exists(fquote):      
+        return None
+    
+    quotes = pd.read_csv(fquote)
+    
+    quotes['date'] = pd.to_datetime(quotes['timestamp'], unit='s', utc=True).dt.tz_convert('America/New_York')
+    quotes['date'] = quotes['date'].dt.tz_localize(None)
+    quotes['ask'] = quotes[' quote_ask']
+    quotes['bid'] = quotes[' quote']
+
+    quotes = quotes[quotes['date'].dt.date == datetime.now().date()]
+    quotes = quotes[quotes['ask'] > 0]
+    quotes.set_index('date', inplace=True)
+    
+    quotes[['ask', 'bid']].plot(alpha=0.5)
+    
+    for tt in [trader, tracker]:
+        if tt is not None:
+            tts  = tt.portfolio[(tt.portfolio['Symbol'] == symbol) &
+                                (pd.to_datetime(tt.portfolio['Date']).dt.date == datetime.now().date()) ]
+            if len(tts):
+                for ix, row in tts.iterrows():
+                    if str(tt.__class__) == "<class 'DiscordAlertsTrader.alerts_tracker.AlertsTracker'>":                        
+                        plt.plot(pd.to_datetime(row['Date']), row['Price'], 'go')
+                        plt.text(pd.to_datetime(row['Date']), row['Price']*1.009, f"track:{row['Trader']}: {row['Type']}", fontsize=12, color='g', rotation=45)
+                        if not pd.isna(row['STC-Date']):
+                            plt.plot(pd.to_datetime(row['STC-Date']), row['STC-Price'], 'ro')
+                            plt.text(pd.to_datetime(row['STC-Date']), row['STC-Price']*1.009, f"track:{row['Trader']}: Closed", fontsize=12, color='red', rotation=45)
+                    else:
+                        plt.plot(pd.to_datetime(row['Date']), row['Price'], 'go')
+                        plt.plot(pd.to_datetime(row['Date']), row['Price'], 'kx')
+                        plt.text(pd.to_datetime(row['Date']), row['Price']*1.009, f"port:{row['Trader']} {row['Type']}", fontsize=12, color='g', rotation=45)
+                        cols = [c for c in tts.columns if c.startswith('STC') and c.endswith('-Date')]
+                        for c in cols:
+                            if pd.isna(row[c]):
+                                continue
+                            print(row[c])
+                            plt.plot(pd.to_datetime(row[c]), row[c.split("-")[0] + '-Price'], 'ro')
+                            plt.plot(pd.to_datetime(row[c]), row[c.split("-")[0] + '-Price'], 'kx')
+                            plt.text(pd.to_datetime(row[c]), row[c.split("-")[0] + '-Price']*1.009, f"port:{row['Trader']}: Closed", fontsize=12, color='red', rotation=45)
+    plt.tight_layout()
+    plt.title(symbol)
+    plt.show(block=False)
+
+
 def fit_table_elms(Widget_element):
     Widget_element.resizeRowsToContents()
     Widget_element.resizeColumnsToContents()
@@ -131,8 +182,8 @@ def fit_table_elms(Widget_element):
 # sg.theme('Dark Blue 3')
 sg.SetOptions(font=("Helvitica 13"))
 
-fnt_b  ="Helvitica 11"
-fnt_h  ="Helvitica 13"
+fnt_b = "Helvitica 11"
+fnt_h = "Helvitica 13"
 
 ly_cons, MLINE_KEY = gl.layout_console('Discord messages from all the channels', '-MLINE-')
 ly_cons_subs, MLINE_SUBS_KEY = gl.layout_console('Discord messages only from subscribed authors',
@@ -348,6 +399,12 @@ def run_gui():
             _, order = parse_trade_alert(alert)
 
             if order is None:
+                window.Element(event).Update(button_color=ori_col)
+                continue
+            
+            if '-alert_plot' in event:
+                # get live quotes and plot
+                quotes_plotting(order['Symbol'], alistner.trader, alistner.tracker)
                 window.Element(event).Update(button_color=ori_col)
                 continue
             

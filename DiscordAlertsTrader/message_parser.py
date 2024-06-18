@@ -12,6 +12,8 @@ import numpy as np
 
 def parse_trade_alert(msg, asset=None):
     # BTO 10 AAPL @ 120
+    if msg is not None:
+        msg = msg.replace("$", " ")
     pattern = r'\b(BTO|STC|STO|BTC)\b\s*(\d+)?\s*([A-Z]+)\s*(\d+[.\d+]*[cp]?)?\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)?\s*@\s*[$]*[ ]*(\d+(?:[,.]\d+)?|\.\d+)'
     match = re.search(pattern, msg, re.IGNORECASE)
     strike_date = True
