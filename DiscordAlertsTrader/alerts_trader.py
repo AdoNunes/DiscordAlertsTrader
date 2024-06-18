@@ -72,7 +72,7 @@ class AlertsTrader():
         self.discord_channel = None # discord channel object to post trade alerts, passed on_ready discord
         self.cfg = cfg
         self.EOD = {} # end of day shorting actions
-        self.order_update_rate = 5
+        self.order_update_rate = 10
         self.max_stc_orders = int(cfg['order_configs']['max_stc_orders']) + 1
         # load port and log
         if op.exists(self.portfolio_fname):
@@ -854,13 +854,17 @@ class AlertsTrader():
                     self.portfolio.loc[open_trade, STC + "-Price-alert"] = order["price"]
                     # If alerted and already sold
                     if not pd.isnull(position[ f"{STC}-Price"]):
-                        print(Back.GREEN + "Already sold")
-                        self.queue_prints.put(["Already sold", "", "green"])
+                        for ii in range(i+1,self.max_stc_orders):
+                            STC = f"STC{ii}"
+                            if pd.isnull(position[ f"{STC}-Price"]):
+                                print(Back.GREEN + f"Already sold, but found STC {ii}")
+                                self.queue_prints.put([f"Already sold, but found STC {ii}", "", "green"])
 
-                        log_alert['action'] = f"{STC}-DoneBefore"
-                        log_alert["portfolio_idx"] = open_trade
-                        self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
-                        self.save_logs(["alert"])
+                                log_alert['action'] = f"{STC}-DoneBefore"
+                                log_alert["portfolio_idx"] = open_trade
+                                self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
+                                self.save_logs(["alert"])
+                                break
 
                         if order['xQty'] != 1:  # if partial and sold, leave
                             return

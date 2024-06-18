@@ -364,7 +364,7 @@ class TS(BaseBroker):
             
             # get BPs
             bp_req, bp_now = 1, 1            
-            match = re.search(r'This order requires \$([\d,\.]+)', text)
+            match = re.search(r'This Order requires \$([\d,\.]+)', text)
             if match:
                 bp_req = float(match.group(1).replace(",", ""))     
             # match = re.search(r'current Buying Power values of \$([\d,.]+)', text)            

@@ -59,7 +59,7 @@ def server_formatting(message):
         message = jpa_formatting(message)
     elif message.channel.id in [1216951944933933137]:
         message = prophi_alerts(message)
-    elif message.channel.id in [968629663394058270, 1141877368877760552]:
+    elif message.channel.id in [968629663394058270, 1141877368877760552, 1239936855370108948]:
         message = wolfwebull_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
@@ -556,7 +556,7 @@ def bishop_formatting(message_):
     elif "Trimming" in alert:
         action = "STC"
         match = True
-        extra = "  " + mb.description.split("\r\n\r\n*These are ONLY my opinions")[0].replace("\r\n\r\n", " ")
+        extra = alert.split("\r\n\r\n*These are ONLY my opinions")[0].replace("\r\n\r\n", " ")
         pattern = "([A-Z]+) (\d.+) ([PC]) (\d+\/\d+) @\$(\d+\.\d+)"
 
     if match:

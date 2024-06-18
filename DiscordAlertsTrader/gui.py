@@ -331,7 +331,10 @@ def run_gui():
             if '_portfolio_' in event:
                 pix = values['_portfolio_'][0] 
                 dt, hdr = gg.get_portf_data(port_exc, **values)
-                qty = dt[pix][hdr.index('filledQty')]
+                if len(dt):
+                    qty = dt[pix][hdr.index('filledQty')]
+                else:
+                    qty = ""
             else:
                 pix = values['_track_'][0]
                 dt, hdr = gg.get_tracker_data(track_exc, **values)
