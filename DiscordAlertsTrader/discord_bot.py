@@ -157,12 +157,28 @@ class DiscordBot(discord.Client):
     
     async def on_message(self, message):
         # only respond to channels in config or authorwise subscription
-        author = f"{message.author.name}#{message.author.discriminator}".replace("#0", "")   
-        if message.channel.id not in self.channel_IDS.values() and \
+        author = f"{message.author.name}#{message.author.discriminator}".replace("#0", "")
+        
+        if message.channel.id == int(cfg['discord']['commands_channel']):
+            if message.content.startswith('!close long'):
+                cfg['general']['DO_BTO_TRADES'] = 'false'
+                print("BTC trades closed")
+            elif message.content.startswith('!close short'):
+                cfg['shorting']['DO_STO_TRADES'] = 'false'
+                print("STO trades closed")
+            elif message.content.startswith('!open long'):
+                cfg['general']['DO_BTO_TRADES'] = 'true'
+                print("BTC trades opened")
+            elif message.content.startswith('!open short'):
+                cfg['shorting']['DO_STO_TRADES'] = 'true'
+                print("STO trades opened")
+            return
+        elif message.channel.id not in self.channel_IDS.values() and \
             author.lower() not in split_strip(self.cfg['discord']['auhtorwise_subscription']):
             return
         if message.content == 'ping':
             await message.channel.send('pong')
+         
         
         message = server_formatting(message)
         if custom:

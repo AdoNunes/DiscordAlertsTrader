@@ -104,11 +104,12 @@ def prosperitytrades_formatting(message_):
         return message_
     
     # Change bot to author
-    if message_.author.name == 'vader-alerts':
+    if message_.author.name.lower() == 'vader-alerts' or \
+        message_.author.name == 'RedSaberSwings':
         message = MessageCopy(message_)
-        message.author.name = 'lordvader32'
-        message.author.discriminator = '0'
-        return message
+        message_.author.name = 'lordvader32'
+        message_.author.discriminator = '0'
+        return message_
     
     return message_
 
