@@ -1,4 +1,6 @@
 from ib_insync import *
+import nest_asyncio
+
 from DiscordAlertsTrader.brokerages import BaseBroker
 from DiscordAlertsTrader.configurator import cfg
 from datetime import datetime
@@ -9,6 +11,7 @@ class IBKR(BaseBroker):
         self.name = 'ibkr'
         self.accountId = accountId
         self.ib = IB()
+        nest_asyncio.apply()
     
     def get_session(self):
         if self.ib.isConnected():
@@ -460,7 +463,7 @@ if __name__ == '__main__':
     ord_inf = ibkr.get_order_info(44)
     print(ord_inf)
     
-    symbols = ["META_053124C480", "AMD_053124C170"]
+    symbols = ["SPY_071924C565"]
 
     quotes = ibkr.get_quotes(symbols)
     ddd
