@@ -71,7 +71,8 @@ class ThetaClientAPI:
         header ={'Accept': 'application/json'}
         response = requests.get(url, headers=header)
 
-        if  response.content == b'No data for contract.':
+        if  response.content == b'No data for the specified timeframe & contract.':
+            print(response.content, url)
             return None
         # get quotes and trades to merge the with second level quotes
         df = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
@@ -114,13 +115,26 @@ class ThetaClientAPI:
         fetch_data = True
         if op.exists(fquote) and load_from_file:
             df = pd.read_csv(fquote)
-            df['date'] = pd.to_datetime(df['timestamp'], unit='s').dt.date
+            df['date'] = pd.to_datetime(df['timestamp'], unit='s').dt.date            
+            
+            sampl_ix = min(len(df), 1000)
+            converted_dates = df[::sampl_ix]['timestamp'].apply(
+                lambda x:
+                    pd.to_datetime(x, unit='s')
+                    .tz_localize('UTC')
+                    .tz_convert('America/New_York').date()
+            ).unique()
+            
             ds,de =  pd.to_datetime(date_s).date(),  pd.to_datetime(date_e).date()
-            if ds in df['date'].values and de in df['date'].values:
+            if ds in converted_dates and de in converted_dates and 'theta' in df.columns:
                 print(f"{Fore.GREEN} Found data for {symbol}: {date_s} to {date_e}")
                 fetch_data = False
-                data = df[(df['date']>=ds) & (df['date']<=de)]
+                dst = pd.to_datetime(date_s).tz_localize('America/New_York').tz_convert('UTC').timestamp()
+                det = pd.to_datetime(date_e).replace(hour=20).tz_localize('America/New_York').tz_convert('UTC').timestamp()
+                data = df[(df['timestamp']>=dst) & (df['timestamp']<=det)]                
                 data.reset_index(drop=True, inplace=True)
+                if data['delta'].isnull().all():
+                    fetch_data = True
 
         if fetch_data:
             print(f"{Fore.YELLOW} Fetching data from thetadata for {symbol}: {date_s} to {date_e}")
@@ -134,7 +148,7 @@ class ThetaClientAPI:
             if not get_trades:
                 return df_q
             
-            trades = self.get_hist_trades( symbol, date_range, interval_size)
+            trades = self.get_hist_trades(symbol, date_range, interval_size)
             merged_df = pd.merge(trades[['timestamp', 'last', 'volume']], df_q, on='timestamp', how='right')
             data = merged_df[['timestamp', 'bid', 'ask', 'last', 'volume', 'delta', 'theta',
                             'vega', 'lambda', 'implied_vol', 'underlying_price']]
@@ -197,7 +211,7 @@ class ThetaClientAPI:
         delta_row = df_q_.iloc[np.argmin(np.abs(np.abs(df_q_['delta']) - np.abs(delta)))]
         
         exp_date_f = datetime.strptime(exp_date, "%Y%m%d").strftime("%m%d%y")
-        return f"{ticker}_{exp_date_f}{right}{delta_row['strike']/1000}".replace(".0", ""), delta_row['delta']
+        return f"{ticker}_{exp_date_f}{right}{delta_row['strike']/1000}".replace(".0", ""), delta_row
 
 
     def get_delta_strike(self, ticker: str, exp_date: str, delta:float, right:str, timestamp:int, stock_price = None):

@@ -42,6 +42,20 @@ def kent_formatting(message):
     return alert
 
 
+def jpm_formatting(message):
+    """
+    Reformat Discord message from Kent
+    """
+    alert = ''
+    for mb in message['embeds']:
+        alert = f"{mb['title']} {mb['description']}"
+        alert = alert.replace("Open", "BTO 4").replace("Close", "STC")
+        if "Update" in alert:
+            alert += " trim"
+            alert = alert.replace("Update", "STC")
+    return alert
+
+
 def rough_formatting(message):
     """
     Reformat Discord message from rough to content message
@@ -375,9 +389,38 @@ def bear_formatting(message):
             else:
                 price = None
             alert += f"BTO {contract} {strike}{otype.upper()} {exp_date} @{price} {mb['title']}"
+
+        elif any(a in alert.lower() for a in ["trim", "closing", "full profit", "fully close"]):            
+            contract_match = re.search(r'\*\*Contract:\*\* \$([A-Z]+) (\d{1,2}\/\d{1,2}) ([\d.]+)([cCpP])', alert)
+            if contract_match:
+                contract, exp_date, strike, otype = contract_match.groups()
+                alert = f"STC {contract} {strike}{otype.upper()} {exp_date} @0"
+                if 'trim' in alert.lower():                    
+                    alert += " trim"
+            else:
+                print("Contract not found in bear_formatting")
         else:
             alert = f"{mb['title']}: {mb['description']}"
     return alert
+
+def gandalf_formatting(message):
+    if not message['content']:
+        return ""
+
+    alert = message['content']
+    
+    pattern = r'([A-Z]+)\s*\$?([\d.]+)([cCpP])\s*(\d{1,2}\/\d{1,2})\s*@\s*\$?\s*([\d.]+)'
+    match = re.search(pattern, alert, re.IGNORECASE)
+    if match:
+        ticker, strike, otype, expDate, price = match.groups()
+        if not any(s in alert.upper() for s in ['UPDATE', 'FROM']): 
+            alert = f"BTO 4 {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
+        else:
+            alert = f"STC {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
+            if 'trim' in alert.lower():
+                alert += " trim"
+    return alert
+
 
 def oculus_formatting(message, msg_date_ob):
     alert = message['content']
@@ -470,6 +513,10 @@ def parse_hist_msg(fname, author):
             content = oculus_formatting(msg, msg_date_ob)
         elif author == "bear":
             content = bear_formatting(msg)
+        elif author == "gandalf":
+            content = gandalf_formatting(msg)
+        elif author == "jpm":
+            content = jpm_formatting(msg)
         elif author == "theta_warrior_elite":
             content = theta_warrior_elite(msg)
         elif author == "makeplays":
@@ -488,7 +535,6 @@ def parse_hist_msg(fname, author):
         elif author == "rough":
             content = rough_formatting(msg)
             msg["author"]["name"] = "rough"
-
 
         pars, order = parse_trade_alert(content)
         msgs.append([msg_date.strftime('%m/%d/%Y %H:%M:%S.%f'), msg["author"]["name"], content, pars, msg['content']])

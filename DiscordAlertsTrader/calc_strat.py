@@ -243,7 +243,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         margin = 0
     # Iterate over the trades
     for idx, row in port.iterrows():
-        # idx = 234
+        # idx = 16
         # row = port.loc[idx]
         if pd.isna(row['Price-actual']) and not with_theta and not with_poly:
             if verbose:
@@ -360,23 +360,27 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             tstm -= tstm[0]
             ax1.plot(tstm, bid.values, "-o", label="bid", alpha=0.5)
             ax1.plot(tstm, ask.values, ".", label="ask", alpha=0.5)
-            ax1.plot(tstm, last.values, "-.", label="last", alpha=0.5)
-            ax1.plot(tstm[0], row['Price'], "rd", label="alert price")
-            ax1.plot(tstm[0], row['Price-actual'], "bo", label="actual price")
-            # ax2 = ax1.twinx()
+            ax1.plot(tstm, last.values, "-.", color="black",label="last", alpha=0.5)
+            
+            ax1.plot(tstm[0], row['Price'], "gd", label="alert price", markersize=10)
+            ax1.plot(tstm[0], row['Price-actual'], "go", label="actual price", markersize=10)
+            
             # ax2.bar(tstm, quotes['volume'].values, color='red', alpha=0.5, width=0.5, align='center', bottom=min(bid.values))
             # ax2.set_ylabel('Volume', color='red')
 
         # Check if initial price is triggered
         trigger_index = 0
-        start = price_curr <= ask
+        if port.loc[idx, 'Type'] == 'BTO':
+            start = price_curr >= ask
+        elif port.loc[idx, 'Type'] == 'STO':
+            start = price_curr <= ask
+            
         if start.sum():
             trigger_index = start.idxmax()
             ask = ask[trigger_index:]
             bid = bid[trigger_index:]
             last = last[trigger_index:]
-            if do_plot:
-                plt.plot(tstm.loc[trigger_index], ask.loc[trigger_index], "gp", label="triggered price offset")
+            
         else:
             if verbose:
                 print("initial price not triggered", row['Symbol'])
@@ -402,7 +406,9 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             raise TypeError("TS_buy_type must be long or short")
 
         if do_plot:
-            plt.plot(tstm[trigger_index], bid[trigger_index], "go")
+            
+            plt.plot(tstm.loc[trigger_index], ask.loc[trigger_index], "gp", label="triggered price", markersize=11)
+            plt.plot(tstm.loc[trigger_index], ask.loc[trigger_index], "kx", markersize=12)
 
         # calculate qty
         if short_under_amnt is not None:
@@ -464,9 +470,9 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         roi_actual[5] = np.max(rois_r[:,5])
 
         if do_plot:
-            ax1.plot(tstm[trigger_index],roi_actual[0], "gx", label="triggered prices")
+            ax1.plot(tstm[trigger_index], roi_actual[0], "gx", label="triggered prices", markersize=10)
             for roi in rois:
-                ax1.plot(tstm[roi[-2]],roi[1], "ro")
+                ax1.plot(tstm[roi[-2]],roi[1], "ro", label="close prices", markersize=10)
             plt.legend()
             ax1.set_title(f"{row['Symbol']}, {row['Date']}")
             plt.show(block=False)
@@ -544,7 +550,7 @@ def process_quotes(dir_quotes, idx, port, date_close, with_theta=False, with_pol
             # print("converted_dates", converted_dates)
 
             # Check if all trade dates have quotes available
-            if all([d in converted_dates for d in all_dates]):
+            if all([d in converted_dates for d in all_dates]) and 'last' in quotes.columns:
                 load_from_disk = True
 
         # If quotes are not loaded from disk, fetch them from the source
@@ -576,6 +582,7 @@ def process_quotes(dir_quotes, idx, port, date_close, with_theta=False, with_pol
             # Save or append quotes
             save_or_append_quote(quotes, row['Symbol'], dir_quotes)
             print("Saving...", row['Symbol'], row['Date'])
+            
     elif not op.exists(fquote):
         port.loc[idx, 'reason_skip'] = 'no quotes'
         return None, port
@@ -655,7 +662,7 @@ def grid_search(params_dict, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25]):
     sorted_columns = ['Date', 'Symbol', 'Trader', 'Channel', 'Type','Price',
                         'Price-actual', "Qty",
                         # 'Avged', 'PnL', 'PnL-actual', 'PnL$',  'PnL$-actual', 'STC-Price', 'STC-Price-actual',
-                        'underlying', 'dte', 'right', 'bid', 'spread',
+                        'underlying', 'dte', 'right', 'bid', 
                         'hour', 'max_pnl', 'strategy-trade$'] + [col for col in port_out.columns if col.startswith('%')] + [
                             col for col in port_out.columns if col.startswith('$')]
     port_out = port_out[sorted_columns]
@@ -681,36 +688,36 @@ if __name__ == '__main__':
 
     params = {
         # 'fname_port': '../algoalerter/data\HHscanner_port_delta0.4_179feats_ssnorm_ML_65conf.csv',
-        'fname_port': 'data/bear_stc_port.csv',
-        'order_type': 'any',
-        'last_days': 133,
+        'fname_port': 'data/algoAi_port.csv',
+        'trade_type': 'STO',
+        'last_days': 100,
         'filt_date_frm': "",
         'filt_date_to': "",
-        'stc_date':'stc alert', #'eod',#'exp', #,'exp',# ,  #  # 'eod' or
-        'max_underlying_price': 40000,
-        'min_price': 10,
-        'max_dte': 40,
-        'min_dte': 0,
+        'stc_date':'eod', #'stc alert', #'exp', #,'exp',# ,  #  # 'eod' or
+        'max_underlying_price': "",
+        # 'min_price': 60,
+        'max_dte': 4,
+        'min_dte': 2,
         'filt_hour_frm': "",
         'filt_hour_to': "",
         'include_authors': "",
         # 'exclude_symbols': ["SPY", "QQQ"],
-        'initial_price' : 'ask', # 'ask_+10',
+        'initial_price' : 'ask', #'bid_+5', #'ask', #  'ask_+10',
         'PT': [200], #[20,25,35,45,55,65,95,],# [90],#
-        'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], #
-        'sl_update' :  None, #   [[1.20, 1.05], [1.5, 1.3]], #
+        # 'pts_ratio' :[0.2, 0.3, 0.2, 0.3],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], #
+        # 'sl_update' :  [[1.2, 1], [1.5, 1.2], [1.8, 1.3], [2, 1.5]], #   [[1.20, 1.05], [1.5, 1.3]], #
         # "pt_update" : [ [.3,0.7]], #   None, #
-        #'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #
-        'SL': 80,
-        'TS': 80,
+        # 'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #
+        'SL': 60,
+        'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
-        # 'max_margin': 400000,
-        # 'short_under_amnt' : 1500,
-        'min_trade_val': 10,
+        'max_margin': 60000,
+        'short_under_amnt' : 1000,
+        'min_trade_val': 400,
         'verbose': True,
-        'trade_amount': 1000,
-        # "sell_bto": True,
+        # 'trade_amount': 1,
+        "sell_bto": False,
         "max_short_val": 4000,
         "invert_contracts": False,
         "do_plot": False
@@ -787,7 +794,7 @@ if __name__ == '__main__':
         res = np.stack(res)
         sorted_indices = np.argsort(res[:, 4])
         sorted_array = res[sorted_indices].astype(int)
-        print(sorted_array[:20])
+        print(sorted_array[-20:])
         hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
 
         df = pd.DataFrame(sorted_array, columns=hdr)
@@ -795,7 +802,7 @@ if __name__ == '__main__':
         f_t_Date = f"from_{pd.to_datetime(port_out['Date']).min().date().strftime('%y_%m_%d')}"+\
                     f"_to_{pd.to_datetime(port_out['Date']).max().date().strftime('%y_%m_%d')}"
         pname = params['fname_port'].split("/")[-1].split('_port.csv')[0]
-        df.to_csv(f"data/analysis/{pname}{param['include_authors']}_grid_search_{f_t_Date}_ask_.5avgdown.csv", index=False)
-        port_out.to_csv(f"data/analysis/{pname}{param['include_authors']}_port_strats_{f_t_Date}_ask_.5avgdown.csv", index=False)
+        df.to_csv(f"data/analysis/{pname}{param['include_authors']}_grid_search_{f_t_Date}_ask.csv", index=False)
+        port_out.to_csv(f"data/analysis/{pname}{param['include_authors']}_port_strats_{f_t_Date}_ask.csv", index=False)
         # PT 40,  SL 20,  trailing stop starting at PT: 25,    PNL avg : 5%,  return: $2750,   num trades: 53
         # print(result_td)

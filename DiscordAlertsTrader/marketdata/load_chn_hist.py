@@ -26,7 +26,7 @@ after, date_after = "", ""
 get_date_after_from_port = True
 re_download = False
 delete_port = False
-author = "sti"
+author = "demon"
 
 
 def get_timestamp(row):
@@ -71,7 +71,7 @@ def save_or_append_quote(quotes, symbol, path_quotes, overwrite=False):
 
 chan_ids = {
     "theta_warrior_elite": 897625103020490773,
-    "demon": 904396043498709072,
+    "demon": 1167160585511776357,
     "eclipse": 1213995695237763145,
     "moneymotive": 1012144319282556928,
     "moneymotiveA+": 1214378575554150440,
@@ -80,26 +80,31 @@ chan_ids = {
     "kingmaker": 1152082112032292896,
     "oculus": 1222679083155193867,
     'diesel': 1107395495460081754,
-    'ddking': 1139700590339969036,
+    'ddking': 1225020986953437305,
     "crimson": 1102753361566122064,
-    "HHscanner": 1093839987079909396,
-    "vader": 1207716385346822245,
+    "HH": 1197849899627184149,
+    "HH2k": 867390497115209728,
+    "vader": 1235324287703973998,
     "gianni": 1209992523083415603,
     "og-alerts": 1207717868716826645,
     "EM": 1126325195301462117,
-    "vader-swings":1223379548675117088,
+    "vader-swings":1235324289222443008,
     "rough": 989674163331534929,
     'opccpro': 1125655265312776274,
     "bear": 1221951478621540384,
     'prophi': 1216951944933933137,
     "stb": 959672267929956413,
     "sti": 1175048558639058985,
+    "gandalf": 910228981536653342,
+    "psa": 1199936454797824010,
+    "algoAi": 1237566888062750791,
+    "jpm": 1221952610987147284,
     }
 chan_id = chan_ids[author]
 if not use_theta_rest_api:
-    client = ThetaClient(
-        username=cfg["thetadata"]["username"], passwd=cfg["thetadata"]["passwd"]
-    )
+    client = ThetaClient(username=cfg["thetadata"]["username"],
+                        passwd=cfg["thetadata"]["passwd"]
+                        )
     client.connect()
 else:
     client = ThetaClientAPI()
@@ -122,20 +127,22 @@ if delete_port and op.exists(port_fname):
 
 if op.exists(port_fname) and get_date_after_from_port:
     port = pd.read_csv(port_fname)
-    max_date_stc = port["STC-Date"].dropna().max()
-    max_date_bto = port["Date"].max()
-    # Find the maximum date between the two
-    if pd.isna(max_date_stc):
-        max_date = max_date_bto
-    else:
-        max_date = max(max_date_stc, max_date_bto)
+    if len(port):
+        port["Date"] = pd.to_datetime(port["Date"])
+        port["STC-Date"] = pd.to_datetime(port["STC-Date"], errors="coerce")
+        max_date_stc = port["STC-Date"].dropna().max()
+        max_date_bto = port["Date"].max()
+        # Find the maximum date between the two
+        if pd.isna(max_date_stc):
+            max_date = max_date_bto
+        else:
+            max_date = max(max_date_stc.tz_localize(None), max_date_bto)
 
-    # add 1 second to the max date
-    max_date = datetime.strptime(max_date, "%Y-%m-%d %H:%M:%S.%f") + timedelta(
-        seconds=1
-    )
-    after = "--after " + str(max_date).replace(" ", "T")
-    date_after = str(max_date).replace(" ", "_").replace(":", "_")
+        # add 1 second to the max date
+        max_date = max_date + timedelta( seconds=1)
+        max_date = max_date.strftime("%Y-%m-%d %H:%M:%S.%f")
+        after = "--after " + str(max_date).replace(" ", "T")
+        date_after = str(max_date).replace(" ", "_").replace(":", "_")
 
 if date_after == "nan":
     date_after = ""
@@ -216,7 +223,9 @@ for ix, row in msg_hist.loc[:].iterrows():  # .loc[ix:].iterrows(): #
     except ValueError:
         print("Incorrect date format", full_date, dt_fm)
         continue
-    #tracker.portfolio["isOpen"] = 0
+    tracker.portfolio["isOpen"] = 0
+    # resp = tracker.trade_alert(order, live_alert=False, channel=author)
+    # continue
     if datetime.strptime(full_date, dt_fm).date() < dt.date():
         print("Order date in the past, skipping", order["expDate"], order["Date"])
         resp = tracker.trade_alert(order, live_alert=False, channel=author)
@@ -224,10 +233,12 @@ for ix, row in msg_hist.loc[:].iterrows():  # .loc[ix:].iterrows(): #
 
     try:
         if use_theta_rest_api:
-            out = client.get_hist_quotes(order["Symbol"], [dt.date()])
+            out = client.get_hist_trades(order["Symbol"], [dt.date(), dt.date()])
         else:
             out = get_hist_quotes(order["Symbol"], [dt.date()], client)
-        # save_or_append_quote(out, order['Symbol'], 'data/hist_quotes')
+        if out is None:
+            raise Exception("No data")
+        save_or_append_quote(out, order['Symbol'], 'data/hist_quotes')
         out = out.reset_index(drop=True)
     except Exception as e:
         print(f"row {ix}, No data for", order["Symbol"], order["Date"], e)
@@ -273,7 +284,7 @@ for ix, row in msg_hist.loc[:].iterrows():  # .loc[ix:].iterrows(): #
         if resp == "STCwithout BTO":
             print("STC without BTO", order["Symbol"], order["Date"])
 
-tracker.portfolio['spread'] = 100*(tracker.portfolio['bid']-tracker.portfolio['Price-actual'])/tracker.portfolio['Price-actual']
+# tracker.portfolio['spread'] = 100*(tracker.portfolio['bid']-tracker.portfolio['Price-actual'])/tracker.portfolio['Price-actual']
 # tracker.portfolio = tracker.portfolio[tracker.portfolio['spread'].abs()<15]
 # tracker.portfolio['ask'] = tracker.portfolio['Price-actual']
 # tracker.portfolio['Price-actual']  = tracker.portfolio['bid']

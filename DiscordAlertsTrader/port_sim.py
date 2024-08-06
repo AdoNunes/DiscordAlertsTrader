@@ -60,7 +60,7 @@ def save_or_append_quote(quotes, symbol, path_quotes, overwrite=False):
     try:
         df = pd.read_csv(fname)
         df = pd.concat([df, quotes], ignore_index=True)
-        df = df.sort_values(by=['timestamp']).drop_duplicates(subset=['timestamp'])
+        df = df.sort_values(by=['timestamp']).drop_duplicates(subset=['timestamp'], keep='last')
     except FileNotFoundError:
         df = quotes
     df.to_csv(fname, index=False)
@@ -552,7 +552,7 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
             new_update.append([initial_price *upt, initial_price * usl])
         # print(f"initial {initial_price}, PT {pt} Sl {sl} update{new_update}")
     if act == "S":
-        sl_index, sl_val = calc_SL(ask, sl, new_update)
+        sl_index, sl_val = calc_SL(quotes, sl, new_update)
     else:
         sl_index, sl_val = calc_SL(last, sl, new_update)
         if sl_index is not None:

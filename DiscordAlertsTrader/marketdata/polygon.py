@@ -51,14 +51,18 @@ def get_poly_data(asset, start, end, range, ask='h', bid = 'l', asset_type='O',
     fetch = True
     if dir_quotes is not None:
         # check if it exists
-        fquote = f"{dir_quotes}/{symbol}.csv"
+        fquote = f"{dir_quotes}/{symbol}_{range}.csv"
         if os.path.exists(fquote):
             df = pd.read_csv(fquote)
 
-            dates = pd.to_datetime(df['t']/1000, unit='s').dt.date
+            dates = pd.to_datetime(df.loc[::100 ,'t']/1000, unit='s', utc=True).dt.tz_convert('America/New_York').dt.date
+            
             start_ = start + timedelta(days=1)
+            if start_ > end:
+                start_ = start
             if start_ in dates.values and end in dates.values:
                 print(f"Found data for {symbol}: {start} to {end}")
+                dates = pd.to_datetime(df['t']/1000, unit='s', utc=True).dt.tz_convert('America/New_York').dt.date
                 df = df[(dates >= start) & (dates <= end)]
                 df.reset_index(drop=True, inplace=True)
                 fetch = False
