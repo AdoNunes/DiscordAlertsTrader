@@ -213,7 +213,7 @@ class AlertsTrader():
                     return None, None, order, None
                 
                 if ord_resp is None:
-                    raise("Something wrong with order response")
+                    return None, None, order, None
 
                 str_msg = f"Sent order {order['action']} {order['Qty']} {order['Symbol']} @{order['price']}"
                 print(Back.GREEN + str_msg)

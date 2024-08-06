@@ -379,6 +379,7 @@ class IBKR(BaseBroker):
             con_id = self.get_con_id(symbol)
             print(con_id)
             contract = Contract(conId=con_id)
+            self.ib.sleep(0.1)
             contract = self.ib.qualifyContracts(contract)[0]
             self.ib.sleep(0.1)
             quote = self.ib.reqTickers(contract)
@@ -445,7 +446,7 @@ class IBKR(BaseBroker):
 
         date = year + month + date
         right = (option_part[6])
-        strike = int(option_part[7:])
+        strike = float(option_part[7:])
     
         return Option(symbol=symb, lastTradeDateOrContractMonth=date, \
                               strike=strike, right=right, \

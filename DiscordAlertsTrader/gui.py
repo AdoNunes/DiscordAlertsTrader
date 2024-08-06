@@ -332,7 +332,7 @@ def run_gui():
             if '_portfolio_' in event:
                 pix = values['_portfolio_'][0] 
                 dt, hdr = gg.get_portf_data(port_exc, **values)
-                if len(dt):
+                if len(dt) and len(dt) > pix:
                     qty = dt[pix][hdr.index('filledQty')]
                 else:
                     qty = ""
