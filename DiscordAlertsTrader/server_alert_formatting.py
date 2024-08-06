@@ -92,6 +92,13 @@ def tradeproelite_formatting(message_):
         message.author.name = 'enhancedmarket'
         message.author.discriminator = '0'
         return message
+    
+    if message_.author.name == 'Alertsify':
+        message = MessageCopy(message_)
+        message.author.name = message.embeds[0].author.name
+        message.content = message.embeds[0].description
+        message.author.discriminator = '0'
+        return message
 
     return message_
 
