@@ -47,11 +47,11 @@ def server_formatting(message):
         message = bishop_formatting(message)
     elif message.channel.id in [897625103020490773]:
         message = theta_warrior_elite(message)
-    elif message.channel.id in [1152082112032292896, 884971446802219048, 1209855531758395423,1210140760800763914 ]:
+    elif message.channel.id in [1152082112032292896, 884971446802219048, 1209855531758395423,1210140760800763914, 1132823605688938567 ]:
         message = kingmaker_main_formatting(message)
     elif message.channel.id in [1139700590339969036, 1184315907376431114, 1183711389777399808]:
         message = ddking_formatting(message)
-    elif message.channel.id in [1102753361566122064]:
+    elif message.channel.id in [1102753361566122064, 977025121292259328]:
         message = crimson_formatting(message)
     elif message.channel.id in [1209854873344938044]:
         message = prophet_formatting(message)

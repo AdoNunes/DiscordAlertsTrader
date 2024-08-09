@@ -688,16 +688,16 @@ if __name__ == '__main__':
 
     params = {
         # 'fname_port': '../algoalerter/data\HHscanner_port_delta0.4_179feats_ssnorm_ML_65conf.csv',
-        'fname_port': 'data/algoAi_port.csv',
-        'trade_type': 'STO',
-        'last_days': 100,
+        'fname_port': 'data/vader-swings_port.csv',
+        'trade_type': 'BTO',
+        'last_days': 0,
         'filt_date_frm': "",
         'filt_date_to': "",
         'stc_date':'eod', #'stc alert', #'exp', #,'exp',# ,  #  # 'eod' or
         'max_underlying_price': "",
         # 'min_price': 60,
         'max_dte': 4,
-        'min_dte': 2,
+        'min_dte': 0,
         'filt_hour_frm': "",
         'filt_hour_to': "",
         'include_authors': "",
@@ -720,7 +720,7 @@ if __name__ == '__main__':
         "sell_bto": False,
         "max_short_val": 4000,
         "invert_contracts": False,
-        "do_plot": False
+        "do_plot": True
     }
     import time as tt
     t0 = tt.time()

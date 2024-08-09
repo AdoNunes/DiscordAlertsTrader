@@ -26,7 +26,7 @@ after, date_after = "", ""
 get_date_after_from_port = True
 re_download = False
 delete_port = False
-author = "demon"
+author = "vader-swings"
 
 
 def get_timestamp(row):
@@ -200,7 +200,7 @@ for ix, row in msg_hist.loc[:].iterrows():  # .loc[ix:].iterrows(): #
     if order is None or order.get("expDate") is None:
         continue
 
-    order["Trader"] = row["Author"]
+    order["Trader"] = row["Author"].replace("RedSaberSwings", "lordvader32")
     dt = datetime.strptime(row["Date"], "%m/%d/%Y %H:%M:%S.%f")  # + timedelta(hours=2)
     order["Date"] = dt.strftime("%Y-%m-%d %H:%M:%S.%f")
 
@@ -223,7 +223,7 @@ for ix, row in msg_hist.loc[:].iterrows():  # .loc[ix:].iterrows(): #
     except ValueError:
         print("Incorrect date format", full_date, dt_fm)
         continue
-    tracker.portfolio["isOpen"] = 0
+    # tracker.portfolio["isOpen"] = 0
     # resp = tracker.trade_alert(order, live_alert=False, channel=author)
     # continue
     if datetime.strptime(full_date, dt_fm).date() < dt.date():
