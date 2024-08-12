@@ -199,6 +199,8 @@ In your browser go to the link, accept TD ameritrade pop-up and copy the link yo
 ## IBKR
 _______________
 
+**ONLY FOR SOURCE VERSION, DOES NOT WORK IN COMPILED EXE VERSION. CURRENTLY IBKR IS NOT WORKING VERY WELL. WAIT FOR A FUTURE VERSION.**
+
 To access the IBKR account for trading and info is necessary to install
 ib_insync from:
 
