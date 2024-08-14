@@ -174,7 +174,7 @@ class DiscordBot(discord.Client):
                 print("STO trades opened")
             return
         elif message.channel.id not in self.channel_IDS.values() and \
-            author.lower() not in split_strip(self.cfg['discord']['auhtorwise_subscription']):
+            author.lower() not in split_strip(self.cfg['discord']['authorwise_subscription']):
             return
         if message.content == 'ping':
             await message.channel.send('pong')
