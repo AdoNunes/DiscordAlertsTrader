@@ -1209,7 +1209,13 @@ class AlertsTrader():
                     print(Back.GREEN + str_msg)
                     self.queue_prints.put([str_msg, "", "green"])
                     continue
-                    
+                elif order_status == "MISSING":
+                    self.portfolio.loc[i, "BTO-Status"] = order_status
+                    self.portfolio.loc[i, 'isOpen'] = 0
+                    str_msg = f"BTO {trade['Symbol']} order ID not found, probably canceled"
+                    print(Back.GREEN + str_msg)
+                    self.queue_prints.put([str_msg, "", "green"])
+                    continue
                 # Check if number filled Qty changed
                 qty_fill = order_info['filledQuantity']
                 qty_fill_old = self.portfolio.loc[i, "filledQty"]

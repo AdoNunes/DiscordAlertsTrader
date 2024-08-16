@@ -106,3 +106,7 @@ update_port_cols()
 # get chan IDs in a dict format
 channel_ids_str = cfg.get('discord', 'channel_IDS')
 channel_ids = json.loads(channel_ids_str.replace("\n", "").replace(",}", "}"))
+
+# support deprecated config names
+if 'authorwise_subscription' not in cfg['discord']:
+    cfg['discord']['authorwise_subscription'] = cfg['discord']['auhtorwise_subscription']
