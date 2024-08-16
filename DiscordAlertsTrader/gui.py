@@ -340,8 +340,11 @@ def run_gui():
                 pix = values['_track_'][0]
                 dt, hdr = gg.get_tracker_data(track_exc, **values)
                 qty = dt[pix][hdr.index('Qty')]  
-            qty = qty if qty == "" else int(qty)            
-            symb = dt[pix][hdr.index('Symbol')]
+            qty = qty if qty == "" else int(qty) 
+            try:
+                symb = dt[pix][hdr.index('Symbol')]
+            except: 
+                continue   
             auth = match_authors(dt[pix][hdr.index('Trader')])
             
             price = ""
