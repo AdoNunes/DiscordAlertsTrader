@@ -352,7 +352,7 @@ def layout_config(fnt_h, cfg):
                 tooltip='Specify a channel to follow allerts from ALL the authors, useful for challenge accounts', enable_events=True)],
         [sg.Text("Authorwise subscription:",
                 tooltip='The app will capture messages for this user, add it to authors substribed for following the alerts'), 
-        sg.Input(cfg['discord']['auhtorwise_subscription'], key="cfg_discord.auhtorwise_subscription", enable_events=True,
+        sg.Input(cfg['discord']['authorwise_subscription'], key="cfg_discord.authorwise_subscription", enable_events=True,
                 tooltip='The app will capture messages for this user, add it to authors substribed for following the alerts')],
         [sg.Text("Max price diff:",
                 tooltip='For stocks and options max value diff to accept current price,\nif not will lim to alerted price'), 
