@@ -386,6 +386,11 @@ class DiscordBot(discord.Client):
             if len(self.cfg['shorting']['max_dte']):
                 if order['dte'] <= int(self.cfg['shorting']['max_dte']):
                     return True, order
+                else:
+                    str_msg = f"STO {order['dte']} DTE smaller than max in config: {self.cfg['shorting']['max_dte']}, order aborted"
+                    print(Fore.RED + str_msg)
+                    self.queue_prints.put([str_msg, "", "red"])
+                    return False, order
                 
         return False, order
 

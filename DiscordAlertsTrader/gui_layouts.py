@@ -16,7 +16,7 @@ tlp_date = "Date can be:\n-a date mm/dd/yyyy, mm/dd\n-a period: today, yesterday
 def layout_console(ttl='Discord messages from subscribed channels', 
                    key='-MLINE-__WRITE ONLY__'):
     layout = [[sg.Text(ttl, size=(100,1))],
-              [sg.Multiline(size=(1200,None), key=key, autoscroll=True, enable_events=False),sg.Stretch()]]
+              [sg.Multiline(size=(1200,None), key=key, autoscroll=True, enable_events=False),sg.Stretch()],]
     return layout, key
 
 def trigger_alerts_layout():
@@ -419,7 +419,7 @@ def layout_config(fnt_h, cfg):
     [sg.Text("STO price:",
                 tooltip='Use price: bid, ask, last or alert'), 
         sg.Drop(values=['bid', 'ask', 'last', 'alert'], default_value=cfg['shorting']['STO_price'],
-                key="cfg_shorting.STO_price",
+                key="cfg_shorting.STO_price",enable_events=True,
                 tooltip='Use price: bid, ask, last or alert'),
         sg.Stretch()],
 

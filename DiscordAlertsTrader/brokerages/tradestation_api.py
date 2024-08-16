@@ -205,7 +205,7 @@ class TS(BaseBroker):
             if order_info is None:
                 time.sleep(1)
                 order_info = self.session.get_orders([self.accountId], order_ids=[order_id]).json()
-        if order_info.get('Error'):
+        if order_info.get('Error') and order_info['Message'] == 'No orders were found for the specified Order IDs.':
             print(order_info)
             return 'MISSING', 'Order not found'
         

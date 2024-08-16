@@ -422,13 +422,16 @@ def run_gui():
             if price is None:
                 price = order.get('price', 0.01)
             symbol = ordersymb_to_str(order['Symbol'])
+            if order.get('Qty') is None:
+                order['Qty'] = 1
             if action =='exitupdate':
                 msg =  f"{author}, Exit Update {symbol} PT 50% SL 50%"
             elif action == 'quotes': 
                 action_msg = order['action'].replace('ExitUpdate', "BTO")
-                msg =  f"{author}, {action_msg} {order.get('Qty', 1)} {symbol} @{price} | [ask {ask} bid {bid}]" 
+                
+                msg =  f"{author}, {action_msg} {order['Qty']} {symbol} @{price} | [ask {ask} bid {bid}]" 
             else:
-                msg =  f"{author}, {action} {order.get('Qty', 1)} {symbol} @{price}" 
+                msg =  f"{author}, {action} {order['Qty']} {symbol} @{price}" 
                 
             window.Element("-subm-msg").Update(value=msg)
             window.Element(event).Update(button_color=ori_col)
@@ -442,11 +445,6 @@ def run_gui():
             fit_table_elms(window.Element("_portfolio_").Widget)
             window.Element(event).Update(button_color=ori_col)
 
-        elif event == '-slider-':
-            font_string = 'Helvitica '
-            font_string += str(int(values['-slider-']))
-            # window.Element('_portfolio_').Update(font=font_string)
-            sg.SetOptions(font=(font_string))
             
         elif event == "cfg_button":
             ori_col = window.Element(event).ButtonColor
@@ -600,7 +598,7 @@ def gui():
     client_thread = threading.Thread(target=run_client, daemon=True)
 
     # start the threads
-    client_thread.start()
+    # client_thread.start()
     run_gui()
 
     # close the GUI window

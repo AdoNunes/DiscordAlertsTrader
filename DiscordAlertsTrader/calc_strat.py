@@ -690,10 +690,10 @@ if __name__ == '__main__':
         # 'fname_port': '../algoalerter/data\HHscanner_port_delta0.4_179feats_ssnorm_ML_65conf.csv',
         'fname_port': 'data/vader-swings_port.csv',
         'trade_type': 'BTO',
-        'last_days': 0,
+        'last_days': 1,
         'filt_date_frm': "",
         'filt_date_to': "",
-        'stc_date':'eod', #'stc alert', #'exp', #,'exp',# ,  #  # 'eod' or
+        'stc_date':'exp', #'eod', #'stc alert', #,'exp',# ,  #  # 'eod' or
         'max_underlying_price': "",
         # 'min_price': 60,
         'max_dte': 4,
