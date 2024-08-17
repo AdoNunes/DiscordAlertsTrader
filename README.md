@@ -39,8 +39,7 @@ If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed.
 **Current Discord servers being used**:
 - **EnhancedMarket** TradeProElite (profitable strategies about 10-8k month that's what EnhancedMarket makes [fully pays $49/week membership], uses software to send trade alerts with minimal delay even for scalps and uses my bot to track trade' alerted PnL and market price PnL, full transparency. Good for learning how to trade with live sessions): [invite link](https://whop.com/tradeproelite/?d2c=true&directPlanId=plan_Tsd3DPmZoN5nW&pass=prod_KtXKwzfXMW7ck&a=transverseblouse3c34))
 - **Prosperity Trades** Vader the analyst uses my alerter bot that reads filled orders in webull and sends a discord alert, it also uses my tracking bot to register alerted and market PnL [invite link](https://whop.com/checkout/plan_hVOeBlJUWJRpP?d2c=true&a=transverseblouse3c34)
-
-
+- **Supreme alerts** Server with +30 analysts, your site for getting all the alerts you need [$69 month]. Use this [referral link](https://upgrade.chat/tradingalerts/p/dalertstrader) + add lifetime 10% off discount coupon: DAlertsTrader   
 
 Supports any Discord channel with structured BTP/STC alerts as message contents (server_formatting.py has functions to change different server formattings, including embedded messages). It has over 20 custom analysts' formatting. 
 
