@@ -59,6 +59,8 @@ def server_formatting(message):
         message = jpa_formatting(message)
     elif message.channel.id in [1216951944933933137]:
         message = prophi_alerts(message)
+    elif message.channel.id in [1272519008180240464]:
+        message = clark_alerts(message)
     elif message.channel.id in [968629663394058270, 1141877368877760552, 1239936855370108948]:
         message = wolfwebull_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
@@ -916,6 +918,13 @@ def prophet_formatting(message_):
         message.content = alert
     return message
 
+def clark_alerts(message_):
+    if not message_.content:
+        return message_
+
+    message = MessageCopy(message_)
+    message.content = message.content.replace("Im in", "BTO")
+    return message
 
 def moneymotive(message_):
     """

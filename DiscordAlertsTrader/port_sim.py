@@ -125,7 +125,7 @@ def port_cap_trades(data, max_trade_val:int=None, min_con_val:int=None, max_u_qt
     if max_dte is not None or min_dte is not None:
         de = data.loc[data['Asset'] == 'option', 'Symbol'].str.extract(r'_(\d{6})').iloc[:, 0]
         de = pd.to_datetime(de, format='%m%d%y').dt.date
-        dte = pd.to_timedelta(de - pd.to_datetime(data['Date']).dt.date).dt.days
+        dte = pd.to_timedelta(de - pd.to_datetime(data['Date'], format='mixed').dt.date).dt.days
         # msk out, neg so NaNs are not removed
         msk_out = (dte > max_dte) | (dte < min_dte) 
         data = data[~msk_out]
