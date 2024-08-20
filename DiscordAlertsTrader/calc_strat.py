@@ -207,10 +207,10 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     # calc underlying, dte, right
     underlying = port['Symbol'].str.extract(r'[C|P](\d+(\.\d+)?)$').iloc[:, 0]
     port['underlying'] = pd.to_numeric(underlying)
-    port['hour'] = pd.to_datetime(port['Date']).dt.hour
+    port['hour'] = pd.to_datetime(port['Date'], format='mixed').dt.hour
     de = port.loc[port['Asset'] == 'option', 'Symbol'].str.extract(r'_(\d{6})').iloc[:, 0]
     de = pd.to_datetime(de, format='%m%d%y').dt.date
-    dte = pd.to_timedelta(de - pd.to_datetime(port['Date']).dt.date).dt.days
+    dte = pd.to_timedelta(de - pd.to_datetime(port['Date'], format='mixed').dt.date).dt.days
     port['dte'] = dte
     port['right'] = port['Symbol'].str.extract(r'([C|P])\d+(\.\d+)?$').iloc[:, 0]
 
@@ -659,7 +659,7 @@ def grid_search(params_dict, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25]):
                     res.append([pt, sl, ts_buy, ts, port['strategy-PnL'].mean(), port['strategy-PnL$'].sum(), len(port), win*100])
         print(f"Done with PT={pt}")
 
-    sorted_columns = ['Date', 'Symbol', 'Trader', 'Channel', 'Type','Price',
+    sorted_columns = ['Date', 'Symbol', 'Trader',  'Type','Price',
                         'Price-actual', "Qty",
                         # 'Avged', 'PnL', 'PnL-actual', 'PnL$',  'PnL$-actual', 'STC-Price', 'STC-Price-actual',
                         'underlying', 'dte', 'right', 'bid', 
@@ -688,39 +688,43 @@ if __name__ == '__main__':
 
     params = {
         # 'fname_port': '../algoalerter/data\HHscanner_port_delta0.4_179feats_ssnorm_ML_65conf.csv',
-        'fname_port': 'data/vader-swings_port.csv',
+        'fname_port': 'data/algoAi_port.csv',
+        # 'fname_port':'../algoalerter\data\HHscanner_port_delta0.4_179feats_buy_ML_preds_0.6conf.csv',
+        # 'fname_port':'../algoalerter\data\HH2k_port2_delta0.3_179feats_lastyear_ML_preds_0.6conf.csv',
+        # 'fname_port':'../algoalerter\data\HH2k_port2_delta0.4_179feats_lastyear_nofeb_ML_preds_0.6conf.csv',
+        # 'fname_port': 'data/EM_port.csv',
         'trade_type': 'BTO',
-        'last_days': 1,
+        'last_days': None,
         'filt_date_frm': "",
         'filt_date_to': "",
-        'stc_date':'exp', #'eod', #'stc alert', #,'exp',# ,  #  # 'eod' or
+        'stc_date':'eod', #'stc alert', #,'exp',# ,  #  # 'eod' or
         'max_underlying_price': "",
         # 'min_price': 60,
-        'max_dte': 4,
+        'max_dte': 10,
         'min_dte': 0,
         'filt_hour_frm': "",
         'filt_hour_to': "",
         'include_authors': "",
         # 'exclude_symbols': ["SPY", "QQQ"],
         'initial_price' : 'ask', #'bid_+5', #'ask', #  'ask_+10',
-        'PT': [200], #[20,25,35,45,55,65,95,],# [90],#
-        # 'pts_ratio' :[0.2, 0.3, 0.2, 0.3],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], #
-        # 'sl_update' :  [[1.2, 1], [1.5, 1.2], [1.8, 1.3], [2, 1.5]], #   [[1.20, 1.05], [1.5, 1.3]], #
+        'PT': [125], #[20,25,35,45,55,65,95,],# [90],#
+        'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], #
+        # 'sl_update' :  [ [1.8, 1.3], [2, 1.5]], #   [[1.20, 1.05], [1.5, 1.3]], #
         # "pt_update" : [ [.3,0.7]], #   None, #
         # 'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #
-        'SL': 60,
+        'SL': 100,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
-        'max_margin': 60000,
-        'short_under_amnt' : 1000,
-        'min_trade_val': 400,
+        # 'max_margin': 60000,
+        # 'short_under_amnt' : 1000,
+        # 'min_trade_val': 400,
         'verbose': True,
-        # 'trade_amount': 1,
+        'trade_amount': 1000,
         "sell_bto": False,
         "max_short_val": 4000,
         "invert_contracts": False,
-        "do_plot": True
+        "do_plot": False
     }
     import time as tt
     t0 = tt.time()
@@ -784,7 +788,7 @@ if __name__ == '__main__':
         # res, port_out = grid_search(params, PT= [30, 40], SL=[30], TS_buy=[0], TS= [0])
         res, port_out = grid_search(
             params,
-            PT= list([5] + np.arange(10,150, 10)) + [180, 200,250,300],
+            PT= list([5] + np.arange(10,150, 10)),# + [180, 200,250,300],
             SL=np.arange(20,101,10),
             TS_buy=[0],
             TS=[0],

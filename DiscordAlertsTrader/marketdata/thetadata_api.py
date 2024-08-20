@@ -165,6 +165,7 @@ class ThetaClientAPI:
         df_q = pd.read_csv(io.StringIO(response_quotes.content.decode('utf-8')))
         df_q['timestamp'] = df_q.apply(get_timestamp_, axis=1)
         if not len(df_q):
+            print(response_quotes.content.decode('utf-8'))
             return None
         df_q = df_q[(df_q.strike == strike) & (df_q.right == right)].reset_index(drop=True)
         data = df_q[['timestamp', 'bid', 'ask', 'delta', 'theta', 'vega', 'lambda', 'implied_vol', 'underlying_price']]

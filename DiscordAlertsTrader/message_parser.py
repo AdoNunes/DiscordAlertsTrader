@@ -185,6 +185,9 @@ def make_order_exits(order, msg, str_prt, asset):
         order["PT2"] = pt2_v
         order["PT3"] = pt3_v
         order["SL"] = sl_v
+    
+    if order["SL"] == "":
+        order["SL"] = None
 
     exits = ["PT1","PT2","PT3","SL"]
     for ext in exits:
