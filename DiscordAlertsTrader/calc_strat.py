@@ -243,7 +243,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         margin = 0
     # Iterate over the trades
     for idx, row in port.iterrows():
-        # idx = 16
+        # idx = 1032
         # row = port.loc[idx]
         if pd.isna(row['Price-actual']) and not with_theta and not with_poly:
             if verbose:
@@ -343,6 +343,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             last = quotes['last']
         else:
             last = bid
+        last = quotes['last']
 
         dates = pd.to_datetime(quotes['timestamp'], unit='s', utc=True).dt.tz_convert('America/New_York')
 
@@ -691,37 +692,38 @@ if __name__ == '__main__':
         'fname_port': 'data/algoAi_port.csv',
         # 'fname_port':'../algoalerter\data\HHscanner_port_delta0.4_179feats_buy_ML_preds_0.6conf.csv',
         # 'fname_port':'../algoalerter\data\HH2k_port2_delta0.3_179feats_lastyear_ML_preds_0.6conf.csv',
-        # 'fname_port':'../algoalerter\data\HH2k_port2_delta0.4_179feats_lastyear_nofeb_ML_preds_0.6conf.csv',
+        # 'fname_port':'../algoalerter\data/HH2k_port2_delta0.4_179feats_lastyear_nofeb_ML_preds.csv_0.6conf.csv',
         # 'fname_port': 'data/EM_port.csv',
-        'trade_type': 'BTO',
-        'last_days': None,
+        # 'fname_port':'../algoalerter/data/HH2k_port2_delta0.4_179feats_lastyear_ask_preds.csv',
+        'trade_type': 'STO',
+        'last_days': 30,
         'filt_date_frm': "",
         'filt_date_to': "",
         'stc_date':'eod', #'stc alert', #,'exp',# ,  #  # 'eod' or
         'max_underlying_price': "",
         # 'min_price': 60,
-        'max_dte': 10,
+        'max_dte': 50,
         'min_dte': 0,
         'filt_hour_frm': "",
         'filt_hour_to': "",
         'include_authors': "",
         # 'exclude_symbols': ["SPY", "QQQ"],
-        'initial_price' : 'ask', #'bid_+5', #'ask', #  'ask_+10',
-        'PT': [125], #[20,25,35,45,55,65,95,],# [90],#
+        'initial_price' : 'bid', #'bid_+5', #'ask', #  'ask_+10',
+        'PT': [50], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], #
         # 'sl_update' :  [ [1.8, 1.3], [2, 1.5]], #   [[1.20, 1.05], [1.5, 1.3]], #
         # "pt_update" : [ [.3,0.7]], #   None, #
         # 'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #
-        'SL': 100,
+        'SL': 40,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
         # 'max_margin': 60000,
-        # 'short_under_amnt' : 1000,
-        # 'min_trade_val': 400,
+        'short_under_amnt' : 3000,
+        'min_trade_val': 500,
         'verbose': True,
-        'trade_amount': 1000,
-        "sell_bto": False,
+        'trade_amount': 1,
+        # "sell_bto": True,
         "max_short_val": 4000,
         "invert_contracts": False,
         "do_plot": False

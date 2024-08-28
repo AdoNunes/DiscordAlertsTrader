@@ -1,4 +1,4 @@
-from ib_insync import *
+from ib_async import *
 import nest_asyncio
 
 from DiscordAlertsTrader.brokerages import BaseBroker
@@ -90,22 +90,36 @@ class IBKR(BaseBroker):
         order = trade.order
         
         status = trade.orderStatus.status
-        status = status.upper().replace('SUBMITTED','WORKING').replace('CANCELLED','CANCELED')
+        status = status.upper().replace('SUBMITTED','WORKING').replace('CANCELLED','CANCELED').replace("PENDINGSUBMIT", "WORKING")
         
         placedTime = trade.log[0].time.timestamp() if trade.log else None
         placedTime = datetime.fromtimestamp(placedTime).strftime("%Y-%m-%dT%H:%M:%S+00") if placedTime else None
         
         enteredTime = trade.fills[0].time if trade.fills else None
-        enteredTime = datetime.fromtimestamp(enteredTime).strftime("%Y-%m-%dT%H:%M:%S+00") if enteredTime else None
+        if isinstance(enteredTime, float ) and enteredTime is not None:
+            enteredTime = datetime.fromtimestamp(enteredTime)
+        enteredTime = enteredTime.strftime("%Y-%m-%dT%H:%M:%S+00") if enteredTime else None
         
         closeTime  = trade.fills[-1].time if trade.fills else None
-        closeTime  = datetime.fromtimestamp(closeTime).strftime("%Y-%m-%dT%H:%M:%S+00") if closeTime else None
+        if isinstance(closeTime, float ) and closeTime is not None:
+            closeTime = datetime.fromtimestamp(closeTime)
+        closeTime  = closeTime.strftime("%Y-%m-%dT%H:%M:%S+00") if closeTime else None
+        
+        qty = order.totalQuantity
+        if trade.orderStatus.status.upper() == 'FILLED' and order.totalQuantity == 0 and order.filledQuantity > 0:
+            qty = order.filledQuantity
+        
+        price = trade.orderStatus.avgFillPrice
+        if price == 0 and trade.fills:
+            price = trade.fills[0].execution.price
+        elif price == 0 and trade.order.lmtPrice:
+            price = trade.order.lmtPrice
         
         order_info = {
             'status': status,
-            'quantity': order.totalQuantity,
-            'filledQuantity': order.filledQuantity if order.filledQuantity<= order.totalQuantity else 0,
-            'price': trade.orderStatus.avgFillPrice,
+            'quantity': qty,
+            'filledQuantity': order.filledQuantity if order.filledQuantity>0 and order.filledQuantity <= order.totalQuantity else 0,
+            'price': price,
             'orderStrategyType': 'SINGLE',
             "order_id" : order.orderId,
             "orderId": order.orderId,
@@ -129,7 +143,7 @@ class IBKR(BaseBroker):
             if order.orderId == order_id:
                 self.ib.cancelOrder(order)
                 self.ib.sleep(0.1)
-                return True
+                return "Canceled"
         return False
     
     def get_orders(self):
@@ -146,8 +160,12 @@ class IBKR(BaseBroker):
 
         for trade in trades:
             if trade.order.orderId == order_id:
+                trade = trade.update()  # that does not work, stuck in submitted
+                self.ib.sleep(0.1)
                 formatted_order = self.format_order(trade)
-                return formatted_order
+                status = formatted_order['status']
+                return status, formatted_order
+        return 'MISSING', None
     
     def fix_symbol(self, symbol:str, direction:str):
         "Fix symbol for options, direction in or out of webull format"
@@ -203,7 +221,7 @@ class IBKR(BaseBroker):
 
         contract = Contract(conId=order_dict['conId'])
         contract = self.ib.qualifyContracts(contract)[0] 
-        self.ib.sleep(0.1)
+        self.ib.sleep(1)
         
         if(order.orderType == 'OCA'):
             order_ids = []
@@ -218,9 +236,9 @@ class IBKR(BaseBroker):
             print(contract)
             print(order)
             print(trade)
-            self.ib.sleep(0.1)
 
-            return trade.order.orderId
+            trade.update()
+            return trade.orderStatus.status, order.orderId
     
     def get_con_id(self, symbol:str):
         "Get contract id for a given symbol"
@@ -228,6 +246,7 @@ class IBKR(BaseBroker):
             contract = self._convert_option_to_ibkr(symbol)
             contracts = self.ib.qualifyContracts(contract)
             contract = contracts[0] if contracts else None
+            print(contract)
             conId = contract.conId if contract else None
             return conId
         else:
@@ -386,9 +405,9 @@ class IBKR(BaseBroker):
             self.ib.sleep(0.1)
             quotes[symbol] = {
                 'symbol': symbol,
-                'mid': ((quote[-1].ask + quote[-1].bid) / 2) if quote[-1].ask and quote[-1].bid else float('nan'),
-                'bid': quote[-1].bid,
-                'ask': quote[-1].ask,
+                'midPrice': ((quote[-1].ask + quote[-1].bid) / 2) if quote[-1].ask and quote[-1].bid else float('nan'),
+                'bidPrice': quote[-1].bid,
+                'askPrice': quote[-1].ask,
                 'quoteTimeInLong': int(round(quote[-1].time.timestamp())) if quote[-1].time else None,
             }
         

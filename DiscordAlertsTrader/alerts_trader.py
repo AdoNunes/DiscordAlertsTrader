@@ -1200,6 +1200,9 @@ class AlertsTrader():
                 else:
                     ordID = trade['ordID']
                 order_status, order_info = self.get_order_info(ordID)
+                if order_status is None:
+                    print(Back.GREEN + f"Order info not found for {trade['Symbol']} ordid {ordID}")
+                    continue
                 
                 if order_status == "REJECTED":
                     self.portfolio.loc[i, "BTO-Status"] = order_status

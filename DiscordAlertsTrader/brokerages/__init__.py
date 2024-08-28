@@ -74,7 +74,7 @@ def get_brokerage(name=cfg['general']['BROKERAGE']):
         return ts
     elif name.lower() == "webull":
         from .weBull_api import weBull
-        wb = weBull()
+        wb = weBull(cfg['webull'].getboolean('paper'))
         success = wb.get_session()
         if success:
             return wb

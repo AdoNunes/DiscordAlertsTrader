@@ -1,7 +1,7 @@
 import re
 import time
 from datetime import datetime
-from webull import webull, paper_webull
+from DiscordAlertsTrader.brokerages.webull import webull, paper_webull
 from DiscordAlertsTrader.configurator import cfg
 from DiscordAlertsTrader.brokerages import retry_on_exception
 
@@ -39,7 +39,7 @@ class weBull:
         acc_inf ={
             'securitiesAccount':{
                 'positions':[],
-                'accountId' : str(data['secAccountId']),
+                'accountId' : str(data.get('accountId')),
                 'currentBalances':{
                     'liquidationValue': data.get('netLiquidation'),
                     'cashBalance': data['accountMembers'][1]['value'],
@@ -48,16 +48,17 @@ class weBull:
         }}
         positions = data['positions']
         for position in positions:
+            assetType =  position.get('assetType',  position.get('tickerType'))
             pos = {
                 "longQuantity" : eval(position['position']),
                 "symbol": position['ticker']["symbol"],
                 "marketValue": eval(position['marketValue']),
-                "assetType": position['assetType'],
+                "assetType": assetType,
                 "averagePrice": eval(position['costPrice']),
                 "currentDayProfitLoss": eval(position['unrealizedProfitLoss']),
                 "currentDayProfitLossPercentage": float(eval(position['unrealizedProfitLoss']))/100,
                 'instrument': {'symbol': position['ticker']["symbol"],
-                                'assetType': position['assetType'],
+                                'assetType': assetType,
                                 }
             }
             acc_inf['securitiesAccount']['positions'].append(pos)
