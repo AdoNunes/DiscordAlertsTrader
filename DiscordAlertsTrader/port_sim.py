@@ -589,7 +589,7 @@ def calc_roi(quotes:pd.Series, PT:float, TS:float, SL:float, do_plot:bool=False,
         no_ts_sell = quotes.loc[pt_index]
         sell_index = trigger_index
         if do_plot:
-            plt.plot(quotes.index.get_loc(trigger_index), (quotes.loc[trigger_index]-quotes.iloc[0])/quotes.iloc[0], marker='o', alpha=.5)
+            plt.plot(trigger_index, (quotes.loc[trigger_index]-quotes.iloc[0])/quotes.iloc[0], marker='o', alpha=.5)
 
     if do_plot:
         max = quotes.apply(lambda x: (x-quotes.iloc[0])/quotes.iloc[0]).max()

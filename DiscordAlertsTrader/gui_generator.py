@@ -553,8 +553,11 @@ def order_info_pars(ord_dic, ord_list):
     sing_ord.append(price)
     # sing_ord.append(stprice)
 
-    date = ord_dic['enteredTime'].split("+")[0]
-    date = short_date(date, "%Y-%m-%dT%H:%M:%S")
+    if ord_dic.get('enteredTime') is not None:
+        date = ord_dic['enteredTime'].split("+")[0]
+        date = short_date(date, "%Y-%m-%dT%H:%M:%S")
+    else:
+        date = ""
     sing_ord.append(date)
 
     qty = round_int_flt(ord_dic['quantity'])

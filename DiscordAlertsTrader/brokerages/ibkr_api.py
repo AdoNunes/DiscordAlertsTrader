@@ -1,18 +1,22 @@
-from ib_insync import *
+from ib_async import *
 import nest_asyncio
 
 from DiscordAlertsTrader.brokerages import BaseBroker
 from DiscordAlertsTrader.configurator import cfg
 from datetime import datetime
 import time
+import asyncio
+
 
 class IBKR(BaseBroker):
     def __init__(self,accountId=None):
         self.name = 'ibkr'
         self.accountId = accountId
         self.ib = IB()
+        self.ib2 = IB()
+
         nest_asyncio.apply()
-    
+
     def get_session(self):
         if self.ib.isConnected():
             return True
@@ -90,22 +94,36 @@ class IBKR(BaseBroker):
         order = trade.order
         
         status = trade.orderStatus.status
-        status = status.upper().replace('SUBMITTED','WORKING').replace('CANCELLED','CANCELED')
+        status = status.upper().replace('SUBMITTED','WORKING').replace('CANCELLED','CANCELED').replace("PENDINGSUBMIT", "WORKING")
         
         placedTime = trade.log[0].time.timestamp() if trade.log else None
         placedTime = datetime.fromtimestamp(placedTime).strftime("%Y-%m-%dT%H:%M:%S+00") if placedTime else None
         
         enteredTime = trade.fills[0].time if trade.fills else None
-        enteredTime = datetime.fromtimestamp(enteredTime).strftime("%Y-%m-%dT%H:%M:%S+00") if enteredTime else None
+        if isinstance(enteredTime, float ) and enteredTime is not None:
+            enteredTime = datetime.fromtimestamp(enteredTime)
+        enteredTime = enteredTime.strftime("%Y-%m-%dT%H:%M:%S+00") if enteredTime else None
         
         closeTime  = trade.fills[-1].time if trade.fills else None
-        closeTime  = datetime.fromtimestamp(closeTime).strftime("%Y-%m-%dT%H:%M:%S+00") if closeTime else None
+        if isinstance(closeTime, float ) and closeTime is not None:
+            closeTime = datetime.fromtimestamp(closeTime)
+        closeTime  = closeTime.strftime("%Y-%m-%dT%H:%M:%S+00") if closeTime else None
+        
+        qty = order.totalQuantity
+        if trade.orderStatus.status.upper() == 'FILLED' and order.totalQuantity == 0 and order.filledQuantity > 0:
+            qty = order.filledQuantity
+        
+        price = trade.orderStatus.avgFillPrice
+        if price == 0 and trade.fills:
+            price = trade.fills[0].execution.price
+        elif price == 0 and trade.order.lmtPrice:
+            price = trade.order.lmtPrice
         
         order_info = {
             'status': status,
-            'quantity': order.totalQuantity,
-            'filledQuantity': order.filledQuantity if order.filledQuantity<= order.totalQuantity else 0,
-            'price': trade.orderStatus.avgFillPrice,
+            'quantity': qty,
+            'filledQuantity': order.filledQuantity if order.filledQuantity>0 and order.filledQuantity <= order.totalQuantity else 0,
+            'price': price,
             'orderStrategyType': 'SINGLE',
             "order_id" : order.orderId,
             "orderId": order.orderId,
@@ -129,7 +147,7 @@ class IBKR(BaseBroker):
             if order.orderId == order_id:
                 self.ib.cancelOrder(order)
                 self.ib.sleep(0.1)
-                return True
+                return "Canceled"
         return False
     
     def get_orders(self):
@@ -141,13 +159,18 @@ class IBKR(BaseBroker):
         return orders_inf
     
     def get_order_info(self, order_id):        
-        self.ib.sleep(0.1)
-        trades = self.ib.trades()
+        
+        self.ib2.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=int(cfg['IBKR']['clientId'])+1)
+        trades = self.ib2.trades()
+        self.ib2.disconnect()
 
         for trade in trades:
             if trade.order.orderId == order_id:
+                trade = trade.update()  # that does not work, stuck in submitted
                 formatted_order = self.format_order(trade)
-                return formatted_order
+                status = formatted_order['status']
+                return status, formatted_order
+        return 'MISSING', None
     
     def fix_symbol(self, symbol:str, direction:str):
         "Fix symbol for options, direction in or out of webull format"
@@ -201,38 +224,48 @@ class IBKR(BaseBroker):
 
         #refer to https://ib-insync.readthedocs.io/api.html#module-ib_insync.contract
 
-        contract = Contract(conId=order_dict['conId'])
-        contract = self.ib.qualifyContracts(contract)[0] 
-        self.ib.sleep(0.1)
+        contract = Contract(conId=order_dict['conId'], exchange='SMART', currency='USD')
+        # contract = self.ib.qualifyContracts(contract)[0] 
+        # self.ib.sleep(1)
+
+        self.ib2.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=int(cfg['IBKR']['clientId'])+1)
         
         if(order.orderType == 'OCA'):
             order_ids = []
             for o in orders:
-                self.ib.placeOrder(contract, o)
+                self.ib2.placeOrder(contract, o)
                 order_ids.append(o.orderId)
-                self.ib.sleep(0.1)
+                self.ib2.sleep(0.1)
+            self.ib2.disconnect()
             return order_ids
         else:
 
-            trade = self.ib.placeOrder(contract, order)
+            trade = self.ib2.placeOrder(contract, order)
+            self.ib2.sleep(0.1)
             print(contract)
             print(order)
             print(trade)
-            self.ib.sleep(0.1)
 
-            return trade.order.orderId
+            trade.update()
+            self.ib2.disconnect()
+            return trade.orderStatus.status, order.orderId
     
     def get_con_id(self, symbol:str):
         "Get contract id for a given symbol"
         if "_" in symbol:
+            
             contract = self._convert_option_to_ibkr(symbol)
-            contracts = self.ib.qualifyContracts(contract)
-            contract = contracts[0] if contracts else None
+            self.ib2.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=int(cfg['IBKR']['clientId'])+1)
+            contract = self.ib2.qualifyContracts(contract)[0]
+            self.ib2.sleep(0.1)
+            self.ib2.disconnect()
+
             conId = contract.conId if contract else None
             return conId
         else:
-            contracts = self.ib.qualifyContracts(Stock(symbol, 'SMART', 'USD'))
-            contract = contracts[0] if contracts else None
+            self.ib2.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=int(cfg['IBKR']['clientId'])+1)
+            contract = self.ib2.qualifyContracts(contract)
+            self.ib2.disconnect()
             conId = contract.conId if contract else None
             return conId
     
@@ -376,19 +409,21 @@ class IBKR(BaseBroker):
         
         quotes = {}
         for symbol in symbols:
+            print(symbol)
             con_id = self.get_con_id(symbol)
-            print(con_id)
-            contract = Contract(conId=con_id)
+            contract = Contract(conId=con_id, exchange='SMART', currency='USD')
             self.ib.sleep(0.1)
-            contract = self.ib.qualifyContracts(contract)[0]
-            self.ib.sleep(0.1)
-            quote = self.ib.reqTickers(contract)
+
+            self.ib2.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=int(cfg['IBKR']['clientId'])+1)
+            quote = self.ib2.reqTickers(contract)
+            self.ib2.disconnect()
+
             self.ib.sleep(0.1)
             quotes[symbol] = {
                 'symbol': symbol,
-                'mid': ((quote[-1].ask + quote[-1].bid) / 2) if quote[-1].ask and quote[-1].bid else float('nan'),
-                'bid': quote[-1].bid,
-                'ask': quote[-1].ask,
+                'midPrice': ((quote[-1].ask + quote[-1].bid) / 2) if quote[-1].ask and quote[-1].bid else float('nan'),
+                'bidPrice': quote[-1].bid,
+                'askPrice': quote[-1].ask,
                 'quoteTimeInLong': int(round(quote[-1].time.timestamp())) if quote[-1].time else None,
             }
         
@@ -455,32 +490,31 @@ class IBKR(BaseBroker):
 
 ##### Uncomment for testing
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    ibkr = IBKR()
-    ibkr.get_session()
-    print(ibkr.get_account_info())
+#     ibkr = IBKR()
+#     ibkr.get_session()
+#     print(ibkr.get_account_info())
     
-    ord_inf = ibkr.get_order_info(44)
-    print(ord_inf)
+#     ord_inf = ibkr.get_order_info(44)
+#     print(ord_inf)
     
-    symbols = ["SPY_071924C565"]
+#     symbols = ["SPY_071924C565"]
 
-    quotes = ibkr.get_quotes(symbols)
-    ddd
-    print(quotes)
-    order = ibkr.make_BTO_lim_order("META_053124C480", 1, 605)
-    print(order)
+#     quotes = ibkr.get_quotes(symbols)
+#     print(quotes)
+#     order = ibkr.make_BTO_lim_order("META_053124C480", 1, 605)
+#     print(order)
 
-    order_id = ibkr.send_order(order)
-    print(order_id)
+#     order_id = ibkr.send_order(order)
+#     print(order_id)
 
-    order = ibkr.cancel_order(order_id)
-    print(order)
+#     order = ibkr.cancel_order(order_id)
+#     print(order)
 
-    make_Lim_SL_order = ibkr.make_Lim_SL_order("AMZN", 1, 200, 150)
-    order_id = ibkr.send_order(make_Lim_SL_order)
+#     make_Lim_SL_order = ibkr.make_Lim_SL_order("AMZN", 1, 200, 150)
+#     order_id = ibkr.send_order(make_Lim_SL_order)
 
-    print(order_id)
+#     print(order_id)
     
     

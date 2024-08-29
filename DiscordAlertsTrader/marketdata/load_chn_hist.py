@@ -26,7 +26,7 @@ after, date_after = "", ""
 get_date_after_from_port = True
 re_download = False
 delete_port = False
-author = "EM"
+author = "algoAi"
 
 
 def get_timestamp(row):
@@ -70,6 +70,8 @@ def save_or_append_quote(quotes, symbol, path_quotes, overwrite=False):
 
 
 chan_ids = {
+    "mbag1": 1187162844362448896,
+    "mbag2": 1189180874265210961,
     "theta_warrior_elite": 897625103020490773,
     "demon": 1167160585511776357,
     "eclipse": 1213995695237763145,
@@ -289,5 +291,3 @@ for ix, row in msg_hist.loc[:].iterrows():  # .loc[ix:].iterrows(): #
 # tracker.portfolio['ask'] = tracker.portfolio['Price-actual']
 # tracker.portfolio['Price-actual']  = tracker.portfolio['bid']
 tracker.portfolio.to_csv(tracker.portfolio_fname, index=False)
-
-tracker.close_expired()
