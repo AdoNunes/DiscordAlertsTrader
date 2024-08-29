@@ -208,6 +208,9 @@ class TS(BaseBroker):
         if order_info.get('Error') and order_info['Message'] == 'No orders were found for the specified Order IDs.':
             print(order_info)
             return 'MISSING', 'Order not found'
+        elif order_info.get('Error')== 'TooManyRequests' :
+            print(order_info, "sleeping for 200ms")
+            time.sleep(0.2)
         
         if len(order_info['Orders']) > 1: # bracket orders
             ix = [i for i, order in enumerate(order_info['Orders']) if order['StatusDescription'].upper() == 'FILLED']
@@ -246,6 +249,8 @@ class TS(BaseBroker):
         status = order['StatusDescription'].upper()
         if status in ['RECEIVED', 'SENT', 'QUEUED']:
             status = 'WORKING'
+        elif status == 'UROUT':
+            status = 'CANCELED'
 
         order_info = {
             'status': status,

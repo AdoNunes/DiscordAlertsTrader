@@ -107,6 +107,7 @@ class DiscordBot(discord.Client):
             
             for q in quote: 
                 if quote[q]['description'] == 'Symbol not found' or q =='' or quote[q]['bidPrice'] == 0:
+                    print(f"Symbol {q} not found or price is 0")
                     continue
                 timestamp = quote[q]['quoteTimeInLong']//1000  # in ms
 
@@ -122,7 +123,7 @@ class DiscordBot(discord.Client):
                             last_line = lines[-1].strip()
                 
                 #if last recorded timestamp is the same as current, skip
-                if last_line.split(",")[0] == str(timestamp):
+                if len(last_line) and float(last_line.split(",")[1] )== quote[q]['bidPrice'] and float(last_line.split(",")[2] )== quote[q]['askPrice']:
                     continue
                 
                 # Write the new line to the file
