@@ -18,8 +18,8 @@ It tracks messages from all the channels, generates a portfolio from analysts an
 provides live quotes to see actual alert profits (rather than prices stated in the alert), and can trigger
 an alert to open long or short a position, close it or update exits (target profit, stop loss).
 
-Trades are done through APIs of TDAmeritrade (full functionality), eTrade (either a PT or SL order) or webull (either a PT or SL order, not trailing stops).
-If no brokerage API key is provided, it will just print the discord messages and track the 
+Trades are done through APIs of TradeStation, eTrade or webull (either a PT or SL order, no trailing stops).
+If no brokerage API key is provided, it will just print out the discord messages and track the 
 analysts' portfolio. With an API key, it will track the current price of the alerts, besides executing trades.
 
 If in `config.ini`, `DO_BTO_TRADES = false`, no trades will be executed. 
@@ -152,6 +152,8 @@ Etrade does not have One Cancels the Other (OCO) so you can not pass a target pr
 ## Webull API
 ____________
 
+**Webull PAPER trading only works for opening orders (BTO)**
+
 You will need to get a device ID, follow these steps to get DID, and then save it in the config.ini, along with credential details: 
 [https://github.com/tedchou12/webull/wiki/Workaround-for-Login-Method-2](https://github.com/tedchou12/webull/wiki/Workaround-for-Login-%E2%80%90-Method-2)
 
@@ -162,44 +164,13 @@ However, the package can create a local OCO, by passing in the alert or config d
 create an SL order, and every 10 secs check the contract price until it reaches 50%, then will try to create a trailing stop of 20%, but because of webull 
 it will instead sell at PT.
 
-## TDAmeritrade
-_______________
-
-*CURRENTLY NO NEW DEVELOPER ACCOUNT ARE CREATED UNTIL THE MERGE*
-
-To access the TDAmeritrade account for trading and info is necessary to install 
-td-ameritrade-python-api from:
-
-```pip install td-ameritrade-python-api```
-
-Follow the instructions from the github repository to set up an API developer account and get a 
-token:
-https://github.com/areed1192/td-ameritrade-python-api
-
-once you have your TDA client id, edit config.ini TDA section. There needs to be:
-
-```
-[TDA]
-client_id = QBGUFGH...
-redirect_url = https://127.0.0.1/
-credentials_path = secrets_td.json
-```
-
-then, run the script:
-```python setup_TDA.py```
-it will prompt to:
-
-```
-$Go to URL provided authorize your account: https://auth.tdameritrade.com/auth?response_type=code&redirect_uri=.......OAUTHAP
-$ Paste the full URL redirect here:
-```
-
-In your browser go to the link, accept TD ameritrade pop-up and copy the link you get re-directed. Once entered you will have your secrets_td.json
 
 ## IBKR
 _______________
 
-**ONLY FOR SOURCE VERSION, DOES NOT WORK IN COMPILED EXE VERSION. CURRENTLY IBKR IS NOT WORKING VERY WELL. WAIT FOR A FUTURE VERSION.**
+**READ THIS!!!
+ONLY FOR SOURCE VERSION, IT DOES NOT WORK IN THE COMPILED EXE VERSION. 
+CURRENTLY, IBKR ONLY WORKS FOR PLACING BTO orders (open order). Close the trade directly in IBKR app**
 
 To access the IBKR account for trading and info is necessary to install
 ib_insync from:
