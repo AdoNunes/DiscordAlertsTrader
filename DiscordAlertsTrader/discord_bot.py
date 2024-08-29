@@ -106,7 +106,7 @@ class DiscordBot(discord.Client):
                 continue
             
             for q in quote: 
-                if quote[q]['description'] == 'Symbol not found' or q =='' or quote[q]['bidPrice'] == 0:
+                if quote[q].get('description') == 'Symbol not found' or q =='' or quote[q]['bidPrice'] == 0:
                     continue
                 timestamp = quote[q]['quoteTimeInLong']//1000  # in ms
 

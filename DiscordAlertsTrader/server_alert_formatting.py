@@ -7,7 +7,7 @@ def server_formatting(message):
         return message
     if message.guild.id == 542224582317441034:
         message = xtrades_formatting(message)
-    elif message.guild.id == 836435995854897193:
+    elif message.guild.id in [836435995854897193, 1208184842441719828]:
         message = tradeproelite_formatting(message)
     elif message.guild.id == 1204779568058335232:
         message = prosperitytrades_formatting(message)
@@ -63,6 +63,8 @@ def server_formatting(message):
         message = clark_alerts(message)
     elif message.channel.id in [968629663394058270, 1141877368877760552, 1239936855370108948]:
         message = wolfwebull_formatting(message)
+    elif message.channel.id in [1187162844362448896, 1189180874265210961]:
+        message = nvstly_alerts(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     else:
@@ -84,25 +86,17 @@ def tradeproelite_formatting(message_):
     Reformat Discord message from TPE to change generate alerts bot to author
     TPE guild id: 836435995854897193
     """
-    # Don't do anything if not Xtrade message
-    if message_.guild.id != 836435995854897193:
-        return message_
-
+    message = MessageCopy(message_)
     # Change bot to author
-    if message_.author.name == 'EnhancedMarket':
-        message = MessageCopy(message_)
+    if message.author.name == 'EnhancedMarket':
         message.author.name = 'enhancedmarket'
-        message.author.discriminator = '0'
-        return message
-    
-    if message_.author.name == 'Alertsify':
+        message.author.discriminator = '0' 
+    elif message.author.name == 'Alertsify':
         message = MessageCopy(message_)
         message.author.name = message.embeds[0].author.name
         message.content = message.embeds[0].description
         message.author.discriminator = '0'
-        return message
-
-    return message_
+    return message
 
 def prosperitytrades_formatting(message_):
     """
@@ -961,6 +955,24 @@ def moneymotive(message_):
             ticker, strike, otype, price, expDate = match.groups()
             alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
             message.content = alert
+    return message
+
+def nvstly_alerts(message_):
+    
+    message = MessageCopy(message_)
+    for mb in message.embeds:
+        pattern = r"(Short|Closed Short) - \[(\w+) @ \$([\d\.]+)\].*\*\*cmp:\*\* \$([\d\.]+)"
+        match = re.search(pattern, mb.description)
+        if match:
+            action = match.group(1)
+            ticker = match.group(2)
+            # price = match.group(3)
+            cmp_value = match.group(4)
+            action = "STC" if action == "Short" else "BTC" 
+            message.content = f"{action} {ticker} @ {cmp_value}"
+            message.author.name = mb.author.name
+            message.author.discriminator = '0'
+
     return message
 
 def prophi_alerts(message_):

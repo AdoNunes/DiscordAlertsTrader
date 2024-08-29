@@ -696,13 +696,13 @@ if __name__ == '__main__':
         # 'fname_port': 'data/EM_port.csv',
         # 'fname_port':'../algoalerter/data/HH2k_port2_delta0.4_179feats_lastyear_ask_preds.csv',
         'trade_type': 'STO',
-        'last_days': 30,
+        'last_days': None,
         'filt_date_frm': "",
         'filt_date_to': "",
         'stc_date':'eod', #'stc alert', #,'exp',# ,  #  # 'eod' or
         'max_underlying_price': "",
         # 'min_price': 60,
-        'max_dte': 50,
+        'max_dte': 10,
         'min_dte': 0,
         'filt_hour_frm': "",
         'filt_hour_to': "",
@@ -712,14 +712,14 @@ if __name__ == '__main__':
         'PT': [50], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], #
         # 'sl_update' :  [ [1.8, 1.3], [2, 1.5]], #   [[1.20, 1.05], [1.5, 1.3]], #
-        # "pt_update" : [ [.3,0.7]], #   None, #
+        # "pt_update" : [ [.3,0.7], [.3,0.7]], #   None, #
         # 'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #
-        'SL': 40,
+        'SL': 50,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
-        # 'max_margin': 60000,
-        'short_under_amnt' : 3000,
+        'max_margin': 600000,
+        'short_under_amnt' : None,
         'min_trade_val': 500,
         'verbose': True,
         'trade_amount': 1,
