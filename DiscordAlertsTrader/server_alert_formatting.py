@@ -968,7 +968,7 @@ def nvstly_alerts(message_):
             ticker = match.group(2)
             # price = match.group(3)
             cmp_value = match.group(4)
-            action = "STC" if action == "Short" else "BTC" 
+            action = "STO" if action == "Short" else "BTC" 
             message.content = f"{action} {ticker} @ {cmp_value}"
             message.author.name = mb.author.name
             message.author.discriminator = '0'
