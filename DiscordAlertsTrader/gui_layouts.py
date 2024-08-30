@@ -41,7 +41,7 @@ def trigger_alerts_layout():
            sg.Button("Trigger alert", key="-subm-alert", 
                      tooltip="Will generate alert in user or/and analysts portfolio, useful to close or open a position", size= (20,1)),
            sg.Stretch()], 
-           [sg.Text('                   Change alert to:', key='-alert_to-', tooltip="Change  current alert in tigger alert", visible=True),
+           [sg.Text('Change alert to:', key='-alert_to-', tooltip="Change  current alert in tigger alert", visible=True),
             sg.Button("BTO", key='-alert_BTO', size=(10,1), tooltip="Once clicked portfolio row change prefilled STC to BTO", visible=True),
             sg.Button("STC", key='-alert_STC', size=(10,1), tooltip="Once clicked portfolio row change prefilled to STC", visible=True),
             sg.Button("STO", key='-alert_STO', size=(10,1), tooltip="Once clicked portfolio row change prefilled STC to BTO", visible=True),
@@ -50,7 +50,7 @@ def trigger_alerts_layout():
             sg.Button("Get quotes", key='-alert_quotes', size=(20,1), tooltip="get quotes from alerts in trigger box. In alert pass prices as @m to get market price", visible=True),
             sg.Button("Plot quotes", key='-alert_plot', size=(20,1), tooltip="plot daily quotes from alerts in trigger box", visible=True),
             sg.Button("author: me", key='-alert_tome', size=(20,1), tooltip="change author in alert to 'me'", visible=True),
-            sg.Button("author: me_short", key='-alert_tomeshort', size=(25,1), tooltip="change author in alert to 'me_short'", visible=True),
+            sg.Button("author: me_short", key='-alert_tomeshort', size=(30,1), tooltip="change author in alert to 'me_short'", visible=True),
             sg.Button("3 exits 1 SL", key='-alert_exits', size=(20,1), tooltip="change exits to PT1 20% PT2 40% PT3 60% SL 50%'", visible=True),
             sg.Stretch()
            ]
