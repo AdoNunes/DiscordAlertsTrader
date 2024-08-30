@@ -376,7 +376,8 @@ def run_gui():
         # handle alert buttons
         elif event == '-toggle':
             state = window[event].GetText()
-            butts = ['-alert_to-', '-alert_BTO', '-alert_STC', '-alert_STO', '-alert_BTC', '-alert_exitupdate', '-alert_quotes']
+            butts = ['-alert_to-', '-alert_BTO', '-alert_STC', '-alert_STO', '-alert_BTC', '-alert_exitupdate',
+                     '-alert_quotes', '-alert_plot', '-alert_tome', '-alert_tomeshort', '-alert_exits' ]
             if state == '▲':
                 window[event].update(text='▼')            
             else:
@@ -397,6 +398,14 @@ def run_gui():
                 author, alert = msg_split
             else:
                 author, alert = "author", msg_split[0]
+            
+            if event.startswith('-alert_tome'):
+                author = "me" if event == '-alert_tome' else "me_short"
+                msg = f"{author}, {alert.strip()}"
+                window.Element("-subm-msg").Update(value=msg)
+                window.Element(event).Update(button_color=ori_col)
+                continue   
+
             # fix missing price, none price, no action
             if "@" not in alert:
                 alert += " @0.01"
@@ -429,6 +438,8 @@ def run_gui():
                 order['Qty'] = 1
             if action =='exitupdate':
                 msg =  f"{author}, Exit Update {symbol} PT 50% SL 50%"
+            elif action == 'exits':
+                msg =  f"{author}, Exit Update {symbol} PT1 20% PT2 40% PT3 60% SL 50%"
             elif action == 'quotes': 
                 action_msg = order['action'].replace('ExitUpdate', "BTO")
                 

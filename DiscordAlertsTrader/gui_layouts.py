@@ -35,7 +35,7 @@ def trigger_alerts_layout():
            
            sg.Button('▲', key='-toggle',   enable_events=True, 
                                  tooltip='Show/hide change alert action'),
-            sg.Input(default_text="Author#1234, STC 1 AAA 115C 05/30 @2.5 [click portfolio row number to prefill]",
+            sg.Input(default_text="Author, STC 1 AAA 115C 05/30 @2.5 [click port row number to prefill]",
                     size= (100,1), key="-subm-msg",
                     tooltip=tp_trig),
            sg.Button("Trigger alert", key="-subm-alert", 
@@ -49,6 +49,9 @@ def trigger_alerts_layout():
             sg.Button("ExitUpdate", key='-alert_exitupdate', size=(20,1), tooltip="Once clicked portfolio row change prefilled STC to exit update", visible=True),
             sg.Button("Get quotes", key='-alert_quotes', size=(20,1), tooltip="get quotes from alerts in trigger box. In alert pass prices as @m to get market price", visible=True),
             sg.Button("Plot quotes", key='-alert_plot', size=(20,1), tooltip="plot daily quotes from alerts in trigger box", visible=True),
+            sg.Button("author: me", key='-alert_tome', size=(20,1), tooltip="change author in alert to 'me'", visible=True),
+            sg.Button("author: me_short", key='-alert_tomeshort', size=(25,1), tooltip="change author in alert to 'me_short'", visible=True),
+            sg.Button("3 exits 1 SL", key='-alert_exits', size=(20,1), tooltip="change exits to PT1 20% PT2 40% PT3 60% SL 50%'", visible=True),
             sg.Stretch()
            ]
            ]
