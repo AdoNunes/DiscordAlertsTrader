@@ -155,6 +155,8 @@ def jpm_formatting(message_):
     for mb in message.embeds:
         if mb.description:
             alert += mb.description
+    if not len(alert):
+        alert = message.content
     if len(alert):
         pattern = r'([A-Z]+)\s(\d{1,2}\/\d{1,2})\s*(\d+[.\d+]*[c|p|C|P])\s*@\s*(\d+(?:[.]\d+)?|\.\d+)'
         match = re.search(pattern, alert, re.IGNORECASE)
@@ -244,33 +246,33 @@ def jpa_formatting(message_):
     """
     message = MessageCopy(message_)
     alert = ""
-
     for mb in message.embeds:
         if "Jpa" in mb.description:
             message.author.name = "JPA"
         if "Contract Found:" in mb.description:
-            # Contract Found: AAPL_041924_170_P Live Price: 1.11 Alert Price: 1.11
-            exp = r'([A-Z]+)_([\d]+)_([\d]+)_(c|p|C) .* ([\d.]+)'
+            exp = r'([A-Z]+)_([\d]+)_([\d]+)_(C|P) Live Price: ([\d.]+) Alert Price: ([\d.]+)'
             match = re.search(exp, mb.description, re.IGNORECASE)
             if match:
-                contract, expiration, strike, otype, price = match.groups()
+                contract, expiration, strike, otype, live_price, alert_price = match.groups()
                 expiration = f"{expiration[:2]}/{expiration[2:4]}"
-                alert = f"BTO {contract} {expiration} {strike}{otype.upper()} @{price}"
-                continue
-        # alert = format_0dte_weeklies(mb.description, message, False)
-        # alert = alert.replace(" calls", "C").replace(" puts", "P")
-        # exp = r'\$([A-Z]+) ([\d.]+)(c|p|C) .* ([\d.]+)'
-        # match = re.search(exp, alert, re.IGNORECASE| re.DOTALL)
-        # if match:
-        #     contract, strike, otype, price = match.groups()
-        #     # get exp date
-        #     match = re.search(r'(\d{1,2}\/\d{1,2})', alert)
-        #     if match:
-        #         expdate = match.group(1)
-        #         alert = f"BTO {contract} {strike}{otype.upper()} {expdate} @{price}"
-        #     else:
-        #         alert = f"BTO {contract} {strike}{otype.upper()} weeklies @{price}"
-        #         alert = format_0dte_weeklies(alert, message, False)
+                
+                if alert_price is not None or float(alert_price)> 0:
+                    price = alert_price
+                else:
+                    price = live_price  # Use live price if we can't find the price in the content
+                
+                alert = f"BTO {contract} {strike}{otype} {expiration} @{price}"
+                break  # Exit the loop once we've found and processed the contract information
+
+    if not alert:
+        # Fallback parsing if we didn't find the contract information
+        exp = r'\$([A-Z]+) ([\d.]+)(c|p|C|P) for ([\d.]+)'
+        match = re.search(exp, message.content, re.IGNORECASE)
+        if match:
+            contract, strike, otype, price = match.groups()
+            expiration = message.created_at.strftime('%m/%d')  # Use current date if not specified
+            alert = f"BTO {contract} {strike}{otype.upper()} {expiration} @{price}"
+
     message.content = alert
     return message
 
@@ -279,30 +281,31 @@ def nitro_formatting(message_):
     Reformat Discord message from nitro trades
     """
     message = MessageCopy(message_)
-    alert = ""
+    
+    alert = ''
     for mb in message.embeds:
-        if mb.title == 'Entry':
-            description = mb.description
-            contract_match = re.search(r'\*\*Contract:\*\*[ ]+([A-Z]+)[ ]+?(\d{1,2}\/\d{1,2})?[ ]*?\$?([0-9]+)([cCpP])', description)
-            fill_match = re.search(r'\*\*Price:\*\* ?\$?([\d.]+)', description)
+        if mb.description:
+            alert += mb.description
+    if not len(alert):
+        alert = message.content
+    if len(alert):
+        if 'Entry' in alert:
+            contract_match = re.search(r'\*\*Contract:\*\*[ ]+([A-Z]+)[ ]+?(\d{1,2}\/\d{1,2})?[ ]*?\$?([0-9]+)([cCpP])', alert)
+            fill_match = re.search(r'\*\*Price:\*\* ?\$?([\d.]+)', alert)
 
-            if contract_match is None:
-                alert = f"{mb.title}: {mb.description}"
-                continue
-            contract, exp_date, strike, otype = contract_match.groups()
-            if fill_match is not None:
-                price= float(fill_match.groups()[0])
-            else:
-                price = None
-            if exp_date is None:
-                if contract in ["QQQ", "SPY", "IWM"]:
-                    exp_date = "0DTE"
+            if contract_match:               
+                contract, exp_date, strike, otype = contract_match.groups()
+                if fill_match is not None:
+                    price= float(fill_match.groups()[0])
                 else:
-                    exp_date = "Weeklies"
-            bto = f"BTO {contract} {strike}{otype.upper()} {exp_date} @{price}"
-            alert += format_0dte_weeklies(bto, message, False)
-        else:
-            alert = f"{mb.title}: {mb.description}"
+                    price = None
+                if exp_date is None:
+                    if contract in ["QQQ", "SPY", "IWM"]:
+                        exp_date = "0DTE"
+                    else:
+                        exp_date = "Weeklies"
+                bto = f"BTO {contract} {strike}{otype.upper()} {exp_date} @{price}"
+                alert += format_0dte_weeklies(bto, message, False)
 
     if len(alert):
         message.content = alert
