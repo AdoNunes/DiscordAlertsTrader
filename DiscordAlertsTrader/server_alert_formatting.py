@@ -163,15 +163,13 @@ def jpm_formatting(message_):
         if match:
             ticker, expdate, strike, price = match.groups()
             # BTO always have SL
-            action = "BTO" if mb.title == 'Open' else "STC"
+            action = "BTO" if 'Open' in alert else "STC"
             ext = "" if action =='BTO' or " out" in alert else f" trim "
             if 'lotto' in alert.lower():
                 ext += " lotto"
             if "trim" in ext:
                 ext += alert.split(price)[-1]
             alert = f"{action} {ticker} {strike.upper()} {expdate} @{price} {ext}"
-        else:
-            alert = f"{mb.title}: {mb.description}"
         message.content = alert
     return message
 
