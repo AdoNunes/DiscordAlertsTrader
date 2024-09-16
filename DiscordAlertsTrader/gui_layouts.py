@@ -421,7 +421,7 @@ def layout_config(fnt_h, cfg):
 
     [sg.Text("STO price:",
                 tooltip='Use price: bid, ask, last or alert'), 
-        sg.Drop(values=['bid', 'ask', 'last', 'alert'], default_value=cfg['shorting']['STO_price'],
+        sg.Drop(values=['bid', 'ask', 'mid', 'last', 'alert'], default_value=cfg['shorting']['STO_price'],
                 key="cfg_shorting.STO_price",enable_events=True,
                 tooltip='Use price: bid, ask, last or alert'),
         sg.Stretch()],

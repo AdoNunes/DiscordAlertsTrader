@@ -255,12 +255,12 @@ class AlertsTrader():
                     self.queue_prints.put([str_msg, "", "red"])
                     return "no", order, False
             
-            # use current price as ask, bid or last, or alerted
+            # use current price as ask, bid, mid, last, or alert
             sto_price = cfg['shorting']['STO_price']
             check_price = True
             if sto_price == 'alert':
                 check_price = False            
-            ptype = "BTO" if sto_price == "ask" else "last" if sto_price == "last" else "STO"
+            ptype = "BTO" if sto_price in ["ask", "mid"] else "last" if sto_price == "last" else "STO"
             if check_price:
                 order["price_actual"] = self.price_now(order['Symbol'], ptype, 1 )
             else:
@@ -281,7 +281,12 @@ class AlertsTrader():
                 # if price diff not too high, use current price
                 if pdiff < eval(self.cfg['shorting']['max_price_diff']):
                     if check_price:
-                        order['price'] = self.price_now(order['Symbol'], ptype, 1 )
+                        if sto_price == 'mid':
+                            p1 = self.price_now(order['Symbol'], "BTO", 1 )
+                            p2 = self.price_now(order['Symbol'], "STO", 1 )
+                            order['price'] = (p1+p2)/2
+                        else:
+                            order['price'] = self.price_now(order['Symbol'], ptype, 1 )
                     else:   
                         order['price'] = order['price_actual']
                 else:
