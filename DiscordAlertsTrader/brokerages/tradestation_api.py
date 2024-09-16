@@ -424,7 +424,7 @@ class TS(BaseBroker):
             "OrderType": "Limit",
             "TimeInForce": {"Duration": 'GTC'},
             'LimitPrice': str(price),
-            'Quantity': str(Qty),
+            'Quantity': str(int(Qty)),
             "Route": "Intelligent",
             }
         if len(Symbol.split("_")) > 1:
@@ -496,7 +496,7 @@ class TS(BaseBroker):
                 
         order = {"AccountID": self.accountId,
                 "Symbol": Symbol,
-                "Quantity": str(Qty),
+                "Quantity": str(int(Qty)),
                 "OrderType": "Limit",
                 "TradeAction": action_name,
                 'LimitPrice' : str(price),
@@ -520,7 +520,7 @@ class TS(BaseBroker):
                 
         order = {"AccountID": self.accountId,
                 "Symbol": Symbol,
-                "Quantity": str(Qty),
+                "Quantity": str(int(Qty)),
                 "OrderType": "StopMarket",
                 "TradeAction": action_name,
                 'StopPrice' : str(SL),
