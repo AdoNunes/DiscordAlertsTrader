@@ -150,11 +150,12 @@ class eTrade(BaseBroker):
         # get orders and add them to acc_inf
         orders = self.get_orders()
         orders_inf =[]
-        for order in orders:
-            order_status = order['OrderDetail'][0]['status'].upper()
-            if order_status in ['CANCELED','CANCELLED', 'REJECTED', 'EXPIRED']:
-                continue
-            orders_inf.append(self.format_order(order))
+        if orders is not None:
+            for order in orders:
+                order_status = order['OrderDetail'][0]['status'].upper()
+                if order_status in ['CANCELED','CANCELLED', 'REJECTED', 'EXPIRED']:
+                    continue
+                orders_inf.append(self.format_order(order))
         acc_inf['securitiesAccount']['orderStrategies'] = orders_inf
         
         try:
