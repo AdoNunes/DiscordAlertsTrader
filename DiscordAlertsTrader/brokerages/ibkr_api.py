@@ -6,7 +6,7 @@ from DiscordAlertsTrader.configurator import cfg
 from datetime import datetime
 import time
 import asyncio
-
+import random
 
 class IBKR(BaseBroker):
     def __init__(self,accountId=None):
@@ -17,11 +17,25 @@ class IBKR(BaseBroker):
 
         nest_asyncio.apply()
 
+    def connect_get(self, method_name, args, is_list=False):
+        ib = IB()
+        ib.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=random.randint(1, 1000) )
+        self.ib.sleep(0.1)        
+        method = getattr(ib, method_name)
+        if is_list:
+            resp = method(args)
+        else:
+            resp = method(**args)
+        ib.sleep(0.1)
+        ib.disconnect()
+        return resp
+
+    
     def get_session(self):
         if self.ib.isConnected():
             return True
         else:
-            self.ib.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=cfg['IBKR']['clientId'])
+            self.ib.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=random.randint(1, 1000))
             self.ib.sleep(0.1)
             return self.ib.isConnected()
     
@@ -160,10 +174,8 @@ class IBKR(BaseBroker):
     
     def get_order_info(self, order_id):        
         
-        self.ib2.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=int(cfg['IBKR']['clientId'])+1)
-        trades = self.ib2.trades()
-        self.ib2.disconnect()
-
+        trades = self.connect_get('trades', {})
+        
         for trade in trades:
             if trade.order.orderId == order_id:
                 trade = trade.update()  # that does not work, stuck in submitted
@@ -228,46 +240,30 @@ class IBKR(BaseBroker):
         # contract = self.ib.qualifyContracts(contract)[0] 
         # self.ib.sleep(1)
 
-        self.ib2.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=int(cfg['IBKR']['clientId'])+1)
-        
         if(order.orderType == 'OCA'):
             order_ids = []
             for o in orders:
-                self.ib2.placeOrder(contract, o)
+                self.connect_get('placeOrder', {'contract':contract, 'order':o})
                 order_ids.append(o.orderId)
-                self.ib2.sleep(0.1)
-            self.ib2.disconnect()
             return order_ids
         else:
-
-            trade = self.ib2.placeOrder(contract, order)
-            self.ib2.sleep(0.1)
-            print(contract)
-            print(order)
-            print(trade)
+            trade = self.connect_get('placeOrder', {'contract':contract, 'order':order})
+            # print(contract)
+            # print(order)
+            # print(trade)
 
             trade.update()
-            self.ib2.disconnect()
             return trade.orderStatus.status, order.orderId
     
     def get_con_id(self, symbol:str):
         "Get contract id for a given symbol"
-        if "_" in symbol:
-            
+        if "_" in symbol:            
             contract = self._convert_option_to_ibkr(symbol)
-            self.ib2.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=int(cfg['IBKR']['clientId'])+1)
-            contract = self.ib2.qualifyContracts(contract)[0]
-            self.ib2.sleep(0.1)
-            self.ib2.disconnect()
-
-            conId = contract.conId if contract else None
-            return conId
+            contract = self.connect_get('qualifyContracts', contract, is_list=True)[0]
         else:
-            self.ib2.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=int(cfg['IBKR']['clientId'])+1)
-            contract = self.ib2.qualifyContracts(contract)
-            self.ib2.disconnect()
-            conId = contract.conId if contract else None
-            return conId
+            contract = self.connect_get('qualifyContracts', contract, is_list=True)
+        conId = contract.conId if contract else None
+        return conId
     
     def make_BTO_lim_order(self, Symbol:str, Qty:int, price:float, action="BTO", **kwarg):
         "Buy with a limit order"
@@ -409,14 +405,12 @@ class IBKR(BaseBroker):
         
         quotes = {}
         for symbol in symbols:
-            print(symbol)
+            # print(symbol)
             con_id = self.get_con_id(symbol)
             contract = Contract(conId=con_id, exchange='SMART', currency='USD')
             self.ib.sleep(0.1)
-
-            self.ib2.connect(cfg['IBKR']['host'], cfg['IBKR']['port'], clientId=int(cfg['IBKR']['clientId'])+1)
-            quote = self.ib2.reqTickers(contract)
-            self.ib2.disconnect()
+            
+            quote = self.connect_get('reqTickers',contract, is_list=True)
 
             self.ib.sleep(0.1)
             quotes[symbol] = {

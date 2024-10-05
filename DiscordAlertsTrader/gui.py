@@ -340,7 +340,7 @@ def run_gui():
                 pix = values['_track_'][0]
                 dt, hdr = gg.get_tracker_data(track_exc, **values)
                 qty = dt[pix][hdr.index('Qty')]  
-            qty = qty if qty == "" else int(qty) 
+            qty = qty if qty == "" else int(float(qty)) 
             try:
                 symb = dt[pix][hdr.index('Symbol')]
             except: 
