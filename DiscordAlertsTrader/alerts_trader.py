@@ -675,6 +675,10 @@ class AlertsTrader():
                 return
 
             order_status, order_info = self.get_order_info(order_id)
+            if order_status is None and self.bksession.name == "IBKR":
+                order_status = "FILLED"
+                order_info = order
+                
             if order_status == 'REJECTED':                
                 log_alert['action'] = "REJECTED"
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
