@@ -675,7 +675,7 @@ class AlertsTrader():
                 return
 
             order_status, order_info = self.get_order_info(order_id)
-            if order_status is None and self.bksession.name == "IBKR":
+            if order_info is None and self.bksession.name == "ibkr":
                 order_status = "FILLED"
                 order_info = order
                 
