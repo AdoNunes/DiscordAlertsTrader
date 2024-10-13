@@ -29,6 +29,40 @@ delete_port = False
 author = "algoAi"
 
 
+chan_ids = {
+    "mbag1": 1187162844362448896,
+    "mbag2": 1189180874265210961,
+    "theta_warrior_elite": 897625103020490773,
+    "demon": 1167160585511776357,
+    "eclipse": 1213995695237763145,
+    "moneymotive": 1012144319282556928,
+    "moneymotiveA+": 1214378575554150440,
+    "bishop": 1195073059770605568,
+    "makeplays": 1164747583638491156,
+    "kingmaker": 1152082112032292896,
+    "oculus": 1222679083155193867,
+    'diesel': 1107395495460081754,
+    'ddking': 1225020986953437305,
+    "crimson": 1102753361566122064,
+    "HH": 1197849899627184149,
+    "HH2k": 867390497115209728,
+    "vader": 1235324287703973998,
+    "gianni": 1209992523083415603,
+    "og-alerts": 1207717868716826645,
+    "EM": 1126325195301462117,
+    "vader-swings":1235324289222443008,
+    "rough": 989674163331534929,
+    'opccpro': 1125655265312776274,
+    "bear": 1221951478621540384,
+    'prophi': 1216951944933933137,
+    "stb": 959672267929956413,
+    "sti": 1175048558639058985,
+    "gandalf": 910228981536653342,
+    "psa": 1199936454797824010,
+    "algoAi": 1237566888062750791,
+    "jpm": 1221952610987147284,
+    }
+
 def get_timestamp(row):
     date_time = row[DataType.DATE] + timedelta(milliseconds=row[DataType.MS_OF_DAY])
     return date_time.timestamp()
@@ -69,39 +103,6 @@ def save_or_append_quote(quotes, symbol, path_quotes, overwrite=False):
     df.to_csv(fname, index=False)
 
 
-chan_ids = {
-    "mbag1": 1187162844362448896,
-    "mbag2": 1189180874265210961,
-    "theta_warrior_elite": 897625103020490773,
-    "demon": 1167160585511776357,
-    "eclipse": 1213995695237763145,
-    "moneymotive": 1012144319282556928,
-    "moneymotiveA+": 1214378575554150440,
-    "bishop": 1195073059770605568,
-    "makeplays": 1164747583638491156,
-    "kingmaker": 1152082112032292896,
-    "oculus": 1222679083155193867,
-    'diesel': 1107395495460081754,
-    'ddking': 1225020986953437305,
-    "crimson": 1102753361566122064,
-    "HH": 1197849899627184149,
-    "HH2k": 867390497115209728,
-    "vader": 1235324287703973998,
-    "gianni": 1209992523083415603,
-    "og-alerts": 1207717868716826645,
-    "EM": 1126325195301462117,
-    "vader-swings":1235324289222443008,
-    "rough": 989674163331534929,
-    'opccpro': 1125655265312776274,
-    "bear": 1221951478621540384,
-    'prophi': 1216951944933933137,
-    "stb": 959672267929956413,
-    "sti": 1175048558639058985,
-    "gandalf": 910228981536653342,
-    "psa": 1199936454797824010,
-    "algoAi": 1237566888062750791,
-    "jpm": 1221952610987147284,
-    }
 chan_id = chan_ids[author]
 if not use_theta_rest_api:
     client = ThetaClient(username=cfg["thetadata"]["username"],

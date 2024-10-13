@@ -37,7 +37,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
                 pts_ratio = [1],
                 TS=0,
                 SL=45,
-                TS_buy= 10,
+                TS_buy= 0,
                 TS_buy_type= 'inverse',
                 avg_down=None,
                 sl_update = None,
@@ -83,7 +83,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
     invert_contracts : bool, optional
         Truns a put in to a call and viceversa, by default False
     initial_price : str, optional
-        'ask', 'bid', "price_actual", "ask_+10" == ask +10, by default 'ask'
+        'ask', 'bid', "price_actual", "mid", "ask_+10" == ask +10, by default 'ask'
     PT : list of int, optional
         Profit target percent, by default [80]
     pts_ratio : list of int, optional
@@ -243,7 +243,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
         margin = 0
     # Iterate over the trades
     for idx, row in port.iterrows():
-        # idx = 1032
+        # idx = 225
         # row = port.loc[idx]
         if pd.isna(row['Price-actual']) and not with_theta and not with_poly:
             if verbose:
@@ -323,6 +323,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             price_curr = quotes['bid'].iloc[0]
         elif 'price_actual' in initial_price:
             price_curr = row['Price-actual']
+        elif 'mid' in initial_price:
+            price_curr = (quotes['ask'].iloc[0] + quotes['bid'].iloc[0])/2
 
         offset = None
         if "_" in initial_price:
@@ -690,41 +692,42 @@ if __name__ == '__main__':
     params = {
         # 'fname_port': '../algoalerter/data\HHscanner_port_delta0.4_179feats_ssnorm_ML_65conf.csv',
         'fname_port': 'data/algoAi_port.csv',
+        # 'fname_port': 'data/vader_port.csv',
         # 'fname_port':'../algoalerter\data\HHscanner_port_delta0.4_179feats_buy_ML_preds_0.6conf.csv',
         # 'fname_port':'../algoalerter\data\HH2k_port2_delta0.3_179feats_lastyear_ML_preds_0.6conf.csv',
         # 'fname_port':'../algoalerter\data/HH2k_port2_delta0.4_179feats_lastyear_nofeb_ML_preds.csv_0.6conf.csv',
         # 'fname_port': 'data/EM_port.csv',
         # 'fname_port':'../algoalerter/data/HH2k_port2_delta0.4_179feats_lastyear_ask_preds.csv',
         'trade_type': 'STO',
-        'last_days': None,
+        'last_days':100,
         'filt_date_frm': "",
         'filt_date_to': "",
         'stc_date':'eod', #'stc alert', #,'exp',# ,  #  # 'eod' or
         'max_underlying_price': "",
         # 'min_price': 60,
-        'max_dte': 10,
+        'max_dte': 4,
         'min_dte': 0,
         'filt_hour_frm': "",
-        'filt_hour_to': "",
-        'include_authors': "",
+        'filt_hour_to':"" ,
+        'include_authors':"",
         # 'exclude_symbols': ["SPY", "QQQ"],
-        'initial_price' : 'bid', #'bid_+5', #'ask', #  'ask_+10',
-        'PT': [50], #[20,25,35,45,55,65,95,],# [90],#
+        'initial_price' : 'mid', #'bid_+5', #'ask', #  'ask_+10',
+        'PT': [125], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], #
         # 'sl_update' :  [ [1.8, 1.3], [2, 1.5]], #   [[1.20, 1.05], [1.5, 1.3]], #
         # "pt_update" : [ [.3,0.7], [.3,0.7]], #   None, #
         # 'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #
-        'SL': 50,
+        'SL': 70,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
-        'max_margin': 600000,
-        'short_under_amnt' : None,
+        'max_margin': 57000,
+        'short_under_amnt' : 1000,
         'min_trade_val': 500,
         'verbose': True,
-        'trade_amount': 1,
-        # "sell_bto": True,
-        "max_short_val": 4000,
+        'trade_amount': 1000,
+        "sell_bto": False,
+        "max_short_val": 1800,
         "invert_contracts": False,
         "do_plot": False
     }
@@ -737,7 +740,7 @@ if __name__ == '__main__':
 
     sport = port[['Date','Symbol','Trader', 'Price', 'strategy-PnL',
                 'strategy-PnL$','strategy-entry','strategy-exit', 'strategy-close_date','reason_skip']] #
-
+    sport[['Symbol', 'strategy-entry', 'strategy-PnL', 'strategy-PnL$']]
     result_td =  generate_report(port, param, None, verbose=True)
 
     if 1:
@@ -800,7 +803,7 @@ if __name__ == '__main__':
         res = np.stack(res)
         sorted_indices = np.argsort(res[:, 4])
         sorted_array = res[sorted_indices].astype(int)
-        print(sorted_array[-20:])
+        print(sorted_array[:20])
         hdr = ['PT', 'SL', 'TS_buy', 'TS', 'pnl', 'pnl$', 'trade count', 'win rate']
 
         df = pd.DataFrame(sorted_array, columns=hdr)

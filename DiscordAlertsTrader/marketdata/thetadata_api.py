@@ -156,12 +156,18 @@ class ThetaClientAPI:
         
         return data
 
+    def get_exps(self, symbol: str):
+        url = 'http://127.0.0.1:25510/v2/list/expirations?root=' + symbol
+        header ={'Accept': 'application/json'}
+        response = requests.get(url, headers=header, timeout=10)
+        return response.json()['response']
+    
     def get_currentgeeks(self, symbol: str, date_range: List[date]):
         
         expdate, root, right, strike, date_s, date_e = self.info_option(symbol, date_range)
         url = f'http://127.0.0.1:25510/v2/bulk_snapshot/option/greeks?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}&rth=true'
         header ={'Accept': 'application/json'}
-        response_quotes = requests.get(url, headers=header)
+        response_quotes = requests.get(url, headers=header, timeout=10)
         df_q = pd.read_csv(io.StringIO(response_quotes.content.decode('utf-8')))
         df_q['timestamp'] = df_q.apply(get_timestamp_, axis=1)
         if not len(df_q):
@@ -301,6 +307,7 @@ class ThetaClientAPI:
             ms_of_day = (dt.hour*3600 + dt.minute*60 + dt.second)* 1000 
             ix_g = np.argmin(abs(df_q['ms_of_day'] - ms_of_day))
             this_delta = df_q.iloc[ix_g]['delta']
+            this_df = df_q.iloc[ix_g]
             
             print("delta", this_delta, strike)
             if abs(this_delta) - abs(delta) < 0.1:
@@ -323,7 +330,7 @@ class ThetaClientAPI:
             st_info.append((strike, this_delta))
         
         exp_date_f = datetime.strptime(exp_date, "%Y%m%d").strftime("%m%d%y")
-        return f"{ticker}_{exp_date_f}{right}{strike/1000}".replace(".0", ""), this_delta
+        return f"{ticker}_{exp_date_f}{right}{strike/1000}".replace(".0", ""), this_delta, this_df
 
     def get_open_interest(self, symbol: str, date_range: List[date]):
         
@@ -332,7 +339,7 @@ class ThetaClientAPI:
         # date to ny time
         url = f'http://127.0.0.1:25510/v2/hist/option/open_interest?exp={expdate}&right={right}&strike={strike}&start_date={date_s}&end_date={date_e}&use_csv=true&root={root}' 
         header ={'Accept': 'application/json'}
-        response = requests.get(url, headers=header)
+        response = requests.get(url, headers=header, timeout=10)
         if response.content.startswith(b'No data for'):
             return None
         # get quotes and trades to merge the with second level quotes

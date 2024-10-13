@@ -65,6 +65,8 @@ def server_formatting(message):
         message = wolfwebull_formatting(message)
     elif message.channel.id in [1187162844362448896, 1189180874265210961]:
         message = nvstly_alerts(message)
+    elif message.channel.id in [1244040902582865937]:
+        message = cblast_alerts(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     else:
@@ -734,6 +736,25 @@ def oculus_alerts(message_):
         alert = format_0dte_weeklies(alert, message, remove_price=False)
 
     pattern = r'\$(\w+)\s+\$?(\d[\d,]+)\s+(\w+)\s+(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s+@([\d.]+)'
+    match = re.search(pattern, alert, re.IGNORECASE)
+    if match:
+        ticker, strike, otype, expDate, price = match.groups()
+        alert = f"BTO {ticker} {strike.upper()}{otype[0]} {expDate} @{price}"
+        message.content = alert
+    return message
+
+
+def cblast_alerts(message_):
+    """
+    Reformat Discord message from cblast to content message
+    """
+    message = MessageCopy(message_)
+    alert = message.content
+    if not alert:
+        return message
+
+    # format:  $AI 29c 10/18 at 0.16
+    pattern = r'\$([A-Z]+)\s+(\d+)([c|p|C|P])\s+(\d{1,2}\/\d{1,2})\s+at\s+([\d.]+)'
     match = re.search(pattern, alert, re.IGNORECASE)
     if match:
         ticker, strike, otype, expDate, price = match.groups()
