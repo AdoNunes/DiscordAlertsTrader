@@ -235,8 +235,10 @@ class IBKR(BaseBroker):
 
 
         #refer to https://ib-insync.readthedocs.io/api.html#module-ib_insync.contract
-
-        contract = Contract(conId=order_dict['conId'], exchange='SMART', currency='USD')
+        if order['Symbol'] == "SPXW":
+            contract = Contract(conId=order_dict['conId'], multiplier='100', exchange='SMART', currency='USD', tradingClass='SPXW')
+        else:
+            contract = Contract(conId=order_dict['conId'], exchange='SMART', currency='USD')
         # contract = self.ib.qualifyContracts(contract)[0] 
         # self.ib.sleep(1)
 
@@ -273,7 +275,6 @@ class IBKR(BaseBroker):
             kwargs['action'] = "BUY"
         elif action == "STO":
             kwargs['action'] = "SELL"
-        Symbol = self.fix_symbol(Symbol, "in")
 
         if (("_" in Symbol) or (" " in Symbol)):
             kwargs['asset'] = 'OPT'
@@ -287,6 +288,8 @@ class IBKR(BaseBroker):
         kwargs['quant'] = Qty  
         kwargs['orderType'] = 'LMT' 
         kwargs['lmtPrice'] = price
+        if Symbol == "SPXW":
+            kwargs['lmtPrice'] = round(price / 0.05) * 0.05
         kwargs['conId'] = self.get_con_id(Symbol)
 
         return kwargs if kwargs['conId'] is not None else None
@@ -299,7 +302,6 @@ class IBKR(BaseBroker):
         elif action == "BTC":
             kwargs['action'] = "BUY"
 
-        Symbol = self.fix_symbol(Symbol, "in")
         if (("_" in Symbol) or (" " in Symbol)):
             kwargs['asset'] = 'OPT'
 
@@ -333,7 +335,6 @@ class IBKR(BaseBroker):
         elif action == "BTC":
             kwargs['action'] = "BUY"
 
-        Symbol = self.fix_symbol(Symbol, "in")
         if "_" in Symbol:
             kwargs['asset'] = 'OPT'
             
@@ -358,7 +359,6 @@ class IBKR(BaseBroker):
         elif action == "BTC":
             kwargs['action'] = "BUY"
 
-        Symbol = self.fix_symbol(Symbol, "in")
         if "_" in Symbol:
             kwargs['asset'] = 'OPT'
         else:
@@ -383,7 +383,6 @@ class IBKR(BaseBroker):
         elif action == "BTC":
             kwargs['action'] = "BUY"
 
-        Symbol = self.fix_symbol(Symbol, "in")
         if "_" in Symbol:
             kwargs['asset'] = 'OPT'
         else:
@@ -407,7 +406,10 @@ class IBKR(BaseBroker):
         for symbol in symbols:
             # print(symbol)
             con_id = self.get_con_id(symbol)
-            contract = Contract(conId=con_id, exchange='SMART', currency='USD')
+            if symbol == "SPXW":
+                contract = Contract(conId=con_id, multiplier='100', exchange='SMART', currency='USD', tradingClass='SPXW')
+            else:
+                contract = Contract(conId=con_id, exchange='SMART', currency='USD')
             self.ib.sleep(0.1)
             
             quote = self.connect_get('reqTickers',contract, is_list=True)
@@ -476,7 +478,11 @@ class IBKR(BaseBroker):
         date = year + month + date
         right = (option_part[6])
         strike = float(option_part[7:])
-    
+
+        if symb == "SPXW":
+            return  Contract(secType='OPT',symbol=symb,lastTradeDateOrContractMonth=date,
+                             strike=strike,right=right,multiplier='100',exchange='SMART',
+                             currency='USD',tradingClass='SPXW')
         return Option(symbol=symb, lastTradeDateOrContractMonth=date, \
                               strike=strike, right=right, \
                                 exchange='SMART', currency='USD')
