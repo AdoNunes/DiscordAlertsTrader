@@ -678,6 +678,8 @@ class AlertsTrader():
             if order_info is None and self.bksession.name == "ibkr":
                 order_status = "FILLED"
                 order_info = order
+                order_info['quantity'] = order['Qty']
+                order_info['filledQuantity'] = order['Qty']
                 
             if order_status == 'REJECTED':                
                 log_alert['action'] = "REJECTED"
