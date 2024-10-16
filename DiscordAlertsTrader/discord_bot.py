@@ -398,7 +398,7 @@ if __name__ == '__main__':
     from DiscordAlertsTrader.configurator import cfg, channel_ids
     from DiscordAlertsTrader.brokerages import get_brokerage
     bksession = get_brokerage()
-    client = DiscordBot(brokerage=bksession, cfg=cfg)
+    client = DiscordBot(brokerage=bksession, cfg=cfg, live_quotes=False)
     client.run(cfg['discord']['discord_token'])
 
 
