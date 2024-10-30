@@ -46,6 +46,8 @@ Supports any Discord channel with structured BTP/STC alerts as message contents 
 
 Let me know if you find the package useful or need support by dropping me a DM or visiting the [discord server](https://discord.gg/9ejghcjpar)
 
+Enjoy this package for free. If you need me to add a customized parsing for an analyst not implemented already, or need a remote desktop session with me to install the package: $50
+
  ________________________
 <img src="media/autotrader_instructions.png" alt="Instructions" width="500" height="300">
 <img src="media/GUI_analysts_portfolio.PNG" alt="Analysts Portfolio" width="500" height="300">
