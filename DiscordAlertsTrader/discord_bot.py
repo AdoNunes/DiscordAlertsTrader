@@ -372,9 +372,8 @@ class DiscordBot(discord.Client):
 
         # in authors shorting list
         elif author.lower() in split_strip(self.cfg['shorting']['authors_subscribed']):
-            if order['asset'] != "option":
-                return False, order
-            # BTC order sent manullay from gui
+
+            # short order sent manullay from gui
             if order["action"] in ["BTC", "STO"] and channel in ["GUI_user", "GUI_both"]:
                 return True, order
             # Make it shorting order
@@ -383,6 +382,10 @@ class DiscordBot(discord.Client):
             if (order["action"] == "BTC" and not self.cfg['shorting'].getboolean('DO_BTC_TRADES')) \
                 or (order["action"] == "STO" and not self.cfg['shorting'].getboolean('DO_STO_TRADES')):
                 return False, order
+            
+            if order['asset'] == 'stock':
+                return True, order
+            
             if len(self.cfg['shorting']['max_dte']):
                 if order['dte'] <= int(self.cfg['shorting']['max_dte']):
                     return True, order

@@ -192,7 +192,6 @@ class IBKR(BaseBroker):
             return symbol.replace("SPX", "SPXW").replace("NDX", "NDXP")
     
     def send_order(self, order_dict:dict):
-        
         order = Order()
         order.action = order_dict['action']
         order.totalQuantity = order_dict['quant']
@@ -235,7 +234,7 @@ class IBKR(BaseBroker):
 
 
         #refer to https://ib-insync.readthedocs.io/api.html#module-ib_insync.contract
-        if order['Symbol'] == "SPXW":
+        if order['Symbol'].startswith("SPXW"):
             contract = Contract(conId=order_dict['conId'], multiplier='100', exchange='SMART', currency='USD', tradingClass='SPXW')
         else:
             contract = Contract(conId=order_dict['conId'], exchange='SMART', currency='USD')
@@ -288,7 +287,7 @@ class IBKR(BaseBroker):
         kwargs['quant'] = Qty  
         kwargs['orderType'] = 'LMT' 
         kwargs['lmtPrice'] = price
-        if Symbol == "SPXW":
+        if Symbol.startswith("SPXW"):
             kwargs['lmtPrice'] = round(price / 0.05) * 0.05
         kwargs['conId'] = self.get_con_id(Symbol)
 
@@ -406,7 +405,7 @@ class IBKR(BaseBroker):
         for symbol in symbols:
             # print(symbol)
             con_id = self.get_con_id(symbol)
-            if symbol == "SPXW":
+            if symbol.startswith("SPXW"):
                 contract = Contract(conId=con_id, multiplier='100', exchange='SMART', currency='USD', tradingClass='SPXW')
             else:
                 contract = Contract(conId=con_id, exchange='SMART', currency='USD')
@@ -479,7 +478,7 @@ class IBKR(BaseBroker):
         right = (option_part[6])
         strike = float(option_part[7:])
 
-        if symb == "SPXW":
+        if symb.startswith("SPXW"):
             return  Contract(secType='OPT',symbol=symb,lastTradeDateOrContractMonth=date,
                              strike=strike,right=right,multiplier='100',exchange='SMART',
                              currency='USD',tradingClass='SPXW')

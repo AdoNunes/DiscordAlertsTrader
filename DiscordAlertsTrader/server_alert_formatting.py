@@ -984,6 +984,8 @@ def nvstly_alerts(message_):
     message = MessageCopy(message_)
     for mb in message.embeds:
         pattern = r"(Short|Closed Short) - \[(\w+) @ \$([\d\.]+)\].*\*\*cmp:\*\* \$([\d\.]+)"
+        if mb.description is None:
+            return message
         match = re.search(pattern, mb.description)
         if match:
             action = match.group(1)

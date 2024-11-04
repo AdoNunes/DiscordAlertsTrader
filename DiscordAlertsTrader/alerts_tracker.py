@@ -19,12 +19,14 @@ class AlertsTracker():
     def __init__(self, brokerage=None,
                  portfolio_fname=cfg['portfolio_names']["tracker_portfolio_name"],
                  dir_quotes = cfg['general']['data_dir'] + '/live_quotes',
-                 cfg=cfg):
+                 cfg=cfg,
+                 do_avg=False):
 
         self.portfolio_fname = portfolio_fname
         self.dir_quotes = dir_quotes
         self.bksession = brokerage
         self.cfg = cfg
+        self.do_avg = do_avg
 
         if op.exists(self.portfolio_fname):
             self.portfolio = pd.read_csv(self.portfolio_fname)
@@ -71,7 +73,7 @@ class AlertsTracker():
             if order.get('Actual Cost', 'None') == 'None':
                 order["Actual Cost"] = self.price_now(order["Symbol"], order["action"])
 
-        if open_trade is None and order["action"] in ["BTO", 'STO']:
+        if (open_trade is None or self.do_avg is False) and order["action"] in ["BTO", 'STO']:
             str_act = self.make_BTO(order, channel)
         elif order["action"] in ["BTO", 'STO']:
             # str_act = "BTO averaging disabled as it is mostly wrong alert messages"
@@ -79,7 +81,13 @@ class AlertsTracker():
         elif order["action"] in ["STC", "BTC"] and open_trade is None:
             str_act = order["action"] + "without BTO"
         elif order["action"] in ["STC", "BTC"]:
-            str_act = self.make_STC(order, open_trade)
+            str_act = ""
+            trades_log = self.portfolio.loc[self.portfolio["Trader"] == order["Trader"]]
+            msk_ticker = trades_log["Symbol"].str.match(f"{order['Symbol']}$")
+            open_trades = trades_log[msk_ticker].index.values
+            for open_trade in  open_trades:
+                if self.portfolio.loc[open_trade, "isOpen"] == 1:
+                    str_act += self.make_STC(order, open_trade)
         elif order["action"] == "ExitUpdate":
             if open_trade is not None:
                 self.portfolio.loc[open_trade, "SL"] = order.get('SL')
