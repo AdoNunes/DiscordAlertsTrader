@@ -99,7 +99,7 @@ class AlertsTrader():
     def trade_updater(self):
         while self.update_portfolio is True:
             if self.update_paused is True:
-                time.sleep(1)
+                time.sleep(0.5)
                 continue
             t0 = time.time()
             try:
@@ -204,13 +204,13 @@ class AlertsTrader():
     def confirm_and_send(self, order, pars, order_funct):
             resp, order, ord_chngd = self.notify_alert(order, pars)
             if resp in ["yes", "y"]:
-                try:
-                    ord_resp, ord_id = self.bksession.send_order(order_funct(**order))
-                except Exception as e:
-                    str_msg = f"Error in order {e}"
-                    print(Back.GREEN + str_msg)
-                    self.queue_prints.put([str_msg, "", "red"])
-                    return None, None, order, None
+                # try:
+                ord_resp, ord_id = self.bksession.send_order(order_funct(**order))
+                # except Exception as e:
+                #     str_msg = f"Error in order {e}"
+                #     print(Back.GREEN + str_msg)
+                #     self.queue_prints.put([str_msg, "", "red"])
+                #     return None, None, order, None
                 
                 if ord_resp is None:
                     return None, None, order, None
@@ -225,35 +225,36 @@ class AlertsTrader():
                 return None, None, order, None
 
     def short_orders(self, order, pars):
-        if order['action'] == "STO":
-            # check strike
-            strike = eval(re.split("C|P", order['Symbol'].split("_")[1])[1])
-            if strike > eval(self.cfg['shorting']['max_strike']):
-                str_msg = f"STO strike too high: {strike}, order aborted"
-                print(Back.RED + str_msg)
-                self.queue_prints.put([str_msg, "", "red"])
-                return "no", order, False
-            
-            # check DTE
-            if len(self.cfg['shorting']['max_dte']):
-                if order.get('dte') is None:
-                    exp_dt = datetime.strptime(f"{order['expDate']}/{datetime.now().year}" , "%m/%d/%Y").date()
-                    dt = datetime.now().date()
-                    order['dte'] =  (exp_dt - dt).days
-                if order['dte'] > int(self.cfg['shorting']['max_dte']):
-                    str_msg = f"STO {order['dte']} DTE larger than max in config: {self.cfg['shorting']['max_dte']}, order aborted"
+        if order['action'] == "STO" :
+            if order['asset'] == "option":
+                # check strike
+                strike = eval(re.split("C|P", order['Symbol'].split("_")[1])[1])
+                if strike > eval(self.cfg['shorting']['max_strike']):
+                    str_msg = f"STO strike too high: {strike}, order aborted"
                     print(Back.RED + str_msg)
                     self.queue_prints.put([str_msg, "", "red"])
                     return "no", order, False
-            
-            # check if above min price
-            if len(self.cfg['shorting']['min_price']):
-                min_price = float(self.cfg['shorting']['min_price'])
-                if (order['price']*100) < min_price:
-                    str_msg = f"STO price too low: {order['price']*100}, order aborted"
-                    print(Back.RED + str_msg)
-                    self.queue_prints.put([str_msg, "", "red"])
-                    return "no", order, False
+                
+                # check DTE
+                if len(self.cfg['shorting']['max_dte']):
+                    if order.get('dte') is None:
+                        exp_dt = datetime.strptime(f"{order['expDate']}/{datetime.now().year}" , "%m/%d/%Y").date()
+                        dt = datetime.now().date()
+                        order['dte'] =  (exp_dt - dt).days
+                    if order['dte'] > int(self.cfg['shorting']['max_dte']):
+                        str_msg = f"STO {order['dte']} DTE larger than max in config: {self.cfg['shorting']['max_dte']}, order aborted"
+                        print(Back.RED + str_msg)
+                        self.queue_prints.put([str_msg, "", "red"])
+                        return "no", order, False
+                
+                # check if above min price
+                if len(self.cfg['shorting']['min_price']):
+                    min_price = float(self.cfg['shorting']['min_price'])
+                    if (order['price']*100) < min_price:
+                        str_msg = f"STO price too low: {order['price']*100}, order aborted"
+                        print(Back.RED + str_msg)
+                        self.queue_prints.put([str_msg, "", "red"])
+                        return "no", order, False
             
             # use current price as ask, bid, mid, last, or alert
             sto_price = cfg['shorting']['STO_price']
@@ -285,8 +286,12 @@ class AlertsTrader():
                             p1 = self.price_now(order['Symbol'], "BTO", 1 )
                             p2 = self.price_now(order['Symbol'], "STO", 1 )
                             order['price'] = (p1+p2)/2
+                            if order['price'] < 1 and order['asset'] == "stock":
+                                order['price'] = round(order['price'], 3)
+                            else:
+                                order['price'] = round(order['price'], 2)
                         else:
-                            order['price'] = self.price_now(order['Symbol'], ptype, 1 )
+                            order['price'] = order['price_actual']
                     else:   
                         order['price'] = order['price_actual']
                 else:
@@ -299,12 +304,17 @@ class AlertsTrader():
                 order['trader_qty'] = order['Qty']
             elif self.cfg['shorting']['default_sto_qty'] == "buy_one":
                 order['Qty'] = 1                    
-            elif self.cfg['shorting']['default_sto_qty'] == "margin_capital":
+            elif self.cfg['shorting']['default_sto_qty'] == "margin_capital" and order['asset'] == "option":
                 order['Qty'] = max(1, int(eval(self.cfg['shorting']['margin_capital'])/(20*strike)))
+            elif self.cfg['shorting']['default_sto_qty'] == "trade_capital" or order['asset'] == "stock":
+                if order['asset'] == "option":
+                    order['Qty'] =  int(max(round(float(self.cfg['shorting']['trade_capital'])/(100*order['price'])), 1))
+                else:
+                    order['Qty'] = int(max(float(self.cfg['shorting']['trade_capital'])//order['price'], 1))
 
             # Handle trade cost lims
             max_trade_val = float(self.cfg['shorting']['max_trade_capital'])
-            if 100*order['price'] * order['Qty'] > max_trade_val:
+            if 100*order['price'] * order['Qty'] > max_trade_val and order['asset'] == "option":
                 Qty_ori = order['Qty']
                 order['Qty'] =  int(max(max_trade_val//(100*order['price']), 1))
                 if order['price'] * order['Qty'] <= max_trade_val:
@@ -316,7 +326,12 @@ class AlertsTrader():
                     print(Back.RED + str_msg)
                     self.queue_prints.put([str_msg, "", "red"])
                     return "no", order, False
-            elif 100*order['price'] * order['Qty'] < float(self.cfg['shorting']['min_trade_capital']):
+            elif 100*order['price'] * order['Qty'] < float(self.cfg['shorting']['min_trade_capital']) and order['asset'] == "option":
+                str_msg = f"STO trade below min_trade_capital of ${self.cfg['shorting']['min_trade_capital']}, order aborted"
+                print(Back.RED + str_msg)
+                self.queue_prints.put([str_msg, "", "red"])
+                return "no", order, False
+            elif order['asset'] == "stock" and order['price'] * order['Qty'] > max_trade_val:
                 str_msg = f"STO trade below min_trade_capital of ${self.cfg['shorting']['min_trade_capital']}, order aborted"
                 print(Back.RED + str_msg)
                 self.queue_prints.put([str_msg, "", "red"])
@@ -360,9 +375,15 @@ class AlertsTrader():
                     if order['action'] in ["BTO", "STC"]:
                         # reduce 1% to ensure fill
                         if order['action'] == "BTO":
-                            new_price =  round(order['price']*1.05,2)
+                            if order['price'] < 1 and order['asset'] == "stock":
+                                new_price =  round(order['price']*1.05,3)
+                            else:
+                                new_price =  round(order['price']*1.05,2)
                         elif order['action'] == "STC":
-                            new_price =  round(order['price']*.95,2)
+                            if order['price'] < 1 and order['asset'] == "stock":
+                                new_price =  round(order['price']*.95,3)
+                            else:
+                                new_price =  round(order['price']*.95,2)
                     
                     order['price'] = self.round_price(new_price, order)
                     
@@ -492,13 +513,13 @@ class AlertsTrader():
 
 
     def get_order_info(self, order_id):
-        try:
+        # try:
             order_status, order_info = self.bksession.get_order_info(order_id)
             return order_status, order_info
-        except Exception as ex:
-            print(f"Caught Error in order info, skipping order info retr. Error: {ex}")
-            self.queue_prints.put([f"Caught Error, skipping order info retr. Error: {ex}", "", "red"])
-            return None, None
+        # except Exception as ex:
+        #     print(f"Caught Error in order info, skipping order info retr. Error: {ex}")
+        #     self.queue_prints.put([f"Caught Error, skipping order info retr. Error: {ex}", "", "red"])
+        #     return None, None
 
 
     ######################################################################
@@ -662,7 +683,11 @@ class AlertsTrader():
                     order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_STC_SL_trailstop)
                 
             else:
+                if self.bksession.name == "cobra":
+                    self.update_paused = True
                 order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_BTO_lim_order)
+                if self.bksession.name == "cobra":
+                    self.update_paused = False
     
             self.save_logs("port")
             if order_response is None:  #Assume trade not accepted
@@ -680,6 +705,7 @@ class AlertsTrader():
                 order_info = order
                 order_info['quantity'] = order['Qty']
                 order_info['filledQuantity'] = order['Qty']
+                print("IBKR order was None, assuming filled")
                 
             if order_status == 'REJECTED':                
                 log_alert['action'] = "REJECTED"
@@ -710,6 +736,8 @@ class AlertsTrader():
                          "Risk": order['risk'],
                          "open_trailingstop": order.get("open_trailingstop"),
                          "trader_qty": order_info.get('trader_qty'),
+                         "original_price": order_info.get("price"),
+                         "original_qty": order_info.get('quantity'),
                          }
 
             self.portfolio = pd.concat([self.portfolio, pd.DataFrame.from_records(new_trade, index=[0])], ignore_index=True)
@@ -754,7 +782,7 @@ class AlertsTrader():
                 print(Back.GREEN + "BTO avg not accepted by user")
                 self.queue_prints.put(["BTO avg not accepted by user", "", "green"])
                 return
-
+            
             order_status, order_info = self.get_order_info(order_id)
             self.portfolio.loc[open_trade,'BTO-avg-Status'] = order_status
             # if np.integer or int, turn to str
@@ -1151,6 +1179,8 @@ class AlertsTrader():
 
     def update_orders(self):
         for i in range(len(self.portfolio)):
+            if self.update_paused:
+                return
             self.close_expired(i)
             trade = self.portfolio.iloc[i]
             redo_orders = False
@@ -1384,7 +1414,92 @@ class AlertsTrader():
                     self.EOD[trade["Symbol"]] = "5min"
                     self.save_logs("port")
                     self.update_paused = False
+            if self.update_paused:
+                return
+            if trade['Type'] == 'STO' and (cfg['shorting']['avg_down'] is not None or
+                                           (not pd.isna(trade.get('avg_down')) and 
+                                           not pd.isna(eval(trade['avg_down']).get('avgs')))):
+                
+                price_currernt = self.price_now(trade['Symbol'], "STO", 1)
+                avg_down = {}
+                if not pd.isna(trade.get('avg_down')):
+                    avg_down = eval(trade['avg_down'])
+                    
+                avg_down_list = eval(cfg['shorting']['avg_down'])
+                if not pd.isna(avg_down.get('avgs')):                    
+                    avg_down_list = avg_down.get('avgs')
+                
+                for avg in avg_down_list:
+                    avg_rat, avg_ratio = avg
+                    if avg_down.get(str(avg_rat)) == 'sent':
+                        continue
+                    price_ori = trade.get('original_price')
+                    price_ori = price_ori if not pd.isna(price_ori)  else trade['Price']
+                    qty_ori = trade.get('original_qty')
+                    qty_ori = qty_ori if not pd.isna(qty_ori) else trade['Qty']
+                    avg_price = price_ori*avg_rat
+                    if avg_price < price_currernt and avg_down.get(str(avg_rat)) is None:
+                        if self.update_paused:
+                            return
+                        order = {}
+                        order['action'] = "STO"
+                        order['Symbol'] = trade["Symbol"]                        
+                        order['Qty'] =  max(1, int(qty_ori*avg_ratio))
+                        order['price'] = price_currernt
+                        order_response, order_id = self.bksession.send_order(self.bksession.make_BTO_lim_order(**order))
+                        order_status, order_info = self.get_order_info(order_id)
+                        
+                        if order_response is None:  # Assume trade not accepted                           
+                            print(Back.GREEN + "BTO avg not accepted by user")
+                            self.queue_prints.put(["BTO avg not accepted by user", "", "green"])
+                            continue
+                        elif order_status == "REJECTED":
+                            print(Back.GREEN + f"STO avg down {trade['Symbol']} Status: {order_status}")
+                            self.queue_prints.put([f"STO avg down {trade['Symbol']} Status: {order_status}", "", "green"])
+                            continue
+                        
+                        self.portfolio.loc[i,'BTO-avg-Status'] = order_status
+                        # if np.integer or int, turn to str
+                        if isinstance(self.portfolio.loc[i,"ordID"], (np.integer, float)):
+                            self.portfolio.loc[i,"ordID"] = str(self.portfolio.loc[i,"ordID"])                
+                        self.portfolio.loc[i,"ordID"] += f',{order_id}'
 
+                        if pd.isnull(self.portfolio.loc[i, "Avged"]):
+                            self.portfolio.loc[i, "Avged"] = 1
+                            self.portfolio.loc[i, "Avged-prices-alert"] = order['price']
+                            self.portfolio.loc[i, "Avged-prices"] = order_info["price"]
+                            self.portfolio.loc[i, "Avged-Qty"] = order_info['quantity']
+                        else:
+                            self.portfolio.loc[i, "Avged"] += 1
+                            al_pr = self.portfolio.loc[i, "Avged-prices-alert"]
+                            av_pr = self.portfolio.loc[i, "Avged-prices"]
+                            av_qt = self.portfolio.loc[i, "Avged-Qty"]
+                            self.portfolio.loc[i, "Avged-prices-alert"] = f"{al_pr},{order['price']}"
+                            self.portfolio.loc[i, "Avged-prices"] = f"{av_pr},{order_info['price']}"
+                            self.portfolio.loc[i, "Avged-Qty"] = f"{av_qt},{order_info['quantity']}"
+
+                        avg = self.portfolio.loc[i, "Avged"]
+
+                        self.portfolio.loc[i, "Qty"] += order_info['quantity']
+                        if  order_status in ["FILLED", "EXECUTED"]:
+                            or_price = self.portfolio.loc[i,"Price"]*self.portfolio.loc[i, "filledQty"]
+                            nw_price = order_info['price']*order_info['filledQuantity']
+                            avg_price = round((or_price + nw_price)/(self.portfolio.loc[i, "filledQty"] + order_info['filledQuantity']),2)
+                            self.portfolio.loc[i, "Price"] = avg_price
+
+                            self.portfolio.loc[i, "filledQty"] += order_info['filledQuantity']
+                            self.disc_notifier(order_info)
+                            self.close_open_exit_orders(i)
+                        str_msg =  f"BTO {avg} th AVG DOWN, {order['Symbol']} sent @{order_info['price']}. Status: {order_status}"
+                        print(Back.GREEN + str_msg)
+                        self.queue_prints.put([str_msg, "", "green"])
+                        
+                        self.portfolio.loc[i,'BTO-avg-Status'] = order_status
+            
+                        avg_down[str(avg_rat)] = 'sent'
+                        self.portfolio.loc[i, "avg_down"] =  str(avg_down)
+
+                    
             if redo_orders:
                 self.close_open_exit_orders(i)
             self.exit_percent_to_price(i)
@@ -1396,6 +1511,8 @@ class AlertsTrader():
 
             # Go over STC orders and check status
             for ii in range(1, self.max_stc_orders):
+                if self.update_paused:
+                    return 
                 STC = f"STC{ii}"
                 trade = self.portfolio.iloc[i]
                 STC_ordID = trade.get(STC+"-ordID")
@@ -1562,7 +1679,7 @@ class AlertsTrader():
                     order['Qty'] = Qty[ii - 1]
                     order['xQty'] = xQty[ii - 1]
                     order['action'] = trade["Type"].replace("STO", "BTC").replace("BTO", "STC")
-                    if self.bksession.name not in ['tda', 'ts']:
+                    if self.bksession.name not in ['tda', 'ts', 'cobra']:
                         str_prt = f"WARNING: {self.bksession.name} does not support OCO orders. Only the PT will be sent without SL. For OCO pass a PT as a string with 0%TS (e.g. 50%TS0%) and SL."            
                         print(Back.RED + str_prt)
                         self.queue_prints.put([str_prt,"", "red"])
@@ -1798,3 +1915,14 @@ if __name__ == "__main__":
     
     bksession = get_brokerage()
     at = AlertsTrader(bksession)
+
+    order = {'action': 'STO',
+             'Symbol': 'JL',
+             'Qty': 1, 
+             'price': 0.78,
+             "Trader": 'me',
+             'asset': 'stock',
+             'risk': 1,
+             'price_actual': 0.80,
+             }
+    at.new_trade_alert(order, "pars", "msg")
