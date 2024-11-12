@@ -234,10 +234,10 @@ class IBKR(BaseBroker):
 
 
         #refer to https://ib-insync.readthedocs.io/api.html#module-ib_insync.contract
-        if order['Symbol'].startswith("SPXW"):
-            contract = Contract(conId=order_dict['conId'], multiplier='100', exchange='SMART', currency='USD', tradingClass='SPXW')
-        else:
-            contract = Contract(conId=order_dict['conId'], exchange='SMART', currency='USD')
+        # if order['Symbol'].startswith("SPXW"):
+        #     contract = Contract(conId=order_dict['conId'], multiplier='100', exchange='SMART', currency='USD', tradingClass='SPXW')
+        # else:
+        contract = Contract(conId=order_dict['conId'], exchange='SMART', currency='USD')
         # contract = self.ib.qualifyContracts(contract)[0] 
         # self.ib.sleep(1)
 
@@ -405,10 +405,10 @@ class IBKR(BaseBroker):
         for symbol in symbols:
             # print(symbol)
             con_id = self.get_con_id(symbol)
-            if symbol.startswith("SPXW"):
-                contract = Contract(conId=con_id, multiplier='100', exchange='SMART', currency='USD', tradingClass='SPXW')
-            else:
-                contract = Contract(conId=con_id, exchange='SMART', currency='USD')
+            # if symbol.startswith("SPXW"):
+            #     contract = Contract(conId=con_id, multiplier='100', exchange='SMART', currency='USD', tradingClass='SPXW')
+            # else:
+            contract = Contract(conId=con_id, exchange='SMART', currency='USD')
             self.ib.sleep(0.1)
             
             quote = self.connect_get('reqTickers',contract, is_list=True)
@@ -478,10 +478,10 @@ class IBKR(BaseBroker):
         right = (option_part[6])
         strike = float(option_part[7:])
 
-        if symb.startswith("SPXW"):
-            return  Contract(secType='OPT',symbol=symb,lastTradeDateOrContractMonth=date,
-                             strike=strike,right=right,multiplier='100',exchange='SMART',
-                             currency='USD',tradingClass='SPXW')
+        # if symb.startswith("SPXW"):
+        #     return  Contract(secType='OPT',symbol=symb,lastTradeDateOrContractMonth=date,
+        #                      strike=strike,right=right,multiplier='100',exchange='SMART',
+        #                      currency='USD',tradingClass='SPXW')
         return Option(symbol=symb, lastTradeDateOrContractMonth=date, \
                               strike=strike, right=right, \
                                 exchange='SMART', currency='USD')
