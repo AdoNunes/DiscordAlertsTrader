@@ -76,12 +76,12 @@ class AlertsTrader():
         self.max_stc_orders = int(cfg['order_configs']['max_stc_orders']) + 1
         # load port and log
         if op.exists(self.portfolio_fname):
-            self.portfolio = pd.read_csv(self.portfolio_fname)
+            self.portfolio = pd.read_csv(self.portfolio_fname, na_values=[''])
         else:
             self.portfolio = pd.DataFrame(columns=self.cfg["col_names"]['portfolio'].split(",") )
             self.portfolio.to_csv(self.portfolio_fname, index=False)
         if op.exists(self.alerts_log_fname):
-            self.alerts_log = pd.read_csv(self.alerts_log_fname)
+            self.alerts_log = pd.read_csv(self.alerts_log_fname, na_values=[''])
         else:
             self.alerts_log = pd.DataFrame(columns=self.cfg["col_names"]['alerts_log'].split(","))
             self.alerts_log.to_csv(self.alerts_log_fname, index=False)
@@ -1028,7 +1028,14 @@ class AlertsTrader():
             order_status, order_info = self.get_order_info(order_id)
             self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
             self.portfolio.loc[open_trade, STC + "-Price-actual"] = order["price_actual"]
-
+            
+            if order_info is None and self.bksession.name == "ibkr":
+                order_status = "FILLED"
+                order_info = order
+                order_info['quantity'] = order['Qty']
+                order_info['filledQuantity'] = order['Qty']
+                print("IBKR order was None, assuming filled")
+                
             # Check if STC price changed
             if order_status in ["FILLED", 'EXECUTED', 'INDIVIDUAL_FILLS']:
                 self.disc_notifier(order_info)
