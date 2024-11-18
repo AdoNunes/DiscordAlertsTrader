@@ -784,6 +784,13 @@ class AlertsTrader():
                 return
             
             order_status, order_info = self.get_order_info(order_id)
+            if order_info is None and self.bksession.name == "ibkr":
+                order_status = "FILLED"
+                order_info = order
+                order_info['quantity'] = order['Qty']
+                order_info['filledQuantity'] = order['Qty']
+                print("IBKR order was None, assuming filled")
+                
             self.portfolio.loc[open_trade,'BTO-avg-Status'] = order_status
             # if np.integer or int, turn to str
             if isinstance(self.portfolio.loc[open_trade,"ordID"], np.integer):
@@ -980,10 +987,10 @@ class AlertsTrader():
                 self.save_logs(["alert"])
                 return
 
-            # adjust trader qty to match portfolio
-            if not pd.isnull(position['trader_qty']):
-                qr = qty_bought/position['trader_qty']
-                order['Qty'] = max(round(order['Qty']/qr), 1)
+            # # adjust trader qty to match portfolio
+            # if not pd.isnull(position['trader_qty']):
+            #     qr = qty_bought/position['trader_qty']
+            #     order['Qty'] = max(round(order['Qty']/qr), 1)
             # Sell all and close waiting stc orders
             if (order['xQty'] == 1 and order['Qty'] is None) or i == self.max_stc_orders:
                 if i == self.max_stc_orders and order['xQty'] != 1:
@@ -1040,6 +1047,9 @@ class AlertsTrader():
             if order_status in ["FILLED", 'EXECUTED', 'INDIVIDUAL_FILLS']:
                 self.disc_notifier(order_info)
                 self.log_filled_STC(order_id, open_trade, STC)
+                if order_info is None and self.bksession.name == "ibkr":
+                    self.portfolio.loc[open_trade, STC + "-Status"] = order_status
+                    self.portfolio.loc[open_trade, STC + "-Qty"] = order_info['quantity']
             else:
                 str_STC = f"Submitted: {STC} {order['Symbol']} @{order['price']} Qty:{order['Qty']} ({order['xQty']})"
                 print(Back.GREEN + str_STC)
