@@ -1036,18 +1036,20 @@ class AlertsTrader():
             self.portfolio.loc[open_trade, STC + "-ordID"] = order_id
             self.portfolio.loc[open_trade, STC + "-Price-actual"] = order["price_actual"]
             
+            ibkr_bad = False
             if order_info is None and self.bksession.name == "ibkr":
                 order_status = "FILLED"
                 order_info = order
                 order_info['quantity'] = order['Qty']
                 order_info['filledQuantity'] = order['Qty']
                 print("IBKR order was None, assuming filled")
+                ibkr_bad = True
                 
             # Check if STC price changed
             if order_status in ["FILLED", 'EXECUTED', 'INDIVIDUAL_FILLS']:
                 self.disc_notifier(order_info)
                 self.log_filled_STC(order_id, open_trade, STC)
-                if order_info is None and self.bksession.name == "ibkr":
+                if ibkr_bad and self.bksession.name == "ibkr":
                     self.portfolio.loc[open_trade, STC + "-Status"] = order_status
                     self.portfolio.loc[open_trade, STC + "-Qty"] = order_info['quantity']
             else:
