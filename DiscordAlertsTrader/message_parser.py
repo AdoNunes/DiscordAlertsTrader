@@ -385,6 +385,13 @@ def parse_unit_amount(msg):
     return
 
 def parse_sell_ratio_amount(msg, asset):
+    if "1/3 POS" in msg:
+        return .33
+    if "1/2 POS" in msg:
+        return .5
+    if "1/4 POS" in msg:
+        return .25
+    
     exprs = "(?:sold|sell) (\d\/\d)"
     re_comp= re.compile(exprs, re.IGNORECASE)
     amnt_inf = re_comp.search(msg)

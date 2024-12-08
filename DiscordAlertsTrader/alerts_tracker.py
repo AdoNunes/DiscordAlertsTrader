@@ -29,7 +29,7 @@ class AlertsTracker():
         self.do_avg = do_avg
 
         if op.exists(self.portfolio_fname):
-            self.portfolio = pd.read_csv(self.portfolio_fname)
+            self.portfolio = pd.read_csv(self.portfolio_fname, na_values=[''])
             if "underlying" not in self.portfolio.columns:
                 self.portfolio['underlying'] = None
         else:
@@ -209,7 +209,7 @@ class AlertsTracker():
         if not op.exists(fname):
             return ""
 
-        quotes = pd.read_csv(fname, on_bad_lines='skip')
+        quotes = pd.read_csv(fname, on_bad_lines='skip', na_values=[''])
         # start after BTO date
         quotes = quotes.dropna()
         dates = quotes['timestamp'].apply(lambda x: datetime.fromtimestamp(x))

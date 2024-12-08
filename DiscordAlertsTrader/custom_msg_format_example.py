@@ -42,7 +42,7 @@ def msg_custom_formated(message):
     # Enhanced, scale qty
     elif message.channel.id == 1126325195301462117:
         
-        avg_trade_val = 5000
+        avg_trade_val = 24000
         user_trade_val = 500
         ratio = user_trade_val/avg_trade_val
         

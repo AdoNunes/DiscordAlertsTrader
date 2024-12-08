@@ -171,9 +171,9 @@ def get_portf_data(exclude={}, port_filt_author='', port_filt_date_frm='',
     if len(data):
         sumtotal = {c:"" for c in data.columns}
         for sumcol in ["PnL","PnL-alert","PnL-actual"]:
-            sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).mean():.2f}'
+            sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x.strip() in ["", "-inf"] else eval(x)).mean():.2f}'
         for sumcol in [ "PnL$","PnL$-alert","PnL$-actual", 'Qty', 'filledQty']:
-            sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x =="" else eval(x)).sum():.2f}'
+            sumtotal[sumcol]= f'{data[sumcol].apply(lambda x: np.nan if x.strip() in ["", "-inf"] else eval(x)).sum():.2f}'
         sumtotal['Date'] = data.iloc[len(data)-1]['Date']
         sumtotal['Symbol'] = "Total Average"
         sumtotal['Trader'] = "Average"
@@ -448,6 +448,9 @@ def compute_live_trader_port(trade, order):
     stc_PnL_all = np.nansum([trade[f"STC{i}-PnL"]*trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
     trade[ "PnL"] = stc_PnL_all
 
+    if bto_price_actual == 0:
+        bto_price_actual = 0.001
+        
     if trade[ "Type"] == "BTO":
         stc_PnL_all_alert =  np.nansum([(float((trade[f"STC{i}-Price-alert"] - bto_price_alert)/bto_price_alert) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
         stc_PnL_all_curr = np.nansum([(float((trade[f"STC{i}-Price-actual"] - bto_price_actual)/bto_price_actual) *100) * trade[f"STC{i}-Qty"] for i in range(1,4)])/sold_tot
