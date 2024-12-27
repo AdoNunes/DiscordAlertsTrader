@@ -69,6 +69,8 @@ def server_formatting(message):
         message = cblast_alerts(message)
     elif message.channel.id in [1286022517869514874]:
         message = brando_trades(message)
+    elif message.channel.id in [1235324290426081423]:
+        message = chis_formatting(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     else:
@@ -283,6 +285,23 @@ def sirgoldman_formatting(message_):
             else:
                 alert = f"{mb.title}: {mb.description}"
             message.content = alert
+    return message
+
+def chis_formatting(message_):
+    """
+    Reformat Discord message from Chis
+    """
+    message = MessageCopy(message_)
+    alert = message.content
+
+    pattern = r'IN LOTTO (\d{3})([cpCP]) ([\d.]+)'
+    match = re.search(pattern, alert, re.IGNORECASE)
+
+    if match:
+        strike, otype, price = match.groups()
+        formatted_alert = f"BTO SPY {strike.upper()}{otype.upper()} 0DTE @{price}"
+        message.content = formatted_alert
+
     return message
 
 def jpa_formatting(message_):
