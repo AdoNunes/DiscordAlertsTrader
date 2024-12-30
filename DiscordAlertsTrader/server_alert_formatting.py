@@ -293,13 +293,14 @@ def chis_formatting(message_):
     """
     message = MessageCopy(message_)
     alert = message.content
+    msg_date = message.created_at.strftime('%m/%d')
 
     pattern = r'IN LOTTO (\d{3})([cpCP]) ([\d.]+)'
     match = re.search(pattern, alert, re.IGNORECASE)
 
     if match:
         strike, otype, price = match.groups()
-        formatted_alert = f"BTO SPY {strike.upper()}{otype.upper()} 0DTE @{price}"
+        formatted_alert = f"BTO SPY {strike.upper()}{otype.upper()} {msg_date} @{price}"
         message.content = formatted_alert
 
     return message
