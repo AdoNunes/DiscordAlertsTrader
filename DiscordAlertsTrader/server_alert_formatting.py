@@ -293,6 +293,9 @@ def chis_formatting(message_):
     """
     message = MessageCopy(message_)
     alert = message.content
+    for mb in message.embeds:
+        if mb.description:
+            alert = mb.description
     msg_date = message.created_at.strftime('%m/%d')
 
     pattern = r'IN LOTTO (\d{3})([cpCP]) ([\d.]+)'
