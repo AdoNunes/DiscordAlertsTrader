@@ -9,7 +9,7 @@ def server_formatting(message):
         message = xtrades_formatting(message)
     elif message.guild.id in [836435995854897193, 1208184842441719828]:
         message = tradeproelite_formatting(message)
-    elif message.channel.id in [1235324287703973998, 1235324289222443008]:
+    elif message.channel.id in [1235324287703973998, 1235324289222443008, 1235324286437163129]:
         message = prosperitytrades_formatting(message)
     elif message.channel.id in [1144658745822035978, 1196385162490032128, 1176558956123013230,
                                 1213995695237763145, 1224336566907044032, 1167905511711178953]:
