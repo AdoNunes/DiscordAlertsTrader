@@ -419,13 +419,30 @@ class AlertsTrader():
                         self.queue_prints.put([str_msg, "", "red"])
                         return "no", order, False
                     price = price*100 if order["asset"] == "option" else price
-                    max_trade_val = float(self.cfg['order_configs']['max_trade_capital'])
+
+                    max_trade_vals = eval(self.cfg["order_configs"]["max_trade_capital"])
+                    if order["Trader"] in max_trade_vals.keys():
+                        max_trade_val = float(max_trade_vals[order["Trader"]])
+                    else:
+                        max_trade_val = float(max_trade_vals["default"])
+                    
+                    default_bto_qtys = eval(self.cfg["order_configs"]["default_bto_qty"])
+                    if order["Trader"] in default_bto_qtys.keys():
+                        default_bto_qty = float(default_bto_qtys[order["Trader"]])
+                    else:
+                        default_bto_qty = float(default_bto_qtys["default"])
+
+                    trade_capitals = eval(self.cfg["order_configs"]["trade_capital"])
+                    if order["Trader"] in trade_capitals.keys():
+                        trade_capital = float(trade_capitals[order["Trader"]])
+                    else:
+                        trade_capital = float(trade_capitals["default"])
                     
                     if 'Qty' not in order.keys() or order['Qty'] is None:
-                        if self.cfg['order_configs']['default_bto_qty'] == "buy_one":
+                        if default_bto_qty == "buy_one":
                             order['Qty'] = 1                    
-                        elif self.cfg['order_configs']['default_bto_qty'] == "trade_capital":
-                            order['Qty'] =  int(max(round(float(self.cfg['order_configs']['trade_capital'])/price), 1))
+                        elif default_bto_qty == "trade_capital":
+                            order['Qty'] =  int(max(round(trade_capital/price), 1))
                     # elif self.cfg['order_configs']['default_bto_qty'] == "trade_capital":
                     #     order['Qty'] =  int(max(round(float(self.cfg['order_configs']['trade_capital'])/price), 1))
                     
