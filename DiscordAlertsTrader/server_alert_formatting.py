@@ -249,8 +249,40 @@ def brando_trades(message_):
             alert = alert.replace('$', ' weeklies @$').replace("SOLD", "STC")
             alert += "1/2 POS" if "1/2 POS" in alert else "1/4 POS" if "1/4 POS" in alert else "1/3 POS" if "1/3 POS" in alert else "all out"
             alert = format_0dte_weeklies(alert, message, False)
-                
-    return alert
+    message.content = alert
+    return message
+
+
+def mikeinvesting_trades(message_):
+    """
+    Reformat Discord message from brando trades
+    """
+    message = MessageCopy(message_)
+    alert = message.content
+
+    # Define the regular expression pattern
+    pattern =  r"""
+    \$(?P<ticker>[A-Z]+)⚡️\s*                # Ticker, e.g., $SPY⚡️
+    \$(?P<strike>[\d\.]+)\s(?P<side>[A-Z]+S)\s*  # Strike and side, e.g., $593 CALLS
+    EXPIRATION\s(?P<expiration>\d{1,2}/\d{1,2}/\d{4})\s*  # Expiration, e.g., 1/3/2025
+    \$(?P<entry_price>[\d\.]+)\sEntry\s*    # Entry price, e.g., $.12 or $1.23 Entry
+    \$(?P<target_price>[\d\.]+)\sTARGET\s🎯  # Target price, e.g., $.3 or $10.45 TARGET 🎯
+    """
+
+    regex = re.compile(pattern, re.VERBOSE)
+
+    match = regex.search(message.content)
+    if match:
+        data = match.groupdict()
+        alert = "BTO {ticker} {strike}{side[0]} {expiration} @{entry_price} PT: {target_price}".format(**data)
+        if "LOTTO" in message.content:
+            alert += " LOTTO PLAY"
+        elif "SUPPORT" in message.content:
+            alert += " SUPPORT PLAY"
+
+    message.content = alert
+    return message
+
 
 def kent_formatting(message_):
     """
