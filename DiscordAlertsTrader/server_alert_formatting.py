@@ -71,6 +71,10 @@ def server_formatting(message):
         message = brando_trades(message)
     elif message.channel.id in [1235324290426081423]:
         message = chis_formatting(message)
+    elif message.channel.id in [872226993557606440]:   
+        message = mikeinvesting_trades(message)
+    elif message.channel.id in [140295293546659840,815942180945920020,1188480300381110272]:
+        message = jb_trades(message)
     elif message.guild.id in  [826258453391081524, 1093339706260979822,1072553858053701793, 898981804478980166, 682259216861626378]:
         message = aurora_trading_formatting(message)
     else:
@@ -247,7 +251,7 @@ def brando_trades(message_):
             alert = f"{action} {ticker.upper()} {strike.upper()} {expdate} @{price} {position}" 
         else:
             alert = alert.replace('$', ' weeklies @$').replace("SOLD", "STC")
-            alert += "1/2 POS" if "1/2 POS" in alert else "1/4 POS" if "1/4 POS" in alert else "1/3 POS" if "1/3 POS" in alert else "all out"
+            alert += " 1/2 POS" if "1/2 POS" in alert else " 1/4 POS" if "1/4 POS" in alert else " 1/3 POS" if "1/3 POS" in alert else " all out"
             alert = format_0dte_weeklies(alert, message, False)
     message.content = alert
     return message
@@ -281,6 +285,32 @@ def mikeinvesting_trades(message_):
             alert += " SUPPORT PLAY"
 
     message.content = alert
+    return message
+
+
+def jb_trades(message_):
+    """
+    Reformat Discord message from brando trades
+    """
+    message = MessageCopy(message_)
+    alert = message.content
+    month_mapping = {
+        'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04', 'MAY': '05', 'JUN': '06',
+        'JUL': '07', 'AUG': '08', 'SEP': '09', 'OCT': '10', 'NOV': '11', 'DEC': '12'
+    }
+    
+    pattern = r"([A-Z]+)\s+([A-Z,a-z]*)\s+(\d{1,2})(?:th|st|nd|rd)\s+\$([\d\.]+)\s+(calls|puts)\s+@\s+\$*([\d\.]+)"
+    match = re.search(pattern, alert)
+    if match:
+        ticker, month, day, strike, otype, price = match.groups()
+        exp_date = f"{month_mapping[month.upper()]}/{day.zfill(2)}"
+        if "out" in alert:
+            alert = f"STC {ticker} {strike.upper()}{otype[0]} {exp_date} @{price}"
+            if any(x.lower() in alert for x in ["Out some", "Out more", "Out a few"]):
+                alert += " 1/3 POS"
+        else:
+            alert = f"BTO {ticker} {strike.upper()}{otype[0]} {exp_date} @{price}"
+        message.content = alert
     return message
 
 
