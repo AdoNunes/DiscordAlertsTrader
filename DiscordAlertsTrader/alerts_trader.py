@@ -423,7 +423,7 @@ class AlertsTrader():
                     max_trade_vals = eval(self.cfg["order_configs"]["max_trade_capital"])
                     max_trade_val = float(max_trade_vals.get(order["Trader"], max_trade_vals["default"]))
                     default_bto_qtys = eval(self.cfg["order_configs"]["default_bto_qty"])
-                    default_bto_qty = float(default_bto_qtys.get(order["Trader"], default_bto_qtys["default"]))
+                    default_bto_qty = default_bto_qtys.get(order["Trader"], default_bto_qtys["default"])
                     trade_capitals = eval(self.cfg["order_configs"]["trade_capital"])
                     trade_capital = float(trade_capitals.get(order["Trader"], trade_capitals["default"]))
                     
