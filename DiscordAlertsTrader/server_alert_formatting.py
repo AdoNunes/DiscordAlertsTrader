@@ -71,6 +71,8 @@ def server_formatting(message):
         message = brando_trades(message)
     elif message.channel.id in [1235324290426081423]:
         message = chis_formatting(message)
+    elif message.channel.id in [986816019295252500]:
+        message = abi_formatting(message)
     elif message.channel.id in [872226993557606440]:   
         message = mikeinvesting_trades(message)
     elif message.channel.id in [140295293546659840,815942180945920020,1188480300381110272]:
@@ -366,6 +368,23 @@ def chis_formatting(message_):
     if match:
         strike, otype, price = match.groups()
         formatted_alert = f"BTO SPY {strike.upper()}{otype.upper()} {msg_date} @{price}"
+        message.content = formatted_alert
+
+    return message
+
+def abi_formatting(message_):
+    """
+    Reformat Discord message from Abi
+    """
+    message = MessageCopy(message_)
+    alert = message.content
+
+    pattern = r'\$([A-Z]+)\s+(\d{1,2}/\d{1,2})\s+(\d+)([cCpP])\s+([\d.]+)'
+    match = re.search(pattern, alert, re.IGNORECASE)
+
+    if match:
+        ticker, exp_date, strike, otype, price = match.groups()
+        formatted_alert = f"BTO {ticker.upper()} {strike}{otype.upper()} {exp_date} @{price}"
         message.content = formatted_alert
 
     return message
