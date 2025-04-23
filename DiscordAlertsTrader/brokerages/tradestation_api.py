@@ -28,7 +28,7 @@ class TS(BaseBroker):
                            paper_trade=cfg['tradestation'].getboolean('papertrade'))
         
         if self.accountId is None:
-            resp = self.session.get_accounts('adonunes12').json()
+            resp = self.session.get_accounts(cfg['tradestation']['username']).json()
             self.accountId = [ k['Name'] for k in resp if k['TypeDescription'] == cfg['tradestation']['acct_type']][0]
             
         success = self.session._logged_in
