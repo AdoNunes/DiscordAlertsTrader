@@ -381,7 +381,7 @@ def layout_config(fnt_h, cfg):
                  tooltip="will not trade them, [comma separated]", enable_events=True)],        
         [sg.Text("Default quantity:",
                 tooltip='If no quantity specified in the alert either "buy_one" or use "trade_capital"'), 
-        sg.Drop(values=['buy_one', 'trade_capital'] ,default_value=cfg['order_configs']['default_bto_qty'],
+        sg.Drop(values=['{"default": "buy_one"}', '{"default": "trade_capital"}'] ,default_value=cfg['order_configs']['default_bto_qty'],
                 key="cfg_order_configs.default_bto_qty",
                 tooltip='if no quantity specified in the alert either "buy_one" or use "trade_capital"'),
         sg.Stretch()],
