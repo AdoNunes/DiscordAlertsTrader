@@ -29,7 +29,7 @@ class TS(BaseBroker):
         
         if self.accountId is None:
             resp = self.session.get_accounts('adonunes12').json()
-            self.accountId, = [ k['Name'] for k in resp if k['TypeDescription'] == cfg['tradestation']['acct_type']]
+            self.accountId = [ k['Name'] for k in resp if k['TypeDescription'] == cfg['tradestation']['acct_type']][0]
             
         success = self.session._logged_in
         if not success:

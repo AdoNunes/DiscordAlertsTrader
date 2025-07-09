@@ -178,14 +178,20 @@ class DiscordBot(discord.Client):
             return
         if message.content == 'ping':
             await message.channel.send('pong')
-         
-        
+
         message = server_formatting(message)
         if custom:
-            await msg_custom_formated2(message)
-            alert = msg_custom_formated(message, self.bksession)
+            
+            alert = msg_custom_formated(message, self.bksession)            
             if alert is not None:
                 for msg in alert:
+                    self.new_msg_acts(msg, False)
+            
+            alert2 = await msg_custom_formated2(message, self.bksession)
+            if alert2 is not None:
+                for msg in alert2:
+                    self.new_msg_acts(msg, False)
+                for msg in alert2:
                     self.new_msg_acts(msg, False)
                 return
         
@@ -224,7 +230,7 @@ class DiscordBot(discord.Client):
                 if message is None:
                     continue
                 if custom:
-                    alert = msg_custom_formated(message)
+                    alert = msg_custom_formated(message, self.bksession)
                     if alert is not None:
                         for msg in alert:
                             self.new_msg_acts(msg, False)
@@ -305,29 +311,31 @@ class DiscordBot(discord.Client):
             live_alert = True if date_diff.seconds < 90 else False
             str_msg = pars
             if live_alert and self.bksession is not None and (order.get('price') is not None):
-                quote = self.trader.price_now(order['Symbol'], order["action"], pflag=1)
-                act_diff =-1
-                if quote:
-                    if quote > 0:
-                        order['price_actual'] = quote
-                    if order['price'] == 0:
-                        str_msg = f"ALerted price is 0, skipping alert "
-                        self.queue_prints.put([f"\t {str_msg}", "green"])
-                        print(Fore.GREEN + f"\t {str_msg}")
-                        return
-                    act_diff = max(((quote - order['price'])/order['price']), (order['price'] - quote)/ quote)
-                    # Check if actual price is too far (100) from alerted price
-                    if abs(act_diff) > 1 and order.get('action') == 'BTO':
-                        str_msg = f"Alerted price is {act_diff} times larger than current price of {quote}, skipping alert"
-                        self.queue_prints.put([f"\t {str_msg}", "green"])
-                        print(Fore.GREEN + f"\t {str_msg}")
-                        msg['Parsed'] = str_msg
-                        if self.chn_hist.get(chn) is not None:
-                            self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
-                            self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
-                        return
+                order['price_actual'] =order['price']
+                quote = order['price_actual']
+                # quote = self.trader.price_now(order['Symbol'], order["action"], pflag=1)
+                # act_diff =-1
+                # if quote:
+                #     if quote > 0:
+                #         order['price_actual'] = quote
+                    # if order['price'] == 0:
+                    #     str_msg = f"ALerted price is 0, skipping alert "
+                    #     self.queue_prints.put([f"\t {str_msg}", "green"])
+                    #     print(Fore.GREEN + f"\t {str_msg}")
+                    #     return
+                    # act_diff = max(((quote - order['price'])/order['price']), (order['price'] - quote)/ quote)
+                    # # Check if actual price is too far (100) from alerted price
+                    # if abs(act_diff) > 1 and order.get('action') == 'BTO':
+                    #     str_msg = f"Alerted price is {act_diff} times larger than current price of {quote}, skipping alert"
+                    #     self.queue_prints.put([f"\t {str_msg}", "green"])
+                    #     print(Fore.GREEN + f"\t {str_msg}")
+                    #     msg['Parsed'] = str_msg
+                    #     if self.chn_hist.get(chn) is not None:
+                    #         self.chn_hist[chn] = pd.concat([self.chn_hist[chn], msg.to_frame().transpose()],axis=0, ignore_index=True)
+                    #         self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
+                    #     return
                 
-                str_msg += f" Actual:{quote}, diff {round(act_diff*100)}%"
+                # str_msg += f" Actual:{quote}, diff {round(act_diff*100)}%"
             self.queue_prints.put([f"\t {str_msg}", "green"])
             print(Fore.GREEN + f"\t {str_msg}")
             #Tracker

@@ -31,7 +31,7 @@ def server_formatting(message):
         message = jpm_formatting(message)
     elif message.channel.id in [911389167169191946, 1158799914290139188, 1221952209542053949]:
         message = nitro_formatting(message)
-    elif message.channel.id in [1189288104545226773, 1012144319282556928, 1214378575554150440]:
+    elif message.channel.id in [1189288104545226773, 1012144319282556928, 1214378575554150440, 1242173093267378236]:
         message = moneymotive(message)
     elif message.channel.id in [728711121128652851]:
         message = owl_formatting(message)
@@ -962,6 +962,8 @@ def nvstly_alerts(message_):
     
     message = MessageCopy(message_)
     for mb in message.embeds:
+        if mb.description is None:
+            continue
         pattern = r"(Short|Closed Short) - \[(\w+) @ \$([\d\.]+)\].*\*\*cmp:\*\* \$([\d\.]+)"
         match = re.search(pattern, mb.description)
         if match:

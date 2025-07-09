@@ -284,7 +284,7 @@ class AlertsTrader():
                         if sto_price == 'mid':
                             p1 = self.price_now(order['Symbol'], "BTO", 1 )
                             p2 = self.price_now(order['Symbol'], "STO", 1 )
-                            order['price'] = (p1+p2)/2
+                            order['price'] = round((p1+p2)/2, 2)
                         else:
                             order['price'] = self.price_now(order['Symbol'], ptype, 1 )
                     else:   
@@ -675,6 +675,7 @@ class AlertsTrader():
                 return
 
             order_status, order_info = self.get_order_info(order_id)
+            
             if order_status == 'REJECTED':                
                 log_alert['action'] = "REJECTED"
                 self.alerts_log = pd.concat([self.alerts_log, pd.DataFrame.from_records(log_alert, index=[0])], ignore_index=True)
