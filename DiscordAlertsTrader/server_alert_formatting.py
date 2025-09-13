@@ -378,15 +378,30 @@ def abi_formatting(message_):
     """
     message = MessageCopy(message_)
     alert = message.content
-
-    pattern = r'\$([A-Z]+)\s+(\d{1,2}/\d{1,2})\s+(\d+)([cCpP])\s+([\d.]+)'
-    match = re.search(pattern, alert, re.IGNORECASE)
-
+    
+    pattern_with_date = r'\$([A-Z]+)\s+(\d{1,2}/\d{1,2})\s+(\d+)([cCpP])\s+([\d.]+)'
+    pattern_without_date = r'\$([A-Z]+)\s+(\d+)([cCpP])\s+([\d.]+)'
+    
+    match = re.search(pattern_with_date, alert, re.IGNORECASE)
     if match:
         ticker, exp_date, strike, otype, price = match.groups()
-        formatted_alert = f"BTO {ticker.upper()} {strike}{otype.upper()} {exp_date} @{price}"
-        message.content = formatted_alert
-
+    else:
+        match = re.search(pattern_without_date, alert, re.IGNORECASE)
+        if match:
+            ticker, strike, otype, price = match.groups()
+            today = datetime.today()
+            if today.weekday() == 4:
+                exp_date = today.strftime('%m/%d')
+            else:
+                days_until_friday = (4 - today.weekday()) % 7 
+                upcoming_friday = today + timedelta(days=days_until_friday)
+                exp_date = upcoming_friday.strftime('%m/%d')
+        else:
+            return message
+    
+    formatted_alert = f"BTO {ticker.upper()} {strike}{otype.upper()} {exp_date} @{price}"
+    message.content = formatted_alert
+    
     return message
 
 def jpa_formatting(message_):
