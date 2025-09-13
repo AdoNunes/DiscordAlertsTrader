@@ -26,7 +26,7 @@ after, date_after = "", ""
 get_date_after_from_port = True
 re_download = False
 delete_port = False
-author = "algoAi"
+author = "EM"
 
 
 chan_ids = {
@@ -61,6 +61,7 @@ chan_ids = {
     "psa": 1199936454797824010,
     "algoAi": 1237566888062750791,
     "jpm": 1221952610987147284,
+    'xero': 1207404660697333768,
     }
 
 def get_timestamp(row):
@@ -188,9 +189,10 @@ tracker = AlertsTracker(
     cfg=cfg,
 )
 
+pnl = []
 dt = None
 for ix, row in msg_hist.loc[:].iterrows():  # .loc[ix:].iterrows(): #
-    print(ix)
+
     alert = row["Content"]
     if pd.isnull(alert) or not len(alert) or alert in ["@everyone", "@Elite Options"]:
         continue
@@ -292,3 +294,10 @@ for ix, row in msg_hist.loc[:].iterrows():  # .loc[ix:].iterrows(): #
 # tracker.portfolio['ask'] = tracker.portfolio['Price-actual']
 # tracker.portfolio['Price-actual']  = tracker.portfolio['bid']
 tracker.portfolio.to_csv(tracker.portfolio_fname, index=False)
+
+df = pd.read_csv(tracker.portfolio_fname)
+df['Date'] = pd.to_datetime(df['Date'])
+df.sort_values(by='Date', inplace=True)
+# df.to_csv("data/xero_profits.csv", index=False)
+
+# df['cumsum'].plot()

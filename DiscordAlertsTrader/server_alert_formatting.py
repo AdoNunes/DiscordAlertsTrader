@@ -35,7 +35,7 @@ def server_formatting(message):
         message = moneymotive(message)
     elif message.channel.id in [728711121128652851]:
         message = owl_formatting(message)
-    elif message.channel.id in [979906463487103006]:
+    elif message.channel.id in [979906463487103006, 1247896425585704992]:
         message = bear_alerts(message)
     elif message.channel.id in [1107395495460081754, 1209855407636488212]:
         message = diesel_formatting(message)
@@ -71,7 +71,7 @@ def server_formatting(message):
         message = brando_trades(message)
     elif message.channel.id in [1235324290426081423]:
         message = chis_formatting(message)
-    elif message.channel.id in [986816019295252500]:
+    elif message.channel.id in [986816019295252500, 904535347331989514]:
         message = abi_formatting(message)
     elif message.channel.id in [872226993557606440]:   
         message = mikeinvesting_trades(message)

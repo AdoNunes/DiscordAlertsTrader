@@ -275,6 +275,8 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             date_close = row['Date'].replace("T00:00:00+0000", " 15:55:00.000000")
             date_close = pd.to_datetime(date_close).replace(hour=15, minute=55, second=0, microsecond=0)
         elif stc_date == 'stc alert':
+            if 'STC-Date' not in row:
+                row['STC-Date'] = row['STC1-Date']
             date_close = pd.to_datetime(row['STC-Date'])
             date_close = date_close.tz_localize(None)
             if pd.isna(date_close):
@@ -291,7 +293,7 @@ def calc_returns(fname_port= cfg['portfolio_names']['tracker_portfolio_name'],
             continue
         # drop nans
         # quotes = quotes.dropna().reset_index(drop=True)
-
+        # row['Date'] = pd.to_datetime(row['Date']) - timedelta(minutes=1)
         # get quotes within trade dates
         dates = quotes['timestamp']
         msk = (dates >= date_local(row['Date']).timestamp()+0) & (dates <= date_local(date_close).timestamp()) & (quotes['ask'] > 0)
@@ -664,8 +666,8 @@ def grid_search(params_dict, PT=[60], TS=[0], SL=[45], TS_buy=[5,10,15,20,25]):
 
     sorted_columns = ['Date', 'Symbol', 'Trader',  'Type','Price',
                         'Price-actual', "Qty",
-                        # 'Avged', 'PnL', 'PnL-actual', 'PnL$',  'PnL$-actual', 'STC-Price', 'STC-Price-actual',
-                        'underlying', 'dte', 'right', 'bid', 
+                        # 'Avged', 'PnL', 'PnL-actual', 'PnL$',  'PnL$-actual', 'STC-Price', 'STC-Price-actual','bid',
+                        'underlying', 'dte', 'right',  
                         'hour', 'max_pnl', 'strategy-trade$'] + [col for col in port_out.columns if col.startswith('%')] + [
                             col for col in port_out.columns if col.startswith('$')]
     port_out = port_out[sorted_columns]
@@ -691,39 +693,39 @@ if __name__ == '__main__':
 
     params = {
         # 'fname_port': '../algoalerter/data\HHscanner_port_delta0.4_179feats_ssnorm_ML_65conf.csv',
-        'fname_port': 'data/algoAi_port.csv',
-        # 'fname_port': 'data/vader_port.csv',
+        # 'fname_port': 'data/algoAi_port.csv',
+        'fname_port': 'data/xero_trades.csv',
         # 'fname_port':'../algoalerter\data\HHscanner_port_delta0.4_179feats_buy_ML_preds_0.6conf.csv',
         # 'fname_port':'../algoalerter\data\HH2k_port2_delta0.3_179feats_lastyear_ML_preds_0.6conf.csv',
         # 'fname_port':'../algoalerter\data/HH2k_port2_delta0.4_179feats_lastyear_nofeb_ML_preds.csv_0.6conf.csv',
         # 'fname_port': 'data/EM_port.csv',
         # 'fname_port':'../algoalerter/data/HH2k_port2_delta0.4_179feats_lastyear_ask_preds.csv',
-        'trade_type': 'STO',
-        'last_days':100,
+        'trade_type': 'BTO',
+        'last_days':300,
         'filt_date_frm': "",
         'filt_date_to': "",
-        'stc_date':'eod', #'stc alert', #,'exp',# ,  #  # 'eod' or
+        'stc_date':'stc alert', #'stc alert', #,'exp',# ,  #  # 'eod' or
         'max_underlying_price': "",
         # 'min_price': 60,
-        'max_dte': 4,
+        'max_dte': 40,
         'min_dte': 0,
         'filt_hour_frm': "",
         'filt_hour_to':"" ,
         'include_authors':"",
         # 'exclude_symbols': ["SPY", "QQQ"],
         'initial_price' : 'mid', #'bid_+5', #'ask', #  'ask_+10',
-        'PT': [125], #[20,25,35,45,55,65,95,],# [90],#
+        'PT': [95], #[20,25,35,45,55,65,95,],# [90],#
         'pts_ratio' :[1],#[0.2,0.2,0.2,0.1,0.1,0.1,0.1,],#   [0.4, 0.3, 0.3], #
         # 'sl_update' :  [ [1.8, 1.3], [2, 1.5]], #   [[1.20, 1.05], [1.5, 1.3]], #
         # "pt_update" : [ [.3,0.7], [.3,0.7]], #   None, #
         # 'avg_down':[[1.5, 1]], #  [[1.1, .1],[1.2, .1],[1.3, .1],[1.4, .2],[1.5, .2],[1.6, .2]], #
-        'SL': 70,
+        'SL': 40,
         'TS': 0,
         'TS_buy': 0,
         'TS_buy_type':'inverse',
-        'max_margin': 57000,
+        'max_margin': None,
         'short_under_amnt' : 1000,
-        'min_trade_val': 500,
+        'min_trade_val': 1,
         'verbose': True,
         'trade_amount': 1000,
         "sell_bto": False,
@@ -735,6 +737,9 @@ if __name__ == '__main__':
     t0 = tt.time()
     port, param = calc_returns(dir_quotes=dir_quotes, theta_client=client, with_poly=with_poly, **params)
 
+    port['day'] = pd.to_datetime(port['Date']).dt.date
+    port = port.groupby('day').apply(lambda x: x.iloc[0]).reset_index(drop=True)
+    
     t1 = tt.time()
     print(f"Time to calc returns: {t1-t0:.2f} sec")
 
@@ -793,13 +798,15 @@ if __name__ == '__main__':
         # res, port_out = grid_search(params, PT= [30, 40], SL=[30], TS_buy=[0], TS= [0])
         res, port_out = grid_search(
             params,
-            PT= list([5] + np.arange(10,150, 10)),# + [180, 200,250,300],
-            SL=np.arange(20,101,10),
+            PT= list([5] + np.arange(10,100, 10)),# + [180, 200,250,300],
+            SL=np.arange(20,60,10),
             TS_buy=[0],
             TS=[0],
         )
         # res, port_out = grid_search(params, PT= list[30,60,80,120,170,200,250,300] , SL=[50, 80,90], TS_buy=[0], TS= [0])
-
+        port_out['day'] = pd.to_datetime(port_out['Date']).dt.date
+        port_day = port_out.groupby('day').apply(lambda x: x.iloc[0]).reset_index(drop=True)
+        
         res = np.stack(res)
         sorted_indices = np.argsort(res[:, 4])
         sorted_array = res[sorted_indices].astype(int)
