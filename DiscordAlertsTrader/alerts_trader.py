@@ -202,27 +202,30 @@ class AlertsTrader():
             return "CURRENTLY @%.2f"% quote
 
     def confirm_and_send(self, order, pars, order_funct):
+        if 'put_lower_strike' in order.keys():
+            resp = 'yes'
+        else:
             resp, order, ord_chngd = self.notify_alert(order, pars)
-            if resp in ["yes", "y"]:
-                # try:
-                ord_resp, ord_id = self.bksession.send_order(order_funct(**order))
-                # except Exception as e:
-                #     str_msg = f"Error in order {e}"
-                #     print(Back.GREEN + str_msg)
-                #     self.queue_prints.put([str_msg, "", "red"])
-                #     return None, None, order, None
-                
-                if ord_resp is None:
-                    return None, None, order, None
-
-                str_msg = f"Sent order {order['action']} {order['Qty']} {order['Symbol']} @{order['price']}"
-                print(Back.GREEN + str_msg)
-                color = "green" if order['action'] == "BTO" else "yellow"
-                self.queue_prints.put([str_msg, "", color])
-                return ord_resp, ord_id, order, ord_chngd
-
-            elif resp in ["no", "n"]:
+        if resp in ["yes", "y"]:
+            # try:
+            ord_resp, ord_id = self.bksession.send_order(order_funct(**order))
+            # except Exception as e:
+            #     str_msg = f"Error in order {e}"
+            #     print(Back.GREEN + str_msg)
+            #     self.queue_prints.put([str_msg, "", "red"])
+            #     return None, None, order, None
+            
+            if ord_resp is None:
                 return None, None, order, None
+
+            str_msg = f"Sent order {order['action']} {order['Qty']} {order['Symbol']} @{order['price']}"
+            print(Back.GREEN + str_msg)
+            color = "green" if order['action'] == "BTO" else "yellow"
+            self.queue_prints.put([str_msg, "", color])
+            return ord_resp, ord_id, order, ord_chngd
+
+        elif resp in ["no", "n"]:
+            return None, None, order, None
 
     def short_orders(self, order, pars):
         if order['action'] == "STO" :
@@ -691,7 +694,11 @@ class AlertsTrader():
             else:
                 if self.bksession.name == "cobra":
                     self.update_paused = True
-                order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_BTO_lim_order)
+                if 'TotalCredit' in order.keys():
+                    order['Symbol'] = 'SPXW'
+                    order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_BTO_lim_order_iron)
+                else:
+                    order_response, order_id, order, _ = self.confirm_and_send(order, pars, self.bksession.make_BTO_lim_order )
                 if self.bksession.name == "cobra":
                     self.update_paused = False
     

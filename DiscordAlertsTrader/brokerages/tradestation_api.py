@@ -442,6 +442,104 @@ class TS(BaseBroker):
             
         return new_order
 
+
+    def make_BTO_lim_order_iron(self, Symbol:str, Qty:int, price:float, 
+                                 put_lower_strike:float, put_higher_strike:float,
+                                 call_lower_strike:float, call_higher_strike:float,
+                                 ExpDate:str, **kwarg):
+        """
+        Create a Buy-to-Open Iron Condor limit order.
+        
+        An Iron Condor consists of 4 legs:
+        1. Buy Put (lower strike) - BTO
+        2. Sell Put (higher strike) - STO
+        3. Sell Call (lower strike) - STO
+        4. Buy Call (higher strike) - BTO
+        
+        Parameters:
+        -----------
+        Symbol : str
+            Underlying symbol (e.g., 'SPX', 'SPY')
+        Qty : int
+            Quantity (number of contracts per leg)
+        price : float
+            Net limit price for the entire spread (debit)
+        put_lower_strike : float
+            Lower put strike price
+        put_higher_strike : float
+            Higher put strike price
+        call_lower_strike : float
+            Lower call strike price
+        call_higher_strike : float
+            Higher call strike price
+        exp_date : str
+            Expiration date in format 'MMDDYY' or 'YYMMDD' (e.g., '051024' or '240510')
+        **kwarg : dict
+            Additional optional parameters
+        
+        Returns:
+        --------
+        dict : Order dictionary ready to be sent via send_order()
+        """
+        # Convert expiration date to TradeStation format (YYMMDD)
+        # Handle both MMDDYY and YYMMDD formats
+        exp_date = ExpDate.strip()
+        if len(exp_date) == 6:
+            if exp_date[:2] in ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']:
+                # Assume MMDDYY format, convert to YYMMDD
+                exp_date_ts = exp_date[4:] + exp_date[:4]
+            else:
+                # Assume YYMMDD format
+                exp_date_ts = exp_date
+        else:
+            raise ValueError(f"Invalid expiration date format: {exp_date}. Expected 6 digits (MMDDYY or YYMMDD)")
+        
+        # Build option symbols in TradeStation format: "SYMBOL YYMMDDP/CSTRIKE"
+        # Format: Symbol + space + YYMMDD + P/C + Strike (no decimal)
+        put_lower_symbol = f"{Symbol} {exp_date_ts}P{int(put_lower_strike)}"
+        put_higher_symbol = f"{Symbol} {exp_date_ts}P{int(put_higher_strike)}"
+        call_lower_symbol = f"{Symbol} {exp_date_ts}C{int(call_lower_strike)}"
+        call_higher_symbol = f"{Symbol} {exp_date_ts}C{int(call_higher_strike)}"
+        
+        # If price is positive, it will be treated as debit; if negative, as credit
+        order = {
+            "AccountID": self.accountId,
+            "OrderType": "Limit",
+            "LimitPrice": str(-price),  # Net limit price: negative for credit, positive for debit
+            "TimeInForce": {
+                "Duration": "GTC"
+            },
+            "Legs": [
+                # Leg 1: Buy Put (lower strike) - BTO
+                {
+                    "Symbol": put_lower_symbol,
+                    "TradeAction": "BUYTOOPEN",
+                    "Quantity": str(Qty)
+                },
+                # Leg 2: Sell Put (higher strike) - STO
+                {
+                    "Symbol": put_higher_symbol,
+                    "TradeAction": "SELLTOOPEN",
+                    "Quantity": str(Qty)
+                },
+                # Leg 3: Sell Call (lower strike) - STO
+                {
+                    "Symbol": call_lower_symbol,
+                    "TradeAction": "SELLTOOPEN",
+                    "Quantity": str(Qty)
+                },
+                # Leg 4: Buy Call (higher strike) - BTO
+                {
+                    "Symbol": call_higher_symbol,
+                    "TradeAction": "BUYTOOPEN",
+                    "Quantity": str(Qty)
+                }
+            ]
+        }
+        
+        return order
+        
+    
     def make_Lim_SL_order(self, Symbol:str, Qty:int,  PT:float, SL:float, 
                             action="STC", **kwarg):        
         if len(Symbol.split("_")) > 1:

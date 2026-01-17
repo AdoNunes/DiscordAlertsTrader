@@ -14,7 +14,7 @@ from DiscordAlertsTrader.alerts_trader import AlertsTrader
 from DiscordAlertsTrader.alerts_tracker import AlertsTracker
 from DiscordAlertsTrader.server_alert_formatting import server_formatting
 try:
-    from .custom_msg_format import msg_custom_formated, msg_custom_formated2
+    from custom_msg_format import msg_custom_formated, msg_custom_formated2
     print("custom message format loaded")
     custom = True
 except ImportError:
@@ -265,6 +265,10 @@ class DiscordBot(discord.Client):
                 self.chn_hist[chn].to_csv(self.chn_hist_fname[chn], index=False)
             return
         else:
+            if 'put_lower_strike' in msg.keys():
+                order['asset'] = "option"
+                order.update(msg)
+            
             if order['asset'] == "option":
                 try:
                     # get option date with year
@@ -317,7 +321,7 @@ class DiscordBot(discord.Client):
                         return
                     act_diff = max(((quote - order['price'])/order['price']), (order['price'] - quote)/ quote)
                     # Check if actual price is too far (100) from alerted price
-                    if abs(act_diff) > 1 and order.get('action') == 'BTO':
+                    if abs(act_diff) > 1 and order.get('action') == 'BTO' and 'put_lower_strike' not in msg.keys():
                         str_msg = f"Alerted price is {act_diff} times larger than current price of {quote}, skipping alert"
                         self.queue_prints.put([f"\t {str_msg}", "green"])
                         print(Fore.GREEN + f"\t {str_msg}")
